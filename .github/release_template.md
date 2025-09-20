@@ -12,13 +12,4 @@ Short summary of sprint goals and what this release delivers.
 
 ## Fixed
 - <short title> (#<PR>, contributed by <Name>)
-
-## API Notes (if applicable)
-- Endpoint: `METHOD /path` — change summary or example.
-
-## Migration / Ops
-- DB/Infra steps (including IaC if relevant)
-- Rollback: which tag to revert to and how
-
-## Contributors
-Thanks to: @user1, @user2, …
+ example.
