@@ -31,26 +31,36 @@
 		<cucumber.version>7.20.1</cucumber.version>
 		<selenium.version>4.27.0</selenium.version>
 	</properties>
-	<dependencies>
-		<!-- Spring Boot Core Dependencies -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-websocket</artifactId>
-		</dependency>
+        <dependencies>
+                <!-- Spring Boot Core Dependencies -->
+                <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-data-jpa</artifactId>
+                </dependency>
+                <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-web</artifactId>
+                </dependency>
+                <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-validation</artifactId>
+                </dependency>
+                <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-websocket</artifactId>
+                </dependency>
 
-		<!-- Kafka Dependencies -->
-		<dependency>
-			<groupId>org.springframework.kafka</groupId>
-			<artifactId>spring-kafka</artifactId>
-		</dependency>
+                <!-- Kafka Dependencies -->
+                <dependency>
+                        <groupId>org.springframework.kafka</groupId>
+                        <artifactId>spring-kafka</artifactId>
+                </dependency>
+
+                <!-- Database Drivers -->
+                <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                </dependency>
 
 		<!-- Development Tools -->
 		<dependency>
