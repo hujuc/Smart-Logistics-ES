@@ -1,7 +1,8 @@
 # Business Layer
 
 This package contains the domain models and use-case logic that power the SLMS backend
-    ## Folder structure
+
+## Folder structure
 
 - `order_shipment_module/` – implementation for the current shipping and warehouse workflows, organised into `domain/`, `dto/`, `repository/`, and `service/` packages.
   - `domain/` – JPA entities for warehouses and shipment orders that already carry Shippo and ShipStation identifiers, plus the status enum used to track lifecycle transitions.
