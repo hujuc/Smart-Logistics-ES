@@ -1,0 +1,106 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: slms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: slms
+      POSTGRES_USER: slms
+      POSTGRES_PASSWORD: slms
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/docker/backend/Dockerfile
+    container_name: slms-backend-dev
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/slms
+      SPRING_DATASOURCE_USERNAME: slms
+      SPRING_DATASOURCE_PASSWORD: slms
+    command: mvn spring-boot:run
+    expose:
+      - "8080"
+
+  admin-console:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile.dev
+      args:
+        FRONTEND_PATH: src/frontend/admin-console
+    container_name: slms-admin-console-dev
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    working_dir: /app
+    volumes:
+      - ../src/frontend/admin-console:/app
+      - /app/node_modules
+    command: npm run dev
+    expose:
+      - "3000"
+
+  costumer-portal:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile.dev
+      args:
+        FRONTEND_PATH: src/frontend/costumer-portal
+    container_name: slms-costumer-portal-dev
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    working_dir: /app
+    volumes:
+      - ../src/frontend/costumer-portal:/app
+      - /app/node_modules
+    command: npm run dev
+    expose:
+      - "3000"
+
+  driver-pwa:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile.dev
+      args:
+        FRONTEND_PATH: src/frontend/driver-pwa
+    container_name: slms-driver-pwa-dev
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    working_dir: /app
+    volumes:
+      - ../src/frontend/driver-pwa:/app
+      - /app/node_modules
+    command: npm run dev
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: slms-nginx-dev
+    depends_on:
+      - backend
+      - admin-console
+      - costumer-portal
+      - driver-pwa
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres-data:
