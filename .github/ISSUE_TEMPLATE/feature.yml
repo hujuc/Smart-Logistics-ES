@@ -1,0 +1,18 @@
+name: "Feature"
+description: "Improvement of existing functionality or implementing a new one"
+title: "[304] "
+body:
+  - type: textarea
+    attributes:
+      label: "Summary"
+      description: "What is the new feature you are proposing?"
+      placeholder: "Describe the feature..."
+  - type: textarea
+    attributes:
+      label: "Motivation"
+      description: "Why is this feature needed? What problem does it solve?"
+  - type: textarea
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Define what must be true for this feature to be considered complete"
+      placeholder: "- [ ] Criteria 1\n- [ ] Criteria 2"
