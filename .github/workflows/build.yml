@@ -41,13 +41,16 @@ jobs:
           path: src/backend/target/site/jacoco/
           if-no-files-found: ignore
 
-      - name: Post PR Coverage Gate (fail only)
-        if: ${{ github.event_name == 'pull_request' && steps.build.outcome != 'success' }}
+      - name: Post PR Coverage Gate (always)
+        if: ${{ github.event_name == 'pull_request' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           recreate: true
           message: |
-            ❌ Quality gate not met (JaCoCo coverage below required threshold).
+            ${{ steps.build.outcome == 'success'
+              && '✅ Quality gate met.'
+              || '❌ Quality gate not met (JaCoCo coverage below required threshold).' }}
+
             _See the uploaded **jacoco-report** artifact for details._
 
       - name: Enforce gate
