@@ -1,0 +1,27 @@
+name: Deploy project
+
+on:
+  push:
+    branches:
+      - feat/37-cd-pipeline
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Prepare environment file
+        run: |
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" >> .env
+          echo "FRONTEND_PORT=${{ secrets.FRONTEND_PORT }}" >> .env
+          echo "SPRING_PORTS=${{ secrets.SPRING_PORTS }}" >> .env
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
