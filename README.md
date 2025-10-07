@@ -1,5 +1,5 @@
 # Project 8 – Shipping & Logistics Management System  
-# Group 304 
+# Group 304
 
 | **Role**        | **Name**           | **NMEC** |
 |-----------------|--------------------|----------|
