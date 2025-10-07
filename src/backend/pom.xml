@@ -257,7 +257,7 @@
 							<limit>
 								<counter>LINE</counter>
 								<value>COVEREDRATIO</value>
-								<minimum>0.7</minimum> <!-- 70% obrigatório -->
+								<minimum>0.7</minimum> <!-- 70% Testing Coverage -->
 							</limit>
 							</limits>
 						</rule>
