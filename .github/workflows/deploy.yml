@@ -6,43 +6,36 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]   
+
+    env:
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+      BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+      FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy to remote VM via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -e
-            mkdir -p ~/slms
-            cd ~/slms
+      - name: Write .env for Compose
+        working-directory: infra
+        run: |
+          cat > .env <<EOF
+          POSTGRES_DB=$POSTGRES_DB
+          POSTGRES_USER=$POSTGRES_USER
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          POSTGRES_PORT=$POSTGRES_PORT
+          BACKEND_PORT=$BACKEND_PORT
+          FRONTEND_PORT=$FRONTEND_PORT
+          EOF
 
-            if [ -d ".git" ]; then
-              git fetch --prune
-              git checkout -f ${{ github.ref_name }} || git checkout -b ${{ github.ref_name }}
-              git pull --ff-only origin ${{ github.ref_name }}
-            else
-              git clone --depth 1 https://github.com/${{ github.repository }} .
-              git checkout -f ${{ github.ref_name }} || true
-            fi
-
-            cd infra
-            cat > .env <<EOF
-            POSTGRES_DB=$POSTGRES_DB
-            POSTGRES_USER=$POSTGRES_USER
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            POSTGRES_PORT=$POSTGRES_PORT
-            BACKEND_PORT=$BACKEND_PORT
-            FRONTEND_PORT=$FRONTEND_PORT
-            EOF
-
-            sudo docker compose -f docker-compose.yaml pull || true
-            sudo docker compose -f docker-compose.yaml build --pull
-            sudo docker compose -f docker-compose.yaml up -d --remove-orphans
-            sudo docker compose -f docker-compose.yaml ps
+      - name: Deploy with Docker Compose
+        working-directory: infra
+        run: |
+          sudo docker compose -f docker-compose.yaml pull || true
+          sudo docker compose -f docker-compose.yaml build --pull
+          sudo docker compose -f docker-compose.yaml up -d --remove-orphans
+          sudo docker compose -f docker-compose.yaml ps
