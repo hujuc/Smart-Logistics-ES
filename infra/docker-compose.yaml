@@ -37,6 +37,8 @@ services:
     container_name: slms-admin-console
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -49,6 +51,8 @@ services:
     container_name: slms-costumer-portal
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -61,6 +65,8 @@ services:
     container_name: slms-driver-pwa
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -68,9 +74,11 @@ services:
     image: nginx:1.27-alpine
     container_name: slms-nginx
     depends_on:
+      - backend
       - admin-console
       - costumer-portal
       - driver-pwa
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:

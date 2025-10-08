@@ -8,24 +8,74 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare environment file (infra/.env)
-        run: |
-          mkdir -p infra
-          cat > infra/.env <<EOF
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
-            BACKEND_PORT=${{ secrets.BACKEND_PORT }}
-            FRONTEND_PORT=${{ secrets.FRONTEND_PORT }}
-            EOF
+      - name: Deploy to remote VM via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
 
-      - name: Deploy with Docker Compose
-        working-directory: infra
-        run: |
-          sudo docker compose -f docker-compose.yaml up -d
+            # Workspace 
+            mkdir -p ~/slms
+            cd ~/slms
+
+            # Guarantee git
+            if ! command -v git >/dev/null 2>&1; then
+              sudo apt-get update -y
+              sudo apt-get install -y git
+            fi
+
+            # clone, update and branch checkout
+            if [ -d ".git" ]; then
+              git fetch --all --prune
+              git checkout -f ${{ github.ref_name }} || git checkout -b ${{ github.ref_name }}
+              git reset --hard origin/${{ github.ref_name }}
+            else
+              git clone --depth 1 https://github.com/${{ github.repository }} .
+              git checkout -f ${{ github.ref_name }} || true
+            fi
+
+            # Docker & Compose
+            if ! command -v docker >/dev/null 2>&1; then
+              curl -fsSL https://get.docker.com | sh
+            fi
+
+            if ! docker compose version >/dev/null 2>&1; then
+              DOCKER_CONFIG=${HOME}/.docker
+              mkdir -p ${DOCKER_CONFIG}/cli-plugins
+              ARCH=$(uname -m)
+              URL_BASE="https://github.com/docker/compose/releases/download/v2.29.7"
+              case "$ARCH" in
+                x86_64)  FILE="docker-compose-linux-x86_64" ;;
+                aarch64) FILE="docker-compose-linux-aarch64" ;;
+                arm64)   FILE="docker-compose-linux-aarch64" ;;
+                *)       FILE="docker-compose-linux-x86_64" ;;
+              esac
+              curl -SL ${URL_BASE}/${FILE} -o ${DOCKER_CONFIG}/cli-plugins/docker-compose
+              chmod +x ${DOCKER_CONFIG}/cli-plugins/docker-compose
+            fi
+
+            # .env for docker-compose
+            cd infra
+            cat <<'EOF' > .env
+POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+BACKEND_PORT=${{ secrets.BACKEND_PORT }}
+FRONTEND_PORT=${{ secrets.FRONTEND_PORT }}
+EOF
+
+            # Deploy
+            sudo docker compose -f docker-compose.yaml pull || true
+            sudo docker compose -f docker-compose.yaml build --pull
+            sudo docker compose -f docker-compose.yaml up -d --remove-orphans
+            sudo docker compose -f docker-compose.yaml ps
