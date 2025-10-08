@@ -45,6 +45,11 @@ public class OrderController {
         return orderService.update(id, request);
     }
 
+    @PostMapping("/{id}/collect")
+    public OrderResponse confirmPickup(@PathVariable Long id) {
+        return orderService.confirmPickup(id);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
         orderService.delete(id);
