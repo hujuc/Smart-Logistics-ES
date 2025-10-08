@@ -28,4 +28,4 @@ jobs:
       - name: Deploy with Docker Compose
         working-directory: infra
         run: |
-          docker compose -f docker-compose.yaml up -d
+          sudo docker compose -f docker-compose.yaml up -d
