@@ -1,9 +1,7 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: slms-postgres
+    container_name: slms-dev-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: slms
@@ -15,85 +13,72 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ..
-      dockerfile: infra/docker/backend/Dockerfile
-    container_name: slms-backend-dev
+    image: maven:3.9.9-eclipse-temurin-21
+    container_name: slms-dev-backend
     depends_on:
       - postgres
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/slms
-      SPRING_DATASOURCE_USERNAME: slms
-      SPRING_DATASOURCE_PASSWORD: slms
-    command: mvn spring-boot:run
-    expose:
-      - "8080"
+    env_file:
+      - ../src/backend/.env
+    working_dir: /workspace
+    command: ./mvnw spring-boot:run
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../src/backend:/workspace
+      - maven-cache:/root/.m2
 
   admin-console:
-    build:
-      context: ..
-      dockerfile: infra/docker/frontend/Dockerfile.dev
-      args:
-        FRONTEND_PATH: src/frontend/admin-console
-    container_name: slms-admin-console-dev
-    environment:
-      NODE_ENV: development
-      NEXT_TELEMETRY_DISABLED: "1"
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-    working_dir: /app
-    volumes:
-      - ../src/frontend/admin-console:/app
-      - /app/node_modules
-    command: npm run dev
-    expose:
-      - "3000"
-
-  costumer-portal:
-    build:
-      context: ..
-      dockerfile: infra/docker/frontend/Dockerfile.dev
-      args:
-        FRONTEND_PATH: src/frontend/costumer-portal
-    container_name: slms-costumer-portal-dev
-    environment:
-      NODE_ENV: development
-      NEXT_TELEMETRY_DISABLED: "1"
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-    working_dir: /app
-    volumes:
-      - ../src/frontend/costumer-portal:/app
-      - /app/node_modules
-    command: npm run dev
-    expose:
-      - "3000"
-
-  driver-pwa:
-    build:
-      context: ..
-      dockerfile: infra/docker/frontend/Dockerfile.dev
-      args:
-        FRONTEND_PATH: src/frontend/driver-pwa
-    container_name: slms-driver-pwa-dev
-    environment:
-      NODE_ENV: development
-      NEXT_TELEMETRY_DISABLED: "1"
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-    working_dir: /app
-    volumes:
-      - ../src/frontend/driver-pwa:/app
-      - /app/node_modules
-    command: npm run dev
-    expose:
-      - "3000"
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: slms-nginx-dev
+    image: node:20
+    container_name: slms-dev-admin-console
     depends_on:
       - backend
+    working_dir: /app
+    command: sh -c "rm -rf node_modules/.next-* && npm ci && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    volumes:
+      - ../src/frontend/admin-console:/app
+      - admin_console_node_modules:/app/node_modules
+
+  costumer-portal:
+    image: node:20
+    container_name: slms-dev-costumer-portal
+    depends_on:
+      - backend
+    working_dir: /app
+    command: sh -c "rm -rf node_modules/.next-* && npm ci && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    volumes:
+      - ../src/frontend/costumer-portal:/app
+      - costumer_portal_node_modules:/app/node_modules
+
+  driver-pwa:
+    image: node:20
+    container_name: slms-dev-driver-pwa
+    depends_on:
+      - backend
+    working_dir: /app
+    command: sh -c "rm -rf node_modules/.next-* && npm ci && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    volumes:
+      - ../src/frontend/driver-pwa:/app
+      - driver_pwa_node_modules:/app/node_modules
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: slms-dev-nginx
+    depends_on:
       - admin-console
       - costumer-portal
       - driver-pwa
@@ -104,3 +89,7 @@ services:
 
 volumes:
   postgres-data:
+  maven-cache:
+  admin_console_node_modules:
+  costumer_portal_node_modules:
+  driver_pwa_node_modules:
