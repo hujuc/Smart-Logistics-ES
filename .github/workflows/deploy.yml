@@ -11,11 +11,12 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Prepare environment file
+      - name: Prepare environment file (infra/.env)
         run: |
-          cat <<'EOF' > .env
+          mkdir -p infra
+          cat > infra/.env <<EOF
             POSTGRES_DB=${{ secrets.POSTGRES_DB }}
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
@@ -25,7 +26,6 @@ jobs:
             EOF
 
       - name: Deploy with Docker Compose
+        working-directory: infra
         run: |
-          cd "$GITHUB_WORKSPACE"
-          docker compose -f infra/docker-compose.yaml up -d
-
+          docker compose -f docker-compose.yaml up -d
