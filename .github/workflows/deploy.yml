@@ -2,8 +2,9 @@ name: Deploy project
 
 on:
   push:
-    branches: [ feat/37-cd-pipeline, main ]
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 jobs:
   deploy:
     runs-on: [self-hosted, slms]   
