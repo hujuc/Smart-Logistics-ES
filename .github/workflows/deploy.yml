@@ -26,4 +26,4 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
-          docker compose -f docker-compose.yaml up -d
+          docker compose -f infra/docker-compose.yaml up -d
