@@ -3,7 +3,7 @@ name: Deploy project
 on:
   push:
     branches: [ feat/37-cd-pipeline, main ]
-
+  workflow_dispatch:
 jobs:
   deploy:
     runs-on: [self-hosted, Linux, X64]   
