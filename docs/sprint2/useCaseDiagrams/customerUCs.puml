@@ -1,0 +1,43 @@
+@startuml customerUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Customer" as Customer
+
+rectangle "SLMS Tracking Portal" {
+  usecase "Track Order in Real-Time" as UC_TrackOrder
+  usecase "Receive Automatic Notifications" as UC_ReceiveNotifications
+  usecase "Report Delivery Issue" as UC_ReportIssue
+
+  ' Subflows / internal actions
+  usecase "Enter Tracking Number" as UC_EnterTracking
+  usecase "View Current Status and ETA" as UC_ViewStatus
+  usecase "Detect Shipment Status Change" as UC_DetectStatusChange
+  usecase "Send Email/SMS Notification" as UC_SendNotification
+  usecase "Open Order Details" as UC_OpenDetails
+  usecase "Submit Delivery Issue Form" as UC_SubmitIssue
+  usecase "Register Exception and Notify CSR" as UC_NotifyCSR
+}
+
+' Main interactions
+Customer --> UC_TrackOrder
+Customer --> UC_ReceiveNotifications
+Customer --> UC_ReportIssue
+
+' Includes
+UC_TrackOrder ..> UC_EnterTracking : <<include>>
+UC_TrackOrder ..> UC_ViewStatus : <<include>>
+
+UC_ReceiveNotifications ..> UC_DetectStatusChange : <<include>>
+UC_ReceiveNotifications ..> UC_SendNotification : <<include>>
+
+UC_ReportIssue ..> UC_OpenDetails : <<include>>
+UC_ReportIssue ..> UC_SubmitIssue : <<include>>
+UC_ReportIssue ..> UC_NotifyCSR : <<include>>
+
+@enduml
