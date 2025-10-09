@@ -87,6 +87,31 @@ public class OrderService {
         shipmentOrderRepository.delete(order);
     }
 
+    @Transactional
+    public OrderResponse confirmPickup(Long id) {
+        ShipmentOrder order = shipmentOrderRepository
+                .findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
+
+        ShipmentOrderStatus currentStatus = order.getStatus();
+        if (currentStatus == ShipmentOrderStatus.CANCELLED) {
+            throw new ResourceConflictException("Cancelled order %d cannot be collected.".formatted(id));
+        }
+        if (currentStatus == ShipmentOrderStatus.DELIVERED) {
+            throw new ResourceConflictException("Delivered order %d cannot be collected again.".formatted(id));
+        }
+        if (currentStatus == ShipmentOrderStatus.COLLECTED) {
+            return mapToResponse(order);
+        }
+        if (currentStatus != ShipmentOrderStatus.READY_FOR_PICKUP) {
+            throw new ResourceConflictException(
+                    "Order %d must be ready for pickup before it can be collected.".formatted(id));
+        }
+
+        order.setStatus(ShipmentOrderStatus.COLLECTED);
+        return mapToResponse(order);
+    }
+
     @Transactional(readOnly = true)
     public OrderResponse getById(Long id) {
         ShipmentOrder order = shipmentOrderRepository

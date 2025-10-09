@@ -222,4 +222,36 @@ class OrderServiceTest {
                 .extracting(OrderResponse::getReference)
                 .containsExactlyInAnyOrder("ORD-001", "ORD-002");
     }
+
+    @Test
+    void confirmPickupShouldSetStatusToCollectedWhenReadyForPickup() {
+        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+                .reference("ORD-READY")
+                .description("Awaiting pickup")
+                .shippingAddress("123 Street")
+                .status(ShipmentOrderStatus.READY_FOR_PICKUP)
+                .warehouse(warehouse)
+                .build());
+
+        OrderResponse response = orderService.confirmPickup(order.getId());
+
+        assertThat(response.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
+        ShipmentOrder reloaded = shipmentOrderRepository.findById(order.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
+    }
+
+    @Test
+    void confirmPickupShouldFailWhenOrderIsNotReadyForPickup() {
+        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+                .reference("ORD-NOT-READY")
+                .description("Not ready")
+                .shippingAddress("123 Street")
+                .status(ShipmentOrderStatus.CREATED)
+                .warehouse(warehouse)
+                .build());
+
+        assertThatThrownBy(() -> orderService.confirmPickup(order.getId()))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessageContaining("must be ready for pickup");
+    }
 }
