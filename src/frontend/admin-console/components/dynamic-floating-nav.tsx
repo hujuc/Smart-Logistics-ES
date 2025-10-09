@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { navConfig } from "@/lib/nav-config"
-import FloatingNavbar from "./floating-navbar"
+import { FloatingNavbar } from "./floating-navbar"
 
 export function DynamicFloatingNav() {
   const pathname = usePathname()
@@ -13,6 +13,6 @@ export function DynamicFloatingNav() {
 
   if (!currentNav) return null
 
-  return <FloatingNavbar items={currentNav.items} />
+  return <FloatingNavbar navItems={currentNav.items} />
 }
 

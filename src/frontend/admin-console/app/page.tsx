@@ -40,7 +40,7 @@ export default function Home() {
                 </div>
               </Link>
 
-              <Link href="/interfaces/customer-service">
+              <Link href="/interfaces/costumer-service">
                 <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                   <UserCircle className="h-12 w-12 mb-4 mx-auto text-black" />
                   <h2 className="text-xl font-semibold text-black mb-2">

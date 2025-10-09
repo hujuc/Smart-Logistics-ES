@@ -49,7 +49,7 @@ export default function SettingsPage() {
       case 'logistics':
         setCurrentNavItems(logisticsNavItems)
         break
-      case 'customer-service':
+      case 'costumer-service':
         setCurrentNavItems(customerServiceNavItems)
         break
       case 'warehouse':

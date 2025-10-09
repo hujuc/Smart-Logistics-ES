@@ -30,8 +30,13 @@ export const warehouseNavItems: NavItem[] = [
 export const logisticsNavItems: NavItem[] = [
   {
     href: "/interfaces/logistics",
+    icon: BarChart,
+    label: "Overview",
+  },
+  {
+    href: "/interfaces/logistics/carrier-comparison",
     icon: Truck,
-    label: "Routes",
+    label: "New Shipment",
   },
   {
     href: "/interfaces/logistics/tracking",
@@ -71,5 +76,21 @@ export const customerServiceNavItems: NavItem[] = [
     href: "/settings?from=customer-service",
     icon: Settings,
     label: "Settings",
+  },
+]
+
+// Navigation configuration for dynamic floating nav
+export const navConfig = [
+  {
+    basePath: "/interfaces/warehouse",
+    items: warehouseNavItems,
+  },
+  {
+    basePath: "/interfaces/logistics",
+    items: logisticsNavItems,
+  },
+  {
+    basePath: "/interfaces/costumer-service",
+    items: customerServiceNavItems,
   },
 ]
