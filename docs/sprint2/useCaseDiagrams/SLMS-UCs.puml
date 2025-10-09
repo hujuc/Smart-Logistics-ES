@@ -1,0 +1,90 @@
+@startuml globalSLMSUseCases
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+skinparam rectangle {
+  BackgroundColor #f2f2f2
+  BorderColor #2b303b
+}
+
+actor "Logistics Manager" as LM
+actor "Warehouse Staff" as WS
+actor "Customer Service Representative" as CSR
+actor "Driver / Carrier" as Driver
+actor "Customer" as Customer
+
+rectangle "Smart Logistics Management System (SLMS)" {
+
+  package "Logistics Management Module" {
+    (Monitor Transportation KPIs) as UC_KPIs
+    (Compare Carriers for Shipment) as UC_Compare
+    (Generate & Export Reports) as UC_Reports
+  }
+
+  package "Warehouse Operations Module" {
+    (Register New Order) as UC_RegisterOrder
+    (Generate Shipping Labels & Documents) as UC_GenerateDocs
+    (Confirm Carrier Pickup) as UC_ConfirmPickup
+  }
+
+  package "Customer Service Module" {
+    (Search Order Status) as UC_SearchStatus
+    (Handle Delivery Exceptions) as UC_HandleExceptions
+    (Manage Customer-Reported Issues) as UC_ManageIssues
+  }
+
+  package "Driver / Carrier Mobile Module" {
+    (View Manifest & Receive Optimized Route) as UC_ViewManifest
+    (Record Proof of Delivery) as UC_RecordPOD
+    (Report Delivery Exception) as UC_ReportException
+  }
+
+  package "Customer Tracking Portal" {
+    (Track Order in Real-Time) as UC_TrackOrder
+    (Receive Automatic Notifications) as UC_ReceiveNotifications
+    (Report Delivery Issue) as UC_ReportIssue
+  }
+}
+
+' Logistics Manager interactions
+LM --> UC_KPIs
+LM --> UC_Compare
+LM --> UC_Reports
+
+' Warehouse Staff interactions
+WS --> UC_RegisterOrder
+WS --> UC_GenerateDocs
+WS --> UC_ConfirmPickup
+
+' Customer Service interactions
+CSR --> UC_SearchStatus
+CSR --> UC_HandleExceptions
+CSR --> UC_ManageIssues
+
+' Driver / Carrier interactions
+Driver --> UC_ViewManifest
+Driver --> UC_RecordPOD
+Driver --> UC_ReportException
+
+' Customer interactions
+Customer --> UC_TrackOrder
+Customer --> UC_ReceiveNotifications
+Customer --> UC_ReportIssue
+
+' Cross-module relations
+UC_ReportIssue --> UC_ManageIssues : <<notify CSR>>
+UC_ReportException --> UC_HandleExceptions : <<trigger>>
+
+' Additional cross-module relations
+UC_ConfirmPickup --> UC_ViewManifest : <<generate manifest>>
+UC_RecordPOD --> UC_ReceiveNotifications : <<status update>>
+UC_ReportException --> UC_ManageIssues : <<alert CSR>>
+UC_RegisterOrder --> UC_TrackOrder : <<enable tracking>>
+UC_Reports --> UC_HandleExceptions : <<include exception metrics>>
+
+@enduml
