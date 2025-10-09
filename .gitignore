@@ -20,7 +20,7 @@
 ### Java ###
 # Compiled class file
 *.class
-
+.env
 # Log file
 *.log
 

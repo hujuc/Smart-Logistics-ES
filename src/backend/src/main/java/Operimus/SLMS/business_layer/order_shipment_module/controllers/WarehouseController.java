@@ -1,5 +1,4 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff;
-
+package Operimus.SLMS.business_layer.order_shipment_module.controllers;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.service.WarehouseService;
