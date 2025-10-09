@@ -1,12 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 
 export function Navbar() {
-  const pathname = usePathname()
 
-  const isActive = (path: string) => pathname === path || pathname?.startsWith(path)
 
   return (
     <nav className=" bg-white">
