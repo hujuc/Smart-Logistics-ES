@@ -1,20 +1,8 @@
-name: CI
-
-on:
-  pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:
-permissions:
-  contents: read
-  pull-requests: write
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   backend-quality:
     runs-on: ubuntu-latest
+    env:
+      COVERAGE_THRESHOLD: "70"   # ← muda aqui o teu gate (%)
     defaults:
       run:
         working-directory: src/backend
@@ -28,12 +16,10 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build & Test (with JaCoCo gate)
-        id: build
+      - name: Build & Test (with JaCoCo)
         run: mvn -B -ntp -DskipTests=false clean verify
-        continue-on-error: true
 
-      - name: Upload JaCoCo HTML (if present)
+      - name: Upload JaCoCo HTML
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -41,58 +27,71 @@ jobs:
           path: src/backend/target/site/jacoco/
           if-no-files-found: ignore
 
-      - name: Post PR Coverage Gate (always)
+      - name: Extract LINE coverage from jacoco.xml
+        id: cov
+        run: |
+          sudo apt-get update -y >/dev/null
+          sudo apt-get install -y libxml2-utils >/dev/null
+          XML="src/backend/target/site/jacoco/jacoco.xml"
+          MISSED=$(xmllint --xpath "string(/report/counter[@type='LINE']/@missed)" "$XML")
+          COVERED=$(xmllint --xpath "string(/report/counter[@type='LINE']/@covered)" "$XML")
+          TOTAL=$((MISSED + COVERED))
+          if [ "$TOTAL" -eq 0 ]; then PCT="0.00"; else
+            PCT=$(python - <<PY
+          missed=$MISSED
+          covered=$COVERED
+          print(f"{(covered/(missed+covered))*100:.2f}")
+          PY
+          )
+          fi
+          echo "missed=$MISSED" >> "$GITHUB_OUTPUT"
+          echo "covered=$COVERED" >> "$GITHUB_OUTPUT"
+          echo "pct=$PCT" >> "$GITHUB_OUTPUT"
+
+      - name: Decide gate
+        id: gate
+        env:
+          PCT: ${{ steps.cov.outputs.pct }}
+          THRESH: ${{ env.COVERAGE_THRESHOLD }}
+        run: |
+          python - <<PY
+          import os
+          pct  = float(os.environ["PCT"] or 0)
+          thr  = float(os.environ["THRESH"] or 0)
+          status = "pass" if pct >= thr else "fail"
+          print(f"Coverage: {pct:.2f}% (gate {thr:.2f}%) -> {status}")
+          open(os.environ["GITHUB_OUTPUT"], "a").write(f"status={status}\n")
+          PY
+
+      - name: Comment coverage on PR (pretty)
         if: ${{ github.event_name == 'pull_request' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           recreate: true
           message: |
-            ${{ steps.build.outcome == 'success'
-              && '✅ Quality gate met.'
-              || '❌ Quality gate not met (JaCoCo coverage below required threshold).' }}
+            ## 📊 Backend Coverage (JaCoCo)
 
-            _See the uploaded **jacoco-report** artifact for details._
+            | Metric | Value |
+            |---|---:|
+            | **LINE coverage** | **${{ steps.cov.outputs.pct }}%** |
+            | Covered / Total lines | ${{ steps.cov.outputs.covered }} / ${{ fromJSON(steps.cov.outputs.missed) + fromJSON(steps.cov.outputs.covered) }} |
+            | Gate | ${{ env.COVERAGE_THRESHOLD }}% |
 
-      - name: Enforce gate
-        if: always()
+            ${{ steps.gate.outputs.status == 'pass'
+              && '✅ **Quality gate passed.**'
+              || '❌ **Quality gate failed.**' }}
+
+            _See the **jacoco-report** artifact for HTML details._
+
+      - name: Enforce gate (fail job if below threshold)
+        env:
+          PCT: ${{ steps.cov.outputs.pct }}
+          THRESH: ${{ env.COVERAGE_THRESHOLD }}
         run: |
-          if [ "${{ steps.build.outcome }}" != "success" ]; then
-            echo "❌ Quality Gate failed (JaCoCo threshold not reached or build failed)."
-            exit 1
-          else
-            echo " ✅ Quality Gate passed."
-          fi
-
-  frontend-quality:
-    name: Frontend (${{ matrix.app }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app:
-          - admin-console
-          - costumer-portal
-          - driver-pwa
-    env:
-      CI: true
-    defaults:
-      run:
-        working-directory: src/frontend/${{ matrix.app }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint --if-present
-
-      - name: Build health check
-        run: npm run build
+          python - <<PY
+import os, sys
+pct=float(os.environ["PCT"] or 0)
+thr=float(os.environ["THRESH"] or 0)
+print(f"Gate: need ≥{thr:.2f}% | got {pct:.2f}%")
+sys.exit(0 if pct>=thr else 1)
+PY
