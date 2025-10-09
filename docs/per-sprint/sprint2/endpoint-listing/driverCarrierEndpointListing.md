@@ -3,10 +3,10 @@
 ## Overview
 This document lists all API endpoints required by the **Driver/Carrier Mobile Interface** and maps each one to its corresponding **database tables**.  
 These endpoints cover the main delivery operations and driver workflow features:
-- Route assignment and daily delivery manifest management (US11)
-- Real-time navigation and status updates (US12)
-- Proof of Delivery (POD) capture (US13)
-- Exception and failed delivery reporting (US14)
+- "Viewing delivery manifest" (US10)
+- "Receiving optimized delivery routes" (US11)
+- "Recording proof of delivery (POD)" (US12)
+- "Reporting delivery exceptions" (US13)
 
 ---
 

@@ -3,10 +3,9 @@
 ## Overview
 This document lists all API endpoints required by the **Customer Service Representative Interface** and maps each one to its corresponding **database tables**.  
 The endpoints support the key customer support and issue resolution functions:
-- Order search and tracking assistance (US15)
-- Communication with customers and carriers (US16)
-- Exception and issue management (US17)
-- Dashboard and KPI monitoring for service performance (US18)
+- "Quick order status lookup" (US7)
+- "Resolving a delivery issue" (US8)
+- "Handling customer-reported issues" (US9)
 
 ---
 

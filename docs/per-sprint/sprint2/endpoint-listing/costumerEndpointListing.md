@@ -3,9 +3,9 @@
 ## Overview
 This document lists all API endpoints required by the **Customer Portal Interface** and maps each one to its corresponding **database tables**.  
 The endpoints cover key customer-facing functions:
-- Public package tracking (US15)
-- Account and delivery preferences management (US16)
-- Notifications and communication (US17)
+- "Real-time order tracking" (US14)
+- "Receiving automatic notifications" (US15)
+- "Reporting a delivery issue" (US16)
 
 ---
 

@@ -3,9 +3,9 @@
 ## Overview
 This document lists all API endpoints required by the **Warehouse Staff Interface** and maps each one to its corresponding **database tables**.  
 The endpoints cover the key warehouse functions:
-- Order processing (US4)
-- Label and document generation (US5)
-- Carrier pickup confirmation (US6)
+- "Processing a new order" (US4)
+- "Generating shipping labels and documents" (US5)
+- "Confirming carrier pickup" (US6)
 
 ---
 

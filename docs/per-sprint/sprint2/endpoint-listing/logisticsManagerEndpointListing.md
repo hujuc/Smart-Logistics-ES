@@ -3,9 +3,9 @@
 ## Overview
 This document lists all API endpoints required by the **Logistics Manager Interface** and maps each one to its corresponding **database tables**.  
 The endpoints cover the main managerial functions:
-- Dashboard KPIs and performance tracking (US1)
-- Carrier comparison and selection (US2)
-- Reports and analytics generation (US3)
+- "Daily monitoring of KPIs" (US1)
+- "Carrier comparison for new shipments" (US2)
+- "Generating performance reports" (US3)
 
 ---
 
