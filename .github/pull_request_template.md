@@ -1,30 +1,23 @@
 ## Summary
-Briefly describe the change and the user value.
+Describe the change and explain the value it brings to the user or system.
 
 ## Linked Work
-- Closes #<issue-id>  <!-- user story / bug / task -->
+- Closes #<issue-id>  
 - Related: #<issue-id>
 
-## Type of Change
-- [ ] Feature
-- [ ] Fix
-- [ ] Refactor
-- [ ] Docs
-- [ ] Chore / CI
+## Labels
+Please apply the relevant labels before review:
+- **Category**: e.g. `category:bug`, `category:enhancement`, `category:documentation`
+- **Area**: e.g. `area:frontend`, `area:backend`
+- **Priority**: e.g. `priority:low`, `priority:normal`, `priority:high`, `priority:critical`
 
 ## Acceptance Criteria
-- [ ] Meets the acceptance criteria of the linked story
-- [ ] Tests added/updated (unit/integration/e2e as appropriate)
-- [ ] Documentation updated (API/README/diagrams if applicable)
+- Confirm that the PR satisfies the requirements of the linked issue(s).
+- Ensure tests and/or documentation are updated if necessary.
 
 ## Screenshots / Demos (optional)
-_Add images, logs or notes for reviewers._
+_Add images, logs, or notes for reviewers._
 
 ## Impact / Risks
-- Migrations or breaking changes? Explain and provide rollback notes.
-
-## Checklist (Definition of Done)
-- [ ] Branch name follows conventions
-- [ ] CI is green (build, lint, tests)
-- [ ] Changelog entry prepared for the upcoming release
-- [ ] Reviewers assigned and labels set
+- Are there migrations or breaking changes?  
+- If yes, explain and provide rollback notes.
