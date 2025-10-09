@@ -7,13 +7,16 @@ interface KPICardProps {
   title: string
   icon: LucideIcon
   stat: StatCard
+  color: string
 }
 
-export function KPICard({ title, icon: Icon, stat }: KPICardProps) {
+export function KPICard({ title, icon: Icon, stat, color }: KPICardProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-2">
-        <Icon className="h-5 w-5 text-gray-600" />
+        <div className={`${color} rounded-lg p-2`}>
+          <Icon className="h-5 w-5" />
+        </div>
         <p className="text-sm font-medium text-gray-600">{title}</p>
       </div>
       <p className="text-4xl font-bold text-black mb-2">{stat.value}</p>

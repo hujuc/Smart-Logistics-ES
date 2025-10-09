@@ -93,4 +93,8 @@ export const navConfig = [
     basePath: "/interfaces/costumer-service",
     items: customerServiceNavItems,
   },
+  {
+    basePath: "/settings",
+    items: warehouseNavItems, // Default to warehouse, will be handled by component
+  },
 ]

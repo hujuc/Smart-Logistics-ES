@@ -8,13 +8,19 @@ export function FloatingNavbar({ navItems }) {
   const pathname = usePathname()
 
   const isActive = (path) => {
+    // Strip query parameters from the path for comparison
+    const pathWithoutQuery = path.split('?')[0]
+    
     // Exact match for main navigation items
-    if (pathname === path) return true
+    if (pathname === pathWithoutQuery) return true
     
     // For child routes not in the nav (like /interfaces/warehouse/package/123),
     // highlight the parent if no exact match exists
-    const hasExactMatch = navItems.some(item => item.href === pathname)
-    if (!hasExactMatch && pathname?.startsWith(path + '/')) {
+    const hasExactMatch = navItems.some(item => {
+      const itemPathWithoutQuery = item.href.split('?')[0]
+      return itemPathWithoutQuery === pathname
+    })
+    if (!hasExactMatch && pathname?.startsWith(pathWithoutQuery + '/')) {
       return true
     }
     

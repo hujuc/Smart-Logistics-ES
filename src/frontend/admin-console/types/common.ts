@@ -78,6 +78,7 @@ export interface StatCard {
     label?: string;
     alert?: string;
     hasWarning?: boolean;
+    color?: string;
 }
 
 export interface DateRange {

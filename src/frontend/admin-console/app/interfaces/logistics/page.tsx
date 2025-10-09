@@ -18,10 +18,10 @@ const quickStats: LogisticsKPIs = {
 
 // KPI configuration for dynamic rendering
 const kpiConfig = [
-  { key: "ordersToday", title: "Orders Today", icon: Package },
-  { key: "pendingPickups", title: "Pending Pickups", icon: Truck },
-  { key: "inTransitNow", title: "In Transit Now", icon: Clock },
-  { key: "deliveredToday", title: "Delivered Today", icon: CheckCircle },
+  { key: "ordersToday", title: "Orders Today", icon: Package, color: "bg-blue-100" },
+  { key: "pendingPickups", title: "Pending Pickups", icon: Truck, color: "bg-green-100" },
+  { key: "inTransitNow", title: "In Transit Now", icon: Clock, color: "bg-yellow-100" },
+  { key: "deliveredToday", title: "Delivered Today", icon: CheckCircle, color: "bg-purple-100" },
 ] as const
 
 export default function LogisticsPage() {
@@ -51,12 +51,13 @@ export default function LogisticsPage() {
       {/* KPIs View - Quick Stats */}
       {activeTab === "kpis" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiConfig.map(({ key, title, icon }) => (
+          {kpiConfig.map(({ key, title, icon, color }) => (
             <KPICard
               key={key}
               title={title}
               icon={icon}
               stat={quickStats[key]}
+              color={color}
             />
           ))}
         </div>
