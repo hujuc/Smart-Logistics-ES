@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Search, FileText, Clock, User, MessageSquare } from "lucide-react"
-import Link from "next/link"
 
 // Mock data for support tickets
 const mockTickets = [
