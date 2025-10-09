@@ -1,8 +1,10 @@
 # Warehouse Management – API Endpoint Listing
 
 ## Overview
+
 This document lists all API endpoints required by the **Warehouse Staff Interface** and maps each one to its corresponding **database tables**.  
 The endpoints cover the key warehouse functions:
+
 - Order processing (US4)
 - Label and document generation (US5)
 - Carrier pickup confirmation (US6)
@@ -10,6 +12,7 @@ The endpoints cover the key warehouse functions:
 ---
 
 ## Order Management
+
 | Method | Endpoint | Description | Main Tables |
 |--------|-----------|--------------|--------------|
 | **GET** | `/orders?status=<status>&search=<query>&page=<n>` | Fetch list of orders filtered by status or search term | `orders`, `customers`, `carriers`, `warehouses` |
@@ -24,6 +27,7 @@ The endpoints cover the key warehouse functions:
 ---
 
 ## Collections (Carrier Pickup)
+
 | Method | Endpoint | Description | Main Tables |
 |--------|-----------|--------------|--------------|
 | **GET** | `/orders?status=ready` | List all orders prepared for pickup | `orders`, `carriers`, `warehouses` |
@@ -36,6 +40,7 @@ The endpoints cover the key warehouse functions:
 ---
 
 ## Documents & Reports
+
 | Method | Endpoint | Description | Main Tables |
 |--------|-----------|--------------|--------------|
 | **GET** | `/documents/{order_id}/label` | Retrieve shipping label PDF | `shipping_documents` |

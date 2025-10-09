@@ -1,0 +1,22 @@
+name: "Bug"
+description: "Report an unexpected problem or behavior"
+title: "[304] Bug"
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: "Describe the bug"
+      description: "A clear description of what the bug is"
+  - type: textarea
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Step-by-step instructions to reproduce the bug"
+      placeholder: "1. Go to...\n2. Click...\n3. See error"
+  - type: textarea
+    attributes:
+      label: "Expected Behavior"
+      description: "What you expected to happen"
+  - type: textarea
+    attributes:
+      label: "Screenshots/Logs"
+      description: "Attach screenshots or error logs if applicable"
