@@ -9,7 +9,7 @@ interface KPIChartsNavProps {
 
 export function KPIChartsNav({ activeTab, onTabChange }: KPIChartsNavProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm w-fit ">
       <div className="flex gap-2">
         <Button
           variant={activeTab === "kpis" ? "default" : "ghost"}

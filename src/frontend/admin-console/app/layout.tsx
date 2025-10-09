@@ -31,7 +31,7 @@ export default function RootLayout({
       >
         <Navbar />
         <DynamicFloatingNav />
-        <main className="pl-32 pr-8 py-8">
+        <main className="px-60 py-8">
           {children}
         </main>
       </body>
