@@ -1,16 +1,14 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: slms-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: slms
-      POSTGRES_USER: slms
-      POSTGRES_PASSWORD: slms
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-127.0.0.1:5432:5432}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -22,11 +20,13 @@ services:
     depends_on:
       - postgres
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/slms
-      SPRING_DATASOURCE_USERNAME: slms
-      SPRING_DATASOURCE_PASSWORD: slms
-    ports:
-      - "8080:8080"
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-slms}
+      DB_USERNAME: ${DB_USERNAME:-slms}
+      DB_PASSWORD: ${DB_PASSWORD:-slms}
+    expose:
+      - "${BACKEND_PORT:-8080}"
 
   admin-console:
     build:
@@ -37,6 +37,8 @@ services:
     container_name: slms-admin-console
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -49,6 +51,8 @@ services:
     container_name: slms-costumer-portal
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -61,6 +65,8 @@ services:
     container_name: slms-driver-pwa
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
     expose:
       - "3000"
 
@@ -68,9 +74,11 @@ services:
     image: nginx:1.27-alpine
     container_name: slms-nginx
     depends_on:
+      - backend
       - admin-console
       - costumer-portal
       - driver-pwa
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:
@@ -78,4 +86,3 @@ services:
 
 volumes:
   postgres-data:
-
