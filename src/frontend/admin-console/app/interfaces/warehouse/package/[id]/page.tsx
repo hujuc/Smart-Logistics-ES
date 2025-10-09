@@ -6,10 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
 
 export default function PackageDetailsPage() {
-  const params = useParams()
   const [isEditing, setIsEditing] = useState(false)
 
   // Mock data - in real app, this would be fetched based on params.id
