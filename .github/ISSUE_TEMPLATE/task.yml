@@ -1,0 +1,17 @@
+name: "Task"
+description: "A specific piece of work or activity"
+title: "[304] "
+body:
+  - type: textarea
+    attributes:
+      label: "Task Description"
+      description: "Describe the task to be completed"
+  - type: input
+    attributes:
+      label: "Assignee (if known)"
+      placeholder: "@username"
+  - type: textarea
+    attributes:
+      label: "Definition of Done"
+      description: "When can we say this task is finished?"
+      placeholder: "- [ ] Done condition 1\n- [ ] Done condition 2"

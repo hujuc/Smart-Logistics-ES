@@ -1,0 +1,21 @@
+name: "User Story"
+description: "Describe a feature from the perspective of a user"
+title: "[304] US"
+body:
+  - type: textarea
+    attributes:
+      label: "As a..."
+      description: "Who is the user? (e.g., student, admin, developer)"
+  - type: textarea
+    attributes:
+      label: "I want..."
+      description: "What action or functionality do they want?"
+  - type: textarea
+    attributes:
+      label: "So that..."
+      description: "What is the benefit or reason?"
+  - type: textarea
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Conditions that must be met"
+      placeholder: "- [ ] Given... When... Then..."
