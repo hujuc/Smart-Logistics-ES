@@ -1,18 +1,88 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: slms-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: slms
-      POSTGRES_USER: slms
-      POSTGRES_PASSWORD: slms
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-127.0.0.1:5432:5432}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/docker/backend/Dockerfile
+    container_name: slms-backend
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-slms}
+      DB_USERNAME: ${DB_USERNAME:-slms}
+      DB_PASSWORD: ${DB_PASSWORD:-slms}
+    expose:
+      - "${BACKEND_PORT:-8080}"
+
+  admin-console:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        FRONTEND_PATH: src/frontend/admin-console
+    container_name: slms-admin-console
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  costumer-portal:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        FRONTEND_PATH: src/frontend/costumer-portal
+    container_name: slms-costumer-portal
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  driver-pwa:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        FRONTEND_PATH: src/frontend/driver-pwa
+    container_name: slms-driver-pwa
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: slms-nginx
+    depends_on:
+      - backend
+      - admin-console
+      - costumer-portal
+      - driver-pwa
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   postgres-data:

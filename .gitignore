@@ -20,7 +20,7 @@
 ### Java ###
 # Compiled class file
 *.class
-
+.env
 # Log file
 *.log
 
@@ -70,6 +70,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
+.env
 .env*.local
 
 # vercel
@@ -109,3 +110,5 @@ pyvenv.cfg
 pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/react,nextjs,java,venv,git
+
+.idea
