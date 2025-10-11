@@ -26,11 +26,14 @@ services:
       KC_HOSTNAME: localhost
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
-    command: start-dev
+    command: start-dev --import-realm
     depends_on:
       - postgres
     ports:
       - "8180:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
 
   backend:
     build:
@@ -39,6 +42,7 @@ services:
     container_name: slms-backend-dev
     depends_on:
       - postgres
+      - keycloak
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/slms
       SPRING_DATASOURCE_USERNAME: slms
@@ -144,3 +148,4 @@ services:
 
 volumes:
   postgres-data:
+  keycloak-data:

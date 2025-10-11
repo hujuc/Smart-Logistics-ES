@@ -25,11 +25,14 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
       KC_PROXY: edge
-    command: start
+    command: start --import-realm
     depends_on:
       - postgres
     expose:
       - "8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
 
   backend:
     build:
@@ -38,6 +41,7 @@ services:
     container_name: slms-backend
     depends_on:
       - postgres
+      - keycloak
     environment:
       DB_HOST: ${DB_HOST:-postgres}
       DB_PORT: ${DB_PORT:-5432}
@@ -121,3 +125,4 @@ services:
 
 volumes:
   postgres-data:
+  keycloak-data:
