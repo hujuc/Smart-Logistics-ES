@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class DocumentUploadResponse {
 
     private Long orderId;
+    private String documentId;
     private String objectKey;
     private String fileName;
     private String contentType;
