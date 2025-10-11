@@ -8,9 +8,28 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-127.0.0.1:5432:5432}"
+      - "${POSTGRES_PORT:-127.0.0.1:5433:5432}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: slms-keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_PROXY: edge
+    command: start
+    depends_on:
+      - postgres
+    expose:
+      - "8080"
 
   backend:
     build:
@@ -70,6 +89,20 @@ services:
     expose:
       - "3000"
 
+  landing-page:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        FRONTEND_PATH: src/frontend/landing-page
+    container_name: slms-landing-page
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:1.27-alpine
     container_name: slms-nginx
@@ -78,6 +111,8 @@ services:
       - admin-console
       - costumer-portal
       - driver-pwa
+      - landing-page
+      - keycloak
     restart: unless-stopped
     ports:
       - "80:80"

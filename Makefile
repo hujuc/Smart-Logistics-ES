@@ -21,7 +21,7 @@ dev-up:
 	docker compose -f infra/docker-compose.dev.yml up --build -d
 
 dev-down:
-	docker compose -f infra/docker-compose.dev.yml down
+	docker compose -f infra/docker-compose.dev.yml down -v
 
 dev-restart:
 	docker compose -f infra/docker-compose.dev.yml restart
@@ -34,7 +34,7 @@ prod-up:
 	docker compose -f infra/docker-compose.yaml up --build -d
 
 prod-down:
-	docker compose -f infra/docker-compose.yaml down
+	docker compose -f infra/docker-compose.yaml down -v
 
 prod-restart:
 	docker compose -f infra/docker-compose.yaml restart

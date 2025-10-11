@@ -12,6 +12,26 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: slms-keycloak-dev
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/slms
+      KC_DB_USERNAME: slms
+      KC_DB_PASSWORD: slms
+      KC_HOSTNAME: localhost
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    command: start-dev
+    depends_on:
+      - postgres
+    ports:
+      - "8180:8080"
+
   backend:
     build:
       context: ..
@@ -87,6 +107,26 @@ services:
     expose:
       - "3000"
 
+  landing-page:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile.dev
+      args:
+        FRONTEND_PATH: src/frontend/landing-page
+    container_name: slms-landing-page-dev
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    working_dir: /app
+    volumes:
+      - ../src/frontend/landing-page:/app
+      - /app/node_modules
+    command: npm run dev
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:1.27-alpine
     container_name: slms-nginx-dev
@@ -95,6 +135,8 @@ services:
       - admin-console
       - costumer-portal
       - driver-pwa
+      - landing-page
+      - keycloak
     ports:
       - "80:80"
     volumes:
