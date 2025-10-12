@@ -1,5 +1,6 @@
 package Operimus.SLMS.business_layer.user_management_module.controllers;
 
+import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +9,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -30,7 +32,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(controllers = UserController.class)
+@Import(SecurityConfig.class)
 class UserControllerTest {
 
     @Autowired

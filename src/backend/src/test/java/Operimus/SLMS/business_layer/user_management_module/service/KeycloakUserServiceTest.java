@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,9 +50,6 @@ class KeycloakUserServiceTest {
     @Mock
     private RoleScopeResource roleScopeResource;
 
-    @Mock
-    private Response response;
-
     @InjectMocks
     private KeycloakUserService keycloakUserService;
 
@@ -75,12 +73,13 @@ class KeycloakUserServiceTest {
                 Arrays.asList("CUSTOMER")
         );
 
+        String userId = "test-user-id";
+        Response mockResponse = createMockResponse(201, "http://localhost:8180/admin/realms/slms/users/" + userId);
+
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
-        when(usersResource.create(any(UserRepresentation.class))).thenReturn(response);
-        when(response.getStatus()).thenReturn(201);
-        when(response.getHeaderString("Location")).thenReturn("http://localhost:8180/admin/realms/slms/users/test-user-id");
-        when(usersResource.get(anyString())).thenReturn(userResource);
+        when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
+        when(usersResource.get(userId)).thenReturn(userResource);
         when(userResource.toRepresentation()).thenReturn(createUserRepresentation(userDTO));
         when(realmResource.roles()).thenReturn(rolesResource);
         when(rolesResource.get(anyString())).thenReturn(roleResource);
@@ -109,11 +108,12 @@ class KeycloakUserServiceTest {
                 Arrays.asList("CUSTOMER")
         );
 
+        Response mockResponse = createMockResponse(409, null);
+        when(mockResponse.readEntity(String.class)).thenReturn("User already exists");
+
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
-        when(usersResource.create(any(UserRepresentation.class))).thenReturn(response);
-        when(response.getStatus()).thenReturn(409);
-        when(response.readEntity(String.class)).thenReturn("User already exists");
+        when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             keycloakUserService.createUser(userDTO);
@@ -196,9 +196,11 @@ class KeycloakUserServiceTest {
     void whenDeleteUser_thenUserIsDeleted() {
         String userId = "test-user-id";
 
+        Response mockResponse = createMockResponse(204, null);
+
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
-        when(usersResource.delete(userId)).thenReturn(response);
+        when(usersResource.delete(userId)).thenReturn(mockResponse);
 
         assertDoesNotThrow(() -> keycloakUserService.deleteUser(userId));
 
@@ -231,12 +233,13 @@ class KeycloakUserServiceTest {
                 Arrays.asList("CUSTOMER", "NON_EXISTENT_ROLE")
         );
 
+        String userId = "test-user-id";
+        Response mockResponse = createMockResponse(201, "http://localhost:8180/admin/realms/slms/users/" + userId);
+
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
-        when(usersResource.create(any(UserRepresentation.class))).thenReturn(response);
-        when(response.getStatus()).thenReturn(201);
-        when(response.getHeaderString("Location")).thenReturn("http://localhost:8180/admin/realms/slms/users/test-user-id");
-        when(usersResource.get(anyString())).thenReturn(userResource);
+        when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
+        when(usersResource.get(userId)).thenReturn(userResource);
         when(userResource.toRepresentation()).thenReturn(createUserRepresentation(userDTO));
         when(realmResource.roles()).thenReturn(rolesResource);
         when(rolesResource.get("CUSTOMER")).thenReturn(roleResource);
@@ -274,5 +277,23 @@ class KeycloakUserServiceTest {
         RoleRepresentation role = new RoleRepresentation();
         role.setName(roleName);
         return role;
+    }
+
+    private Response createMockResponse(int statusCode, String location) {
+        Response mockResponse = mock(Response.class, withSettings().lenient());
+        Response.Status status = Response.Status.fromStatusCode(statusCode);
+
+        when(mockResponse.getStatusInfo()).thenReturn(status);
+        when(mockResponse.getStatus()).thenReturn(statusCode);
+        if (location != null) {
+            try {
+                URI locationUri = URI.create(location);
+                when(mockResponse.getLocation()).thenReturn(locationUri);
+                when(mockResponse.getHeaderString("Location")).thenReturn(location);
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid location URI: " + location, e);
+            }
+        }
+        return mockResponse;
     }
 }
