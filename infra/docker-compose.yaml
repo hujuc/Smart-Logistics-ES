@@ -8,9 +8,31 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-127.0.0.1:5432:5432}"
+      - "${POSTGRES_PORT}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: slms-keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_PROXY: ${KC_PROXY}
+    command: start --import-realm
+    depends_on:
+      - postgres
+    expose:
+      - "8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
 
   backend:
     build:
@@ -19,14 +41,15 @@ services:
     container_name: slms-backend
     depends_on:
       - postgres
+      - keycloak
     environment:
-      DB_HOST: ${DB_HOST:-postgres}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-slms}
-      DB_USERNAME: ${DB_USERNAME:-slms}
-      DB_PASSWORD: ${DB_PASSWORD:-slms}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
     expose:
-      - "${BACKEND_PORT:-8080}"
+      - "${BACKEND_PORT}"
 
   admin-console:
     build:
@@ -34,13 +57,13 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/admin-console
-    container_name: slms-admin-console
-    environment:
-      NEXT_TELEMETRY_DISABLED: "1"
-      NODE_ENV: ${NODE_ENV:-production}
-    restart: unless-stopped
-    expose:
-      - "3000"
+  container_name: slms-admin-console
+  environment:
+    NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED}
+    NODE_ENV: ${NODE_ENV}
+  restart: unless-stopped
+  expose:
+    - "3000"
 
   costumer-portal:
     build:
@@ -70,6 +93,20 @@ services:
     expose:
       - "3000"
 
+  landing-page:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend/Dockerfile
+      args:
+        FRONTEND_PATH: src/frontend/landing-page
+    container_name: slms-landing-page
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: ${NODE_ENV:-production}
+    restart: unless-stopped
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:1.27-alpine
     container_name: slms-nginx
@@ -78,6 +115,8 @@ services:
       - admin-console
       - costumer-portal
       - driver-pwa
+      - landing-page
+      - keycloak
     restart: unless-stopped
     ports:
       - "80:80"
@@ -86,3 +125,4 @@ services:
 
 volumes:
   postgres-data:
+  keycloak-data:
