@@ -384,7 +384,7 @@ As a Driver I want to report delivery exceptions so that I can keep the system u
 
 ## Mariana Costa (Customer)
 
-### US14 – “Creating an Account through the Landing Page” (?)
+### US14 – “Creating an Account through the Landing Page” (5)
 As a Customer I want to create an account through the SLMS landing page so that I can access my delivery history and track my orders.
 
 **Acceptance Criteria**
@@ -401,7 +401,7 @@ As a Customer I want to create an account through the SLMS landing page so that 
   - *When* I return to the customer portal
   - *Then* I can log in with my new credentials.
 
-### US15 – “Logging In through the Landing Page” (?)
+### US15 – “Logging In through the Landing Page” (3)
 As a Customer I want to log in through the SLMS landing page so that I can securely access my order tracking portal.
 
 **Acceptance Criteria**
