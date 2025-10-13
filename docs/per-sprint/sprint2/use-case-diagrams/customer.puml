@@ -10,11 +10,18 @@ skinparam usecase {
 actor "Customer" as Customer
 
 rectangle "SLMS Tracking Portal" {
+  usecase "Create Account" as UC_CreateAccount
+  usecase "Login to Portal" as UC_Login
   usecase "Track Order in Real-Time" as UC_TrackOrder
   usecase "Receive Automatic Notifications" as UC_ReceiveNotifications
   usecase "Report Delivery Issue" as UC_ReportIssue
 
   ' Subflows / internal actions
+  usecase "Open Registration Page" as UC_OpenRegPage
+  usecase "Complete Registration" as UC_CompleteReg
+  usecase "Redirect to Customer Portal" as UC_AccessPortal
+  usecase "Access Login Page" as UC_AccessLogin
+  usecase "Authenticate User" as UC_Authenticate
   usecase "Enter Tracking Number" as UC_EnterTracking
   usecase "View Current Status and ETA" as UC_ViewStatus
   usecase "Detect Shipment Status Change" as UC_DetectStatusChange
@@ -25,11 +32,20 @@ rectangle "SLMS Tracking Portal" {
 }
 
 ' Main interactions
+Customer --> UC_CreateAccount
+Customer --> UC_Login
 Customer --> UC_TrackOrder
 Customer --> UC_ReceiveNotifications
 Customer --> UC_ReportIssue
 
-' Includes
+' Includes / subflows
+UC_CreateAccount ..> UC_OpenRegPage : <<include>>
+UC_CreateAccount ..> UC_CompleteReg : <<include>>
+UC_CreateAccount ..> UC_AccessPortal : <<include>>
+
+UC_Login ..> UC_AccessLogin : <<include>>
+UC_Login ..> UC_Authenticate : <<include>>
+
 UC_TrackOrder ..> UC_EnterTracking : <<include>>
 UC_TrackOrder ..> UC_ViewStatus : <<include>>
 
