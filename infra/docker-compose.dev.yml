@@ -17,7 +17,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: infra/docker/backend/Dockerfile
+      dockerfile: infra/docker/backend/Dockerfile.dev
     container_name: slms-backend-dev
     depends_on:
       - postgres
@@ -28,7 +28,10 @@ services:
       AWS_S3_ENDPOINT: http://minio:9000
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadminsecret
-    command: mvn spring-boot:run
+    volumes:
+      - ../src/backend:/app
+      - ~/.m2:/root/.m2
+    command: mvn spring-boot:run  
     expose:
       - "8080"
 
