@@ -212,8 +212,6 @@
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-test</artifactId>
-			<version>5.3.10</version> 
-			<scope>compile</scope>
 		</dependency>
 		<!-- Spring Security -->
 		<dependency>
