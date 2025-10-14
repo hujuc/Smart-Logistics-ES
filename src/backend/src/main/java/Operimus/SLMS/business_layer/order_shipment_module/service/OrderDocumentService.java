@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -43,6 +42,7 @@ public class OrderDocumentService {
 
     private final S3Client s3Client;
     private final ShipmentOrderRepository shipmentOrderRepository;
+    
     private final String bucketName;
     private final URI endpointUri;
     private final AtomicBoolean bucketReady = new AtomicBoolean(false);
@@ -69,7 +69,7 @@ public class OrderDocumentService {
         ensureBucketExists();
 
         String cleanedFileName = sanitizeFilename(file.getOriginalFilename());
-        String documentId = createDocumentId(cleanedFileName);
+        String documentId = cleanedFileName;
         String objectKey = buildObjectKey(orderId, documentId);
         String contentType = Optional.ofNullable(file.getContentType()).orElse("application/octet-stream");
 
@@ -117,9 +117,9 @@ public class OrderDocumentService {
         List<DocumentUploadResponse> documents = new ArrayList<>();
         for (S3Object objectSummary : response.contents()) {
             String objectKey = objectSummary.key();
-            String documentId = extractDocumentId(objectKey, orderId);
+            String fileName = extractFileName(objectKey);
+            String documentId = extractDocumentId(objectKey);
             HeadObjectResponse headResponse = fetchHeadObject(objectKey);
-            String fileName = extractFileName(documentId, headResponse);
             String contentType = Optional.ofNullable(headResponse.contentType()).orElse("application/octet-stream");
             long size = objectSummary.size();
 
@@ -205,7 +205,7 @@ public class OrderDocumentService {
                     .bucket(bucketName)
                     .key(objectKey)
                     .contentType(contentType)
-                    .metadata(buildObjectMetadata(fileName))
+                    .metadata(buildObjectMetadata(fileName, documentId))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromInputStream(inputStream, file.getSize()));
@@ -315,10 +315,6 @@ public class OrderDocumentService {
         return buildOrderPrefix(orderId) + documentId;
     }
 
-    private String createDocumentId(String cleanedFilename) {
-        return "%s_%s".formatted(UUID.randomUUID(), cleanedFilename);
-    }
-
     private void validateDocumentId(String documentId) {
         if (documentId == null || documentId.isBlank()) {
             throw new DocumentStorageException("O identificador do documento é inválido.");
@@ -328,30 +324,22 @@ public class OrderDocumentService {
         }
     }
 
-    private String extractDocumentId(String objectKey, Long orderId) {
-        String prefix = buildOrderPrefix(orderId);
-        if (!objectKey.startsWith(prefix)) {
-            throw new DocumentStorageException("Chave de objeto inválida devolvida pelo armazenamento.");
-        }
-        return objectKey.substring(prefix.length());
+    private String extractFileName(String objectKey) {
+        return objectKey.substring(objectKey.lastIndexOf('/') + 1);
     }
 
     private String extractFileName(String documentId, HeadObjectResponse headObjectResponse) {
         return Optional.ofNullable(headObjectResponse.metadata().get("original-filename"))
-                .orElseGet(() -> extractFileNameFromDocumentId(documentId));
+                .orElse(documentId);
     }
 
     private String extractFileName(String documentId, software.amazon.awssdk.services.s3.model.GetObjectResponse response) {
         return Optional.ofNullable(response.metadata().get("original-filename"))
-                .orElseGet(() -> extractFileNameFromDocumentId(documentId));
+                .orElse(documentId);
     }
 
-    private String extractFileNameFromDocumentId(String documentId) {
-        int separator = documentId.indexOf('_');
-        if (separator >= 0 && separator + 1 < documentId.length()) {
-            return documentId.substring(separator + 1);
-        }
-        return documentId;
+    private String extractDocumentId(String objectKey) {
+        return objectKey.substring(objectKey.lastIndexOf('/') + 1);
     }
 
     private HeadObjectResponse fetchHeadObject(String objectKey) {
@@ -367,6 +355,15 @@ public class OrderDocumentService {
     private HashMap<String, String> buildObjectMetadata(String fileName) {
         HashMap<String, String> metadata = new HashMap<>();
         metadata.put("original-filename", fileName);
+        metadata.put("uploaded-at", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
+        return metadata;
+    }
+
+    private HashMap<String, String> buildObjectMetadata(String fileName, String documentId) {
+        HashMap<String, String> metadata = new HashMap<>();
+        metadata.put("original-filename", fileName);
+        metadata.put("display-name", fileName);
+        metadata.put("document-id", documentId);
         metadata.put("uploaded-at", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)));
         return metadata;
     }
