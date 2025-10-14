@@ -35,7 +35,7 @@ export default function LoginModal({ onClose, onSwitchToSignUp }: LoginModalProp
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
             <div className="bg-white rounded-lg max-w-md w-full p-8 relative" onClick={(e) => e.stopPropagation()}>
                 {/* Close Button */}
                 <button
