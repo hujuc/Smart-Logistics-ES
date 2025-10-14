@@ -2,7 +2,7 @@
  * Warehouse-related types
  */
 
-import { ShipmentOrderStatus, Priority } from "./common"
+import type { ShipmentOrderStatus, Priority } from "./common"
 
 export interface WarehousePackage {
   id: string

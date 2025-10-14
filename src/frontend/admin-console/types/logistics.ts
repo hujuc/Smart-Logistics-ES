@@ -2,7 +2,7 @@
  * Logistics and operations-related types
  */
 
-import { Priority, ShipmentOrderStatus, StatCard } from "./common"
+import type { Priority, ShipmentOrderStatus, StatCard } from "./common"
 
 export interface LogisticsKPIs {
   ordersToday: StatCard

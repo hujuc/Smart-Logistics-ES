@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT}"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -48,6 +48,11 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
+      KEYCLOAK_HOST: ${KEYCLOAK_HOST}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
     expose:
       - "${BACKEND_PORT}"
 
@@ -57,13 +62,13 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/admin-console
-  container_name: slms-admin-console
-  environment:
-    NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED}
-    NODE_ENV: ${NODE_ENV}
-  restart: unless-stopped
-  expose:
-    - "3000"
+    container_name: slms-admin-console
+    environment:
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED}
+      NODE_ENV: ${NODE_ENV}
+    restart: unless-stopped
+    expose:
+      - "3000"
 
   costumer-portal:
     build:
