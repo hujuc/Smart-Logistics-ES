@@ -33,7 +33,7 @@ export default function DriverHome() {
 
         {/* Today's Summary Cards */}
         <div className="p-6 space-y-4">
-          <h2 className="text-xl font-bold text-black mb-4">Today's Summary</h2>
+          <h2 className="text-xl font-bold text-black mb-4">Today&apos;s Summary</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
