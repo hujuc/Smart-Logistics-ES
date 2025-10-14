@@ -1,103 +1,158 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from 'next/link';
+import { Truck, Package, MapPin, Clock, Bell } from 'lucide-react';
+
+export default function DriverHome() {
+  // Mock data
+  const todayStats = {
+    totalDeliveries: 25,
+    completed: 8,
+    remaining: 17,
+    nextStopETA: '15 min'
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="driver/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="driver/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="bg-black text-white p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold">Welcome Back</h1>
+              <p className="text-gray-300 text-sm mt-1">Carlos Silva • Driver</p>
+            </div>
+            <div className="relative">
+              <Bell className="w-6 h-6" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              3
+            </span>
+            </div>
+          </div>
+          <p className="text-gray-400 text-sm">Tuesday, October 14, 2025</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="driver/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="driver/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="driver/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Today's Summary Cards */}
+        <div className="p-6 space-y-4">
+          <h2 className="text-xl font-bold text-black mb-4">Today&apos;s Summary</h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <Package className="w-8 h-8 text-black mb-2" />
+              <p className="text-3xl font-bold text-black">{todayStats.totalDeliveries}</p>
+              <p className="text-sm text-gray-600">Total Deliveries</p>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                <span className="text-white font-bold text-sm">✓</span>
+              </div>
+              <p className="text-3xl font-bold text-green-700">{todayStats.completed}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <Truck className="w-8 h-8 text-blue-600 mb-2" />
+              <p className="text-3xl font-bold text-blue-700">{todayStats.remaining}</p>
+              <p className="text-sm text-gray-600">Remaining</p>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <Clock className="w-8 h-8 text-yellow-600 mb-2" />
+              <p className="text-3xl font-bold text-yellow-700">{todayStats.nextStopETA}</p>
+              <p className="text-sm text-gray-600">Next Stop ETA</p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8 space-y-3">
+            <h2 className="text-xl font-bold text-black mb-4">Quick Actions</h2>
+
+            <Link href="/interfaces/daily-schedule">
+              <button className="w-full bg-black text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
+                <MapPin className="w-5 h-5" />
+                View Daily Schedule
+              </button>
+            </Link>
+
+            <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+              <Package className="w-5 h-5" />
+              Scan Package
+            </button>
+
+            <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+              <Truck className="w-5 h-5" />
+              Start Navigation
+            </button>
+          </div>
+
+          {/* Next Deliveries Preview */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-black">Next Deliveries</h2>
+              <Link href="/interfaces/daily-schedule">
+              <span className="text-sm text-black hover:text-gray-600 font-semibold">
+                View All →
+              </span>
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-black">João Silva</p>
+                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      123 Rua Street, Aveiro
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                  High
+                </span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-black">Maria Santos</p>
+                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      456 Ave Street, Aveiro
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
+                  Medium
+                </span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-black">Carlos Ferreira</p>
+                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      789 Main Street, Aveiro
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                  Low
+                </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
   );
 }
