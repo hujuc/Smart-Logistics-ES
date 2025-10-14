@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { MapPin, Package, Phone, Navigation, ChevronDown, ChevronUp, Clock, AlertCircle } from 'lucide-react';
+import { MapPin, Package, Phone, Navigation, ChevronDown, ChevronUp, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 type Delivery = {
   id: number;
@@ -137,6 +138,12 @@ export default function DriverDailySchedule() {
         <div className="bg-black text-white p-4">
           <h1 className="text-2xl font-bold">Daily Schedule</h1>
           <p className="text-gray-300 text-sm mt-1">Carlos Silva • Driver</p>
+          <div className="absolute top-4 right-4">
+            <Link href="/" className="flex items-center gap-1 text-white hover:text-gray-300">
+              <ArrowLeft className="w-5 h-5" />
+              Back
+            </Link>
+          </div>
         </div>
 
         {/* Route Summary */}
