@@ -369,59 +369,61 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
-        <div className="space-y-3">
-          {order.actualDelivery && (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+          <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
+          <div className="space-y-3">
+            {order.actualDelivery && (
+              <div className="flex gap-4 pb-3 border-b">
+                <div className="text-sm text-gray-500 w-48">
+                  {new Date(order.actualDelivery).toLocaleString()}
+                </div>
+                <div className="text-sm text-black">Package delivered</div>
+              </div>
+            )}
+            {order.scannedAt && (
+              <div className="flex gap-4 pb-3 border-b">
+                <div className="text-sm text-gray-500 w-48">
+                  {new Date(order.scannedAt).toLocaleString()}
+                </div>
+                <div className="text-sm text-black">Package scanned at warehouse</div>
+              </div>
+            )}
             <div className="flex gap-4 pb-3 border-b">
               <div className="text-sm text-gray-500 w-48">
-                {new Date(order.actualDelivery).toLocaleString()}
+                {new Date(order.updatedAt).toLocaleString()}
               </div>
-              <div className="text-sm text-black">Package delivered</div>
+              <div className="text-sm text-black">Last updated</div>
             </div>
-          )}
-          {order.scannedAt && (
-            <div className="flex gap-4 pb-3 border-b">
+            <div className="flex gap-4 pb-3">
               <div className="text-sm text-gray-500 w-48">
-                {new Date(order.scannedAt).toLocaleString()}
+                {new Date(order.createdAt).toLocaleString()}
               </div>
-              <div className="text-sm text-black">Package scanned at warehouse</div>
+              <div className="text-sm text-black">Order created</div>
             </div>
-          )}
-          <div className="flex gap-4 pb-3 border-b">
-            <div className="text-sm text-gray-500 w-48">
-              {new Date(order.updatedAt).toLocaleString()}
-            </div>
-            <div className="text-sm text-black">Last updated</div>
-          </div>
-          <div className="flex gap-4 pb-3">
-            <div className="text-sm text-gray-500 w-48">
-              {new Date(order.createdAt).toLocaleString()}
-            </div>
-            <div className="text-sm text-black">Order created</div>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="font-semibold text-black mb-4">Order QR Code</h3>
-        {isQrLoading ? (
-          <p className="text-gray-600 text-sm">Loading QR code...</p>
-        ) : qrError ? (
-          <p className="text-red-600 text-sm">{qrError}</p>
-        ) : qrImageUrl ? (
-          <div className="flex flex-col items-start gap-4 md:flex-row md:items-center">
-            <img
-              src={qrImageUrl}
-              alt="Order QR code"
-              className="h-48 w-48 rounded-md border border-gray-200 bg-gray-50 p-3"
-            />
-          </div>
-        ) : (
-          <p className="text-gray-600 text-sm">
-            No QR code is available for this order.
-          </p>
-        )}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-1">
+          <h3 className="font-semibold text-black mb-4">Package QR Code</h3>
+          {isQrLoading ? (
+            <p className="text-gray-600 text-sm">Loading QR code...</p>
+          ) : qrError ? (
+            <p className="text-red-600 text-sm">{qrError}</p>
+          ) : qrImageUrl ? (
+            <div className="flex flex-col items-center">
+              <img
+                src={qrImageUrl}
+                alt="Order QR code"
+                className="h-56 w-56 rounded-md border border-gray-200 bg-gray-50 p-4"
+              />
+            </div>
+          ) : (
+            <p className="text-gray-600 text-sm">
+              No QR code is available for this order.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )
