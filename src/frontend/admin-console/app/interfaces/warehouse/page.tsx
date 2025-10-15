@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { QuickStats } from "@/components/warehouse/quick-stats"
 import { OrderTable } from "@/components/warehouse/order-table"
 import type { WarehousePackage } from "@/types"
 import { warehouseService } from "@/lib/services/warehouse.service"
 
 export default function WarehousePage() {
+  const router = useRouter()
   const [packages, setPackages] = useState<WarehousePackage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +43,17 @@ export default function WarehousePage() {
       setError('Failed to load orders. Please try again.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCollectPackage = async (id: string) => {
+    try {
+      await warehouseService.confirmPickup(parseInt(id))
+      // Reload orders to reflect the status change
+      await loadOrders()
+    } catch (err) {
+      console.error('Failed to collect package:', err)
+      alert('Failed to mark package as collected. Please try again.')
     }
   }
 
@@ -91,7 +104,8 @@ export default function WarehousePage() {
       {/* Orders Table */}
       <OrderTable
         packages={packages}
-        onViewPackage={(id) => window.location.href = `/interfaces/warehouse/package/${id}`}
+        onViewPackage={(id) => router.push(`/interfaces/warehouse/package/${id}`)}
+        onCollectPackage={handleCollectPackage}
       />
     </div>
   )

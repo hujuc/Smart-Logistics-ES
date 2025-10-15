@@ -9,15 +9,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, Package } from "lucide-react"
 import { WarehousePackage, STATUS_COLORS, STATUS_LABELS } from "@/types"
 
 interface OrderTableProps {
   packages: WarehousePackage[]
   onViewPackage?: (id: string) => void
+  onCollectPackage?: (id: string) => void
 }
 
-export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
+export function OrderTable({ packages, onViewPackage, onCollectPackage }: OrderTableProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
       <div className="p-6">
@@ -55,9 +56,22 @@ export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
                 <TableCell>{pkg.destination}</TableCell>
                 <TableCell>{pkg.scannedAt || "-"}</TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="sm" onClick={() => onViewPackage?.(pkg.id)}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => onViewPackage?.(pkg.id)} title="View Details">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {pkg.status === "READY_FOR_PICKUP" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onCollectPackage?.(pkg.id)}
+                        title="Mark as Collected"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <Package className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -452,6 +452,55 @@
 					}
 				},
 				{
+					"name": "Create Order - Ready for Pickup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Order created with READY_FOR_PICKUP status\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData.status).to.eql('READY_FOR_PICKUP');",
+									"    ",
+									"    // Save order ID for later tests",
+									"    pm.collectionVariables.set(\"order_id\", jsonData.id);",
+									"});",
+									"",
+									"pm.test(\"Response has tracking number\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('trackingNumber');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reference\": \"READY-{{$timestamp}}\",\n  \"description\": \"Test order ready for pickup - created for testing collect button\",\n  \"status\": \"READY_FOR_PICKUP\",\n  \"shippingAddress\": \"{{$randomStreetAddress}}, {{$randomCity}}, Portugal\",\n  \"estimatedDeliveryDate\": \"2025-10-20T10:00:00Z\",\n  \"warehouseId\": 1,\n  \"trackingNumber\": \"TRK-{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/orders",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "orders"]
+						}
+					}
+				},
+				{
 					"name": "Get Order by ID",
 					"event": [
 						{

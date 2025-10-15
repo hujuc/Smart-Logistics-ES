@@ -2,7 +2,7 @@
  * Customer service-related types
  */
 
-import type { IssueStatus, IssueType, ContactInfo, Address } from "./common"
+import type { IssueStatus, IssueType } from "./common"
 
 export interface DeliveryIssue {
   id: string
