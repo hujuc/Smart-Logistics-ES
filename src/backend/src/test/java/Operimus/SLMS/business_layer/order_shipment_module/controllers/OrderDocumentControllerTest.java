@@ -18,17 +18,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.shared.config.S3Config;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import software.amazon.awssdk.services.s3.S3Client;
 
-@WebMvcTest(controllers = OrderDocumentController.class)
+@WebMvcTest(
+    controllers = OrderDocumentController.class,
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = S3Config.class
+    )
+)
 @AutoConfigureMockMvc(addFilters = false)
 class OrderDocumentControllerTest {
 
@@ -37,6 +47,9 @@ class OrderDocumentControllerTest {
 
     @MockBean
     private OrderDocumentService orderDocumentService;
+
+    @MockBean
+    private S3Client s3Client;
 
     @Test
     void uploadDocumentShouldReturnCreatedResponse() throws Exception {

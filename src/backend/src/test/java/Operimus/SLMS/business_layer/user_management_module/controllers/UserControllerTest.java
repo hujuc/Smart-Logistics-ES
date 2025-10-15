@@ -3,18 +3,22 @@ package Operimus.SLMS.business_layer.user_management_module.controllers;
 import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.business_layer.shared.config.S3Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -32,7 +36,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = UserController.class)
+@WebMvcTest(
+    controllers = UserController.class,
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = S3Config.class
+    )
+)
 @Import(SecurityConfig.class)
 class UserControllerTest {
 
@@ -47,6 +57,9 @@ class UserControllerTest {
 
     @MockBean
     private JwtDecoder jwtDecoder;
+
+    @MockBean
+    private S3Client s3Client;
 
     @Test
     void whenRegisterUser_thenUserIsCreated() throws Exception {
