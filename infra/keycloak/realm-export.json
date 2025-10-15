@@ -156,6 +156,14 @@
       ],
       "realmRoles": ["WAREHOUSE_STAFF"],
       "groups": ["/Warehouse"]
+    },
+    {
+      "username": "service-account-slms-backend",
+      "enabled": true,
+      "serviceAccountClientId": "slms-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "query-realms", "view-realm"]
+      }
     }
   ],
   "clients": [
@@ -169,59 +177,24 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "secret": "**********REPLACE-WITH-SECURE-SECRET**********",
+      "authorizationServicesEnabled": false,
+      "secret": "--------------------------------",
       "redirectUris": ["http://localhost:8180/*"],
       "webOrigins": ["http://localhost:3000"],
       "attributes": {
         "access.token.lifespan": "1800"
       }
-    },
-    {
-      "clientId": "slms-admin-console",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": true,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "rootUrl": "http://localhost:3000",
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["+"],
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
-    },
-    {
-      "clientId": "slms-customer-portal",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": true,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "rootUrl": "http://localhost:3001",
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["+"],
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
-    },
-    {
-      "clientId": "slms-driver-pwa",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": true,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "rootUrl": "http://localhost:3002",
-      "redirectUris": ["http://localhost:3002/*"],
-      "webOrigins": ["+"],
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
     }
   ],
+  "clientScopes": [],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "slms-backend",
+        "roles": ["manage-users", "view-users", "query-users", "manage-clients", "view-clients", "query-clients", "query-realms", "view-realm"]
+      }
+    ]
+  },
   "eventsEnabled": true,
   "eventsListeners": ["jboss-logging"],
   "adminEventsEnabled": true,
