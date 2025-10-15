@@ -17,7 +17,7 @@ jobs:
       DB_HOST: ${{ secrets.POSTGRES_HOST }}
       DB_PORT: ${{ secrets.POSTGRES_PORT }}
       DB_NAME: ${{ secrets.POSTGRES_DB }}
-      DB_USERNAME: ${{ secrets.POSTGRES_USERNAME }}
+      DB_USERNAME: ${{ secrets.POSTGRES_NAME }}
       DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
