@@ -1,5 +1,6 @@
 package Operimus.SLMS.business_layer.order_shipment_module.service;
 
+import Operimus.SLMS.business_layer.order_shipment_module.dto.InMemoryMultipartFile;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
@@ -8,11 +9,20 @@ import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
 import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import java.io.ByteArrayOutputStream;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -20,6 +30,7 @@ public class OrderService {
 
     private final ShipmentOrderRepository shipmentOrderRepository;
     private final WarehouseService warehouseService;
+    private final OrderDocumentService orderDocumentService;  // Adicionando dependência para o upload
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
@@ -30,6 +41,7 @@ public class OrderService {
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
 
+        // Criar a encomenda
         ShipmentOrder order = ShipmentOrder.builder()
                 .reference(request.getReference())
                 .description(request.getDescription())
@@ -45,7 +57,19 @@ public class OrderService {
                 .trackingNumber(request.getTrackingNumber())
                 .build();
 
+        // Salvar a encomenda no banco (gera orderId)
         ShipmentOrder saved = shipmentOrderRepository.save(order);
+
+        // Gerar o QR code para a encomenda
+        byte[] qrImage = generateQrCode(saved.getId().toString(), 300);  // Gerando o QR code
+
+        // Criar o MultipartFile a partir do byte[] do QR code
+        MultipartFile qrFile = new InMemoryMultipartFile("qr-" + saved.getId() + ".png", qrImage);
+
+        // Fazer o upload do QR code para o MinIO
+        String qrKey = "orders/" + saved.getId() + "/qr.png";  // Definindo a chave do arquivo no MinIO
+        orderDocumentService.uploadDocument(saved.getId(), qrFile);  // Realizando o upload do QR code
+
         return mapToResponse(saved);
     }
 
@@ -147,5 +171,21 @@ public class OrderService {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+    private byte[] generateQrCode(String orderId, int size) {
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+        BitMatrix bitMatrix = null;
+         try {
+            bitMatrix = qrCodeWriter.encode(orderId, BarcodeFormat.QR_CODE, size, size);
+        } catch (WriterException e) {
+            throw new RuntimeException("Erro ao gerar QR code", e);  // Tratar a exceção adequadamente
+        }
+        ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
+        try {
+            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao gerar QR code", e);
+        }
+        return pngOutputStream.toByteArray();
     }
 }

@@ -186,6 +186,14 @@
       "groups": [
         "/Warehouse"
       ]
+    },
+    {
+      "username": "service-account-slms-backend",
+      "enabled": true,
+      "serviceAccountClientId": "slms-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "query-realms", "view-realm"]
+      }
     }
   ],
   "clients": [
@@ -199,6 +207,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
       "secret": "dev-secret-change-in-production",
       "redirectUris": [
         "http://localhost:8180/*",
@@ -270,6 +279,15 @@
       }
     }
   ],
+  "clientScopes": [],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "slms-backend",
+        "roles": ["manage-users", "view-users", "query-users", "manage-clients", "view-clients", "query-clients", "query-realms", "view-realm"]
+      }
+    ]
+  },
   "eventsEnabled": true,
   "eventsListeners": [
     "jboss-logging"

@@ -14,7 +14,7 @@ make dev-down      # Stop services
 ### Production Environment
 
 ```bash
-# From project root
+# From project root 
 cp infra/.env.example infra/.env  # Configure environment
 make prod-up       # Start services
 make prod-logs     # View logs

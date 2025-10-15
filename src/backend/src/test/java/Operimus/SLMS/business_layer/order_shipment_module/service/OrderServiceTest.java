@@ -2,6 +2,9 @@ package Operimus.SLMS.business_layer.order_shipment_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 @DataJpaTest
 @Import({OrderService.class, WarehouseService.class})
@@ -31,6 +35,9 @@ class OrderServiceTest {
 
     @Autowired
     private WarehouseRepository warehouseRepository;
+
+    @MockBean
+    private OrderDocumentService orderDocumentService;
 
     private Warehouse warehouse;
 
@@ -73,6 +80,7 @@ class OrderServiceTest {
         ShipmentOrder saved = shipmentOrderRepository.findById(response.getId()).orElseThrow();
         assertThat(saved.getWarehouse().getId()).isEqualTo(warehouse.getId());
         assertThat(saved.getShipstationCarrierCode()).isEqualTo("DHL");
+        verify(orderDocumentService).uploadDocument(eq(saved.getId()), any());
     }
 
     @Test
