@@ -11,15 +11,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to auth routes
-  if (pathname.startsWith("/api/auth")) {
+  // With basePath, Next.js strips /admin before middleware, so we check without it
+  if (pathname.startsWith("/admin/api/auth") || pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
 
   // Check if user is authenticated
   if (!token) {
     // Redirect to signin page with callback URL
-    // Since we're behind nginx at /admin, construct the full external URL
-    const signInUrl = new URL(`${process.env.NEXTAUTH_URL}/api/auth/signin`, request.url);
+    const signInUrl = new URL("/admin/api/auth/signin", request.url);
     signInUrl.searchParams.set("callbackUrl", request.url);
     return NextResponse.redirect(signInUrl);
   }
