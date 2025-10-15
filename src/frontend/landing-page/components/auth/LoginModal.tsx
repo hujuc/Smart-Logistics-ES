@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { X, Mail, Lock } from 'lucide-react';
 import type { LoginData } from '@/types/auth';
 

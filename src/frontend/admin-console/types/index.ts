@@ -10,6 +10,7 @@ export type {
   IssueType,
   Carrier,
   Order,
+  OrderDocument,
   ContactInfo,
   Address,
   StatCard,
@@ -22,7 +23,7 @@ export type {
   WarehouseStats,
 } from "./warehouse"
 
-export { STATUS_COLORS } from "./warehouse"
+export { STATUS_COLORS, STATUS_LABELS } from "./warehouse"
 
 // Logistics types
 export type {
@@ -38,4 +39,3 @@ export type {
   CustomerServiceStats,
   SupportTicket,
 } from "./customer-service"
-

@@ -19,6 +19,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**").permitAll() // NextAuth.js routes
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/users/register").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
@@ -38,13 +39,21 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        // Keycloak stores roles in "realm_access.roles" claim
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("realm_access.roles");
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            // Extract roles from nested "realm_access.roles" claim
+            var realmAccess = jwt.getClaimAsMap("realm_access");
+            if (realmAccess == null || !realmAccess.containsKey("roles")) {
+                return java.util.Collections.emptyList();
+            }
+
+            @SuppressWarnings("unchecked")
+            var roles = (java.util.List<String>) realmAccess.get("roles");
+
+            return roles.stream()
+                .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role))
+                .collect(java.util.stream.Collectors.toList());
+        });
         return jwtAuthenticationConverter;
     }
 }

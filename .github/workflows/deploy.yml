@@ -14,11 +14,11 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
-      DB_HOST: ${{ secrets.POSTGRES_HOST }}
-      DB_PORT: ${{ secrets.POSTGRES_PORT }}
-      DB_NAME: ${{ secrets.POSTGRES_DB }}
-      DB_USERNAME: ${{ secrets.POSTGRES_NAME }}
-      DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       KC_DB: ${{ secrets.KC_DB }}
@@ -27,6 +27,10 @@ jobs:
       KC_DB_PASSWORD: ${{ secrets.KC_DB_PASSWORD }}
       KC_HOSTNAME: ${{ secrets.KC_HOSTNAME }}
       KC_PROXY: ${{ secrets.KC_PROXY }}
+      KC_HOSTNAME_PORT: ${{ secrets.KC_HOSTNAME_PORT }}
+      KC_HOSTNAME_STRICT: ${{ secrets.KC_HOSTNAME_STRICT }}
+      KC_HTTP_ENABLED: ${{ secrets.KC_HTTP_ENABLED }}
+      KC_PROXY_HEADERS: ${{ secrets.KC_PROXY_HEADERS }}
       BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
       FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
       NEXT_TELEMETRY_DISABLED: ${{ secrets.NEXT_TELEMETRY_DISABLED }}
@@ -36,6 +40,19 @@ jobs:
       MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
       MINIO_PORT: ${{ secrets.MINIO_PORT }}
       MINIO_HOST: ${{ secrets.MINIO_HOST }}
+      KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
+      KEYCLOAK_PORT: ${{ secrets.KEYCLOAK_PORT }}
+      KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+      KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
+      KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
 
     steps:
       - name: Fix permissions before build
@@ -65,11 +82,28 @@ jobs:
           KC_DB_USERNAME=$KC_DB_USERNAME
           KC_DB_PASSWORD=$KC_DB_PASSWORD
           KC_HOSTNAME=$KC_HOSTNAME
+          KC_HOSTNAME_PORT=$KC_HOSTNAME_PORT
+          KC_HOSTNAME_STRICT=$KC_HOSTNAME_STRICT
+          KC_HTTP_ENABLED=$KC_HTTP_ENABLED
+          KC_PROXY_HEADERS=$KC_PROXY_HEADERS
           KC_PROXY=$KC_PROXY
+          KEYCLOAK_HOST=$KEYCLOAK_HOST
+          KEYCLOAK_PORT=$KEYCLOAK_PORT
+          KEYCLOAK_REALM=$KEYCLOAK_REALM
+          KEYCLOAK_ADMIN_CLIENT_ID=$KEYCLOAK_ADMIN_CLIENT_ID
+          KEYCLOAK_ADMIN_CLIENT_SECRET=$KEYCLOAK_ADMIN_CLIENT_SECRET
           BACKEND_PORT=$BACKEND_PORT
           FRONTEND_PORT=$FRONTEND_PORT
           NEXT_TELEMETRY_DISABLED=$NEXT_TELEMETRY_DISABLED
           NODE_ENV=$NODE_ENV
+          NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+          NEXTAUTH_URL=$NEXTAUTH_URL
+          NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+          KEYCLOAK_CLIENT_ID=$KEYCLOAK_CLIENT_ID
+          KEYCLOAK_CLIENT_SECRET=$KEYCLOAK_CLIENT_SECRET
+          KEYCLOAK_ISSUER=$KEYCLOAK_ISSUER
+          KEYCLOAK_BASE_URL=$KEYCLOAK_BASE_URL
+          KEYCLOAK_INTERNAL_URL=$KEYCLOAK_INTERNAL_URL
           MINIO_ROOT_USER=$MINIO_ROOT_USER
           MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
           MINIO_BUCKET=$MINIO_BUCKET
@@ -82,4 +116,3 @@ jobs:
         run: |
           sudo docker-compose down --remove-orphans
           sudo docker-compose up --build -d 
-
