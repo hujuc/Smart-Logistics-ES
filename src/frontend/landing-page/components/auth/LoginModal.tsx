@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { X, Mail, Lock } from 'lucide-react';
 import type { LoginData } from '@/types/auth';
 
@@ -116,7 +116,7 @@ export default function LoginModal({ onClose, onSwitchToSignUp }: LoginModalProp
 
                     {/* Switch to Sign Up */}
                     <div className="text-center text-sm text-gray-600">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <button
                             type="button"
                             onClick={onSwitchToSignUp}

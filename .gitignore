@@ -99,12 +99,13 @@ sketch
 # Virtualenv
 # http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
 .Python
-[Bb]in
-[Ii]nclude
-[Ll]ib
-[Ll]ib64
-[Ll]ocal
-[Ss]cripts
+# Ignore Python venv folders only, not TypeScript lib folders
+venv/[Bb]in
+venv/[Ii]nclude
+venv/[Ll]ib
+venv/[Ll]ib64
+venv/[Ll]ocal
+venv/[Ss]cripts
 pyvenv.cfg
 .venv
 pip-selfcheck.json

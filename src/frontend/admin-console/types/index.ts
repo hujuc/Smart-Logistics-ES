@@ -22,7 +22,7 @@ export type {
   WarehouseStats,
 } from "./warehouse"
 
-export { STATUS_COLORS } from "./warehouse"
+export { STATUS_COLORS, STATUS_LABELS } from "./warehouse"
 
 // Logistics types
 export type {
