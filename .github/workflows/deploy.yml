@@ -76,6 +76,7 @@ jobs:
       - name: Deploy with Docker Compose
         working-directory: infra
         run: |
+          sudo docker-compose down --remove-orphans
           sudo docker compose -f docker-compose.yaml pull || true
           sudo docker compose -f docker-compose.yaml build --pull
           sudo docker compose -f docker-compose.yaml up -d --remove-orphans
