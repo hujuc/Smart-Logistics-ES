@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Fix permissions before build
         run: |
-          sudo chown -R $USER:$USER /home/sousahugo/actions-runner/_work
+          sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
           sudo chmod -R 777 /home/sousahugo/actions-runner/_work
       - name: Checkout repository
         uses: actions/checkout@v4
