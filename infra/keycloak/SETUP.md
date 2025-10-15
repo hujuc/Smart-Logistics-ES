@@ -29,7 +29,7 @@ make dev-up
 Add to `src/backend/.env` or `application.properties`:
 
 ```env
-KEYCLOAK_CLIENT_SECRET=<paste-secret-here>
+KEYCLOAK_ADMIN_CLIENT_SECRET=<paste-secret-here>
 ```
 
 ### 5. Restart

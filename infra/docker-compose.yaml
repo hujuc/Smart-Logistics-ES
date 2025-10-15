@@ -3,10 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: slms-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     ports:
       - "${POSTGRES_PORT}"
     volumes:
@@ -16,15 +14,8 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     container_name: slms-keycloak
     restart: unless-stopped
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_DB: ${KC_DB}
-      KC_DB_URL: ${KC_DB_URL}
-      KC_DB_USERNAME: ${KC_DB_USERNAME}
-      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_PROXY: ${KC_PROXY}
+    env_file:
+      - .env
     command: start --import-realm
     depends_on:
       - postgres
@@ -42,12 +33,8 @@ services:
     depends_on:
       - postgres
       - keycloak
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env
     expose:
       - "${BACKEND_PORT}"
 
@@ -57,13 +44,12 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/admin-console
-  container_name: slms-admin-console
-  environment:
-    NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED}
-    NODE_ENV: ${NODE_ENV}
-  restart: unless-stopped
-  expose:
-    - "3000"
+    container_name: slms-admin-console
+    env_file:
+      - .env
+    restart: unless-stopped
+    expose:
+      - "3000"
 
   costumer-portal:
     build:
@@ -72,9 +58,8 @@ services:
       args:
         FRONTEND_PATH: src/frontend/costumer-portal
     container_name: slms-costumer-portal
-    environment:
-      NEXT_TELEMETRY_DISABLED: "1"
-      NODE_ENV: ${NODE_ENV:-production}
+    env_file:
+      - .env
     restart: unless-stopped
     expose:
       - "3000"
@@ -86,9 +71,8 @@ services:
       args:
         FRONTEND_PATH: src/frontend/driver-pwa
     container_name: slms-driver-pwa
-    environment:
-      NEXT_TELEMETRY_DISABLED: "1"
-      NODE_ENV: ${NODE_ENV:-production}
+    env_file:
+      - .env
     restart: unless-stopped
     expose:
       - "3000"
@@ -100,9 +84,8 @@ services:
       args:
         FRONTEND_PATH: src/frontend/landing-page
     container_name: slms-landing-page
-    environment:
-      NEXT_TELEMETRY_DISABLED: "1"
-      NODE_ENV: ${NODE_ENV:-production}
+    env_file:
+      - .env
     restart: unless-stopped
     expose:
       - "3000"
