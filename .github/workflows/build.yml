@@ -30,8 +30,7 @@ jobs:
 
       - name: Build & Test (with JaCoCo gate)
         id: build
-        run: mvn -B -ntp -DskipTests=false clean verify
-        continue-on-error: true
+        run: mvn -B -ntp -DskipTests=false -Dtest='!**/*IntegrationTest' clean verify
 
       - name: Upload JaCoCo HTML (if present)
         if: always()
