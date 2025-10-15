@@ -1,32 +1,92 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { warehouseService } from "@/lib/services/warehouse.service"
+import type { Order } from "@/types"
+import { STATUS_LABELS } from "@/types"
 
-export default function PackageDetailsPage() {
+interface PackageDetailsPageProps {
+  params: Promise<{ id: string }>
+}
+
+export default function PackageDetailsPage({ params }: PackageDetailsPageProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [order, setOrder] = useState<Order | null>(null)
+  const [orderId, setOrderId] = useState<string | null>(null)
 
-  // Mock data - in real app, this would be fetched based on params.id
-  const [packageData, setPackageData] = useState({
-    trackingNumber: "TRK123456789",
-    sender: "John Doe",
-    senderAddress: "123 Main St, City, State 12345",
-    recipient: "Jane Smith",
-    recipientAddress: "456 Oak Ave, Town, State 67890",
-    status: "In Warehouse",
-    location: "Shelf A-12",
-    weight: "2.5",
-    dimensions: "30x20x15 cm",
-    notes: "Handle with care - fragile items",
-  })
+  // Unwrap params Promise
+  useEffect(() => {
+    params.then(p => setOrderId(p.id))
+  }, [params])
 
-  const handleSave = () => {
-    // Handle save logic here
-    setIsEditing(false)
+  // Fetch order data
+  useEffect(() => {
+    if (!orderId) return
+
+    const loadOrder = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const data = await warehouseService.getOrderById(parseInt(orderId))
+        setOrder(data)
+      } catch (err) {
+        console.error('Failed to load order:', err)
+        setError('Failed to load order details. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadOrder()
+  }, [orderId])
+
+  const handleSave = async () => {
+    if (!order) return
+
+    try {
+      await warehouseService.updateOrder(order.id, {
+        reference: order.reference,
+        description: order.description,
+        shippingAddress: order.shippingAddress,
+        warehouseId: order.warehouseId,
+        trackingNumber: order.trackingNumber,
+      })
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Failed to update order:', err)
+      alert('Failed to update order. Please try again.')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading order details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !order) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Order not found'}</p>
+          <Link href="/interfaces/warehouse">
+            <Button>Back to Warehouse</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -43,7 +103,7 @@ export default function PackageDetailsPage() {
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-black">
-            {packageData.trackingNumber}
+            {order.trackingNumber || order.reference}
           </h2>
           {!isEditing ? (
             <Button onClick={() => setIsEditing(true)}>Edit</Button>
@@ -60,32 +120,38 @@ export default function PackageDetailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <h3 className="font-semibold text-black border-b pb-2">
-              Sender Information
+              Order Information
             </h3>
             <div>
-              <Label htmlFor="sender">Sender Name</Label>
+              <Label htmlFor="reference">Reference</Label>
               <Input
-                id="sender"
-                value={packageData.sender}
+                id="reference"
+                value={order.reference}
                 onChange={(e) =>
-                  setPackageData({ ...packageData, sender: e.target.value })
+                  setOrder({ ...order, reference: e.target.value })
                 }
                 disabled={!isEditing}
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="senderAddress">Sender Address</Label>
+              <Label htmlFor="trackingNumber">Tracking Number</Label>
               <Input
-                id="senderAddress"
-                value={packageData.senderAddress}
+                id="trackingNumber"
+                value={order.trackingNumber || ""}
                 onChange={(e) =>
-                  setPackageData({
-                    ...packageData,
-                    senderAddress: e.target.value,
-                  })
+                  setOrder({ ...order, trackingNumber: e.target.value })
                 }
                 disabled={!isEditing}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="origin">Origin</Label>
+              <Input
+                id="origin"
+                value={order.origin || ""}
+                disabled
                 className="mt-1"
               />
             </div>
@@ -93,32 +159,35 @@ export default function PackageDetailsPage() {
 
           <div className="space-y-4">
             <h3 className="font-semibold text-black border-b pb-2">
-              Recipient Information
+              Shipping Information
             </h3>
             <div>
-              <Label htmlFor="recipient">Recipient Name</Label>
+              <Label htmlFor="shippingAddress">Shipping Address</Label>
               <Input
-                id="recipient"
-                value={packageData.recipient}
+                id="shippingAddress"
+                value={order.shippingAddress}
                 onChange={(e) =>
-                  setPackageData({ ...packageData, recipient: e.target.value })
+                  setOrder({ ...order, shippingAddress: e.target.value })
                 }
                 disabled={!isEditing}
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="recipientAddress">Recipient Address</Label>
+              <Label htmlFor="estimatedDelivery">Estimated Delivery</Label>
               <Input
-                id="recipientAddress"
-                value={packageData.recipientAddress}
-                onChange={(e) =>
-                  setPackageData({
-                    ...packageData,
-                    recipientAddress: e.target.value,
-                  })
-                }
-                disabled={!isEditing}
+                id="estimatedDelivery"
+                value={order.estimatedDeliveryDate ? new Date(order.estimatedDeliveryDate).toLocaleDateString() : ""}
+                disabled
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="actualDelivery">Actual Delivery</Label>
+              <Input
+                id="actualDelivery"
+                value={order.actualDelivery ? new Date(order.actualDelivery).toLocaleDateString() : "Not delivered"}
+                disabled
                 className="mt-1"
               />
             </div>
@@ -132,23 +201,28 @@ export default function PackageDetailsPage() {
               <Label htmlFor="status">Status</Label>
               <Input
                 id="status"
-                value={packageData.status}
-                onChange={(e) =>
-                  setPackageData({ ...packageData, status: e.target.value })
-                }
-                disabled={!isEditing}
+                value={STATUS_LABELS[order.status]}
+                disabled
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="location">Warehouse Location</Label>
+              <Label htmlFor="priority">Priority</Label>
               <Input
-                id="location"
-                value={packageData.location}
-                onChange={(e) =>
-                  setPackageData({ ...packageData, location: e.target.value })
-                }
-                disabled={!isEditing}
+                id="priority"
+                value={order.priority}
+                disabled
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={order.weight || ""}
+                disabled
                 className="mt-1"
               />
             </div>
@@ -156,34 +230,32 @@ export default function PackageDetailsPage() {
 
           <div className="space-y-4">
             <h3 className="font-semibold text-black border-b pb-2">
-              Measurements
+              Carrier Information
             </h3>
             <div>
-              <Label htmlFor="weight">Weight (kg)</Label>
+              <Label htmlFor="carrierCode">Carrier Code</Label>
               <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={packageData.weight}
-                onChange={(e) =>
-                  setPackageData({ ...packageData, weight: e.target.value })
-                }
-                disabled={!isEditing}
+                id="carrierCode"
+                value={order.shipstationCarrierCode || "-"}
+                disabled
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="dimensions">Dimensions</Label>
+              <Label htmlFor="serviceCode">Service Code</Label>
               <Input
-                id="dimensions"
-                value={packageData.dimensions}
-                onChange={(e) =>
-                  setPackageData({
-                    ...packageData,
-                    dimensions: e.target.value,
-                  })
-                }
-                disabled={!isEditing}
+                id="serviceCode"
+                value={order.shipstationServiceCode || "-"}
+                disabled
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="scannedAt">Scanned At</Label>
+              <Input
+                id="scannedAt"
+                value={order.scannedAt ? new Date(order.scannedAt).toLocaleString() : "Not scanned"}
+                disabled
                 className="mt-1"
               />
             </div>
@@ -191,15 +263,15 @@ export default function PackageDetailsPage() {
 
           <div className="md:col-span-2 space-y-4">
             <h3 className="font-semibold text-black border-b pb-2">
-              Additional Notes
+              Description
             </h3>
             <div>
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="description">Description</Label>
               <textarea
-                id="notes"
-                value={packageData.notes}
+                id="description"
+                value={order.description || ""}
                 onChange={(e) =>
-                  setPackageData({ ...packageData, notes: e.target.value })
+                  setOrder({ ...order, description: e.target.value })
                 }
                 disabled={!isEditing}
                 className="mt-1 flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
@@ -210,19 +282,35 @@ export default function PackageDetailsPage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="font-semibold text-black mb-4">Package History</h3>
+        <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
         <div className="space-y-3">
+          {order.actualDelivery && (
+            <div className="flex gap-4 pb-3 border-b">
+              <div className="text-sm text-gray-500 w-48">
+                {new Date(order.actualDelivery).toLocaleString()}
+              </div>
+              <div className="text-sm text-black">Package delivered</div>
+            </div>
+          )}
+          {order.scannedAt && (
+            <div className="flex gap-4 pb-3 border-b">
+              <div className="text-sm text-gray-500 w-48">
+                {new Date(order.scannedAt).toLocaleString()}
+              </div>
+              <div className="text-sm text-black">Package scanned at warehouse</div>
+            </div>
+          )}
           <div className="flex gap-4 pb-3 border-b">
-            <div className="text-sm text-gray-500 w-32">2024-10-02 10:30</div>
-            <div className="text-sm text-black">Package received at warehouse</div>
-          </div>
-          <div className="flex gap-4 pb-3 border-b">
-            <div className="text-sm text-gray-500 w-32">2024-10-01 16:45</div>
-            <div className="text-sm text-black">In transit to warehouse</div>
+            <div className="text-sm text-gray-500 w-48">
+              {new Date(order.updatedAt).toLocaleString()}
+            </div>
+            <div className="text-sm text-black">Last updated</div>
           </div>
           <div className="flex gap-4 pb-3">
-            <div className="text-sm text-gray-500 w-32">2024-10-01 09:00</div>
-            <div className="text-sm text-black">Package picked up from sender</div>
+            <div className="text-sm text-gray-500 w-48">
+              {new Date(order.createdAt).toLocaleString()}
+            </div>
+            <div className="text-sm text-black">Order created</div>
           </div>
         </div>
       </div>

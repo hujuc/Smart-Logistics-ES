@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
+import { AuthProvider } from "@/components/providers/session-provider";
 import { Suspense } from "react";
 
 const geistSans = Geist({
@@ -30,13 +31,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar />
-        <Suspense fallback={null}>
-          <DynamicFloatingNav />
-        </Suspense>
-        <main className="px-60 py-8">
-          {children}
-        </main>
+        <AuthProvider>
+          <Navbar />
+          <Suspense fallback={null}>
+            <DynamicFloatingNav />
+          </Suspense>
+          <main className="px-60 py-8">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );
