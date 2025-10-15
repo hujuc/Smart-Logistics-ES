@@ -1,0 +1,20 @@
+ARG NODE_VERSION=20
+FROM node:${NODE_VERSION}-alpine
+
+ARG FRONTEND_PATH=.
+WORKDIR /app
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# instala dependências básicas e compatibilidade
+RUN apk add --no-cache libc6-compat
+
+# copia apenas os manifests para instalar deps
+COPY ${FRONTEND_PATH}/package.json ./
+COPY ${FRONTEND_PATH}/package-lock.json ./
+RUN npm ci
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

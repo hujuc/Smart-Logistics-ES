@@ -1,0 +1,229 @@
+{
+  "realm": "slms",
+  "enabled": true,
+  "displayName": "SLMS - Smart Logistics Management System",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "passwordPolicy": "length(4)",
+  "sslRequired": "external",
+  "roles": {
+    "realm": [
+      {
+        "name": "CUSTOMER",
+        "description": "Customer - can place orders, track shipments"
+      },
+      {
+        "name": "CUSTOMER_SERVICE_REP",
+        "description": "Customer service representative - handle customer inquiries and issues"
+      },
+      {
+        "name": "DRIVER",
+        "description": "Driver - view assigned deliveries, update delivery status"
+      },
+      {
+        "name": "LOGISTICS_MANAGER",
+        "description": "Logistics Manager - oversee operations, view reports, manage staff"
+      },
+      {
+        "name": "WAREHOUSE_STAFF",
+        "description": "Warehouse staff - manage inventory, process shipments"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Customers",
+      "path": "/Customers",
+      "realmRoles": ["CUSTOMER"]
+    },
+    {
+      "name": "Customer Service",
+      "path": "/Customer Service",
+      "realmRoles": ["CUSTOMER_SERVICE_REP"]
+    },
+    {
+      "name": "Drivers",
+      "path": "/Drivers",
+      "realmRoles": ["DRIVER"]
+    },
+    {
+      "name": "Logistics Managers",
+      "path": "/Logistics Managers",
+      "realmRoles": ["LOGISTICS_MANAGER"]
+    },
+    {
+      "name": "Warehouse",
+      "path": "/Warehouse",
+      "realmRoles": ["WAREHOUSE_STAFF"]
+    }
+  ],
+  "users": [
+    {
+      "username": "customer",
+      "enabled": true,
+      "email": "customer@slms.local",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Costa",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "customer",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["CUSTOMER"],
+      "groups": ["/Customers"]
+    },
+    {
+      "username": "customer_service",
+      "enabled": true,
+      "email": "support@slms.local",
+      "emailVerified": true,
+      "firstName": "Sofia",
+      "lastName": "Rodrigues",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "support",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["CUSTOMER_SERVICE_REP"],
+      "groups": ["/Customer Service"]
+    },
+    {
+      "username": "driver",
+      "enabled": true,
+      "email": "driver@slms.local",
+      "emailVerified": true,
+      "firstName": "João",
+      "lastName": "Silva",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "driver",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["DRIVER"],
+      "groups": ["/Drivers"]
+    },
+    {
+      "username": "logistics_manager",
+      "enabled": true,
+      "email": "manager@slms.local",
+      "emailVerified": true,
+      "firstName": "Carlos",
+      "lastName": "Mendes",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "manager",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["LOGISTICS_MANAGER"],
+      "groups": ["/Logistics Managers"]
+    },
+    {
+      "username": "warehouse",
+      "enabled": true,
+      "email": "warehouse@slms.local",
+      "emailVerified": true,
+      "firstName": "Pedro",
+      "lastName": "Santos",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "warehouse",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["WAREHOUSE_STAFF"],
+      "groups": ["/Warehouse"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "slms-backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "secret": "**********REPLACE-WITH-SECURE-SECRET**********",
+      "redirectUris": ["http://localhost:8180/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "access.token.lifespan": "1800"
+      }
+    },
+    {
+      "clientId": "slms-admin-console",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:3000",
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "slms-customer-portal",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:3001",
+      "redirectUris": ["http://localhost:3001/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "slms-driver-pwa",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:3002",
+      "redirectUris": ["http://localhost:3002/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "eventsEnabled": true,
+  "eventsListeners": ["jboss-logging"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true
+}
