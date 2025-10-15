@@ -9,6 +9,7 @@ import Link from "next/link"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import type { Order } from "@/types"
 import { STATUS_LABELS } from "@/types"
+import { orderDocumentService } from "@/lib/services/order-document.service"
 
 interface PackageDetailsPageProps {
   params: Promise<{ id: string }>
@@ -20,6 +21,9 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [error, setError] = useState<string | null>(null)
   const [order, setOrder] = useState<Order | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
+  const [isQrLoading, setIsQrLoading] = useState(false)
+  const [qrError, setQrError] = useState<string | null>(null)
+  const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
 
   // Unwrap params Promise
   useEffect(() => {
@@ -45,6 +49,90 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
 
     loadOrder()
+  }, [orderId])
+
+  useEffect(() => {
+    if (!orderId) {
+      setQrImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      return
+    }
+
+    let isMounted = true
+    let currentUrl: string | null = null
+
+    const resetQrImage = () => {
+      setQrImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      currentUrl = null
+    }
+
+    const loadQrCode = async () => {
+      setIsQrLoading(true)
+      setQrError(null)
+      resetQrImage()
+
+      try {
+        const orderNumericId = parseInt(orderId, 10)
+        if (Number.isNaN(orderNumericId)) {
+          throw new Error("Invalid order identifier")
+        }
+
+        const documents = await orderDocumentService.list(orderNumericId)
+        const qrDocument = documents.find((doc) =>
+          doc.documentId.toLowerCase().startsWith("qr"),
+        )
+
+        if (!qrDocument) {
+          return
+        }
+
+        const blob = await orderDocumentService.download(
+          orderNumericId,
+          qrDocument.documentId,
+        )
+
+        if (!isMounted) {
+          return
+        }
+
+        const objectUrl = URL.createObjectURL(blob)
+        currentUrl = objectUrl
+        setQrImageUrl((prev) => {
+          if (prev) {
+            URL.revokeObjectURL(prev)
+          }
+          return objectUrl
+        })
+      } catch (err) {
+        console.error("Failed to load QR code:", err)
+        if (isMounted) {
+          setQrError("Failed to load the QR code. Please try again later.")
+          resetQrImage()
+        }
+      } finally {
+        if (isMounted) {
+          setIsQrLoading(false)
+        }
+      }
+    }
+
+    loadQrCode()
+
+    return () => {
+      isMounted = false
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+    }
   }, [orderId])
 
   const handleSave = async () => {
@@ -281,37 +369,60 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
-        <div className="space-y-3">
-          {order.actualDelivery && (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+          <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
+          <div className="space-y-3">
+            {order.actualDelivery && (
+              <div className="flex gap-4 pb-3 border-b">
+                <div className="text-sm text-gray-500 w-48">
+                  {new Date(order.actualDelivery).toLocaleString()}
+                </div>
+                <div className="text-sm text-black">Package delivered</div>
+              </div>
+            )}
+            {order.scannedAt && (
+              <div className="flex gap-4 pb-3 border-b">
+                <div className="text-sm text-gray-500 w-48">
+                  {new Date(order.scannedAt).toLocaleString()}
+                </div>
+                <div className="text-sm text-black">Package scanned at warehouse</div>
+              </div>
+            )}
             <div className="flex gap-4 pb-3 border-b">
               <div className="text-sm text-gray-500 w-48">
-                {new Date(order.actualDelivery).toLocaleString()}
+                {new Date(order.updatedAt).toLocaleString()}
               </div>
-              <div className="text-sm text-black">Package delivered</div>
+              <div className="text-sm text-black">Last updated</div>
             </div>
-          )}
-          {order.scannedAt && (
-            <div className="flex gap-4 pb-3 border-b">
+            <div className="flex gap-4 pb-3">
               <div className="text-sm text-gray-500 w-48">
-                {new Date(order.scannedAt).toLocaleString()}
+                {new Date(order.createdAt).toLocaleString()}
               </div>
-              <div className="text-sm text-black">Package scanned at warehouse</div>
+              <div className="text-sm text-black">Order created</div>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-1">
+          <h3 className="font-semibold text-black mb-4">Package QR Code</h3>
+          {isQrLoading ? (
+            <p className="text-gray-600 text-sm">Loading QR code...</p>
+          ) : qrError ? (
+            <p className="text-red-600 text-sm">{qrError}</p>
+          ) : qrImageUrl ? (
+            <div className="flex flex-col items-center">
+              <img
+                src={qrImageUrl}
+                alt="Order QR code"
+                className="h-56 w-56 rounded-md border border-gray-200 bg-gray-50 p-4"
+              />
+            </div>
+          ) : (
+            <p className="text-gray-600 text-sm">
+              No QR code is available for this order.
+            </p>
           )}
-          <div className="flex gap-4 pb-3 border-b">
-            <div className="text-sm text-gray-500 w-48">
-              {new Date(order.updatedAt).toLocaleString()}
-            </div>
-            <div className="text-sm text-black">Last updated</div>
-          </div>
-          <div className="flex gap-4 pb-3">
-            <div className="text-sm text-gray-500 w-48">
-              {new Date(order.createdAt).toLocaleString()}
-            </div>
-            <div className="text-sm text-black">Order created</div>
-          </div>
         </div>
       </div>
     </div>
