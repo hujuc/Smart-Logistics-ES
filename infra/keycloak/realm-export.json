@@ -48,27 +48,37 @@
     {
       "name": "Customers",
       "path": "/Customers",
-      "realmRoles": ["CUSTOMER"]
+      "realmRoles": [
+        "CUSTOMER"
+      ]
     },
     {
       "name": "Customer Service",
       "path": "/Customer Service",
-      "realmRoles": ["CUSTOMER_SERVICE_REP"]
+      "realmRoles": [
+        "CUSTOMER_SERVICE_REP"
+      ]
     },
     {
       "name": "Drivers",
       "path": "/Drivers",
-      "realmRoles": ["DRIVER"]
+      "realmRoles": [
+        "DRIVER"
+      ]
     },
     {
       "name": "Logistics Managers",
       "path": "/Logistics Managers",
-      "realmRoles": ["LOGISTICS_MANAGER"]
+      "realmRoles": [
+        "LOGISTICS_MANAGER"
+      ]
     },
     {
       "name": "Warehouse",
       "path": "/Warehouse",
-      "realmRoles": ["WAREHOUSE_STAFF"]
+      "realmRoles": [
+        "WAREHOUSE_STAFF"
+      ]
     }
   ],
   "users": [
@@ -86,8 +96,12 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["CUSTOMER"],
-      "groups": ["/Customers"]
+      "realmRoles": [
+        "CUSTOMER"
+      ],
+      "groups": [
+        "/Customers"
+      ]
     },
     {
       "username": "customer_service",
@@ -103,8 +117,12 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["CUSTOMER_SERVICE_REP"],
-      "groups": ["/Customer Service"]
+      "realmRoles": [
+        "CUSTOMER_SERVICE_REP"
+      ],
+      "groups": [
+        "/Customer Service"
+      ]
     },
     {
       "username": "driver",
@@ -120,8 +138,12 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["DRIVER"],
-      "groups": ["/Drivers"]
+      "realmRoles": [
+        "DRIVER"
+      ],
+      "groups": [
+        "/Drivers"
+      ]
     },
     {
       "username": "logistics_manager",
@@ -137,8 +159,12 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["LOGISTICS_MANAGER"],
-      "groups": ["/Logistics Managers"]
+      "realmRoles": [
+        "LOGISTICS_MANAGER"
+      ],
+      "groups": [
+        "/Logistics Managers"
+      ]
     },
     {
       "username": "warehouse",
@@ -154,8 +180,20 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["WAREHOUSE_STAFF"],
-      "groups": ["/Warehouse"]
+      "realmRoles": [
+        "WAREHOUSE_STAFF"
+      ],
+      "groups": [
+        "/Warehouse"
+      ]
+    },
+    {
+      "username": "service-account-slms-backend",
+      "enabled": true,
+      "serviceAccountClientId": "slms-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "query-realms", "view-realm"]
+      }
     }
   ],
   "clients": [
@@ -169,9 +207,16 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "secret": "**********REPLACE-WITH-SECURE-SECRET**********",
-      "redirectUris": ["http://localhost:8180/*"],
-      "webOrigins": ["http://localhost:3000"],
+      "authorizationServicesEnabled": false,
+      "secret": "dev-secret-change-in-production",
+      "redirectUris": [
+        "http://localhost:8180/*",
+        "http://localhost/admin/*",
+        "http://localhost/admin/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
       "attributes": {
         "access.token.lifespan": "1800"
       }
@@ -185,8 +230,12 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3000",
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -200,8 +249,12 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3001",
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:3001/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -215,15 +268,30 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3002",
-      "redirectUris": ["http://localhost:3002/*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:3002/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
     }
   ],
+  "clientScopes": [],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "slms-backend",
+        "roles": ["manage-users", "view-users", "query-users", "manage-clients", "view-clients", "query-clients", "query-realms", "view-realm"]
+      }
+    ]
+  },
   "eventsEnabled": true,
-  "eventsListeners": ["jboss-logging"],
+  "eventsListeners": [
+    "jboss-logging"
+  ],
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true
 }
