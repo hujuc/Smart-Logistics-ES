@@ -201,7 +201,9 @@
       "serviceAccountsEnabled": true,
       "secret": "dev-secret-change-in-production",
       "redirectUris": [
-        "http://localhost:8180/*"
+        "http://localhost:8180/*",
+        "http://localhost/admin/*",
+        "http://localhost/admin/api/auth/callback/keycloak"
       ],
       "webOrigins": [
         "http://localhost:3000"

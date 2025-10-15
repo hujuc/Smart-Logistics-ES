@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Eye } from "lucide-react"
-import { WarehousePackage, STATUS_COLORS } from "@/types"
+import { WarehousePackage, STATUS_COLORS, STATUS_LABELS } from "@/types"
 
 interface OrderTableProps {
   packages: WarehousePackage[]
@@ -39,7 +39,7 @@ export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
                 <TableCell className="font-medium">{pkg.reference}</TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_COLORS[pkg.status]}`}>
-                    {pkg.status}
+                    {STATUS_LABELS[pkg.status]}
                   </span>
                 </TableCell>
                 <TableCell>

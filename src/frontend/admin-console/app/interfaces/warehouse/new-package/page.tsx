@@ -7,26 +7,42 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { warehouseService } from "@/lib/services/warehouse.service"
 
 export default function NewPackagePage() {
   const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    trackingNumber: "",
-    sender: "",
-    senderAddress: "",
+    reference: "",
+    description: "",
     recipient: "",
     recipientAddress: "",
-    location: "",
+    warehouseId: "1", // Default warehouse ID
     weight: "",
-    dimensions: "",
-    notes: "",
+    trackingNumber: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log("Form submitted:", formData)
-    router.push("/interfaces/warehouse")
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      await warehouseService.createOrder({
+        reference: formData.reference,
+        description: formData.description || undefined,
+        shippingAddress: formData.recipientAddress,
+        warehouseId: parseInt(formData.warehouseId),
+        trackingNumber: formData.trackingNumber || undefined,
+      })
+
+      router.push("/interfaces/warehouse")
+    } catch (err: unknown) {
+      console.error("Failed to create order:", err)
+      setError(err instanceof Error ? err.message : "Failed to create order. Please try again.")
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -40,37 +56,44 @@ export default function NewPackagePage() {
         <h1 className="text-3xl font-bold text-black">Add New Package</h1>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <h3 className="font-semibold text-black border-b pb-2">
-                Sender Information
+                Order Information
               </h3>
               <div>
-                <Label htmlFor="sender">Sender Name *</Label>
+                <Label htmlFor="reference">Order Reference *</Label>
                 <Input
-                  id="sender"
-                  value={formData.sender}
+                  id="reference"
+                  value={formData.reference}
                   onChange={(e) =>
-                    setFormData({ ...formData, sender: e.target.value })
+                    setFormData({ ...formData, reference: e.target.value })
                   }
                   required
+                  placeholder="ORD-2024-001"
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="senderAddress">Sender Address *</Label>
+                <Label htmlFor="trackingNumber">Tracking Number</Label>
                 <Input
-                  id="senderAddress"
-                  value={formData.senderAddress}
+                  id="trackingNumber"
+                  value={formData.trackingNumber}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      senderAddress: e.target.value,
+                      trackingNumber: e.target.value,
                     })
                   }
-                  required
+                  placeholder="TRK..."
                   className="mt-1"
                 />
               </div>
@@ -81,19 +104,18 @@ export default function NewPackagePage() {
                 Recipient Information
               </h3>
               <div>
-                <Label htmlFor="recipient">Recipient Name *</Label>
+                <Label htmlFor="recipient">Recipient Name</Label>
                 <Input
                   id="recipient"
                   value={formData.recipient}
                   onChange={(e) =>
                     setFormData({ ...formData, recipient: e.target.value })
                   }
-                  required
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="recipientAddress">Recipient Address *</Label>
+                <Label htmlFor="recipientAddress">Shipping Address *</Label>
                 <Input
                   id="recipientAddress"
                   value={formData.recipientAddress}
@@ -104,76 +126,7 @@ export default function NewPackagePage() {
                     })
                   }
                   required
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="font-semibold text-black border-b pb-2">
-                Package Details
-              </h3>
-              <div>
-                <Label htmlFor="trackingNumber">Tracking Number *</Label>
-                <Input
-                  id="trackingNumber"
-                  value={formData.trackingNumber}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      trackingNumber: e.target.value,
-                    })
-                  }
-                  required
-                  placeholder="TRK..."
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="location">Warehouse Location *</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                  required
-                  placeholder="e.g., Shelf A-12"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="font-semibold text-black border-b pb-2">
-                Measurements
-              </h3>
-              <div>
-                <Label htmlFor="weight">Weight (kg) *</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  step="0.1"
-                  value={formData.weight}
-                  onChange={(e) =>
-                    setFormData({ ...formData, weight: e.target.value })
-                  }
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dimensions">Dimensions</Label>
-                <Input
-                  id="dimensions"
-                  value={formData.dimensions}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      dimensions: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 30x20x15 cm"
+                  placeholder="Full shipping address"
                   className="mt-1"
                 />
               </div>
@@ -181,29 +134,32 @@ export default function NewPackagePage() {
 
             <div className="md:col-span-2 space-y-4">
               <h3 className="font-semibold text-black border-b pb-2">
-                Additional Notes
+                Additional Information
               </h3>
               <div>
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="description">Description / Notes</Label>
                 <textarea
-                  id="notes"
-                  value={formData.notes}
+                  id="description"
+                  value={formData.description}
                   onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
+                    setFormData({ ...formData, description: e.target.value })
                   }
                   className="mt-1 flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 md:text-sm"
-                  placeholder="Any special handling instructions..."
+                  placeholder="Package contents, special handling instructions..."
                 />
               </div>
             </div>
           </div>
 
           <div className="flex gap-4 mt-6 pt-6 border-t">
-            <Button type="submit">Save Package</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Order"}
+            </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push("/interfaces/warehouse")}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
