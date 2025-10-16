@@ -6,13 +6,14 @@ export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
 
+// Backend enum values - must match Java ShipmentOrderStatus enum
 export type ShipmentOrderStatus =
-    | "Pending Labels"
-    | "Ready for Dispatch"
-    | "In Transit"
-    | "Delivered"
-    | "Cancelled"
-    | "Returned";
+    | "CREATED"
+    | "READY_FOR_PICKUP"
+    | "COLLECTED"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "CANCELLED";
     
 export type IssueType = 
   | "Delivery Delay"
@@ -36,6 +37,24 @@ export type Carrier = {
     onTimeDelivery?: number;
 };
 
+
+export interface DeliveryItem {
+  id: string
+  trackingNumber: string
+  currentLocation: string
+  destination: string
+  estimatedArrival: string
+  status: ShipmentOrderStatus
+  driver: string
+  vehicle: string
+  progress: number
+}
+export interface ActiveDeliveriesProps {
+  deliveries: DeliveryItem[]
+  onViewDetails?: (id: string) => void
+  onContactDriver?: (id: string) => void
+}
+
 export interface Order {
     id: number;
     reference: string;
@@ -57,6 +76,16 @@ export interface Order {
     origin: string;
     actualDelivery?: Date;
     scannedAt?: Date;
+}
+
+export interface OrderDocument {
+    orderId: number;
+    documentId: string;
+    objectKey: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    url: string;
 }
 
 export interface ContactInfo {
@@ -85,4 +114,3 @@ export interface DateRange {
     from: Date;
     to: Date;
 }
-

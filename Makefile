@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs clean
+.PHONY: help dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs clean test test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
 
 help:
 	@echo "Development commands:"
@@ -12,6 +12,16 @@ help:
 	@echo "  make prod-down     - Stop production environment"
 	@echo "  make prod-restart  - Restart production environment"
 	@echo "  make prod-logs     - View production logs"
+	@echo ""
+	@echo "Test commands:"
+	@echo "  make test                      - Run all unit tests (no external services needed)"
+	@echo "  make test-unit                 - Run unit tests only"
+	@echo "  make test-integration          - Run all integration tests (requires services)"
+	@echo "  make test-integration-minio    - Run MinIO integration tests"
+	@echo "  make test-integration-keycloak - Run Keycloak integration tests"
+	@echo "  make test-all                  - Run all tests including integration"
+	@echo "  make test-services-up          - Start MinIO and Keycloak for testing"
+	@echo "  make test-services-down        - Stop test services"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make clean         - Remove all containers and volumes"
@@ -41,6 +51,12 @@ prod-restart:
 
 prod-logs:
 	docker compose -f infra/docker-compose.yaml logs -f
+
+# Test commands
+test:
+	@echo "Running ALL tests (unit + integration)..."
+	@echo "Make sure services are running: make test-services-up"
+	cd src/backend && mvn clean test
 
 # Cleanup
 clean:

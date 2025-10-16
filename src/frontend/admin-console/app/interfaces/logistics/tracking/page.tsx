@@ -6,6 +6,7 @@ import { MapPin } from "lucide-react"
 import Link from "next/link"
 import { TrackPackageSearch } from "@/components/logistics/track-package-search"
 import { ActiveDeliveries } from "@/components/logistics/active-deliveries"
+import type { DeliveryItem } from "@/types/common"
 
 // Mock data for real-time tracking
 const mockTrackingData = [
@@ -15,7 +16,7 @@ const mockTrackingData = [
     currentLocation: "Distribution Center A",
     destination: "Customer Location - 123 Main St",
     estimatedArrival: "2:30 PM",
-    status: "In Transit",
+    status: "IN_TRANSIT",
     coordinates: { lat: 40.7128, lng: -74.0060 },
     driver: "Mike Johnson",
     vehicle: "VAN-123",
@@ -77,7 +78,7 @@ export default function TrackingPage() {
 
       {/* Active Deliveries */}
       <ActiveDeliveries
-        deliveries={filteredTracking}
+        deliveries={filteredTracking as unknown as DeliveryItem[]}
         onViewDetails={(id) => alert(`Viewing details for ${id}`)}
         onContactDriver={(id) => alert(`Contacting driver for ${id}`)}
       />
