@@ -10,6 +10,7 @@ export type {
   IssueType,
   Carrier,
   Order,
+  OrderDocument,
   ContactInfo,
   Address,
   StatCard,
@@ -38,4 +39,3 @@ export type {
   CustomerServiceStats,
   SupportTicket,
 } from "./customer-service"
-

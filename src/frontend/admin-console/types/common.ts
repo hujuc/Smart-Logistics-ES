@@ -78,6 +78,16 @@ export interface Order {
     scannedAt?: Date;
 }
 
+export interface OrderDocument {
+    orderId: number;
+    documentId: string;
+    objectKey: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    url: string;
+}
+
 export interface ContactInfo {
     phone: string;
     email: string;
@@ -104,4 +114,3 @@ export interface DateRange {
     from: Date;
     to: Date;
 }
-

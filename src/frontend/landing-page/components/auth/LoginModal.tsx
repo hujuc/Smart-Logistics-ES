@@ -116,7 +116,7 @@ export default function LoginModal({ onClose, onSwitchToSignUp }: LoginModalProp
 
                     {/* Switch to Sign Up */}
                     <div className="text-center text-sm text-gray-600">
-                        Don&apos;t have an account?{' '}
+                        {"Don't have an account?"}{' '}
                         <button
                             type="button"
                             onClick={onSwitchToSignUp}

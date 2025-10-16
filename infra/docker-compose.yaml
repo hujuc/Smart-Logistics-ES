@@ -115,6 +115,23 @@ services:
       - minio-data:/data
     restart: unless-stopped
 
+  minio-create-bucket:
+    image: minio/mc:latest
+    container_name: minio-create-bucket
+    depends_on:
+      - minio
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+        echo 'Aguardando o MinIO ficar disponivel...';
+        sleep 2;
+      done;
+      mc mb --ignore-existing myminio/${MINIO_BUCKET};
+      "
+    restart: "no"
+
   nginx:
     image: nginx:1.27-alpine
     container_name: slms-nginx
