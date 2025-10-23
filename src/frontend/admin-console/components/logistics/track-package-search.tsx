@@ -17,7 +17,7 @@ export function TrackPackageSearch({
   onTrack,
 }: TrackPackageSearchProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+    <div className="bg-white border rounded-lg p-6 shadow-sm">
       <div className="flex gap-4">
         <div className="flex-1">
           <Label htmlFor="search">Track Package</Label>

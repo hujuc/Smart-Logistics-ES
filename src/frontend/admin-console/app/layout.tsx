@@ -36,7 +36,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <DynamicFloatingNav />
           </Suspense>
-          <main className="px-60 py-8">
+          <main className="pr-30 pl-40">
             {children}
           </main>
         </AuthProvider>

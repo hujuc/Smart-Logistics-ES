@@ -22,7 +22,7 @@ export function PerformanceCharts() {
       {charts.map((chart, index) => (
         <div
           key={index}
-          className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm h-64 flex items-center justify-center"
+          className="bg-white border rounded-lg p-6 shadow-sm h-64 flex items-center justify-center"
         >
           <div className="text-center text-gray-500">
             <BarChart3 className="h-16 w-16 mx-auto mb-2 text-gray-300" />

@@ -35,7 +35,7 @@ export function DriverTable({
   onContactDriver,
 }: DriverTableProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div className="bg-white border rounded-lg shadow-sm">
       <div className="p-6">
         <h2 className="text-xl font-semibold text-black mb-4">
           Driver List ({drivers.length})
