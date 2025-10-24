@@ -18,12 +18,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.disable()) // Allow CORS for development
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // NextAuth.js routes
+                // BFF Authentication endpoints (public)
+                .requestMatchers("/api/landing-page/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/users/register").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // Protected BFF endpoints (role-based)
                 .requestMatchers("/api/admin/**").hasRole("LOGISTICS_MANAGER")
                 .requestMatchers("/api/warehouse/**").hasRole("WAREHOUSE_STAFF")
                 .requestMatchers("/api/driver/**").hasRole("DRIVER")
