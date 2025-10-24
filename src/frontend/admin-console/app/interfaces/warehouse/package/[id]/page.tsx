@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import type { Order } from "@/types"
 import { STATUS_LABELS } from "@/types"
@@ -16,6 +18,7 @@ interface PackageDetailsPageProps {
 }
 
 export default function PackageDetailsPage({ params }: PackageDetailsPageProps) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +37,13 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   useEffect(() => {
     if (!orderId) return
 
+    if (!isAuthenticated()) {
+      setError("You must be logged in to view order details.")
+      setIsLoading(false)
+      router.push("/")
+      return
+    }
+
     const loadOrder = async () => {
       try {
         setIsLoading(true)
@@ -49,7 +59,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
 
     loadOrder()
-  }, [orderId])
+  }, [orderId, router])
 
   useEffect(() => {
     if (!orderId) {
@@ -61,6 +71,8 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       })
       return
     }
+
+    if (!isAuthenticated()) return
 
     let isMounted = true
     let currentUrl: string | null = null

@@ -2,19 +2,19 @@
  * Order document service - handles MinIO-backed document interactions.
  */
 
-import { getSession } from "next-auth/react";
+import { getAccessToken } from "@/lib/shared-auth";
 import type { OrderDocument } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
-async function getAuthHeaders(contentType?: string): Promise<HeadersInit> {
-  const session = await getSession();
+function getAuthHeaders(contentType?: string): HeadersInit {
   const headers: HeadersInit = contentType ? { "Content-Type": contentType } : {};
 
-  if (session?.accessToken) {
-    headers["Authorization"] = `Bearer ${session.accessToken}`;
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
   } else {
-    console.warn("No access token found in session");
+    console.warn("No access token found in cookies or localStorage");
   }
 
   return headers;
@@ -39,9 +39,9 @@ async function handleJsonResponse<T>(response: Response): Promise<T> {
 
 export const orderDocumentService = {
   async list(orderId: number): Promise<OrderDocument[]> {
-    const headers = await getAuthHeaders("application/json");
+    const headers = getAuthHeaders("application/json");
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents`,
+      `${API_BASE_URL}/warehouse/orders/${orderId}/documents`,
       {
         method: "GET",
         headers,
@@ -51,9 +51,9 @@ export const orderDocumentService = {
   },
 
   async download(orderId: number, documentId: string): Promise<Blob> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
+      `${API_BASE_URL}/warehouse/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
       {
         method: "GET",
         headers,

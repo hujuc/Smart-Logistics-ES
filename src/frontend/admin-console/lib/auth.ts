@@ -23,6 +23,9 @@ const callbackUrl = `${nextAuthUrl}/api/auth/callback/keycloak`;
 
 export const authOptions: NextAuthOptions = {
   useSecureCookies: false,
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     {
       id: "keycloak",
@@ -93,6 +96,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account }) {
       // Persist the OAuth access_token to the token right after signin
       if (account) {
+        console.log('[Auth] JWT callback - Account found, storing tokens');
         token.accessToken = account.access_token as string;
         token.refreshToken = account.refresh_token as string;
         token.expiresAt = account.expires_at as number;
@@ -101,6 +105,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       // Send properties to the client
+      console.log('[Auth] Session callback - Token has accessToken:', !!token.accessToken);
       session.accessToken = token.accessToken as string | undefined;
       session.error = token.error as string | undefined;
       return session;

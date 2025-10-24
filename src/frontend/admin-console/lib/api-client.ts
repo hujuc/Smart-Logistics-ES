@@ -1,8 +1,9 @@
 /**
  * API Client for making requests to the backend
+ * Uses shared JWT authentication from cookies/localStorage
  */
 
-import { getSession } from "next-auth/react";
+import { getAccessToken } from '@/lib/shared-auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -17,16 +18,17 @@ export class ApiError extends Error {
   }
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await getSession();
+function getAuthHeaders(): HeadersInit {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
 
-  if (session?.accessToken) {
-    headers['Authorization'] = `Bearer ${session.accessToken}`;
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+    console.log('[API Client] Sending request with token:', accessToken.substring(0, 50) + '...');
   } else {
-    console.warn('No access token found in session');
+    console.warn('[API Client] No access token found in cookies or localStorage');
   }
 
   return headers;
@@ -52,7 +54,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export const apiClient = {
   async get<T>(path: string): Promise<T> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'GET',
       headers,
@@ -61,7 +63,7 @@ export const apiClient = {
   },
 
   async post<T>(path: string, data?: unknown): Promise<T> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers,
@@ -71,7 +73,7 @@ export const apiClient = {
   },
 
   async put<T>(path: string, data?: unknown): Promise<T> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'PUT',
       headers,
@@ -81,7 +83,7 @@ export const apiClient = {
   },
 
   async patch<T>(path: string, data?: unknown): Promise<T> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'PATCH',
       headers,
@@ -91,7 +93,7 @@ export const apiClient = {
   },
 
   async delete(path: string): Promise<void> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'DELETE',
       headers,
