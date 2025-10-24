@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres-data-ci:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HTTP_ENABLED: ${KC_HTTP_ENABLED}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS}
+    command: start-dev --import-realm
+    depends_on:
+      - postgres
+    ports:
+      - "28180:8080"
+    volumes:
+      - keycloak-data-ci:/opt/keycloak/data
+      - ./keycloak:/opt/keycloak/data/import
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":39001"
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "39000:9000"
+      - "39001:9001"
+    volumes:
+      - minio-data-ci:/data
+    restart: unless-stopped
+
+  minio-create-bucket:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+        echo 'Waiting for MinIO in CI...';
+        sleep 2;
+      done;
+      mc mb --ignore-existing myminio/${MINIO_BUCKET};
+      "
+    restart: "no"
+
+volumes:
+  postgres-data-ci:
+  keycloak-data-ci:
+  minio-data-ci:
