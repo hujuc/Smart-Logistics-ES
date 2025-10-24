@@ -69,6 +69,7 @@ jobs:
           MINIO_PORT=9000
           MINIO_HOST=minio
           EOF
+          cp .env.ci .env
 
       - name: Start integration dependencies
         working-directory: ${{ github.workspace }}
