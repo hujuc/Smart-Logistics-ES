@@ -17,6 +17,7 @@ jobs:
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD || 'admin' }}
       KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID || 'slms-backend' }}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET || 'dev-secret-change-in-production' }}
+      KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM || 'slms' }}
       KC_DB: postgres
       KC_DB_USERNAME: ${{ secrets.DB_USERNAME || 'slms' }}
       KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'slms' }}
@@ -61,7 +62,7 @@ jobs:
           KC_PROXY=edge
           KEYCLOAK_HOST=keycloak
           KEYCLOAK_PORT=8080
-          KEYCLOAK_REALM=slms
+          KEYCLOAK_REALM=${KEYCLOAK_REALM}
           KEYCLOAK_ADMIN_CLIENT_ID=${KEYCLOAK_ADMIN_CLIENT_ID}
           KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
           MINIO_ROOT_USER=${MINIO_ROOT_USER}
@@ -79,8 +80,8 @@ jobs:
       - name: Wait for Keycloak readiness
         working-directory: ${{ github.workspace }}
         run: |
-          for attempt in {1..30}; do
-            if curl -sSf http://localhost:28180/health/ready > /dev/null; then
+          for attempt in {1..40}; do
+            if curl -sSf http://localhost:28180/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration > /dev/null; then
               echo "Keycloak is ready for integration tests."
               exit 0
             fi
