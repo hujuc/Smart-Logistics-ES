@@ -28,7 +28,7 @@ services:
       KC_HOSTNAME: ${KC_HOSTNAME}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS}
-    command: start-dev --import-realm
+    command: start-dev --health-enabled=true --import-realm
     depends_on:
       - postgres
     ports:
