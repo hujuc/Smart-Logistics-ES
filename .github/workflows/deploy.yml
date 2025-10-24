@@ -10,14 +10,6 @@ jobs:
     runs-on: [self-hosted, slms]
     env:
       COMPOSE_PROJECT_NAME: slms-ci-tests
-      KEYCLOAK_HOST: localhost
-      KEYCLOAK_PORT: "28180"
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
-      MINIO_HOST: localhost
-      MINIO_PORT: "39000"
-      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
-      MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
-      MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +21,7 @@ jobs:
 
       - name: Start integration dependencies
         working-directory: ${{ github.workspace }}
-        run: docker compose -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
+        run: docker compose --env-file infra/.env -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
 
       - name: Wait for Keycloak readiness
         working-directory: ${{ github.workspace }}
@@ -43,7 +35,7 @@ jobs:
             sleep 5
           done
           echo "Keycloak did not become ready in time."
-          docker compose -f infra/docker-compose.ci.yml logs keycloak
+          docker compose --env-file infra/.env -f infra/docker-compose.ci.yml logs keycloak
           exit 1
 
       - name: Wait for MinIO readiness
@@ -58,17 +50,27 @@ jobs:
             sleep 5
           done
           echo "MinIO did not become ready in time."
-          docker compose -f infra/docker-compose.ci.yml logs minio
+          docker compose --env-file infra/.env -f infra/docker-compose.ci.yml logs minio
           exit 1
 
       - name: Run backend integration tests
         working-directory: src/backend
+        env:
+          KEYCLOAK_HOST: localhost
+          KEYCLOAK_PORT: "28180"
+          KEYCLOAK_REALM: slms
+          KEYCLOAK_ADMIN_CLIENT_SECRET: dev-secret-change-in-production
+          MINIO_HOST: localhost
+          MINIO_PORT: "39000"
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadminsecret
+          MINIO_BUCKET: slms-documents
         run: mvn -B -ntp -DskipTests=false -Dtest='*IntegrationTest' test
 
       - name: Stop integration dependencies
         if: always()
         working-directory: ${{ github.workspace }}
-        run: docker compose -f infra/docker-compose.ci.yml down -v
+        run: docker compose --env-file infra/.env -f infra/docker-compose.ci.yml down -v
 
   deploy:
     runs-on: [self-hosted, slms]   
