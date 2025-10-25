@@ -38,23 +38,23 @@ class CarrierIntegrationServiceTest {
     @Test
     void fetchSnapshotsShouldMergeCarriersByCode() {
         ShippoCarrierAccount shippo = new ShippoCarrierAccount(
-                "dhl",
-                "DHL Express",
+                "ups",
+                "UPS (Shippo)",
                 "shippo-1",
                 "acc-shippo",
                 true,
-                "support@dhl.com",
+                "support@ups.com",
                 "+49 228 4333112",
                 List.of("Express Worldwide"),
                 CarrierAddressView.builder().city("Bonn").country("DE").build());
 
         ShipEngineCarrier shipEngine = new ShipEngineCarrier(
-                "dhl",
-                "DHL",
-                "se-1",
-                "acc-se",
+                "ups",
+                "UPS",
+                "se-338909",
+                "acc-ups",
                 true,
-                "help@dhl.com",
+                "help@ups.com",
                 "+351 123 456 789",
                 List.of("Express Worldwide", "Economy Select"),
                 CarrierAddressView.builder().city("Lisbon").country("PT").build(),
@@ -67,9 +67,9 @@ class CarrierIntegrationServiceTest {
 
         assertThat(snapshots).hasSize(1);
         CarrierIntegrationSnapshot snapshot = snapshots.getFirst();
-        assertThat(snapshot.getCarrierCode()).isEqualTo("dhl");
-        assertThat(snapshot.getDisplayName()).isEqualTo("DHL");
-        assertThat(snapshot.getSupportEmail()).isEqualTo("help@dhl.com");
+        assertThat(snapshot.getCarrierCode()).isEqualTo("ups");
+        assertThat(snapshot.getDisplayName()).isEqualTo("UPS");
+        assertThat(snapshot.getSupportEmail()).isEqualTo("help@ups.com");
         assertThat(snapshot.getAddress().getCountry()).isEqualTo("PT");
         assertThat(snapshot.getServiceLevels()).containsExactlyInAnyOrder("Express Worldwide", "Economy Select");
 
@@ -79,7 +79,7 @@ class CarrierIntegrationServiceTest {
 
         CarrierIntegrationSourceDetails shipEngineDetails = snapshot.getShipEngine();
         assertThat(shipEngineDetails).isNotNull();
-        assertThat(shipEngineDetails.getAccountId()).isEqualTo("acc-se");
+        assertThat(shipEngineDetails.getAccountId()).isEqualTo("acc-ups");
     }
 
     @Test

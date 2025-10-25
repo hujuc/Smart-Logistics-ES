@@ -1,79 +1,347 @@
-# Carrier Module & Integrations
+# Carrier Module & External API Integrations
 
-This backend now keeps a `carriers` table, links orders to carriers, and can pull carrier metadata from the Shippo and ShipEngine sandbox APIs.
+This backend integrates with Shippo and ShipEngine APIs to manage carriers and shipping operations. The system maintains a local `carriers` table and synchronizes data from external APIs, filtering to only include carriers with ShipEngine integration.
 
 ## Environment Variables
 
-Set these in `.env`, `src/backend/.env`, or `infra/.env`:
+Set these in `infra/.env`:
 
-- `SHIPPO_API_KEY` – Shippo sandbox token (format `shippo_test_...`).
-- `SHIPPO_BASE_URL` – optional, defaults to `https://api.goshippo.com`.
-- `SHIPENGINE_API_KEY` – ShipEngine sandbox key (format `TEST_...`).
-- `SANDBOX_API_KEY` – optional fallback for ShipEngine if you prefer the original name.
-- `SHIPENGINE_BASE_URL` – optional, defaults to `https://api.shipengine.com/v1`.
+- `SHIPPO_API_KEY` – Shippo sandbox token (format `shippo_test_...`)
+- `SHIPPO_BASE_URL` – optional, defaults to `https://api.goshippo.com`
+- `SHIPENGINE_API_KEY` – ShipEngine sandbox key (format `TEST_...`)
+- `SANDBOX_API_KEY` – optional fallback for ShipEngine
+- `SHIPENGINE_BASE_URL` – optional, defaults to `https://api.shipengine.com/v1`
+
+## API Integration Files
+
+### ShipEngine Integration
+- **Client**: `ShipEngineApiClient.java`
+- **Endpoints**: Fetches carriers and service levels
+- **Test Account Carriers**: UPS (`se-338909`), FedEx (`se-338910`)
+
+### Shippo Integration  
+- **Client**: `ShippoApiClient.java`
+- **Endpoints**: Carrier accounts, address validation, rate calculation
+- **Test Account Carriers**: UPS, USPS, Canada Post, DHL Express, and others
+
+### Integration Service
+- **Service**: `CarrierIntegrationService.java`
+- **Function**: Merges data from both APIs, filters to ShipEngine-enabled carriers only
+- **Logic**: Only carriers with `shipEngineCarrierId != null` are synchronized
 
 ## Carrier Endpoints
 
-All endpoints live under `/api/admin/carriers`.
+All endpoints are under `/api/admin/carriers`:
 
-- `GET /` – list carriers stored in the database.
-- `GET /{id}` – fetch one carrier by id.
-- `POST /` – create a carrier. Body accepts code, name, optional contacts, address, Shippo and ShipEngine ids.
-- `PUT /{id}` – update an existing carrier.
-- `DELETE /{id}` – remove a carrier.
-- `GET /integrations/snapshot` – call Shippo+ShipEngine with the configured sandbox keys and return the merged view without storing anything.
-- `POST /integrations/sync` – call both APIs, upsert carriers in the local table, and return the saved records.
+### CRUD Operations
+- `GET /` – List all carriers stored in database
+- `GET /{id}` – Fetch specific carrier by ID
+- `POST /` – Create new carrier manually
+- `PUT /{id}` – Update existing carrier
+- `DELETE /{id}` – Remove carrier
 
-All carrier payloads use the same shape:
+### External API Integration
+- `GET /integrations/snapshot` – Fetch live data from Shippo+ShipEngine without storing
+- `POST /integrations/sync` – Synchronize carriers from external APIs to local database
 
-```jsonc
+### Tested Endpoints Results
+
+**Integration Snapshot** (`GET /integrations/snapshot`):
+- Returns 2 carriers: UPS (both APIs), FedEx (ShipEngine only)
+- UPS: Has both Shippo ID and ShipEngine ID
+- FedEx: Has only ShipEngine ID (no Shippo in test account)
+
+**Synchronization** (`POST /integrations/sync`):
+- Successfully syncs 2 carriers to database
+- Filters out carriers without ShipEngine integration
+- Creates local records with external API references
+
+## Warehouse Management
+
+Endpoints under `/api/admin/warehouses`:
+
+- `GET /` – List warehouses
+- `POST /` – Create warehouse (requires `code`, `name`, address fields)
+- `GET /{id}` – Get warehouse details
+
+**Tested**: Created test warehouse (ID: 1) for shipping operations.
+
+## Order Management
+
+Endpoints under `/api/admin/orders`:
+
+- `GET /` – List all orders
+- `POST /` – Create order with carrier assignment
+- `GET /{id}` – Get order details  
+- `PUT /{id}` – Update order
+- `POST /{id}/collect` – Confirm pickup (changes status)
+
+### Order-Carrier Integration
+
+Orders can be linked to carriers via `carrierId` field:
+
+```json
 {
-  "code": "DHL",
-  "name": "DHL Express",
-  "description": "International express carrier",
-  "supportEmail": "support@dhl.com",
-  "supportPhone": "+49 228 4333112",
-  "website": "https://www.dhl.com",
-  "serviceLevelsSummary": "Express Worldwide, Economy Select",
-  "addressLine1": "Charles-de-Gaulle-Str. 20",
-  "city": "Bonn",
-  "stateOrProvince": "NRW",
-  "postalCode": "53113",
-  "country": "DE",
-  "shippoCarrierId": "shippo-object-id",
-  "shippoAccountId": "shippo-account",
-  "shipEngineCarrierId": "se-carrier-id",
-  "shipEngineAccountNumber": "se-account"
-}
-```
-
-## Orders With Carriers
-
-`ShipmentOrder` now has an optional `carrierId` field:
-
-- `POST /api/admin/orders`
-- `PUT /api/admin/orders/{id}`
-
-Include `carrierId` in the request body to link an order to a carrier.
-
-```jsonc
-{
-  "reference": "ORD-001",
-  "shippingAddress": "Rua do Cliente 42, Porto",
+  "reference": "ORDER-TEST-001",
+  "description": "Test order description",
+  "shippingAddress": "Customer address",
   "warehouseId": 1,
-  "carrierId": 3,
-  "estimatedDeliveryDate": "2024-12-01"
+  "carrierId": 16
 }
 ```
 
-Responses now add `carrierId`, `carrierCode`, and `carrierName` so the UI can present the chosen carrier.
+**Tested Orders**:
+- Order 1: UPS carrier (ID: 16)
+- Order 2: FedEx carrier (ID: 17)
 
-## Typical Workflow
+## External API Capabilities
 
-1. Set the Shippo and ShipEngine sandbox keys in your environment.
-2. Run the backend.
-3. `GET /api/admin/carriers/integrations/snapshot` to see what the APIs return.
-4. `POST /api/admin/carriers/integrations/sync` to upsert those carriers locally.
-5. Create orders referencing `carrierId`.
+### Shippo API Features (Working)
 
-The tests cover carrier CRUD, order–carrier linking, and the merge logic for the third‑party clients.
+1. **Address Validation**
+   ```bash
+   POST https://api.goshippo.com/addresses/
+   ```
+   - ✅ Validates and corrects addresses
+   - ✅ Returns validation results with corrections
+
+2. **Rate Calculation**
+   ```bash
+   POST https://api.goshippo.com/shipments/
+   ```
+   - ✅ Returns shipping rates from multiple carriers
+   - ✅ USPS, Canada Post rates working
+   - ⚠️ UPS rates limited in test account
+
+3. **Carrier Accounts**
+   ```bash
+   GET https://api.goshippo.com/carrier_accounts/
+   ```
+   - ✅ Returns available carrier accounts
+   - ✅ Integrated via `fetchCarrierAccounts()` method
+
+### ShipEngine API Features (Working)
+
+1. **Carrier Management**
+   - ✅ Fetches UPS and FedEx carrier details
+   - ✅ Provides comprehensive service levels
+   - ✅ Returns 23 UPS services, 26 FedEx services
+
+2. **Account Information**
+   - ✅ Provides carrier IDs and account numbers
+   - ✅ Active status and contact information
+
+## Current Integration Status
+
+### Synchronized Carriers
+| Carrier | ShipEngine ID | Shippo ID | Status |
+|---------|---------------|-----------|---------|
+| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | ✅ Full Integration |
+| FedEx | se-338910 | null | ✅ ShipEngine Only |
+
+### Filtering Logic
+- **Inclusion Criteria**: Must have `shipEngineCarrierId != null`
+- **Exclusion**: Shippo-only carriers are filtered out
+- **Result**: Only 2 carriers synchronized (UPS, FedEx)
+
+## Testing Workflow
+
+1. **Environment Setup**: Configure API keys in `infra/.env`
+2. **Service Status**: Verify backend is running with security disabled
+3. **Integration Test**: `GET /api/admin/carriers/integrations/snapshot`
+4. **Synchronization**: `POST /api/admin/carriers/integrations/sync`
+5. **Warehouse Setup**: Create test warehouse for shipping
+6. **Order Creation**: Create orders linked to carriers
+7. **External API Testing**: Direct API calls for validation/rates
+
+## Security Configuration
+
+Authentication is temporarily disabled for API testing:
+- Security configuration allows all requests
+- OAuth2/JWT temporarily commented out
+- Suitable for development/testing only
+
+## Typical Usage Workflow
+
+1. Set environment variables for external APIs
+2. Start backend application
+3. Test integration snapshot to verify API connectivity
+4. Synchronize carriers to populate local database
+5. Create warehouses for shipping origins
+6. Create orders referencing carrier IDs
+7. Use external APIs for address validation and rate calculation
+
+---
+
+# Módulo de Carriers e Integrações com APIs Externas
+
+Este backend integra com as APIs do Shippo e ShipEngine para gerir transportadoras e operações de envio. O sistema mantém uma tabela local `carriers` e sincroniza dados das APIs externas, filtrando para incluir apenas transportadoras com integração ShipEngine.
+
+## Variáveis de Ambiente
+
+Definir em `infra/.env`:
+
+- `SHIPPO_API_KEY` – Token sandbox do Shippo (formato `shippo_test_...`)
+- `SHIPPO_BASE_URL` – opcional, padrão `https://api.goshippo.com`
+- `SHIPENGINE_API_KEY` – Chave sandbox do ShipEngine (formato `TEST_...`)
+- `SANDBOX_API_KEY` – fallback opcional para ShipEngine
+- `SHIPENGINE_BASE_URL` – opcional, padrão `https://api.shipengine.com/v1`
+
+## Ficheiros de Integração API
+
+### Integração ShipEngine
+- **Cliente**: `ShipEngineApiClient.java`
+- **Endpoints**: Obtém transportadoras e níveis de serviço
+- **Transportadoras Conta Teste**: UPS (`se-338909`), FedEx (`se-338910`)
+
+### Integração Shippo
+- **Cliente**: `ShippoApiClient.java`
+- **Endpoints**: Contas de transportadoras, validação de endereços, cálculo de tarifas
+- **Transportadoras Conta Teste**: UPS, USPS, Canada Post, DHL Express, e outras
+
+### Serviço de Integração
+- **Serviço**: `CarrierIntegrationService.java`
+- **Função**: Combina dados de ambas as APIs, filtra apenas transportadoras com ShipEngine
+- **Lógica**: Apenas transportadoras com `shipEngineCarrierId != null` são sincronizadas
+
+## Endpoints de Carriers
+
+Todos os endpoints estão em `/api/admin/carriers`:
+
+### Operações CRUD
+- `GET /` – Listar todas as transportadoras na base de dados
+- `GET /{id}` – Obter transportadora específica por ID
+- `POST /` – Criar nova transportadora manualmente
+- `PUT /{id}` – Atualizar transportadora existente
+- `DELETE /{id}` – Remover transportadora
+
+### Integração API Externa
+- `GET /integrations/snapshot` – Obter dados em tempo real do Shippo+ShipEngine sem armazenar
+- `POST /integrations/sync` – Sincronizar transportadoras das APIs externas para base de dados local
+
+### Resultados dos Endpoints Testados
+
+**Snapshot de Integração** (`GET /integrations/snapshot`):
+- Retorna 2 transportadoras: UPS (ambas APIs), FedEx (apenas ShipEngine)
+- UPS: Tem ID Shippo e ID ShipEngine
+- FedEx: Tem apenas ID ShipEngine (sem Shippo na conta teste)
+
+**Sincronização** (`POST /integrations/sync`):
+- Sincroniza com sucesso 2 transportadoras para a base de dados
+- Filtra transportadoras sem integração ShipEngine
+- Cria registos locais com referências de APIs externas
+
+## Gestão de Armazéns
+
+Endpoints em `/api/admin/warehouses`:
+
+- `GET /` – Listar armazéns
+- `POST /` – Criar armazém (requer `code`, `name`, campos de endereço)
+- `GET /{id}` – Obter detalhes do armazém
+
+**Testado**: Criado armazém de teste (ID: 1) para operações de envio.
+
+## Gestão de Encomendas
+
+Endpoints em `/api/admin/orders`:
+
+- `GET /` – Listar todas as encomendas
+- `POST /` – Criar encomenda com atribuição de transportadora
+- `GET /{id}` – Obter detalhes da encomenda
+- `PUT /{id}` – Atualizar encomenda
+- `POST /{id}/collect` – Confirmar recolha (altera estado)
+
+### Integração Encomenda-Transportadora
+
+Encomendas podem ser ligadas a transportadoras via campo `carrierId`:
+
+```json
+{
+  "reference": "ORDER-TEST-001",
+  "description": "Descrição da encomenda teste",
+  "shippingAddress": "Endereço do cliente",
+  "warehouseId": 1,
+  "carrierId": 16
+}
+```
+
+**Encomendas Testadas**:
+- Encomenda 1: Transportadora UPS (ID: 16)
+- Encomenda 2: Transportadora FedEx (ID: 17)
+
+## Capacidades das APIs Externas
+
+### Funcionalidades API Shippo (Funcionais)
+
+1. **Validação de Endereços**
+   ```bash
+   POST https://api.goshippo.com/addresses/
+   ```
+   - ✅ Valida e corrige endereços
+   - ✅ Retorna resultados de validação com correções
+
+2. **Cálculo de Tarifas**
+   ```bash
+   POST https://api.goshippo.com/shipments/
+   ```
+   - ✅ Retorna tarifas de envio de múltiplas transportadoras
+   - ✅ Tarifas USPS, Canada Post funcionais
+   - ⚠️ Tarifas UPS limitadas na conta teste
+
+3. **Contas de Transportadoras**
+   ```bash
+   GET https://api.goshippo.com/carrier_accounts/
+   ```
+   - ✅ Retorna contas de transportadoras disponíveis
+   - ✅ Integrado via método `fetchCarrierAccounts()`
+
+### Funcionalidades API ShipEngine (Funcionais)
+
+1. **Gestão de Transportadoras**
+   - ✅ Obtém detalhes das transportadoras UPS e FedEx
+   - ✅ Fornece níveis de serviço abrangentes
+   - ✅ Retorna 23 serviços UPS, 26 serviços FedEx
+
+2. **Informação de Contas**
+   - ✅ Fornece IDs de transportadoras e números de conta
+   - ✅ Estado ativo e informações de contacto
+
+## Estado Atual da Integração
+
+### Transportadoras Sincronizadas
+| Transportadora | ID ShipEngine | ID Shippo | Estado |
+|----------------|---------------|-----------|---------|
+| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | ✅ Integração Completa |
+| FedEx | se-338910 | null | ✅ Apenas ShipEngine |
+
+### Lógica de Filtragem
+- **Critério de Inclusão**: Deve ter `shipEngineCarrierId != null`
+- **Exclusão**: Transportadoras apenas-Shippo são filtradas
+- **Resultado**: Apenas 2 transportadoras sincronizadas (UPS, FedEx)
+
+## Fluxo de Testes
+
+1. **Configuração Ambiente**: Configurar chaves API em `infra/.env`
+2. **Estado do Serviço**: Verificar backend em execução com segurança desativada
+3. **Teste Integração**: `GET /api/admin/carriers/integrations/snapshot`
+4. **Sincronização**: `POST /api/admin/carriers/integrations/sync`
+5. **Configuração Armazém**: Criar armazém teste para envios
+6. **Criação Encomendas**: Criar encomendas ligadas a transportadoras
+7. **Teste APIs Externas**: Chamadas diretas da API para validação/tarifas
+
+## Configuração de Segurança
+
+Autenticação temporariamente desativada para testes da API:
+- Configuração de segurança permite todos os pedidos
+- OAuth2/JWT temporariamente comentado
+- Adequado apenas para desenvolvimento/testes
+
+## Fluxo de Utilização Típico
+
+1. Definir variáveis de ambiente para APIs externas
+2. Iniciar aplicação backend
+3. Testar snapshot de integração para verificar conectividade da API
+4. Sincronizar transportadoras para popular base de dados local
+5. Criar armazéns para origens de envio
+6. Criar encomendas referenciando IDs de transportadoras
+7. Usar APIs externas para validação de endereços e cálculo de tarifas

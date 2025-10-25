@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,9 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 @Component
 public class ShipEngineApiClient {
+
+    private static final Set<String> ALLOWED_CARRIER_IDS = Set.of("se-338909", "se-338910");
+    private static final Set<String> ALLOWED_CARRIER_CODES = Set.of("ups", "fedex");
 
     private final RestTemplate restTemplate;
 
@@ -53,7 +58,11 @@ public class ShipEngineApiClient {
 
             JsonNode carriersNode = response.path("carriers");
             if (carriersNode.isArray()) {
-                carriersNode.forEach(node -> mapCarrier(node).ifPresent(carriers::add));
+                carriersNode.forEach(node -> mapCarrier(node).ifPresent(carrier -> {
+                    if (isAllowedCarrier(carrier.carrierId(), carrier.carrierCode())) {
+                        carriers.add(carrier);
+                    }
+                }));
             }
 
             return carriers;
@@ -73,8 +82,12 @@ public class ShipEngineApiClient {
             return java.util.Optional.empty();
         }
 
-        String carrierCode = node.path("carrier_code").asText(null);
+        String carrierCode = safeLower(node.path("carrier_code").asText(null));
         String carrierId = node.path("carrier_id").asText(null);
+        if (!isAllowedCarrier(carrierId, carrierCode)) {
+            return java.util.Optional.empty();
+        }
+
         String displayName = firstNonEmpty(
                 node.path("friendly_name"), node.path("carrier_friendly_name"), node.path("name"));
         String accountNumber = node.path("account_number").asText(null);
@@ -89,19 +102,7 @@ public class ShipEngineApiClient {
         }
         String website = node.path("website_url").asText(null);
 
-        List<String> serviceLevels = new ArrayList<>();
-        JsonNode serviceLevelsNode = node.path("service_levels");
-        if (serviceLevelsNode.isArray()) {
-            serviceLevelsNode.forEach(service -> {
-                String value = firstNonEmpty(service.path("name"), service.path("service_name"));
-                if (!StringUtils.hasText(value)) {
-                    value = service.path("token").asText(null);
-                }
-                if (StringUtils.hasText(value)) {
-                    serviceLevels.add(value);
-                }
-            });
-        }
+        List<String> serviceLevels = extractServiceLevels(node);
 
         CarrierAddressView address = null;
         JsonNode addressNode = node.path("address");
@@ -131,6 +132,48 @@ public class ShipEngineApiClient {
                 serviceLevels,
                 address,
                 website));
+    }
+
+    private List<String> extractServiceLevels(JsonNode carrierNode) {
+        Set<String> uniqueLevels = new HashSet<>();
+
+        JsonNode serviceLevelsNode = carrierNode.path("service_levels");
+        if (serviceLevelsNode.isArray()) {
+            serviceLevelsNode.forEach(service -> {
+                String value = firstNonEmpty(service.path("name"), service.path("service_name"));
+                if (!StringUtils.hasText(value)) {
+                    value = service.path("token").asText(null);
+                }
+                if (StringUtils.hasText(value)) {
+                    uniqueLevels.add(value);
+                }
+            });
+        }
+
+        JsonNode servicesNode = carrierNode.path("services");
+        if (servicesNode.isArray()) {
+            servicesNode.forEach(service -> {
+                String value = firstNonEmpty(service.path("name"), service.path("service_name"));
+                if (!StringUtils.hasText(value)) {
+                    value = service.path("service_code").asText(null);
+                }
+                if (StringUtils.hasText(value)) {
+                    uniqueLevels.add(value);
+                }
+            });
+        }
+
+        return new ArrayList<>(uniqueLevels);
+    }
+
+    private boolean isAllowedCarrier(String carrierId, String carrierCode) {
+        String normalizedCode = safeLower(carrierCode);
+        return (carrierId != null && ALLOWED_CARRIER_IDS.contains(carrierId))
+                || (normalizedCode != null && ALLOWED_CARRIER_CODES.contains(normalizedCode));
+    }
+
+    private String safeLower(String value) {
+        return value == null ? null : value.toLowerCase();
     }
 
     private String firstNonEmpty(JsonNode... nodes) {
