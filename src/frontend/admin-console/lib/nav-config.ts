@@ -58,11 +58,6 @@ export const logisticsNavItems: NavItem[] = [
 // Customer Service Interface Navigation
 export const customerServiceNavItems: NavItem[] = [
   {
-    href: "/interfaces/costumer-service",
-    icon: MessageSquare,
-    label: "Inquiries",
-  },
-  {
     href: "/interfaces/costumer-service/tickets",
     icon: FileText,
     label: "Tickets",

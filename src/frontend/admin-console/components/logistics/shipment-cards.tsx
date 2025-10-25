@@ -18,7 +18,7 @@ export function ShipmentCards({ shipments, selectedShipments = [], onAddShipment
         return (
           <div
             key={shipment.id}
-            className={`bg-white border-2 ${isSelected ? 'border-brand-purple bg-purple-50' : 'border-gray-200'} rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+            className={`bg-white border-2 ${isSelected ? 'border-brand-purple bg-purple-50' : 'border'} rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
             onClick={() => onAddShipment?.(shipment.id)}
           >
             <div className="flex justify-between items-start mb-3">

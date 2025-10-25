@@ -46,7 +46,7 @@ export function CarrierCompare({
   )
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div className="bg-white border rounded-lg shadow-sm">
       <div className="p-6">
         {showSearch && (
           <div className="mb-4">
