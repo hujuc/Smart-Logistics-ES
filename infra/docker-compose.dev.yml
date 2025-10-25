@@ -56,6 +56,11 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadminsecret
       MINIO_BUCKET: slms-documents
+      SHIPPO_API_KEY: ${SHIPPO_API_KEY}
+      SHIPPO_BASE_URL: ${SHIPPO_BASE_URL:-https://api.goshippo.com}
+      SHIPENGINE_API_KEY: ${SHIPENGINE_API_KEY}
+      SHIPENGINE_BASE_URL: ${SHIPENGINE_BASE_URL:-https://api.shipengine.com/v1}
+      SANDBOX_API_KEY: ${SANDBOX_API_KEY}
     volumes:
       - ../src/backend:/app
       - ~/.m2:/root/.m2

@@ -66,3 +66,7 @@ The application uses environment variables for configuration. Default values are
 - `src/main/java/Operimus/SLMS/business_layer/` - Domain models and business logic
 - `src/main/java/Operimus/SLMS/presentation_layer/` - REST controllers (BFFs)
 - `src/main/resources/` - Configuration files
+
+## Carrier Integrations
+
+The carrier CRUD, Shippo + ShipEngine sync workflow, and the new order fields are documented in `../../docs/carrier-module-readme.md`.

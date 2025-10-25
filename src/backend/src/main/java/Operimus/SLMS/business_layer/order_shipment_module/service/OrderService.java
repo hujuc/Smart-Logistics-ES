@@ -3,6 +3,7 @@ package Operimus.SLMS.business_layer.order_shipment_module.service;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.InMemoryMultipartFile;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.Carrier;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
@@ -30,6 +31,7 @@ public class OrderService {
 
     private final ShipmentOrderRepository shipmentOrderRepository;
     private final WarehouseService warehouseService;
+    private final CarrierService carrierService;
     private final OrderDocumentService orderDocumentService;  // Adicionando dependência para o upload
 
     @Transactional
@@ -40,6 +42,7 @@ public class OrderService {
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
+        Carrier carrier = resolveCarrier(request.getCarrierId());
 
         // Criar a encomenda
         ShipmentOrder order = ShipmentOrder.builder()
@@ -49,6 +52,7 @@ public class OrderService {
                 .shippingAddress(request.getShippingAddress())
                 .estimatedDeliveryDate(request.getEstimatedDeliveryDate())
                 .warehouse(warehouse)
+                .carrier(carrier)
                 .shippoShipmentId(request.getShippoShipmentId())
                 .shippoTransactionId(request.getShippoTransactionId())
                 .shipstationOrderId(request.getShipstationOrderId())
@@ -86,6 +90,7 @@ public class OrderService {
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
+        Carrier carrier = resolveCarrier(request.getCarrierId());
 
         order.setReference(request.getReference());
         order.setDescription(request.getDescription());
@@ -93,6 +98,7 @@ public class OrderService {
         order.setShippingAddress(request.getShippingAddress());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
+        order.setCarrier(carrier);
         order.setShippoShipmentId(request.getShippoShipmentId());
         order.setShippoTransactionId(request.getShippoTransactionId());
         order.setShipstationOrderId(request.getShipstationOrderId());
@@ -162,6 +168,9 @@ public class OrderService {
                 .shippingAddress(order.getShippingAddress())
                 .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                 .warehouseId(order.getWarehouse().getId())
+                .carrierId(order.getCarrier() != null ? order.getCarrier().getId() : null)
+                .carrierCode(order.getCarrier() != null ? order.getCarrier().getCode() : null)
+                .carrierName(order.getCarrier() != null ? order.getCarrier().getName() : null)
                 .shippoShipmentId(order.getShippoShipmentId())
                 .shippoTransactionId(order.getShippoTransactionId())
                 .shipstationOrderId(order.getShipstationOrderId())
@@ -171,6 +180,13 @@ public class OrderService {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+
+    private Carrier resolveCarrier(Long carrierId) {
+        if (carrierId == null) {
+            return null;
+        }
+        return carrierService.findEntityById(carrierId);
     }
     private byte[] generateQrCode(String orderId, int size) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
