@@ -70,8 +70,8 @@ public class AuthService {
                 String refreshToken = (String) tokenResponse.get("refresh_token");
                 Integer expiresIn = (Integer) tokenResponse.get("expires_in");
 
-                // Get user info
-                Map<String, Object> userInfo = getUserInfo(accessToken);
+                // Decode JWT to extract all user claims (email, name, roles, etc.)
+                Map<String, Object> tokenClaims = decodeJwtToken(accessToken);
 
                 // Build response
                 return LoginResponse.builder()
@@ -79,11 +79,11 @@ public class AuthService {
                         .refreshToken(refreshToken)
                         .tokenType("Bearer")
                         .expiresIn(expiresIn != null ? expiresIn.longValue() : 300L)
-                        .username((String) userInfo.get("preferred_username"))
-                        .email((String) userInfo.get("email"))
-                        .firstName((String) userInfo.get("given_name"))
-                        .lastName((String) userInfo.get("family_name"))
-                        .roles(extractRoles(userInfo))
+                        .username((String) tokenClaims.get("preferred_username"))
+                        .email((String) tokenClaims.get("email"))
+                        .firstName((String) tokenClaims.get("given_name"))
+                        .lastName((String) tokenClaims.get("family_name"))
+                        .roles(extractRoles(tokenClaims))
                         .build();
             }
 
@@ -303,18 +303,19 @@ public class AuthService {
                 String newRefreshToken = (String) tokenResponse.get("refresh_token");
                 Integer expiresIn = (Integer) tokenResponse.get("expires_in");
 
-                Map<String, Object> userInfo = getUserInfo(accessToken);
+                // Decode JWT to extract all user claims
+                Map<String, Object> tokenClaims = decodeJwtToken(accessToken);
 
                 return LoginResponse.builder()
                         .accessToken(accessToken)
                         .refreshToken(newRefreshToken)
                         .tokenType("Bearer")
                         .expiresIn(expiresIn != null ? expiresIn.longValue() : 300L)
-                        .username((String) userInfo.get("preferred_username"))
-                        .email((String) userInfo.get("email"))
-                        .firstName((String) userInfo.get("given_name"))
-                        .lastName((String) userInfo.get("family_name"))
-                        .roles(extractRoles(userInfo))
+                        .username((String) tokenClaims.get("preferred_username"))
+                        .email((String) tokenClaims.get("email"))
+                        .firstName((String) tokenClaims.get("given_name"))
+                        .lastName((String) tokenClaims.get("family_name"))
+                        .roles(extractRoles(tokenClaims))
                         .build();
             }
 
