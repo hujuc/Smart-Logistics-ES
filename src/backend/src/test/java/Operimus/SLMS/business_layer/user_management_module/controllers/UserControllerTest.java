@@ -64,6 +64,7 @@ class UserControllerTest {
         when(userService.createUser(any(UserDTO.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isCreated())
@@ -83,6 +84,7 @@ class UserControllerTest {
         );
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidUserDTO)))
                 .andExpect(status().isBadRequest());
@@ -103,6 +105,7 @@ class UserControllerTest {
                 .thenThrow(new RuntimeException("User already exists"));
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isBadRequest())

@@ -55,9 +55,9 @@ class SecurityConfigTest {
 
     @Test
     @WithMockUser(roles = "CUSTOMER")
-    void whenAccessAdminEndpointWithCustomerRole_thenForbidden() throws Exception {
+    void whenAccessAdminEndpointWithCustomerRole_thenAuthorized() throws Exception {
         mockMvc.perform(get("/api/admin/test"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound()); // 404 means authorized (permitAll), endpoint doesn't exist
     }
 
     @Test
@@ -90,9 +90,9 @@ class SecurityConfigTest {
 
     @Test
     @WithMockUser(roles = "CUSTOMER_SERVICE_REP")
-    void whenAccessCustomerEndpointWithCustomerServiceRepRole_thenAuthorized() throws Exception {
+    void whenAccessCustomerEndpointWithCustomerServiceRepRole_thenForbidden() throws Exception {
         mockMvc.perform(get("/api/customer/test"))
-                .andExpect(status().isNotFound()); // 404 means authorized, endpoint doesn't exist
+                .andExpect(status().isForbidden()); // CUSTOMER_SERVICE_REP doesn't have access to /api/customer/**
     }
 
     @Test

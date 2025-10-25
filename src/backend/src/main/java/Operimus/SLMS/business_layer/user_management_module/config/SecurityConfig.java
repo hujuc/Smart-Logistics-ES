@@ -50,7 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/logistics/**").hasRole("LOGISTICS_MANAGER")
                 .requestMatchers("/api/warehouse/**").hasRole("WAREHOUSE_STAFF")
                 .requestMatchers("/api/driver/**").hasRole("DRIVER")
-                .requestMatchers("/api/customer-service/**").hasAnyRole("CUSTOMER_SERVICE_REP")
+                .requestMatchers("/api/customer-service/**").hasRole("CUSTOMER_SERVICE_REP")
                 .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
                 // All other requests require authentication
                 .anyRequest().authenticated()
