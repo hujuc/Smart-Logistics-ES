@@ -14,20 +14,45 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /**
+     * Security configuration for SLMS backend
+     *
+     * Architecture:
+     * 1. BFF Layer (Role-Based Access Control):
+     *    - /api/logistics/** - Logistics Manager access
+     *    - /api/warehouse/** - Warehouse Staff access
+     *    - /api/driver/** - Driver access
+     *    - /api/customer-service/** - Customer Service access
+     *    - /api/customer/** - Customer access
+     *
+     * 2. Domain Layer (Internal Development APIs - No Auth):
+     *    - /api/admin/** - Direct access to domain controllers
+     *    - Used for development/testing without role restrictions
+     *
+     * 3. Public Endpoints:
+     *    - /api/landing-page/auth/** - Authentication endpoints
+     *    - /api/public/** - Public resources
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.disable()) // Allow CORS for development
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // NextAuth.js routes
+                // BFF Authentication endpoints (public)
+                .requestMatchers("/api/landing-page/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/users/register").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("LOGISTICS_MANAGER")
+                // Internal Development APIs - Domain Layer Controllers (no auth required)
+                .requestMatchers("/api/admin/**").permitAll() // Catch-all for other domain controllers
+                // Protected BFF endpoints (role-based)
+                .requestMatchers("/api/logistics/**").hasRole("LOGISTICS_MANAGER")
                 .requestMatchers("/api/warehouse/**").hasRole("WAREHOUSE_STAFF")
                 .requestMatchers("/api/driver/**").hasRole("DRIVER")
-                .requestMatchers("/api/customer/**").hasAnyRole("CUSTOMER", "CUSTOMER_SERVICE_REP")
+                .requestMatchers("/api/customer-service/**").hasRole("CUSTOMER_SERVICE_REP")
+                .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+                // All other requests require authentication
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

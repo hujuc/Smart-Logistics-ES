@@ -217,7 +217,7 @@ Todos os endpoints estão em `/api/admin/carriers`:
 
 ### Integração API Externa
 - `GET /integrations/snapshot` – Obter dados em tempo real do Shippo+ShipEngine sem armazenar
-- `POST /integrations/sync` – Sincronizar transportadoras das APIs externas para base de dados local
+- `POST /integrations/sync` – Sincronizar transportadoras das APIs externas para a base de dados
 
 ### Resultados dos Endpoints Testados
 

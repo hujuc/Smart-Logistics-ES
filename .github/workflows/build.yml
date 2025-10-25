@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   backend-quality:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, slms]
     defaults:
       run:
         working-directory: src/backend
@@ -64,14 +64,15 @@ jobs:
 
   frontend-quality:
     name: Frontend (${{ matrix.app }})
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, slms]
     strategy:
       fail-fast: false
       matrix:
         app:
           - admin-console
-          - costumer-portal
+          - customer-portal
           - driver-pwa
+          - landing-page
     env:
       CI: true
     defaults:

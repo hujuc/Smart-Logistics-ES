@@ -57,7 +57,7 @@ export default function SettingsPage() {
       )}
 
       {/* User Profile Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <User className="h-6 w-6 text-blue-600" />
@@ -112,7 +112,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Notification Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
             <Bell className="h-6 w-6 text-yellow-600" />
@@ -120,7 +120,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-semibold text-black">Notifications</h2>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
               <p className="font-medium text-black">Email Notifications</p>
               <p className="text-sm text-gray-600">
@@ -142,7 +142,7 @@ export default function SettingsPage() {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
               <p className="font-medium text-black">Push Notifications</p>
               <p className="text-sm text-gray-600">
@@ -164,7 +164,7 @@ export default function SettingsPage() {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
               <p className="font-medium text-black">QR Scan Alerts</p>
               <p className="text-sm text-gray-600">
@@ -187,7 +187,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Display Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
             <Monitor className="h-6 w-6 text-purple-600" />
@@ -203,7 +203,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setSettings({ ...settings, theme: e.target.value })
               }
-              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
@@ -218,7 +218,7 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setSettings({ ...settings, language: e.target.value })
               }
-              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="English">English</option>
               <option value="Spanish">Spanish</option>
@@ -230,7 +230,7 @@ export default function SettingsPage() {
       </div>
 
       {/* System Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
             <Database className="h-6 w-6 text-green-600" />
@@ -238,7 +238,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-semibold text-black">System</h2>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
               <p className="font-medium text-black">Auto Backup</p>
               <p className="text-sm text-gray-600">
@@ -257,7 +257,7 @@ export default function SettingsPage() {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
             <div>
               <p className="font-medium text-black">Scanner Sound</p>
               <p className="text-sm text-gray-600">

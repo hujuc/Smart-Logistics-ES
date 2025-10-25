@@ -4,7 +4,7 @@
 
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
-export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
+export type IssueStatus = "Open" | "In Progress" | "Escalated" | "Resolved" | "Closed";
 
 // Backend enum values - must match Java ShipmentOrderStatus enum
 export type ShipmentOrderStatus =
