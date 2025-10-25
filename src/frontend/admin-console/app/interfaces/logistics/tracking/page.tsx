@@ -63,7 +63,7 @@ export default function TrackingPage() {
       />
 
       {/* Map Placeholder */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
         <div className="relative h-96 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
           <div className="text-center">
             <MapPin className="h-16 w-16 mx-auto mb-4 text-blue-600" />
