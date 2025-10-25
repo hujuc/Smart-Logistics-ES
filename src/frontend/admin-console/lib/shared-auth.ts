@@ -142,7 +142,12 @@ export function debugToken(): void {
   if (token) {
     const decoded = decodeJWT(token);
     console.log('Token payload:', decoded);
-    console.log('Token roles:', decoded?.realm_access?.roles || decoded?.roles || 'No roles found');
+
+    // Safely extract roles from token
+    const realmAccess = decoded?.realm_access as Record<string, unknown> | undefined;
+    const realmRoles = realmAccess?.roles;
+    const directRoles = decoded?.roles;
+    console.log('Token roles:', realmRoles || directRoles || 'No roles found');
   }
   console.log('=================');
 }
