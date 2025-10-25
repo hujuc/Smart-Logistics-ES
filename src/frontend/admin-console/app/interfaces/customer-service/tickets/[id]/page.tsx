@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
@@ -33,11 +32,7 @@ export default function TicketDetailPage() {
   const [resolutionNote, setResolutionNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    loadTicketDetails()
-  }, [ticketId])
-
-  const loadTicketDetails = async () => {
+  const loadTicketDetails = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -49,7 +44,11 @@ export default function TicketDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [ticketId])
+
+  useEffect(() => {
+    loadTicketDetails()
+  }, [loadTicketDetails])
 
   const handleAddNote = async () => {
     if (!resolutionNote.trim() || !ticket) return

@@ -112,8 +112,9 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
             // Store token and redirect based on role
             handleSuccessfulAuth(response);
 
-        } catch (err: any) {
-            setError(err.message || 'Registration failed. Please try again.');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+            setError(errorMessage);
             setIsLoading(false);
         }
     };

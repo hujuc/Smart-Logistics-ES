@@ -1,4 +1,4 @@
-import { Package, QrCode, Settings, Truck, MapPin, Users, MessageSquare, FileText, BarChart } from "lucide-react"
+import { Package, QrCode, Settings, Truck, MapPin, Users, FileText, BarChart } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {

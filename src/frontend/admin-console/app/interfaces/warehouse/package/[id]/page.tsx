@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
@@ -424,10 +425,12 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             <p className="text-red-600 text-sm">{qrError}</p>
           ) : qrImageUrl ? (
             <div className="flex flex-col items-center">
-              <img
+              <Image
                 src={qrImageUrl}
                 alt="Order QR code"
-                className="h-56 w-56 rounded-md border bg-gray-50 p-4"
+                width={224}
+                height={224}
+                className="rounded-md border bg-gray-50 p-4"
               />
             </div>
           ) : (

@@ -111,7 +111,7 @@ export function storeAuth(accessToken: string, user: UserData, expiresIn: number
 /**
  * Decode JWT token (without verification - for debugging only)
  */
-export function decodeJWT(token: string): any {
+export function decodeJWT(token: string): Record<string, unknown> | null {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -121,7 +121,7 @@ export function decodeJWT(token: string): any {
         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
-    return JSON.parse(jsonPayload);
+    return JSON.parse(jsonPayload) as Record<string, unknown>;
   } catch (error) {
     console.error('Failed to decode JWT:', error);
     return null;

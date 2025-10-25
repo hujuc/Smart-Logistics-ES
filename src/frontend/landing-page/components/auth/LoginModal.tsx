@@ -53,8 +53,9 @@ export default function LoginModal({ onClose, onSwitchToSignUp }: LoginModalProp
             // Store token and redirect based on role
             handleSuccessfulAuth(response);
 
-        } catch (err: any) {
-            setError(err.message || 'Login failed. Please check your credentials.');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+            setError(errorMessage);
             setIsLoading(false);
         }
     };
