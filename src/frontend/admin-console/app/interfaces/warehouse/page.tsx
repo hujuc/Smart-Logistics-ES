@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { isAuthenticated, debugToken } from "@/lib/shared-auth"
 import { QuickStats } from "@/components/warehouse/quick-stats"
 import { OrderTable } from "@/components/warehouse/order-table"
 import type { WarehousePackage } from "@/types"
@@ -16,6 +17,19 @@ export default function WarehousePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Debug token information
+    debugToken();
+
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      setError("You must be logged in to view orders. Redirecting to login...")
+      setIsLoading(false)
+      setTimeout(() => {
+        window.location.href = "/"
+      }, 2000)
+      return
+    }
+
     loadOrders()
   }, [])
 

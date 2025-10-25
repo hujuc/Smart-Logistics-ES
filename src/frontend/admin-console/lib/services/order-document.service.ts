@@ -1,24 +1,10 @@
 /**
  * Order document service - handles MinIO-backed document interactions.
+ * Uses API_ENDPOINTS from api.ts for proper BFF endpoint configuration
  */
 
-import { getSession } from "next-auth/react";
+import { API_ENDPOINTS, createAuthHeaders } from "@/lib/api";
 import type { OrderDocument } from "@/types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-async function getAuthHeaders(contentType?: string): Promise<HeadersInit> {
-  const session = await getSession();
-  const headers: HeadersInit = contentType ? { "Content-Type": contentType } : {};
-
-  if (session?.accessToken) {
-    headers["Authorization"] = `Bearer ${session.accessToken}`;
-  } else {
-    console.warn("No access token found in session");
-  }
-
-  return headers;
-}
 
 async function handleJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -39,24 +25,26 @@ async function handleJsonResponse<T>(response: Response): Promise<T> {
 
 export const orderDocumentService = {
   async list(orderId: number): Promise<OrderDocument[]> {
-    const headers = await getAuthHeaders("application/json");
+    const headers = createAuthHeaders();
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents`,
+      API_ENDPOINTS.warehouse.orderDocuments(orderId),
       {
         method: "GET",
         headers,
+        credentials: "include",
       },
     );
     return handleJsonResponse<OrderDocument[]>(response);
   },
 
   async download(orderId: number, documentId: string): Promise<Blob> {
-    const headers = await getAuthHeaders();
+    const headers = createAuthHeaders(''); // No content-type for blob download
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
+      API_ENDPOINTS.warehouse.orderDocumentDownload(orderId, documentId),
       {
         method: "GET",
         headers,
+        credentials: "include",
       },
     );
     if (!response.ok) {
