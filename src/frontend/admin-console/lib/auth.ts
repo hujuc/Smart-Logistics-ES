@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         url: authorizationUrl,
         params: {
-          scope: "openid email profile",
+          scope: "openid email profile roles",
           response_type: "code",
           redirect_uri: callbackUrl
         }
@@ -77,7 +77,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Remove port from URLs (e.g., localhost:3000 -> localhost)
+           // Remove port from URLs (e.g., localhost:3000 -> localhost)
       const cleanUrl = url.replace(/:3000/, '');
       const cleanBaseUrl = baseUrl.replace(/:3000/, '');
 
