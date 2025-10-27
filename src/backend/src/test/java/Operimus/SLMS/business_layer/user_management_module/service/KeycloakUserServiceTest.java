@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.*;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.mockito.InjectMocks;
@@ -50,6 +51,9 @@ class KeycloakUserServiceTest {
     @Mock
     private RoleScopeResource roleScopeResource;
 
+    @Mock
+    private GroupsResource groupsResource;
+
     @InjectMocks
     private KeycloakUserService keycloakUserService;
 
@@ -74,18 +78,20 @@ class KeycloakUserServiceTest {
         );
 
         String userId = "test-user-id";
+        String groupId = "customers-group-id";
         Response mockResponse = createMockResponse(201, "http://localhost:8180/admin/realms/slms/users/" + userId);
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId(groupId);
+        customersGroup.setName("Customers");
 
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
         when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
         when(usersResource.get(userId)).thenReturn(userResource);
         when(userResource.toRepresentation()).thenReturn(createUserRepresentation(userDTO));
-        when(realmResource.roles()).thenReturn(rolesResource);
-        when(rolesResource.get(anyString())).thenReturn(roleResource);
-        when(roleResource.toRepresentation()).thenReturn(createRoleRepresentation("CUSTOMER"));
-        when(userResource.roles()).thenReturn(roleMappingResource);
-        when(roleMappingResource.realmLevel()).thenReturn(roleScopeResource);
+        when(realmResource.groups()).thenReturn(groupsResource);
+        when(groupsResource.groups("Customers", 0, 1)).thenReturn(Arrays.asList(customersGroup));
 
         UserRepresentation result = keycloakUserService.createUser(userDTO);
 
@@ -93,8 +99,7 @@ class KeycloakUserServiceTest {
         assertEquals(userDTO.getUsername(), result.getUsername());
         assertEquals(userDTO.getEmail(), result.getEmail());
         verify(usersResource).create(any(UserRepresentation.class));
-        verify(userResource).resetPassword(any(CredentialRepresentation.class));
-        verify(roleScopeResource).add(anyList());
+        verify(userResource).joinGroup(groupId);
     }
 
     @Test
@@ -223,7 +228,7 @@ class KeycloakUserServiceTest {
     }
 
     @Test
-    void whenAssignRoleNotFound_thenSkipsRole() {
+    void whenAssignGroupNotFound_thenLogsWarningAndContinues() {
         UserDTO userDTO = new UserDTO(
                 "testuser",
                 "test@example.com",
@@ -234,24 +239,36 @@ class KeycloakUserServiceTest {
         );
 
         String userId = "test-user-id";
+        String groupId = "customers-group-id";
         Response mockResponse = createMockResponse(201, "http://localhost:8180/admin/realms/slms/users/" + userId);
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId(groupId);
+        customersGroup.setName("Customers");
 
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
         when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
         when(usersResource.get(userId)).thenReturn(userResource);
         when(userResource.toRepresentation()).thenReturn(createUserRepresentation(userDTO));
-        when(realmResource.roles()).thenReturn(rolesResource);
-        when(rolesResource.get("CUSTOMER")).thenReturn(roleResource);
-        when(roleResource.toRepresentation()).thenReturn(createRoleRepresentation("CUSTOMER"));
-        when(rolesResource.get("NON_EXISTENT_ROLE")).thenThrow(new RuntimeException("Role not found"));
-        when(userResource.roles()).thenReturn(roleMappingResource);
-        when(roleMappingResource.realmLevel()).thenReturn(roleScopeResource);
+        when(realmResource.groups()).thenReturn(groupsResource);
+        // Setup mock to return Customers group for "Customers" and empty list for other group names
+        when(groupsResource.groups(anyString(), eq(0), eq(1)))
+                .thenAnswer(invocation -> {
+                    String groupName = invocation.getArgument(0);
+                    if ("Customers".equals(groupName)) {
+                        return Arrays.asList(customersGroup);
+                    }
+                    return Arrays.asList(); // Non-existent group returns empty list
+                });
 
         UserRepresentation result = keycloakUserService.createUser(userDTO);
 
         assertNotNull(result);
-        verify(roleScopeResource).add(argThat(roles -> roles.size() == 1));
+        // Verify user was added to the Customers group
+        verify(userResource).joinGroup(groupId);
+        // Verify joinGroup was only called once (for CUSTOMER, not for NON_EXISTENT_ROLE)
+        verify(userResource, times(1)).joinGroup(anyString());
     }
 
     private UserRepresentation createUserRepresentation(UserDTO userDTO) {

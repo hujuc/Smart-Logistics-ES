@@ -62,7 +62,16 @@ public class KeycloakUserService {
             user.setEnabled(true);
             user.setEmailVerified(true);
 
-            // Create user
+            // Set password credentials during user creation
+            // This avoids a separate API call and potential 400 errors
+            CredentialRepresentation credential = new CredentialRepresentation();
+            credential.setTemporary(false);
+            credential.setType(CredentialRepresentation.PASSWORD);
+            credential.setValue(userDTO.getPassword());
+            user.setCredentials(List.of(credential));
+            log.info("Credentials configured for user creation");
+
+            // Create user with password in a single operation
             Response response = usersResource.create(user);
 
             if (response.getStatus() != 201) {
@@ -72,20 +81,15 @@ public class KeycloakUserService {
             }
 
             String userId = CreatedResponseUtil.getCreatedId(response);
-            log.info("User created successfully with ID: {}", userId);
+            log.info("User created successfully with ID: {} (including password)", userId);
 
-            // Set password
-            CredentialRepresentation credential = new CredentialRepresentation();
-            credential.setTemporary(false);
-            credential.setType(CredentialRepresentation.PASSWORD);
-            credential.setValue(userDTO.getPassword());
-
-            usersResource.get(userId).resetPassword(credential);
-            log.info("Password set for user: {}", userId);
-
-            // Assign roles
-            assignRoles(userId, userDTO.getRoles());
-            log.info("Roles assigned to user: {}", userId);
+            // Assign user to groups based on roles
+            // Users inherit roles from their group membership
+            log.info("Assigning user to groups based on roles for user: {}", userId);
+            for (String roleName : userDTO.getRoles()) {
+                assignUserToGroup(userId, roleName);
+            }
+            log.info("Group assignment completed for user: {}", userId);
 
             // Fetch and return the created user
             return usersResource.get(userId).toRepresentation();
@@ -96,28 +100,59 @@ public class KeycloakUserService {
         }
     }
 
-    private void assignRoles(String userId, List<String> roleNames) {
+    /**
+     * Assigns a user to a Keycloak group based on their role.
+     * Maps role names to group names and adds the user to the appropriate group.
+     * Users automatically inherit all roles associated with the group.
+     */
+    private void assignUserToGroup(String userId, String roleName) {
         try {
             RealmResource realmResource = keycloak.realm(realm);
-            List<RoleRepresentation> roles = roleNames.stream()
-                    .map(roleName -> {
-                        try {
-                            return realmResource.roles().get(roleName).toRepresentation();
-                        } catch (Exception e) {
-                            log.warn("Role not found: {}. Skipping...", roleName);
-                            return null;
-                        }
-                    })
-                    .filter(role -> role != null)
-                    .collect(Collectors.toList());
 
-            if (!roles.isEmpty()) {
-                realmResource.users().get(userId).roles().realmLevel().add(roles);
+            // Map role names to group names
+            String groupName = mapRoleToGroupName(roleName);
+
+            if (groupName == null) {
+                log.warn("No group mapping found for role: {}. Skipping group assignment.", roleName);
+                return;
             }
+
+            // Search for the group by name
+            var groups = realmResource.groups().groups(groupName, 0, 1);
+
+            if (groups.isEmpty()) {
+                log.error("Group not found: {}. User will not have proper permissions.", groupName);
+                return;
+            }
+
+            String groupId = groups.get(0).getId();
+
+            // Add user to group
+            realmResource.users().get(userId).joinGroup(groupId);
+            log.info("User {} assigned to group: {} (mapped from role: {})", userId, groupName, roleName);
+
         } catch (Exception e) {
-            log.error("Error assigning roles: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to assign roles: " + e.getMessage(), e);
+            log.error("Error assigning user to group for role {}: {}", roleName, e.getMessage(), e);
+            // Don't throw exception - allow user creation to succeed even if group assignment fails
         }
+    }
+
+    /**
+     * Maps role names to Keycloak group names.
+     * This mapping connects the application's role concept with Keycloak's group structure.
+     */
+    private String mapRoleToGroupName(String roleName) {
+        return switch (roleName) {
+            case "LOGISTICS_MANAGER" -> "Logistics Managers";
+            case "WAREHOUSE_STAFF" -> "Warehouse";
+            case "CUSTOMER_SERVICE_REP" -> "Customer Service";
+            case "DRIVER" -> "Drivers";
+            case "CUSTOMER" -> "Customers";
+            default -> {
+                log.warn("Unknown role name: {}. No group mapping available.", roleName);
+                yield null;
+            }
+        };
     }
 
     public UserRepresentation getUserById(String userId) {
