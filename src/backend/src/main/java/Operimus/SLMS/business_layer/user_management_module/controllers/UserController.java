@@ -1,5 +1,6 @@
 package Operimus.SLMS.business_layer.user_management_module.controllers;
 
+import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
@@ -37,6 +38,21 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error registering user: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Get all users
+     */
+    @GetMapping
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            List<UserRepresentation> users = userService.getAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            log.error("Error fetching all users: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch users"));
         }
     }
 
@@ -91,6 +107,36 @@ public class UserController {
             log.error("Error searching users: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to search users"));
+        }
+    }
+
+    /**
+     * Update user
+     */
+    @PutMapping("/{userId}")
+    public ResponseEntity<?> updateUser(@PathVariable String userId, @Valid @RequestBody UserDTO userDTO) {
+        try {
+            log.info("Updating user: {}", userId);
+            UserRepresentation user = userService.updateUser(userId, userDTO);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            log.error("Error updating user: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update user password
+     */
+    @PutMapping("/{userId}/password")
+    public ResponseEntity<?> updatePassword(@PathVariable String userId, @Valid @RequestBody PasswordUpdateDTO passwordDTO) {
+        try {
+            log.info("Updating password for user: {}", userId);
+            userService.updatePassword(userId, passwordDTO.getPassword());
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+        } catch (Exception e) {
+            log.error("Error updating password: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

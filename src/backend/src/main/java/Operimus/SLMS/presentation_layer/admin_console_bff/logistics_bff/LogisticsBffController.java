@@ -1,15 +1,24 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff;
 
+import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO;
+import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Logistics BFF Controller - Admin Console
  *
  * This controller is part of the Backend-For-Frontend (BFF) pattern for the logistics manager interface.
- * Currently contains only health endpoint - will be expanded when logistics frontend is connected.
+ * Provides user management capabilities for the logistics manager role.
  *
  * Endpoints are mapped to /api/logistics/* to match the logistics manager role permissions.
  */
@@ -19,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class LogisticsBffController {
+
+    private final KeycloakUserService userService;
 
     /**
      * Health check endpoint
@@ -32,5 +43,118 @@ public class LogisticsBffController {
                 "service", "Logistics BFF",
                 "timestamp", java.time.Instant.now().toString()
         ));
+    }
+
+    // ===========================
+    // User Management Endpoints
+    // ===========================
+
+    /**
+     * Get all users
+     */
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            log.info("Fetching all users via Logistics BFF");
+            List<UserRepresentation> users = userService.getAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            log.error("Error fetching all users: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch users"));
+        }
+    }
+
+    /**
+     * Get user by ID
+     */
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<?> getUserById(@PathVariable String userId) {
+        try {
+            log.info("Fetching user by ID: {}", userId);
+            UserRepresentation user = userService.getUserById(userId);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            log.error("Error fetching user by ID: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "User not found"));
+        }
+    }
+
+    /**
+     * Create a new user
+     */
+    @PostMapping("/users")
+    public ResponseEntity<?> createUser(@Valid @RequestBody UserDTO userDTO) {
+        try {
+            log.info("Creating new user via Logistics BFF: {}", userDTO.getUsername());
+            UserRepresentation user = userService.createUser(userDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+        } catch (Exception e) {
+            log.error("Error creating user: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update user
+     */
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<?> updateUser(@PathVariable String userId, @Valid @RequestBody UserDTO userDTO) {
+        try {
+            log.info("Updating user via Logistics BFF: {}", userId);
+            UserRepresentation user = userService.updateUser(userId, userDTO);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            log.error("Error updating user: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Update user password
+     */
+    @PutMapping("/users/{userId}/password")
+    public ResponseEntity<?> updatePassword(@PathVariable String userId, @Valid @RequestBody PasswordUpdateDTO passwordDTO) {
+        try {
+            log.info("Updating password for user via Logistics BFF: {}", userId);
+            userService.updatePassword(userId, passwordDTO.getPassword());
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+        } catch (Exception e) {
+            log.error("Error updating password: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete user
+     */
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<?> deleteUser(@PathVariable String userId) {
+        try {
+            log.info("Deleting user via Logistics BFF: {}", userId);
+            userService.deleteUser(userId);
+            return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
+        } catch (Exception e) {
+            log.error("Error deleting user: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to delete user"));
+        }
+    }
+
+    /**
+     * Search users
+     */
+    @GetMapping("/users/search")
+    public ResponseEntity<?> searchUsers(@RequestParam String query) {
+        try {
+            log.info("Searching users via Logistics BFF: {}", query);
+            List<UserRepresentation> users = userService.searchUsers(query);
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            log.error("Error searching users: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to search users"));
+        }
     }
 }

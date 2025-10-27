@@ -164,12 +164,86 @@ public class KeycloakUserService {
         }
     }
 
+    public List<UserRepresentation> getAllUsers() {
+        try {
+            return keycloak.realm(realm).users().list();
+        } catch (Exception e) {
+            log.error("Error fetching all users: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch all users: " + e.getMessage(), e);
+        }
+    }
+
     public List<UserRepresentation> searchUsers(String search) {
         try {
             return keycloak.realm(realm).users().search(search);
         } catch (Exception e) {
             log.error("Error searching users: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to search users: " + e.getMessage(), e);
+        }
+    }
+
+    public UserRepresentation updateUser(String userId, UserDTO userDTO) {
+        try {
+            RealmResource realmResource = keycloak.realm(realm);
+            UsersResource usersResource = realmResource.users();
+
+            // Get existing user
+            UserRepresentation user = usersResource.get(userId).toRepresentation();
+
+            // Update user fields
+            if (userDTO.getUsername() != null) {
+                user.setUsername(userDTO.getUsername());
+            }
+            if (userDTO.getEmail() != null) {
+                user.setEmail(userDTO.getEmail());
+            }
+            if (userDTO.getFirstName() != null) {
+                user.setFirstName(userDTO.getFirstName());
+            }
+            if (userDTO.getLastName() != null) {
+                user.setLastName(userDTO.getLastName());
+            }
+
+            // Update the user
+            usersResource.get(userId).update(user);
+            log.info("User updated successfully: {}", userId);
+
+            // Update roles/groups if provided
+            if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
+                // First, remove user from all current groups
+                var currentGroups = usersResource.get(userId).groups();
+                for (var group : currentGroups) {
+                    usersResource.get(userId).leaveGroup(group.getId());
+                }
+
+                // Assign new groups based on roles
+                for (String roleName : userDTO.getRoles()) {
+                    assignUserToGroup(userId, roleName);
+                }
+                log.info("User roles updated successfully: {}", userId);
+            }
+
+            // Return updated user
+            return usersResource.get(userId).toRepresentation();
+
+        } catch (Exception e) {
+            log.error("Error updating user: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update user: " + e.getMessage(), e);
+        }
+    }
+
+    public void updatePassword(String userId, String newPassword) {
+        try {
+            CredentialRepresentation credential = new CredentialRepresentation();
+            credential.setTemporary(false);
+            credential.setType(CredentialRepresentation.PASSWORD);
+            credential.setValue(newPassword);
+
+            keycloak.realm(realm).users().get(userId).resetPassword(credential);
+            log.info("Password updated successfully for user: {}", userId);
+        } catch (Exception e) {
+            log.error("Error updating password: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update password: " + e.getMessage(), e);
         }
     }
 

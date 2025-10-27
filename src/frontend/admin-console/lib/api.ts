@@ -22,6 +22,12 @@ export const API_ENDPOINTS = {
     base: LOGISTICS_BASE,
     health: `${LOGISTICS_BASE}/health`,
     orders: `${LOGISTICS_BASE}/orders`,
+    users: `${LOGISTICS_BASE}/users`,
+
+    // Helper functions for user-specific paths
+    user: (userId: string) => `${LOGISTICS_BASE}/users/${userId}`,
+    userPassword: (userId: string) => `${LOGISTICS_BASE}/users/${userId}/password`,
+    userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
   },
 
   // Warehouse Staff BFF
