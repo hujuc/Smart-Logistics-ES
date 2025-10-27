@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { MapPin, Package, Phone, Navigation, ChevronDown, ChevronUp, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type Delivery = {
   id: number;
@@ -19,6 +20,7 @@ type Delivery = {
 };
 
 export default function DriverDailySchedule() {
+  const router = useRouter();
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'route' | 'time' | 'priority'>('route');
 
@@ -132,6 +134,30 @@ export default function DriverDailySchedule() {
     }
   };
 
+  const handleCallCustomer = (phone: string) => {
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleNavigate = (deliveryId: number) => {
+    router.push(`/interfaces/navigation?deliveryId=${deliveryId}`);
+  };
+
+  const handleViewMap = () => {
+    // Navigate to first delivery
+    const firstDelivery = sortedDeliveries[0];
+    if (firstDelivery) {
+      router.push(`/interfaces/navigation?deliveryId=${firstDelivery.id}`);
+    }
+  };
+
+  const handleGoToNextOrder = () => {
+    // Find first pending delivery
+    const nextDelivery = sortedDeliveries.find(d => d.status === 'Pending');
+    if (nextDelivery) {
+      router.push(`/interfaces/navigation?deliveryId=${nextDelivery.id}`);
+    }
+  };
+
   return (
       <div className="min-h-screen bg-white pb-20">
         {/* Header */}
@@ -167,7 +193,10 @@ export default function DriverDailySchedule() {
             </div>
           </div>
 
-          <button className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+          <button 
+            onClick={handleViewMap}
+            className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+          >
             View Map
           </button>
         </div>
@@ -259,11 +288,17 @@ export default function DriverDailySchedule() {
                         </div>
 
                         <div className="flex gap-2 mt-4">
-                          <button className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-black py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                          <button 
+                            onClick={() => handleCallCustomer(delivery.phone)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-black py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                          >
                             <Phone className="w-4 h-4" />
                             Call
                           </button>
-                          <button className="flex-1 flex items-center justify-center gap-2 bg-black text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors">
+                          <button 
+                            onClick={() => handleNavigate(delivery.id)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-black text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                          >
                             <Navigation className="w-4 h-4" />
                             Navigate
                           </button>
@@ -295,7 +330,10 @@ export default function DriverDailySchedule() {
 
         {/* Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <button className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors">
+          <button 
+            onClick={handleGoToNextOrder}
+            className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
+          >
             Go to Next Order
           </button>
         </div>
