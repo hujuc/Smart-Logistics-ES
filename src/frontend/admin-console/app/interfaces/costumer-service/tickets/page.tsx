@@ -216,10 +216,10 @@ export default function TicketsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-black">Support Tickets</h1>
-        <Button>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-black">Support Tickets</h1>
+        <Button className="w-full sm:w-auto">
           <FileText className="mr-2 h-4 w-4" />
           Create New Ticket
         </Button>
@@ -245,9 +245,9 @@ export default function TicketsPage() {
       </div>
 
       {/* Search Bar with Order Lookup - US 7 */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-4 md:p-6 shadow-sm">
         <div className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <Label htmlFor="search">Search Orders or Tickets</Label>
               <div className="relative mt-2">
@@ -266,8 +266,8 @@ export default function TicketsPage() {
                 Tip: Enter ORD- or TRK to search orders, or search tickets by name/subject
               </p>
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleSearch} disabled={isSearching}>
+            <div className="flex sm:items-end w-full sm:w-auto">
+              <Button onClick={handleSearch} disabled={isSearching} className="w-full sm:w-auto">
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -412,12 +412,14 @@ export default function TicketsPage() {
       </div>
 
       {/* Tickets Table */}
-      <div className="bg-white border rounded-lg shadow-sm">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-black mb-4">
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+        <div className="p-4 md:p-6">
+          <h2 className="text-lg md:text-xl font-semibold text-black mb-4">
             Tickets ({filteredAndSortedTickets.length})
           </h2>
-          <Table>
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket #</TableHead>
@@ -496,7 +498,9 @@ export default function TicketsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+              </Table>
+            </div>
+          </div>
           {filteredAndSortedTickets.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No tickets found matching your criteria.

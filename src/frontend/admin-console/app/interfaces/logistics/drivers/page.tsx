@@ -105,10 +105,10 @@ export default function DriversPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-black">Driver Management</h1>
-        <Button>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-black">Driver Management</h1>
+        <Button className="w-full sm:w-auto">
           <Users className="mr-2 h-4 w-4" />
           Add New Driver
         </Button>
