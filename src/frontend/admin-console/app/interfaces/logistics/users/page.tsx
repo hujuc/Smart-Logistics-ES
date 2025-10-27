@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Users, CheckCircle2, XCircle, Shield, AlertCircle } from "lucide-react"
-import { UserStatCard } from "@/components/logistics/user-stats-cards"
 import { UserSearchBar } from "@/components/logistics/user-search-bar"
 import { UserTable } from "@/components/logistics/user-table"
 import { UserFormDialog } from "@/components/logistics/user-form-dialog"
@@ -93,10 +92,13 @@ export default function UsersPage() {
 
   const handleFormSubmit = async (data: CreateUserRequest | UpdateUserRequest) => {
     try {
+      console.log("Form submission data:", data)
       if (dialogMode === "create") {
+        console.log("Creating user with data:", data)
         await userService.createUser(data as CreateUserRequest)
         showSuccess("User created successfully.")
       } else if (selectedUser) {
+        console.log("Updating user", selectedUser.id, "with data:", data)
         await userService.updateUser(selectedUser.id, data as UpdateUserRequest)
         showSuccess("User updated successfully.")
       }
@@ -114,44 +116,6 @@ export default function UsersPage() {
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const activeUsers = users.filter((u) => u.enabled).length
-
-  // User stats configuration for dynamic rendering
-  const userStatsConfig = [
-    {
-      key: "total",
-      title: "Total Users",
-      value: users.length,
-      icon: Users,
-      iconBgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-    },
-    {
-      key: "active",
-      title: "Active",
-      value: activeUsers,
-      icon: CheckCircle2,
-      iconBgColor: "bg-green-100",
-      iconColor: "text-green-600",
-    },
-    {
-      key: "inactive",
-      title: "Inactive",
-      value: users.length - activeUsers,
-      icon: XCircle,
-      iconBgColor: "bg-gray-100",
-      iconColor: "text-gray-600",
-    },
-    {
-      key: "roles",
-      title: "Unique Roles",
-      value: new Set(users.flatMap((u) => u.groups || [])).size,
-      icon: Shield,
-      iconBgColor: "bg-purple-100",
-      iconColor: "text-purple-600",
-    },
-  ]
 
   if (loading) {
     return (
@@ -186,20 +150,6 @@ export default function UsersPage() {
           <span>{error}</span>
         </div>
       )}
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {userStatsConfig.map((stat) => (
-          <UserStatCard
-            key={stat.key}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            iconBgColor={stat.iconBgColor}
-            iconColor={stat.iconColor}
-          />
-        ))}
-      </div>
 
       {/* Search Bar */}
       <UserSearchBar

@@ -88,8 +88,15 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+    console.error('API Error:', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+      requestBody: options.body,
+    });
+    throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
   }
 
   return response.json();

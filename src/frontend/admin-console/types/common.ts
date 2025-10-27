@@ -125,7 +125,7 @@ export interface User {
     enabled: boolean;
     emailVerified: boolean;
     createdTimestamp?: number;
-    groups?: string[];
+    groups?: string[] | null;
     attributes?: Record<string, string[]>;
 }
 

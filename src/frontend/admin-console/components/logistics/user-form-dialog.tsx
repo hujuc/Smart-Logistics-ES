@@ -28,7 +28,7 @@ export function UserFormDialog({
     password: "",
     firstName: "",
     lastName: "",
-    role: "DRIVER",
+    role: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +38,7 @@ export function UserFormDialog({
       // Extract role from groups
       const role = user.groups && user.groups.length > 0
         ? getRoleFromGroup(user.groups[0])
-        : "DRIVER"
+        : ""
 
       setFormData({
         username: user.username || "",
@@ -62,17 +62,25 @@ export function UserFormDialog({
   }, [user, mode, open])
 
   const getRoleFromGroup = (groupName: string): string => {
+    if (!groupName) return ""
     if (groupName.includes("Logistics")) return "LOGISTICS_MANAGER"
     if (groupName.includes("Warehouse")) return "WAREHOUSE_STAFF"
     if (groupName.includes("Customer Service")) return "CUSTOMER_SERVICE_REP"
     if (groupName.includes("Drivers")) return "DRIVER"
     if (groupName.includes("Customers")) return "CUSTOMER"
-    return "DRIVER"
+    return ""
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Validate role is selected
+    if (!formData.role) {
+      setError("Please select a role for the user")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -204,7 +212,7 @@ export function UserFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">Role *</Label>
             <select
               id="role"
               value={formData.role}
@@ -214,6 +222,7 @@ export function UserFormDialog({
               className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
               required
             >
+              <option value="">-- Select a role --</option>
               <option value="LOGISTICS_MANAGER">Logistics Manager</option>
               <option value="WAREHOUSE_STAFF">Warehouse Staff</option>
               <option value="CUSTOMER_SERVICE_REP">Customer Service Representative</option>

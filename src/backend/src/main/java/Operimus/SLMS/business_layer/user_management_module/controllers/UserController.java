@@ -1,6 +1,7 @@
 package Operimus.SLMS.business_layer.user_management_module.controllers;
 
 import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO;
+import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
@@ -114,10 +115,10 @@ public class UserController {
      * Update user
      */
     @PutMapping("/{userId}")
-    public ResponseEntity<?> updateUser(@PathVariable String userId, @Valid @RequestBody UserDTO userDTO) {
+    public ResponseEntity<?> updateUser(@PathVariable String userId, @Valid @RequestBody UpdateUserDTO updateUserDTO) {
         try {
             log.info("Updating user: {}", userId);
-            UserRepresentation user = userService.updateUser(userId, userDTO);
+            UserRepresentation user = userService.updateUser(userId, updateUserDTO);
             return ResponseEntity.ok(user);
         } catch (Exception e) {
             log.error("Error updating user: {}", e.getMessage(), e);

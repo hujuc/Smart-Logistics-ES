@@ -25,7 +25,7 @@ export function UserTable({
   onDeleteUser,
   onResetPassword,
 }: UserTableProps) {
-  const getRoleBadgeColor = (groups?: string[]) => {
+  const getRoleBadgeColor = (groups?: string[] | null) => {
     if (!groups || groups.length === 0) return "bg-gray-100 text-gray-700"
 
     const groupName = groups[0]
@@ -37,7 +37,7 @@ export function UserTable({
     return "bg-gray-100 text-gray-700"
   }
 
-  const getDisplayRole = (groups?: string[]) => {
+  const getDisplayRole = (groups?: string[] | null) => {
     if (!groups || groups.length === 0) return "No Role"
     return groups.join(", ")
   }
@@ -55,7 +55,6 @@ export function UserTable({
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -79,17 +78,6 @@ export function UserTable({
                     )}`}
                   >
                     {getDisplayRole(user.groups)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      user.enabled
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {user.enabled ? "Active" : "Disabled"}
                   </span>
                 </TableCell>
                 <TableCell>

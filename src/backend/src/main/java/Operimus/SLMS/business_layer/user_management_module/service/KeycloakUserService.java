@@ -1,5 +1,6 @@
 package Operimus.SLMS.business_layer.user_management_module.service;
 
+import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import jakarta.annotation.PostConstruct;
 import jakarta.ws.rs.core.Response;
@@ -91,8 +92,13 @@ public class KeycloakUserService {
             }
             log.info("Group assignment completed for user: {}", userId);
 
-            // Fetch and return the created user
-            return usersResource.get(userId).toRepresentation();
+            // Fetch and return the created user with groups
+            UserRepresentation createdUser = usersResource.get(userId).toRepresentation();
+            var groups = usersResource.get(userId).groups();
+            if (groups != null && !groups.isEmpty()) {
+                createdUser.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+            }
+            return createdUser;
 
         } catch (Exception e) {
             log.error("Error creating user: {}", e.getMessage(), e);
@@ -157,7 +163,13 @@ public class KeycloakUserService {
 
     public UserRepresentation getUserById(String userId) {
         try {
-            return keycloak.realm(realm).users().get(userId).toRepresentation();
+            UserRepresentation user = keycloak.realm(realm).users().get(userId).toRepresentation();
+            // Fetch and set groups for the user
+            var groups = keycloak.realm(realm).users().get(userId).groups();
+            if (groups != null && !groups.isEmpty()) {
+                user.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+            }
+            return user;
         } catch (Exception e) {
             log.error("Error fetching user by ID: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to fetch user: " + e.getMessage(), e);
@@ -166,7 +178,19 @@ public class KeycloakUserService {
 
     public List<UserRepresentation> getAllUsers() {
         try {
-            return keycloak.realm(realm).users().list();
+            List<UserRepresentation> users = keycloak.realm(realm).users().list();
+            // Fetch groups for each user
+            for (UserRepresentation user : users) {
+                try {
+                    var groups = keycloak.realm(realm).users().get(user.getId()).groups();
+                    if (groups != null && !groups.isEmpty()) {
+                        user.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch groups for user {}: {}", user.getId(), e.getMessage());
+                }
+            }
+            return users;
         } catch (Exception e) {
             log.error("Error fetching all users: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to fetch all users: " + e.getMessage(), e);
@@ -175,14 +199,26 @@ public class KeycloakUserService {
 
     public List<UserRepresentation> searchUsers(String search) {
         try {
-            return keycloak.realm(realm).users().search(search);
+            List<UserRepresentation> users = keycloak.realm(realm).users().search(search);
+            // Fetch groups for each user
+            for (UserRepresentation user : users) {
+                try {
+                    var groups = keycloak.realm(realm).users().get(user.getId()).groups();
+                    if (groups != null && !groups.isEmpty()) {
+                        user.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch groups for user {}: {}", user.getId(), e.getMessage());
+                }
+            }
+            return users;
         } catch (Exception e) {
             log.error("Error searching users: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to search users: " + e.getMessage(), e);
         }
     }
 
-    public UserRepresentation updateUser(String userId, UserDTO userDTO) {
+    public UserRepresentation updateUser(String userId, UpdateUserDTO updateUserDTO) {
         try {
             RealmResource realmResource = keycloak.realm(realm);
             UsersResource usersResource = realmResource.users();
@@ -190,18 +226,18 @@ public class KeycloakUserService {
             // Get existing user
             UserRepresentation user = usersResource.get(userId).toRepresentation();
 
-            // Update user fields
-            if (userDTO.getUsername() != null) {
-                user.setUsername(userDTO.getUsername());
+            // Update user fields (only if provided)
+            if (updateUserDTO.getUsername() != null && !updateUserDTO.getUsername().isEmpty()) {
+                user.setUsername(updateUserDTO.getUsername());
             }
-            if (userDTO.getEmail() != null) {
-                user.setEmail(userDTO.getEmail());
+            if (updateUserDTO.getEmail() != null && !updateUserDTO.getEmail().isEmpty()) {
+                user.setEmail(updateUserDTO.getEmail());
             }
-            if (userDTO.getFirstName() != null) {
-                user.setFirstName(userDTO.getFirstName());
+            if (updateUserDTO.getFirstName() != null && !updateUserDTO.getFirstName().isEmpty()) {
+                user.setFirstName(updateUserDTO.getFirstName());
             }
-            if (userDTO.getLastName() != null) {
-                user.setLastName(userDTO.getLastName());
+            if (updateUserDTO.getLastName() != null && !updateUserDTO.getLastName().isEmpty()) {
+                user.setLastName(updateUserDTO.getLastName());
             }
 
             // Update the user
@@ -209,7 +245,7 @@ public class KeycloakUserService {
             log.info("User updated successfully: {}", userId);
 
             // Update roles/groups if provided
-            if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
+            if (updateUserDTO.getRoles() != null && !updateUserDTO.getRoles().isEmpty()) {
                 // First, remove user from all current groups
                 var currentGroups = usersResource.get(userId).groups();
                 for (var group : currentGroups) {
@@ -217,14 +253,19 @@ public class KeycloakUserService {
                 }
 
                 // Assign new groups based on roles
-                for (String roleName : userDTO.getRoles()) {
+                for (String roleName : updateUserDTO.getRoles()) {
                     assignUserToGroup(userId, roleName);
                 }
                 log.info("User roles updated successfully: {}", userId);
             }
 
-            // Return updated user
-            return usersResource.get(userId).toRepresentation();
+            // Return updated user with groups
+            UserRepresentation updatedUser = usersResource.get(userId).toRepresentation();
+            var groups = usersResource.get(userId).groups();
+            if (groups != null && !groups.isEmpty()) {
+                updatedUser.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+            }
+            return updatedUser;
 
         } catch (Exception e) {
             log.error("Error updating user: {}", e.getMessage(), e);

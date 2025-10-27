@@ -1,5 +1,6 @@
 package Operimus.SLMS.business_layer.user_management_module.service;
 
+import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.BeforeEach;
@@ -138,13 +139,14 @@ class KeycloakUserServiceTest {
         when(realmResource.users()).thenReturn(usersResource);
         when(usersResource.get(userId)).thenReturn(userResource);
         when(userResource.toRepresentation()).thenReturn(expectedUser);
+        when(userResource.groups()).thenReturn(Arrays.asList());
 
         UserRepresentation result = keycloakUserService.getUserById(userId);
 
         assertNotNull(result);
         assertEquals(userId, result.getId());
         assertEquals("testuser", result.getUsername());
-        verify(usersResource).get(userId);
+        verify(usersResource, times(2)).get(userId);
     }
 
     @Test
@@ -166,14 +168,22 @@ class KeycloakUserServiceTest {
     @Test
     void whenSearchUsers_thenUsersAreReturned() {
         String searchQuery = "test";
-        List<UserRepresentation> expectedUsers = Arrays.asList(
-                createUserRepresentation("testuser1", "test1@example.com"),
-                createUserRepresentation("testuser2", "test2@example.com")
-        );
+        UserRepresentation user1 = createUserRepresentation("testuser1", "test1@example.com");
+        user1.setId("user1-id");
+        UserRepresentation user2 = createUserRepresentation("testuser2", "test2@example.com");
+        user2.setId("user2-id");
+        List<UserRepresentation> expectedUsers = Arrays.asList(user1, user2);
+
+        UserResource userResource1 = mock(UserResource.class);
+        UserResource userResource2 = mock(UserResource.class);
 
         when(keycloak.realm(anyString())).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
         when(usersResource.search(searchQuery)).thenReturn(expectedUsers);
+        when(usersResource.get("user1-id")).thenReturn(userResource1);
+        when(usersResource.get("user2-id")).thenReturn(userResource2);
+        when(userResource1.groups()).thenReturn(Arrays.asList());
+        when(userResource2.groups()).thenReturn(Arrays.asList());
 
         List<UserRepresentation> result = keycloakUserService.searchUsers(searchQuery);
 
@@ -269,6 +279,277 @@ class KeycloakUserServiceTest {
         verify(userResource).joinGroup(groupId);
         // Verify joinGroup was only called once (for CUSTOMER, not for NON_EXISTENT_ROLE)
         verify(userResource, times(1)).joinGroup(anyString());
+    }
+
+    @Test
+    void whenUpdateUserWithUpdateUserDTO_thenUserIsUpdated() {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO(
+                "updateduser",
+                "updated@example.com",
+                "Updated",
+                "User",
+                Arrays.asList("DRIVER")
+        );
+
+        String driverGroupId = "drivers-group-id";
+        GroupRepresentation driversGroup = new GroupRepresentation();
+        driversGroup.setId(driverGroupId);
+        driversGroup.setName("Drivers");
+
+        UserRepresentation existingUser = new UserRepresentation();
+        existingUser.setId(userId);
+        existingUser.setUsername("testuser");
+        existingUser.setEmail("test@example.com");
+
+        UserRepresentation updatedUser = new UserRepresentation();
+        updatedUser.setId(userId);
+        updatedUser.setUsername("updateduser");
+        updatedUser.setEmail("updated@example.com");
+        updatedUser.setFirstName("Updated");
+        updatedUser.setLastName("User");
+        updatedUser.setGroups(Arrays.asList("Drivers"));
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.get(userId)).thenReturn(userResource);
+        when(userResource.toRepresentation())
+                .thenReturn(existingUser)
+                .thenReturn(updatedUser);
+        when(userResource.groups())
+                .thenReturn(Arrays.asList())
+                .thenReturn(Arrays.asList(driversGroup));
+        when(realmResource.groups()).thenReturn(groupsResource);
+        when(groupsResource.groups("Drivers", 0, 1)).thenReturn(Arrays.asList(driversGroup));
+
+        UserRepresentation result = keycloakUserService.updateUser(userId, updateUserDTO);
+
+        assertNotNull(result);
+        assertEquals("updateduser", result.getUsername());
+        assertEquals("updated@example.com", result.getEmail());
+        assertEquals("Updated", result.getFirstName());
+        assertEquals("User", result.getLastName());
+        assertNotNull(result.getGroups());
+        assertEquals(1, result.getGroups().size());
+        assertEquals("Drivers", result.getGroups().get(0));
+        verify(userResource).update(any(UserRepresentation.class));
+        verify(userResource).joinGroup(driverGroupId);
+    }
+
+    @Test
+    void whenUpdateUserPartialFields_thenOnlyProvidedFieldsUpdated() {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO();
+        updateUserDTO.setEmail("newemail@example.com");
+
+        UserRepresentation existingUser = new UserRepresentation();
+        existingUser.setId(userId);
+        existingUser.setUsername("testuser");
+        existingUser.setEmail("old@example.com");
+        existingUser.setFirstName("Test");
+        existingUser.setLastName("User");
+
+        UserRepresentation updatedUser = new UserRepresentation();
+        updatedUser.setId(userId);
+        updatedUser.setUsername("testuser");
+        updatedUser.setEmail("newemail@example.com");
+        updatedUser.setFirstName("Test");
+        updatedUser.setLastName("User");
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.get(userId)).thenReturn(userResource);
+        when(userResource.toRepresentation())
+                .thenReturn(existingUser)
+                .thenReturn(updatedUser);
+        when(userResource.groups()).thenReturn(Arrays.asList());
+
+        UserRepresentation result = keycloakUserService.updateUser(userId, updateUserDTO);
+
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
+        assertEquals("newemail@example.com", result.getEmail());
+        verify(userResource).update(any(UserRepresentation.class));
+    }
+
+    @Test
+    void whenGetUserByIdWithGroups_thenGroupsAreReturned() {
+        String userId = "test-user-id";
+        UserRepresentation user = new UserRepresentation();
+        user.setId(userId);
+        user.setUsername("testuser");
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId("customers-group-id");
+        customersGroup.setName("Customers");
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.get(userId)).thenReturn(userResource);
+        when(userResource.toRepresentation()).thenReturn(user);
+        when(userResource.groups()).thenReturn(Arrays.asList(customersGroup));
+
+        UserRepresentation result = keycloakUserService.getUserById(userId);
+
+        assertNotNull(result);
+        assertEquals(userId, result.getId());
+        assertNotNull(result.getGroups());
+        assertEquals(1, result.getGroups().size());
+        assertEquals("Customers", result.getGroups().get(0));
+    }
+
+    @Test
+    void whenGetAllUsersWithGroups_thenGroupsAreReturnedForEachUser() {
+        UserRepresentation user1 = createUserRepresentation("user1", "user1@example.com");
+        user1.setId("user1-id");
+        UserRepresentation user2 = createUserRepresentation("user2", "user2@example.com");
+        user2.setId("user2-id");
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId("customers-group-id");
+        customersGroup.setName("Customers");
+
+        GroupRepresentation driversGroup = new GroupRepresentation();
+        driversGroup.setId("drivers-group-id");
+        driversGroup.setName("Drivers");
+
+        UserResource userResource1 = mock(UserResource.class);
+        UserResource userResource2 = mock(UserResource.class);
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.list()).thenReturn(Arrays.asList(user1, user2));
+        when(usersResource.get("user1-id")).thenReturn(userResource1);
+        when(usersResource.get("user2-id")).thenReturn(userResource2);
+        when(userResource1.groups()).thenReturn(Arrays.asList(customersGroup));
+        when(userResource2.groups()).thenReturn(Arrays.asList(driversGroup));
+
+        List<UserRepresentation> result = keycloakUserService.getAllUsers();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("user1", result.get(0).getUsername());
+        assertEquals(1, result.get(0).getGroups().size());
+        assertEquals("Customers", result.get(0).getGroups().get(0));
+        assertEquals("user2", result.get(1).getUsername());
+        assertEquals(1, result.get(1).getGroups().size());
+        assertEquals("Drivers", result.get(1).getGroups().get(0));
+    }
+
+    @Test
+    void whenSearchUsersWithGroups_thenGroupsAreReturnedForEachUser() {
+        String searchQuery = "test";
+        UserRepresentation user1 = createUserRepresentation("testuser1", "test1@example.com");
+        user1.setId("user1-id");
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId("customers-group-id");
+        customersGroup.setName("Customers");
+
+        UserResource userResource1 = mock(UserResource.class);
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.search(searchQuery)).thenReturn(Arrays.asList(user1));
+        when(usersResource.get("user1-id")).thenReturn(userResource1);
+        when(userResource1.groups()).thenReturn(Arrays.asList(customersGroup));
+
+        List<UserRepresentation> result = keycloakUserService.searchUsers(searchQuery);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("testuser1", result.get(0).getUsername());
+        assertEquals(1, result.get(0).getGroups().size());
+        assertEquals("Customers", result.get(0).getGroups().get(0));
+    }
+
+    @Test
+    void whenCreateUserWithGroups_thenGroupsAreReturnedInCreatedUser() {
+        UserDTO userDTO = new UserDTO(
+                "testuser",
+                "test@example.com",
+                "password123",
+                "Test",
+                "User",
+                Arrays.asList("CUSTOMER")
+        );
+
+        String userId = "test-user-id";
+        String groupId = "customers-group-id";
+        Response mockResponse = createMockResponse(201, "http://localhost:8180/admin/realms/slms/users/" + userId);
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId(groupId);
+        customersGroup.setName("Customers");
+
+        UserRepresentation createdUser = createUserRepresentation(userDTO);
+        createdUser.setGroups(Arrays.asList("Customers"));
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.create(any(UserRepresentation.class))).thenReturn(mockResponse);
+        when(usersResource.get(userId)).thenReturn(userResource);
+        when(userResource.toRepresentation()).thenReturn(createdUser);
+        when(userResource.groups()).thenReturn(Arrays.asList(customersGroup));
+        when(realmResource.groups()).thenReturn(groupsResource);
+        when(groupsResource.groups("Customers", 0, 1)).thenReturn(Arrays.asList(customersGroup));
+
+        UserRepresentation result = keycloakUserService.createUser(userDTO);
+
+        assertNotNull(result);
+        assertEquals(userDTO.getUsername(), result.getUsername());
+        assertNotNull(result.getGroups());
+        assertEquals(1, result.getGroups().size());
+        assertEquals("Customers", result.getGroups().get(0));
+        verify(userResource).joinGroup(groupId);
+    }
+
+    @Test
+    void whenUpdateUserRoles_thenOldGroupsRemovedAndNewGroupsAdded() {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO();
+        updateUserDTO.setRoles(Arrays.asList("DRIVER"));
+
+        String customersGroupId = "customers-group-id";
+        String driversGroupId = "drivers-group-id";
+
+        GroupRepresentation customersGroup = new GroupRepresentation();
+        customersGroup.setId(customersGroupId);
+        customersGroup.setName("Customers");
+
+        GroupRepresentation driversGroup = new GroupRepresentation();
+        driversGroup.setId(driversGroupId);
+        driversGroup.setName("Drivers");
+
+        UserRepresentation existingUser = new UserRepresentation();
+        existingUser.setId(userId);
+        existingUser.setUsername("testuser");
+
+        UserRepresentation updatedUser = new UserRepresentation();
+        updatedUser.setId(userId);
+        updatedUser.setUsername("testuser");
+        updatedUser.setGroups(Arrays.asList("Drivers"));
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.get(userId)).thenReturn(userResource);
+        when(userResource.toRepresentation())
+                .thenReturn(existingUser)
+                .thenReturn(updatedUser);
+        when(userResource.groups())
+                .thenReturn(Arrays.asList(customersGroup))
+                .thenReturn(Arrays.asList(driversGroup));
+        when(realmResource.groups()).thenReturn(groupsResource);
+        when(groupsResource.groups("Drivers", 0, 1)).thenReturn(Arrays.asList(driversGroup));
+
+        UserRepresentation result = keycloakUserService.updateUser(userId, updateUserDTO);
+
+        assertNotNull(result);
+        verify(userResource).leaveGroup(customersGroupId);
+        verify(userResource).joinGroup(driversGroupId);
+        assertNotNull(result.getGroups());
+        assertEquals(1, result.getGroups().size());
+        assertEquals("Drivers", result.getGroups().get(0));
     }
 
     private UserRepresentation createUserRepresentation(UserDTO userDTO) {
