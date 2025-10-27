@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, X, Navigation as NavigationIcon } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
@@ -18,13 +18,21 @@ type Delivery = {
     distance: string;
 };
 
-export default function DriverNavigation() {
+function NavigationContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const deliveryId = searchParams.get('deliveryId');
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
+    const currentLocationMarker = useRef<mapboxgl.Marker | null>(null);
+    const destinationMarker = useRef<mapboxgl.Marker | null>(null);
     const [showDeliverModal, setShowDeliverModal] = useState(false);
     const [mapReady, setMapReady] = useState(false);
+    const [routeDistance, setRouteDistance] = useState<string>('');
+    const [routeDuration, setRouteDuration] = useState<string>('');
+    const [arrivalTime, setArrivalTime] = useState<string>('');
+    const [currentLocation, setCurrentLocation] = useState<[number, number]>([-8.6600, 40.6500]); // Default fallback location
+    const [locationError, setLocationError] = useState<string>('');
 
     const deliveries: Record<number, Delivery> = {
         1: {
@@ -46,16 +54,42 @@ export default function DriverNavigation() {
     };
 
     const currentDelivery = deliveries[Number(deliveryId)] || deliveries[1];
-    const currentLocation: [number, number] = [-8.6600, 40.6500];
 
+    // Get user's current location
     useEffect(() => {
-        if (!mapContainer.current) return;
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+                    setLocationError('');
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    setLocationError('Could not get your location. Using default location.');
+                }
+            );
 
-        // Remove existing map
-        if (map.current) {
-            map.current.remove();
-            map.current = null;
+            // Watch position for real-time updates
+            const watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+                },
+                (error) => {
+                    console.error('Error watching location:', error);
+                }
+            );
+
+            return () => {
+                navigator.geolocation.clearWatch(watchId);
+            };
+        } else {
+            setLocationError('Geolocation is not supported by your browser.');
         }
+    }, []);
+
+    // Initialize map only once
+    useEffect(() => {
+        if (!mapContainer.current || map.current) return;
 
         // Initialize map
         const newMap = new mapboxgl.Map({
@@ -69,50 +103,6 @@ export default function DriverNavigation() {
 
         newMap.on('load', () => {
             if (!map.current) return;
-
-            // Add current location marker
-            new mapboxgl.Marker({ color: '#3B82F6' })
-                .setLngLat(currentLocation)
-                .addTo(map.current);
-
-            // Add destination marker
-            new mapboxgl.Marker({ color: '#EF4444' })
-                .setLngLat(currentDelivery.coordinates)
-                .addTo(map.current);
-
-            // Add route line
-            map.current.addSource('route', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: [currentLocation, currentDelivery.coordinates]
-                    }
-                }
-            });
-
-            map.current.addLayer({
-                id: 'route',
-                type: 'line',
-                source: 'route',
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                paint: {
-                    'line-color': '#3B82F6',
-                    'line-width': 4
-                }
-            });
-
-            // Fit bounds
-            const bounds = new mapboxgl.LngLatBounds();
-            bounds.extend(currentLocation);
-            bounds.extend(currentDelivery.coordinates);
-            map.current.fitBounds(bounds, { padding: 80 });
-
             setMapReady(true);
         });
 
@@ -124,8 +114,175 @@ export default function DriverNavigation() {
                 map.current.remove();
                 map.current = null;
             }
+            if (currentLocationMarker.current) {
+                currentLocationMarker.current.remove();
+                currentLocationMarker.current = null;
+            }
+            if (destinationMarker.current) {
+                destinationMarker.current.remove();
+                destinationMarker.current = null;
+            }
         };
-    }, [deliveryId, currentDelivery]);
+    }, []);
+
+    // Update route when location or delivery changes
+    useEffect(() => {
+        if (!map.current || !mapReady) return;
+
+        const updateRoute = async () => {
+            if (!map.current) return;
+
+            // Wait for style to be fully loaded
+            if (!map.current.isStyleLoaded()) {
+                map.current.once('styledata', async () => {
+                    await addRouteToMap();
+                });
+            } else {
+                await addRouteToMap();
+            }
+
+            async function addRouteToMap() {
+                if (!map.current) return;
+
+                // Update or create current location marker
+                if (currentLocationMarker.current) {
+                    currentLocationMarker.current.setLngLat(currentLocation);
+                } else {
+                    currentLocationMarker.current = new mapboxgl.Marker({ color: '#3B82F6' })
+                        .setLngLat(currentLocation)
+                        .addTo(map.current);
+                }
+
+                // Update or create destination marker
+                if (destinationMarker.current) {
+                    destinationMarker.current.setLngLat(currentDelivery.coordinates);
+                } else {
+                    destinationMarker.current = new mapboxgl.Marker({ color: '#EF4444' })
+                        .setLngLat(currentDelivery.coordinates)
+                        .addTo(map.current);
+                }
+
+                // Fetch route from Mapbox Directions API
+                try {
+                    const query = await fetch(
+                        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentLocation[0]},${currentLocation[1]};${currentDelivery.coordinates[0]},${currentDelivery.coordinates[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`,
+                        { method: 'GET' }
+                    );
+                    const json = await query.json();
+                    const data = json.routes[0];
+                    const route = data.geometry.coordinates;
+
+                    // Extract and format distance and duration
+                    const distanceInKm = (data.distance / 1000).toFixed(1);
+                    const durationInMin = Math.round(data.duration / 60);
+                    setRouteDistance(`${distanceInKm} km`);
+                    setRouteDuration(`${durationInMin} min`);
+
+                    // Calculate arrival time
+                    const now = new Date();
+                    const arrivalDate = new Date(now.getTime() + data.duration * 1000);
+                    const hours = arrivalDate.getHours().toString().padStart(2, '0');
+                    const minutes = arrivalDate.getMinutes().toString().padStart(2, '0');
+                    setArrivalTime(`${hours}:${minutes}`);
+
+                    // Remove existing route source and layer if they exist
+                    if (map.current.getLayer('route')) {
+                        map.current.removeLayer('route');
+                    }
+                    if (map.current.getSource('route')) {
+                        map.current.removeSource('route');
+                    }
+
+                    // Add route line with real road data
+                    map.current!.addSource('route', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: route
+                            }
+                        }
+                    });
+
+                map.current!.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#3B82F6',
+                        'line-width': 5,
+                        'line-opacity': 0.75
+                    }
+                });
+
+                // Fit bounds to show entire route
+                const bounds = new mapboxgl.LngLatBounds();
+                route.forEach((coord: [number, number]) => bounds.extend(coord));
+                map.current!.fitBounds(bounds, { padding: 80 });
+            } catch (error) {
+                console.error('Error fetching route:', error);
+                // Fallback to straight line and default values if API fails
+                setRouteDistance(currentDelivery.distance);
+                setRouteDuration(currentDelivery.eta);
+                
+                // Calculate fallback arrival time based on ETA
+                const etaMinutes = parseInt(currentDelivery.eta);
+                const now = new Date();
+                const arrivalDate = new Date(now.getTime() + etaMinutes * 60 * 1000);
+                const hours = arrivalDate.getHours().toString().padStart(2, '0');
+                const minutes = arrivalDate.getMinutes().toString().padStart(2, '0');
+                setArrivalTime(`${hours}:${minutes}`);
+                
+                // Remove existing route source and layer if they exist
+                if (map.current!.getLayer('route')) {
+                    map.current!.removeLayer('route');
+                }
+                if (map.current!.getSource('route')) {
+                    map.current!.removeSource('route');
+                }
+                
+                map.current!.addSource('route', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [currentLocation, currentDelivery.coordinates]
+                        }
+                    }
+                });
+
+                map.current!.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#3B82F6',
+                        'line-width': 4
+                    }
+                });
+
+                const bounds = new mapboxgl.LngLatBounds();
+                bounds.extend(currentLocation);
+                bounds.extend(currentDelivery.coordinates);
+                map.current.fitBounds(bounds, { padding: 80 });
+                }
+            }
+        };
+
+        updateRoute();
+    }, [mapReady, currentLocation, currentDelivery, deliveryId]);
 
     const handleCenterLocation = () => {
         if (map.current && mapReady) {
@@ -137,10 +294,42 @@ export default function DriverNavigation() {
         }
     };
 
+    const handleFinishPOD = () => {
+        // Get all delivery IDs and sort them
+        const deliveryIds = Object.keys(deliveries).map(Number).sort((a, b) => a - b);
+        const currentId = Number(deliveryId) || 1; // Default to 1 if deliveryId is null/undefined
+        const currentIndex = deliveryIds.indexOf(currentId);
+        
+        console.log('Current delivery ID:', currentId);
+        console.log('All delivery IDs:', deliveryIds);
+        console.log('Current index:', currentIndex);
+        console.log('Total deliveries:', deliveryIds.length);
+        
+        // Check if there's a next delivery
+        if (currentIndex !== -1 && currentIndex < deliveryIds.length - 1) {
+            // Go to next delivery
+            const nextDeliveryId = deliveryIds[currentIndex + 1];
+            console.log('Going to next delivery:', nextDeliveryId);
+            router.push(`/interfaces/navigation?deliveryId=${nextDeliveryId}`);
+            setShowDeliverModal(false);
+        } else {
+            // No more deliveries, go back to daily schedule
+            console.log('No more deliveries, going back to daily schedule');
+            router.push('/interfaces/daily-schedule');
+        }
+    };
+
     return (
         <div className="relative h-screen w-full">
             {/* Map Container */}
             <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+
+            {/* Location Error Message */}
+            {locationError && (
+                <div className="absolute top-20 left-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg z-20">
+                    <p className="text-sm">{locationError}</p>
+                </div>
+            )}
 
             {/* Top Bar */}
             <div className="absolute top-0 left-0 right-0 bg-white shadow-lg z-10">
@@ -178,17 +367,17 @@ export default function DriverNavigation() {
                 <div className="flex justify-center items-center mb-4">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-black">{currentDelivery.eta}</p>
+                            <p className="text-2xl font-bold text-black">{routeDuration || currentDelivery.eta}</p>
                             <p className="text-xs text-gray-600">ETA</p>
                         </div>
                         <div className="h-12 w-px bg-gray-300" />
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-black">{currentDelivery.distance}</p>
+                            <p className="text-2xl font-bold text-black">{routeDistance || currentDelivery.distance}</p>
                             <p className="text-xs text-gray-600">Distance</p>
                         </div>
                         <div className="h-12 w-px bg-gray-300" />
                         <div className="text-center">
-                            <p className="text-2xl font-bold text-black">16:05</p>
+                            <p className="text-2xl font-bold text-black">{arrivalTime || '16:05'}</p>
                             <p className="text-xs text-gray-600">Arrival</p>
                         </div>
                     </div>
@@ -250,7 +439,7 @@ export default function DriverNavigation() {
                             </button>
                         </div>
 
-                        <div className="flex gap-3">
+                                                <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeliverModal(false)}
                                 className="w-10 h-10 flex items-center justify-center bg-white border-2 border-gray-300 text-black rounded-lg hover:bg-gray-50 transition-colors"
@@ -260,6 +449,7 @@ export default function DriverNavigation() {
                                 </svg>
                             </button>
                             <button
+                                onClick={handleFinishPOD}
                                 className="flex-1 bg-purple-500 text-white py-3 rounded-xl font-bold hover:bg-purple-600 transition-colors"
                             >
                                 Finish POD
@@ -269,5 +459,13 @@ export default function DriverNavigation() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function DriverNavigation() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+            <NavigationContent />
+        </Suspense>
     );
 }

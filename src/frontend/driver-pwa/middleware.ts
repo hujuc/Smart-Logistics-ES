@@ -4,6 +4,11 @@ import type { NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Allow access to interfaces routes without authentication (for development)
+  if (pathname.startsWith("/interfaces")) {
+    return NextResponse.next();
+  }
+
   // Check if user has access token in cookies (set from landing page)
   const accessToken = request.cookies.get("access_token");
 
