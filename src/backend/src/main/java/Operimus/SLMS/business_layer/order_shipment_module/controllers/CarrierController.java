@@ -1,10 +1,16 @@
 package Operimus.SLMS.business_layer.order_shipment_module.controllers;
 
+import Operimus.SLMS.business_layer.order_shipment_module.dto.AddressValidationRequest;
+import Operimus.SLMS.business_layer.order_shipment_module.dto.AddressValidationResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierIntegrationSnapshot;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.dto.ShippingRateRequest;
+import Operimus.SLMS.business_layer.order_shipment_module.dto.ShippingRateResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.service.AddressValidationService;
 import Operimus.SLMS.business_layer.order_shipment_module.service.CarrierIntegrationService;
 import Operimus.SLMS.business_layer.order_shipment_module.service.CarrierService;
+import Operimus.SLMS.business_layer.order_shipment_module.service.ShippingRateService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -26,6 +32,8 @@ public class CarrierController {
 
     private final CarrierService carrierService;
     private final CarrierIntegrationService carrierIntegrationService;
+    private final AddressValidationService addressValidationService;
+    private final ShippingRateService shippingRateService;
 
     @GetMapping
     public List<CarrierResponse> getCarriers() {
@@ -57,6 +65,16 @@ public class CarrierController {
     public ResponseEntity<Void> deleteCarrier(@PathVariable Long id) {
         carrierService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/addresses/validate")
+    public AddressValidationResponse validateAddress(@Valid @RequestBody AddressValidationRequest request) {
+        return addressValidationService.validate(request);
+    }
+
+    @PostMapping("/rates/calculate")
+    public ShippingRateResponse calculateRates(@Valid @RequestBody ShippingRateRequest request) {
+        return shippingRateService.calculateRates(request);
     }
 
     @PostMapping("/integrations/sync")
