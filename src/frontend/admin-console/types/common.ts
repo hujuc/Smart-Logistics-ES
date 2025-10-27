@@ -114,3 +114,45 @@ export interface DateRange {
     from: Date;
     to: Date;
 }
+
+// User Management Types
+export interface User {
+    id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    enabled: boolean;
+    emailVerified: boolean;
+    createdTimestamp?: number;
+    groups?: string[] | null;
+    attributes?: Record<string, string[]>;
+}
+
+export interface CreateUserRequest {
+    username: string;
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+}
+
+export interface UpdateUserRequest {
+    username?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    roles?: string[];
+}
+
+export interface PasswordUpdateRequest {
+    password: string;
+}
+
+export type UserRole =
+    | "LOGISTICS_MANAGER"
+    | "WAREHOUSE_STAFF"
+    | "CUSTOMER_SERVICE_REP"
+    | "DRIVER"
+    | "CUSTOMER";

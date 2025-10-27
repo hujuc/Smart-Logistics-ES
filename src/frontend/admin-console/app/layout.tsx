@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
-import { AuthProvider } from "@/components/providers/session-provider";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
@@ -18,7 +17,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <AuthProvider>
           <Navbar />
           <Suspense fallback={null}>
             <DynamicFloatingNav />
@@ -26,7 +24,6 @@ export default function RootLayout({
           <main className="px-4 md:pt-10 lg:pt-10 xl:pt-10 sm:pt-6 xs:pt-6 sm:px-6 md:pl-24 md:pr-8 lg:pl-32 lg:pr-12 xl:pl-40 xl:pr-16">
             {children}
           </main>
-        </AuthProvider>
       </body>
     </html>
   );

@@ -63,13 +63,13 @@ services:
     expose:
       - "3000"
 
-  costumer-portal:
+  customer-portal:
     build:
       context: ..
       dockerfile: infra/docker/frontend/Dockerfile
       args:
-        FRONTEND_PATH: src/frontend/costumer-portal
-    container_name: slms-costumer-portal
+        FRONTEND_PATH: src/frontend/customer-portal
+    container_name: slms-customer-portal
     env_file:
       - .env
     restart: unless-stopped
@@ -138,7 +138,7 @@ services:
     depends_on:
       - backend
       - admin-console
-      - costumer-portal
+      - customer-portal
       - driver-pwa
       - landing-page
       - keycloak
