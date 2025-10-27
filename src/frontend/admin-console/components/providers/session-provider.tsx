@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   return (
-    <SessionProvider basePath="/admin/api/auth">
+    <SessionProvider
+      basePath="/admin/api/auth"
+      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchOnWindowFocus={true}
+    >
       {children}
     </SessionProvider>
   );

@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
   const { pathname } = request.nextUrl;
 
   // Allow access to auth routes
@@ -16,12 +10,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if user is authenticated
-  if (!token) {
-    // Redirect to signin page with callback URL
-    const signInUrl = new URL("/admin/api/auth/signin", request.url);
-    signInUrl.searchParams.set("callbackUrl", request.url);
-    return NextResponse.redirect(signInUrl);
+  // Check if user has access token in cookies (set from landing page)
+  const accessToken = request.cookies.get("access_token");
+
+  // If no access token, redirect to landing page for login
+  if (!accessToken) {
+    const landingPageUrl = new URL("/", request.url);
+    return NextResponse.redirect(landingPageUrl);
   }
 
   return NextResponse.next();
