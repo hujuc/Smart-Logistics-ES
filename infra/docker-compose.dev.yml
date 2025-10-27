@@ -3,10 +3,12 @@ services:
     image: postgres:16-alpine
     container_name: slms-postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: slms
-      POSTGRES_USER: slms
-      POSTGRES_PASSWORD: slms
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
@@ -16,24 +18,18 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     container_name: slms-keycloak-dev
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/slms
-      KC_DB_USERNAME: slms
-      KC_DB_PASSWORD: slms  
-      KC_HOSTNAME: localhost
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
-    command: start-dev --import-realm
+    command: start-dev
     depends_on:
       - postgres
     ports:
       - "8180:8080"
     volumes:
       - keycloak-data:/opt/keycloak/data
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
 
   backend:
     build:
@@ -44,22 +40,12 @@ services:
       - postgres
       - keycloak
       - minio
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/slms
-      SPRING_DATASOURCE_USERNAME: slms
-      SPRING_DATASOURCE_PASSWORD: slms
-      AWS_S3_ENDPOINT: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadminsecret
-      MINIO_HOST: minio
-      MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadminsecret
-      MINIO_BUCKET: slms-documents
+    env_file:
+      - .env
     volumes:
       - ../src/backend:/app
       - ~/.m2:/root/.m2
-    command: mvn spring-boot:run  
+    command: mvn spring-boot:run
     expose:
       - "8080"
 
@@ -70,6 +56,8 @@ services:
       args:
         FRONTEND_PATH: src/frontend/admin-console
     container_name: slms-admin-console-dev
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
@@ -83,13 +71,13 @@ services:
     expose:
       - "3000"
 
-  costumer-portal:
+  customer-portal:
     build:
       context: ..
       dockerfile: infra/docker/frontend/Dockerfile.dev
       args:
-        FRONTEND_PATH: src/frontend/costumer-portal
-    container_name: slms-costumer-portal-dev
+        FRONTEND_PATH: src/frontend/customer-portal
+    container_name: slms-customer-portal-dev
     environment:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
@@ -97,7 +85,7 @@ services:
       WATCHPACK_POLLING: "true"
     working_dir: /app
     volumes:
-      - ../src/frontend/costumer-portal:/app
+      - ../src/frontend/customer-portal:/app
       - /app/node_modules
     command: npm run dev
     expose:
@@ -149,7 +137,7 @@ services:
     depends_on:
       - backend
       - admin-console
-      - costumer-portal
+      - customer-portal
       - driver-pwa
       - landing-page
       - keycloak
@@ -162,15 +150,31 @@ services:
     image: minio/minio:latest
     container_name: minio
     command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadminsecret
+    env_file:
+      - .env
     ports:
       - "9000:9000"  # API S3
       - "9001:9001"  # Console web
     volumes:
       - minio_data:/data
     restart: unless-stopped
+
+  minio-create-bucket:
+    image: minio/mc:latest
+    container_name: minio-create-bucket
+    depends_on:
+      - minio
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+        echo 'Aguardando o MinIO ficar disponivel...';
+        sleep 2;
+      done;
+      mc mb --ignore-existing myminio/${MINIO_BUCKET};
+      "
+    restart: "no"
 
 volumes:  
   postgres-data:

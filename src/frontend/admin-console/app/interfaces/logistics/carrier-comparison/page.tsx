@@ -146,7 +146,7 @@ export default function CarrierComparisonPage() {
 
 
       {/* Tab Navigation */}
-      <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
+      <div className="bg-white border rounded-lg p-2 shadow-sm">
         <div className="flex gap-2">
           <Button
             variant={activeTab === "new" ? "default" : "outline"}
@@ -193,7 +193,7 @@ export default function CarrierComparisonPage() {
       {activeTab === "new" && (
         <>
           {/* Process Flow */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="bg-white border rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-center gap-8">
               <div className="flex flex-col items-center gap-2">
                 <div className={`h-16 w-16 rounded-full ${flowStep === 1 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
@@ -230,7 +230,7 @@ export default function CarrierComparisonPage() {
                 selectedShipments={selectedShipments}
                 onAddShipment={handleAddShipment}
               />
-              <div className="flex justify-between items-center bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
                 <p className="text-sm text-gray-600">
                   Selected: <span className="font-bold text-black">{selectedShipments.length}</span> order(s)
                 </p>
@@ -255,7 +255,7 @@ export default function CarrierComparisonPage() {
                 setSearchTerm={setSearchTerm}
                 handleSelectCarrier={handleSelectCarrier}
               />
-              <div className="flex justify-between items-center bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
                 <Button 
                   variant="outline"
                   onClick={handlePreviousStep}
@@ -276,7 +276,7 @@ export default function CarrierComparisonPage() {
           {/* Step 3: Confirm */}
           {flowStep === 3 && (
             <>
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <div className="bg-white border rounded-lg p-6 shadow-sm">
                 <h2 className="text-2xl font-bold text-black mb-6">Order Summary</h2>
                 
                 <div className="space-y-6">
@@ -286,7 +286,7 @@ export default function CarrierComparisonPage() {
                       {mockShipments
                         .filter((s) => selectedShipments.includes(s.id))
                         .map((shipment) => (
-                          <div key={shipment.id} className="border border-gray-200 rounded-lg p-3">
+                          <div key={shipment.id} className="border rounded-lg p-3">
                             <p className="font-medium text-sm">ID: {shipment.id}</p>
                             <p className="text-sm text-gray-600">Destination: {shipment.destination}</p>
                             <p className="text-sm text-gray-600">Weight: {shipment.weight}</p>
@@ -298,7 +298,7 @@ export default function CarrierComparisonPage() {
                   {selectedCarrier && (
                     <div>
                       <h3 className="text-lg font-semibold text-black mb-3">Selected Carrier</h3>
-                      <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="border rounded-lg p-4">
                         <div className="flex items-center gap-3 mb-3">
                           <div className="text-3xl">{selectedCarrier.logo}</div>
                           <div>
@@ -330,7 +330,7 @@ export default function CarrierComparisonPage() {
                 </div>
               </div>
               
-              <div className="flex justify-between items-center bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
                 <Button 
                   variant="outline"
                   onClick={handlePreviousStep}
@@ -363,7 +363,7 @@ export default function CarrierComparisonPage() {
 
       {/* All Orders Tab */}
       {activeTab === "all" && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="text-center py-12">
             <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
             <p className="text-lg font-medium text-gray-600">All Orders (520)</p>
@@ -374,7 +374,7 @@ export default function CarrierComparisonPage() {
 
       {/* Carrier Details Tab */}
       {activeTab === "details" && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-black">Carrier Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

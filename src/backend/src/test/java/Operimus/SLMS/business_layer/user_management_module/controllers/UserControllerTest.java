@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -32,7 +33,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = UserController.class)
+@WebMvcTest(controllers = UserController.class,
+    excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class})
 @Import(SecurityConfig.class)
 class UserControllerTest {
 
@@ -64,6 +66,7 @@ class UserControllerTest {
         when(userService.createUser(any(UserDTO.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isCreated())
@@ -83,6 +86,7 @@ class UserControllerTest {
         );
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidUserDTO)))
                 .andExpect(status().isBadRequest());
@@ -103,6 +107,7 @@ class UserControllerTest {
                 .thenThrow(new RuntimeException("User already exists"));
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isBadRequest())

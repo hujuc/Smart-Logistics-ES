@@ -35,3 +35,31 @@ export interface SupportTicket {
   updatedAt: Date
 }
 
+export interface TicketWithDetails extends SupportTicket {
+  customerName?: string
+  customerEmail?: string
+  category?: string
+  assignedTo?: string
+  resolutionNotes?: string
+  messages?: number
+  resolutionHistory?: ResolutionNote[]
+  exceptionDetails?: ExceptionDetails
+}
+
+export interface ExceptionDetails {
+  type: string
+  carrier?: string
+  lastLocation?: string
+  expectedDelivery?: string
+  actualDelivery?: string
+  reason?: string
+}
+
+export interface ResolutionNote {
+  id: string
+  ticketId: string
+  note: string
+  createdBy: string
+  createdAt: Date
+}
+

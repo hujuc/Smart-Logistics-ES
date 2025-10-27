@@ -15,7 +15,7 @@ export function DynamicFloatingNav() {
     
     if (from === "logistics") {
       navItems = logisticsNavItems
-    } else if (from === "costumer-service" || from === "customer-service") {
+    } else if (from === "customer-service" || from === "customer-service") {
       navItems = customerServiceNavItems
     }
     
