@@ -7,6 +7,11 @@ import { usePathname } from "next/navigation"
 export function FloatingNavbar({ navItems }) {
   const pathname = usePathname()
 
+  // Safety check
+  if (!navItems || !Array.isArray(navItems)) {
+    return null
+  }
+
   const isActive = (path) => {
     // Strip query parameters from the path for comparison
     const pathWithoutQuery = path.split('?')[0]
