@@ -22,6 +22,12 @@ export const API_ENDPOINTS = {
     base: LOGISTICS_BASE,
     health: `${LOGISTICS_BASE}/health`,
     orders: `${LOGISTICS_BASE}/orders`,
+    users: `${LOGISTICS_BASE}/users`,
+
+    // Helper functions for user-specific paths
+    user: (userId: string) => `${LOGISTICS_BASE}/users/${userId}`,
+    userPassword: (userId: string) => `${LOGISTICS_BASE}/users/${userId}/password`,
+    userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
   },
 
   // Warehouse Staff BFF
@@ -82,8 +88,15 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+    console.error('API Error:', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+      requestBody: options.body,
+    });
+    throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
   }
 
   return response.json();

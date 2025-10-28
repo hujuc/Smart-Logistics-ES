@@ -44,9 +44,9 @@ export const logisticsNavItems: NavItem[] = [
     label: "Tracking",
   },
   {
-    href: "/interfaces/logistics/drivers",
+    href: "/interfaces/logistics/users",
     icon: Users,
-    label: "Drivers",
+    label: "Users",
   },
   {
     href: "/settings?from=logistics",
