@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -68,6 +68,7 @@ const priorities = [
 
 export default function NewTicketPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   const [formData, setFormData] = useState({
     category: "",
@@ -80,6 +81,26 @@ export default function NewTicketPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Load data from URL parameters
+  useEffect(() => {
+    const category = searchParams.get("category")
+    const priority = searchParams.get("priority")
+    const subject = searchParams.get("subject")
+    const description = searchParams.get("description")
+    const orderNumber = searchParams.get("orderNumber")
+    const trackingNumber = searchParams.get("trackingNumber")
+
+    setFormData(prev => ({
+      ...prev,
+      ...(category && { category }),
+      ...(priority && { priority }),
+      ...(subject && { subject }),
+      ...(description && { description }),
+      ...(orderNumber && { orderNumber }),
+      ...(trackingNumber && { trackingNumber })
+    }))
+  }, [searchParams])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -142,6 +163,23 @@ export default function NewTicketPage() {
           <p className="text-gray-600 mt-1">Get help with your order or inquiry</p>
         </div>
       </div>
+
+      {/* Pre-filled Info Banner */}
+      {(formData.orderNumber || formData.trackingNumber) && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-green-900 font-medium">
+                Order information loaded
+              </p>
+              <p className="text-sm text-green-700 mt-1">
+                We've pre-filled this form with information from your order. Please review and add any additional details about your issue.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

@@ -12,7 +12,8 @@ import {
   Clock,
   AlertTriangle,
   Home,
-  Building2
+  Building2,
+  FileText
 } from "lucide-react"
 
 // Mock data - in real app, this would come from API
@@ -539,8 +540,18 @@ export default function OrderTrackingPage() {
               <Button
                 className="w-full"
                 variant="outline"
-                onClick={() => router.push("/interfaces/support/tickets")}
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    category: "Delivery Issue",
+                    orderNumber: order.orderNumber,
+                    trackingNumber: order.trackingNumber,
+                    subject: `Issue with order ${order.orderNumber}`,
+                    description: `I need help with my order ${order.orderNumber} (Tracking: ${order.trackingNumber}).\n\nOrder Details:\n- Status: ${order.status}\n- Description: ${order.description}\n- Carrier: ${order.carrier}\n- Expected Delivery: ${order.estimatedDelivery}\n\nIssue description: `
+                  })
+                  router.push(`/interfaces/support/tickets/new?${params.toString()}`)
+                }}
               >
+                <FileText className="mr-2 h-4 w-4" />
                 Report a Ticket
               </Button>
               <p className="text-xs text-gray-500 text-center">
