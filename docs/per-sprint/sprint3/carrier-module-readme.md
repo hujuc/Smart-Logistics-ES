@@ -44,6 +44,10 @@ All endpoints are under `/api/admin/carriers`:
 - `GET /integrations/snapshot` – Fetch live data from Shippo+ShipEngine without storing
 - `POST /integrations/sync` – Synchronize carriers from external APIs to local database
 
+### Shipping Operations
+- `POST /addresses/validate` – Validate and correct shipping addresses
+- `POST /rates/calculate` – Calculate shipping rates, costs, and delivery times between two addresses
+
 ### Tested Endpoints Results
 
 **Integration Snapshot** (`GET /integrations/snapshot`):
@@ -227,6 +231,10 @@ Todos os endpoints estão em `/api/admin/carriers`:
 ### Integração API Externa
 - `GET /integrations/snapshot` – Obter dados em tempo real do Shippo+ShipEngine sem armazenar
 - `POST /integrations/sync` – Sincronizar transportadoras das APIs externas para a base de dados
+
+### Operações de Envio
+- `POST /addresses/validate` – Validar e corrigir endereços de envio
+- `POST /rates/calculate` – Calcular tarifas, custos e tempos de entrega entre dois endereços
 
 ### Resultados dos Endpoints Testados
 
