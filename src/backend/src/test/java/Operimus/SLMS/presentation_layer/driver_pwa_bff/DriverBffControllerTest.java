@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.driver_bff;
+package Operimus.SLMS.presentation_layer.driver_pwa_bff;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
