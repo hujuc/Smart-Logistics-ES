@@ -13,7 +13,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
           <Link href="/interfaces/warehouse">
-            <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <div className="bg-white border rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <Package className="h-12 w-12 mb-4 mx-auto text-black" />
               <h2 className="text-xl font-semibold text-black mb-2">
                 Warehouse
@@ -26,7 +26,7 @@ export default function Home() {
           </Link>
 
           <Link href="/interfaces/logistics">
-            <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <div className="bg-white border rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <Truck className="h-12 w-12 mb-4 mx-auto text-black" />
               <h2 className="text-xl font-semibold text-black mb-2">
                 Logistics
@@ -38,8 +38,8 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/interfaces/costumer-service">
-            <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/interfaces/customer-service">
+            <div className="bg-white border rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <UserCircle className="h-12 w-12 mb-4 mx-auto text-black" />
               <h2 className="text-xl font-semibold text-black mb-2">
                 Customer Service

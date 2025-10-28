@@ -36,7 +36,7 @@ The endpoints support the key customer support and issue resolution functions:
 
 ---
 
-## 4. Dashboard & Service KPIs
+## 3. Dashboard & Service KPIs
 
 | Method | Endpoint | Description | Main Tables |
 |--------|-----------|--------------|--------------|

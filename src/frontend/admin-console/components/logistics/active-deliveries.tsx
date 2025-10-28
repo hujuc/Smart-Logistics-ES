@@ -11,7 +11,7 @@ export function ActiveDeliveries({
   onContactDriver,
 }: ActiveDeliveriesProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+    <div className="bg-white border rounded-lg p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-black mb-4">
         Active Deliveries ({deliveries.length})
       </h2>
@@ -19,7 +19,7 @@ export function ActiveDeliveries({
         {deliveries.map((item) => (
           <div
             key={item.id}
-            className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+            className="border rounded-lg p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-start gap-4">

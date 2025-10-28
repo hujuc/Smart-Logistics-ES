@@ -85,7 +85,7 @@ export default function QRScannerPage() {
       {/* Scanner Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Camera View */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-black mb-4">Camera Scanner</h2>
           
           {/* Start Camera Button - Only show when camera is not active */}
@@ -166,7 +166,7 @@ export default function QRScannerPage() {
         </div>
 
         {/* Manual Input */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-black mb-4">Manual Entry</h2>
           <div className="space-y-4">
             <div>
@@ -189,7 +189,7 @@ export default function QRScannerPage() {
 
           {/* Last Scanned Package */}
           {lastScanned && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="mt-6 pt-6 border-t">
               <div className="flex items-start gap-3">
                 {scanStatus === "success" ? (
                   <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
@@ -229,7 +229,7 @@ export default function QRScannerPage() {
       </div>
 
       {/* Scanned Packages History */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-black mb-4">
           Scan History ({scannedPackages.length})
         </h2>
@@ -244,7 +244,7 @@ export default function QRScannerPage() {
             {scannedPackages.map((pkg, index) => (
               <div
                 key={`${pkg.id}-${index}`}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
