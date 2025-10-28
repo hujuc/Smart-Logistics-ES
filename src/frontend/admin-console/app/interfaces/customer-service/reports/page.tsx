@@ -47,7 +47,7 @@ export default function ReportsPage() {
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
-          <Link href="/interfaces/costumer-service">
+          <Link href="/interfaces/customer-service">
             <Button variant="outline">Back to Inquiries</Button>
           </Link>
         </div>
@@ -55,7 +55,7 @@ export default function ReportsPage() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Inquiries</p>
@@ -81,7 +81,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Resolved</p>
@@ -102,7 +102,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Avg Response Time</p>
@@ -119,7 +119,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Satisfaction Rate</p>
@@ -138,7 +138,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Monthly Trends Chart */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <BarChart className="h-6 w-6 text-blue-600" />
@@ -195,7 +195,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Category Breakdown */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
             <AlertCircle className="h-6 w-6 text-purple-600" />
