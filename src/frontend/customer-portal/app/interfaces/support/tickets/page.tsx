@@ -25,7 +25,6 @@ const mockCustomerTickets = [
     priority: "High",
     createdAt: "2025-10-26 09:30",
     lastUpdate: "2025-10-27 10:15",
-    messages: 3,
   },
   {
     id: "TKT002",
@@ -36,7 +35,6 @@ const mockCustomerTickets = [
     priority: "Medium",
     createdAt: "2025-10-25 14:20",
     lastUpdate: "2025-10-27 08:45",
-    messages: 5,
   },
   {
     id: "TKT003",
@@ -47,7 +45,6 @@ const mockCustomerTickets = [
     priority: "High",
     createdAt: "2025-10-24 11:00",
     lastUpdate: "2025-10-26 16:30",
-    messages: 8,
   },
   {
     id: "TKT004",
@@ -58,7 +55,6 @@ const mockCustomerTickets = [
     priority: "Low",
     createdAt: "2025-10-23 10:15",
     lastUpdate: "2025-10-24 09:00",
-    messages: 2,
   },
 ]
 
@@ -205,7 +201,6 @@ export default function CustomerTicketsPage() {
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Created</TableHead>
-              <TableHead>Messages</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -245,13 +240,7 @@ export default function CustomerTicketsPage() {
                     {new Date(ticket.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">{ticket.messages}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(ticket.id)}>
                       View
                     </Button>
                   </TableCell>

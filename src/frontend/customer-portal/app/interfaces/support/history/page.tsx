@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -62,9 +63,14 @@ const mockOrders = [
 ]
 
 export default function OrderHistoryPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [orders] = useState(mockOrders)
   const [filterStatus, setFilterStatus] = useState("All")
+
+  const handleTrackOrder = (trackingNumber: string) => {
+    router.push(`/interfaces/support/history/${trackingNumber}`)
+  }
 
   const filteredOrders = orders
     .filter((order) => {
@@ -235,7 +241,7 @@ export default function OrderHistoryPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order.trackingNumber)}>
                         Track
                       </Button>
                     </div>
