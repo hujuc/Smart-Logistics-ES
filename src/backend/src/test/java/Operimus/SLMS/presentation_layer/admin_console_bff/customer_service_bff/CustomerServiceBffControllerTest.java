@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.customer_service_bff;
+package Operimus.SLMS.presentation_layer.admin_console_bff.customer_service_bff;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -6,7 +6,11 @@ import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.O
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import Operimus.SLMS.business_layer.customer_support_module.service.DeliveryExceptionService;
+import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
 
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,6 +24,12 @@ class CustomerServiceBffControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private DeliveryExceptionService exceptionService;
+
+    @MockBean
+    private OrderService orderService;
 
     @Test
     void whenHealthCheck_thenReturnStatus() throws Exception {
