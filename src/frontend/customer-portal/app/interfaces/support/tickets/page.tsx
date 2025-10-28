@@ -68,6 +68,10 @@ export default function CustomerTicketsPage() {
     router.push(`/interfaces/support/tickets/${ticketId}`)
   }
 
+  const handleNewTicket = () => {
+    router.push("/interfaces/support/tickets/new")
+  }
+
   const filteredTickets = tickets
     .filter((ticket) => {
       const matchesSearch =
@@ -121,7 +125,7 @@ export default function CustomerTicketsPage() {
           <h1 className="text-3xl font-bold text-black">My Support Tickets</h1>
           <p className="text-gray-600 mt-1">View and manage your support requests</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleNewTicket}>
           <Plus className="h-4 w-4" />
           New Ticket
         </Button>

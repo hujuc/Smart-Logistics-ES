@@ -34,7 +34,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <DynamicFloatingNav />
         </Suspense>
-        <main className="pr-30 pl-40">
+        <main className="pr-30 pl-40" style={{ marginBottom: "80px" }}>
           {children}
         </main>
       </body>
