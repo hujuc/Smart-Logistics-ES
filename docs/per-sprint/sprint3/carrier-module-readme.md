@@ -122,12 +122,21 @@ Orders can be linked to carriers via `carrierId` field:
 
 ### ShipEngine API Features (Working)
 
-1. **Carrier Management**
+1. **Address Validation**
+   ```bash
+   POST https://api.shipengine.com/v1/addresses/validate
+   ```
+   - ✅ Validates and standardizes addresses
+   - ✅ Returns validation status and normalized addresses
+   - ✅ Provides address quality scores
+   - ✅ Identifies residential vs commercial addresses
+
+2. **Carrier Management**
    - ✅ Fetches UPS and FedEx carrier details
    - ✅ Provides comprehensive service levels
    - ✅ Returns 23 UPS services, 26 FedEx services
 
-2. **Account Information**
+3. **Account Information**
    - ✅ Provides carrier IDs and account numbers
    - ✅ Active status and contact information
 
@@ -297,12 +306,21 @@ Encomendas podem ser ligadas a transportadoras via campo `carrierId`:
 
 ### Funcionalidades API ShipEngine (Funcionais)
 
-1. **Gestão de Transportadoras**
+1. **Validação de Endereços**
+   ```bash
+   POST https://api.shipengine.com/v1/addresses/validate
+   ```
+   - ✅ Valida e normaliza endereços
+   - ✅ Retorna estado de validação e endereços normalizados
+   - ✅ Fornece scores de qualidade do endereço
+   - ✅ Identifica endereços residenciais vs comerciais
+
+2. **Gestão de Transportadoras**
    - ✅ Obtém detalhes das transportadoras UPS e FedEx
    - ✅ Fornece níveis de serviço abrangentes
    - ✅ Retorna 23 serviços UPS, 26 serviços FedEx
 
-2. **Informação de Contas**
+3. **Informação de Contas**
    - ✅ Fornece IDs de transportadoras e números de conta
    - ✅ Estado ativo e informações de contacto
 
