@@ -917,6 +917,192 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Customer Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/health",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "health"]
+						}
+					}
+				},
+				{
+					"name": "Create Delivery Exception",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has exception ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.collectionVariables.set('exception_id', jsonData.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": 1,\n  \"type\": \"DAMAGED\",\n  \"category\": \"PACKAGE_DAMAGE\",\n  \"source\": \"CUSTOMER\",\n  \"severity\": \"HIGH\",\n  \"description\": \"Package arrived damaged\",\n  \"reportedBy\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"customerReported\": true,\n  \"customerId\": \"550e8400-e29b-41d4-a716-446655440001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions"]
+						}
+					}
+				},
+				{
+					"name": "Get Exception by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get All Exceptions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions"]
+						}
+					}
+				},
+				{
+					"name": "Get Exceptions with Filters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions?status=OPEN&severity=HIGH",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions"],
+							"query": [
+								{
+									"key": "status",
+									"value": "OPEN"
+								},
+								{
+									"key": "severity",
+									"value": "HIGH"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Exception",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"assignedTo\": \"550e8400-e29b-41d4-a716-446655440002\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Close Exception",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"resolutionNotes\": \"Issue resolved successfully\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}/close",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}", "close"]
+						}
+					}
+				},
+				{
+					"name": "Get Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/dashboard/exceptions/summary",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "dashboard", "exceptions", "summary"]
+						}
+					}
+				},
+				{
+					"name": "Get Alerts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/dashboard/alerts",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "dashboard", "alerts"]
+						}
+					}
+				},
+				{
+					"name": "Search Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/customer-service/orders/search?query=ORD",
+							"host": ["{{base_url}}"],
+							"path": ["customer-service", "orders", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "ORD"
+								}
+							]
+						}
+					}
+				}
+			]
 		}
 	]
 }
