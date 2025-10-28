@@ -7,7 +7,7 @@ import { MapPin, X, Navigation as NavigationIcon } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoidWdvb28iLCJhIjoiY21ndGdndmZtMDNsNTJqczQ2d3hnbmlyaiJ9.oRyPS2ZviBFuAcSwrVKkcg';
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
 type Delivery = {
     id: number;
