@@ -44,8 +44,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                // Health check endpoints (public)
-                .requestMatchers("/api/customer-service/health").permitAll()
                 // Internal Development APIs - Domain Layer Controllers (no auth required)
                 .requestMatchers("/api/admin/**").permitAll() // Catch-all for other domain controllers
                 // Protected BFF endpoints (role-based)
