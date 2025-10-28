@@ -33,6 +33,7 @@ function NavigationContent() {
     const [arrivalTime, setArrivalTime] = useState<string>('');
     const [currentLocation, setCurrentLocation] = useState<[number, number]>([-8.6600, 40.6500]); // Default fallback location
     const [locationError, setLocationError] = useState<string>('');
+    const hasInitialZoom = useRef(false); // Track if initial zoom has been done
 
     const deliveries: Record<number, Delivery> = {
         1: {
@@ -185,46 +186,50 @@ function NavigationContent() {
                     const minutes = arrivalDate.getMinutes().toString().padStart(2, '0');
                     setArrivalTime(`${hours}:${minutes}`);
 
-                    // Remove existing route source and layer if they exist
-                    if (map.current.getLayer('route')) {
-                        map.current.removeLayer('route');
-                    }
-                    if (map.current.getSource('route')) {
-                        map.current.removeSource('route');
-                    }
-
-                    // Add route line with real road data
-                    map.current!.addSource('route', {
-                        type: 'geojson',
-                        data: {
-                            type: 'Feature',
-                            properties: {},
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: route
-                            }
+                    const routeData = {
+                        type: 'Feature' as const,
+                        properties: {},
+                        geometry: {
+                            type: 'LineString' as const,
+                            coordinates: route
                         }
-                    });
+                    };
 
-                map.current!.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: 'route',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#3B82F6',
-                        'line-width': 5,
-                        'line-opacity': 0.75
+                    // Update existing source or create new one
+                    const routeSource = map.current.getSource('route') as mapboxgl.GeoJSONSource;
+                    if (routeSource) {
+                        // Just update the data without removing/recreating
+                        routeSource.setData(routeData);
+                    } else {
+                        // First time: create source and layer
+                        map.current!.addSource('route', {
+                            type: 'geojson',
+                            data: routeData
+                        });
+
+                        map.current!.addLayer({
+                            id: 'route',
+                            type: 'line',
+                            source: 'route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#3B82F6',
+                                'line-width': 5,
+                                'line-opacity': 0.75
+                            }
+                        });
                     }
-                });
 
-                // Fit bounds to show entire route
-                const bounds = new mapboxgl.LngLatBounds();
-                route.forEach((coord: [number, number]) => bounds.extend(coord));
-                map.current!.fitBounds(bounds, { padding: 80 });
+                // Fit bounds to show entire route only on first load
+                if (!hasInitialZoom.current) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    route.forEach((coord: [number, number]) => bounds.extend(coord));
+                    map.current!.fitBounds(bounds, { padding: 80 });
+                    hasInitialZoom.current = true;
+                }
             } catch (error) {
                 console.error('Error fetching route:', error);
                 // Fallback to straight line and default values if API fails
@@ -239,44 +244,50 @@ function NavigationContent() {
                 const minutes = arrivalDate.getMinutes().toString().padStart(2, '0');
                 setArrivalTime(`${hours}:${minutes}`);
                 
-                // Remove existing route source and layer if they exist
-                if (map.current!.getLayer('route')) {
-                    map.current!.removeLayer('route');
-                }
-                if (map.current!.getSource('route')) {
-                    map.current!.removeSource('route');
-                }
-                
-                map.current!.addSource('route', {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: [currentLocation, currentDelivery.coordinates]
+                const fallbackRouteData = {
+                    type: 'Feature' as const,
+                    properties: {},
+                    geometry: {
+                        type: 'LineString' as const,
+                        coordinates: [currentLocation, currentDelivery.coordinates]
+                    }
+                };
+
+                // Update existing source or create new one
+                const routeSource = map.current!.getSource('route') as mapboxgl.GeoJSONSource;
+                if (routeSource) {
+                    // Just update the data without removing/recreating
+                    routeSource.setData(fallbackRouteData);
+                } else {
+                    // First time: create source and layer
+                    map.current!.addSource('route', {
+                        type: 'geojson',
+                        data: fallbackRouteData
+                    });
+
+                    map.current!.addLayer({
+                        id: 'route',
+                        type: 'line',
+                        source: 'route',
+                        layout: {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        paint: {
+                            'line-color': '#3B82F6',
+                            'line-width': 4
                         }
-                    }
-                });
+                    });
+                }
 
-                map.current!.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: 'route',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#3B82F6',
-                        'line-width': 4
-                    }
-                });
-
-                const bounds = new mapboxgl.LngLatBounds();
-                bounds.extend(currentLocation);
-                bounds.extend(currentDelivery.coordinates);
-                map.current.fitBounds(bounds, { padding: 80 });
+                // Fit bounds to show entire route only on first load
+                if (!hasInitialZoom.current) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    bounds.extend(currentLocation);
+                    bounds.extend(currentDelivery.coordinates);
+                    map.current.fitBounds(bounds, { padding: 80 });
+                    hasInitialZoom.current = true;
+                }
                 }
             }
         };
