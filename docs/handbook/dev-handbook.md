@@ -51,7 +51,7 @@ Each frontend has its own **BFF (Backend-for-Frontend)** layer.
 
 ### Infrastructure Components
 
-- **PostgreSQL 16** - Primary database (17 tables, relational schema)
+- **PostgreSQL 16** - Primary database (18 tables, relational schema)
 - **ShipEngine API** - Unified carrier integration (FedEx, UPS, DHL)
 - **Docker** - All components containerized
 
