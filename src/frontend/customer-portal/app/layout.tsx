@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/navbar";
+import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SLMS - Customer Portal",
-  description: "Customer service portal for support and inquiries",
+  description: "Track your packages and manage delivery preferences",
 };
 
 export default function RootLayout({
@@ -27,7 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <main className="container mx-auto px-4 py-8">
+        <Navbar />
+        <Suspense fallback={null}>
+          <DynamicFloatingNav />
+        </Suspense>
+        <main className="pr-30 pl-40">
           {children}
         </main>
       </body>

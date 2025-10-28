@@ -1,4 +1,4 @@
-import { Package, QrCode, Settings, Truck, MapPin, Users, MessageSquare, FileText, BarChart } from "lucide-react"
+import { MessageSquare, FileText, Settings } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -7,73 +7,20 @@ export interface NavItem {
   label: string
 }
 
-// Warehouse Interface Navigation
-export const warehouseNavItems: NavItem[] = [
+// Customer Portal Support Navigation
+export const supportNavItems: NavItem[] = [
   {
-    href: "/interfaces/warehouse",
-    icon: Package,
-    label: "Warehouse",
-  },
-  {
-    href: "/interfaces/warehouse/qr-scanner",
-    icon: QrCode,
-    label: "QR Scanner",
-  },
-  {
-    href: "/settings?from=warehouse",
-    icon: Settings,
-    label: "Settings",
-  },
-]
-
-// Logistics Interface Navigation
-export const logisticsNavItems: NavItem[] = [
-  {
-    href: "/interfaces/logistics",
-    icon: BarChart,
-    label: "Overview",
-  },
-  {
-    href: "/interfaces/logistics/carrier-comparison",
-    icon: Truck,
-    label: "New Shipment",
-  },
-  {
-    href: "/interfaces/logistics/tracking",
-    icon: MapPin,
-    label: "Tracking",
-  },
-  {
-    href: "/interfaces/logistics/drivers",
-    icon: Users,
-    label: "Drivers",
-  },
-  {
-    href: "/settings?from=logistics",
-    icon: Settings,
-    label: "Settings",
-  },
-]
-
-// Customer Service Interface Navigation
-export const customerServiceNavItems: NavItem[] = [
-  {
-    href: "/interfaces/costumer-service",
+    href: "/interfaces/support/tickets",
     icon: MessageSquare,
-    label: "Inquiries",
+    label: "My Tickets",
   },
   {
-    href: "/interfaces/costumer-service/tickets",
+    href: "/interfaces/support/history",
     icon: FileText,
-    label: "Tickets",
+    label: "Order History",
   },
   {
-    href: "/interfaces/costumer-service/reports",
-    icon: BarChart,
-    label: "Reports",
-  },
-  {
-    href: "/settings?from=customer-service",
+    href: "/settings",
     icon: Settings,
     label: "Settings",
   },
@@ -82,19 +29,11 @@ export const customerServiceNavItems: NavItem[] = [
 // Navigation configuration for dynamic floating nav
 export const navConfig = [
   {
-    basePath: "/interfaces/warehouse",
-    items: warehouseNavItems,
-  },
-  {
-    basePath: "/interfaces/logistics",
-    items: logisticsNavItems,
-  },
-  {
-    basePath: "/interfaces/costumer-service",
-    items: customerServiceNavItems,
+    basePath: "/interfaces/support",
+    items: supportNavItems,
   },
   {
     basePath: "/settings",
-    items: warehouseNavItems, // Default to warehouse, will be handled by component
+    items: supportNavItems,
   },
 ]
