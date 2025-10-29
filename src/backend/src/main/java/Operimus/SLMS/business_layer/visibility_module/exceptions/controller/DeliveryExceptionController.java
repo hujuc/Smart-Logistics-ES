@@ -1,11 +1,11 @@
 package Operimus.SLMS.business_layer.visibility_module.exceptions.controller;
 
-import Operimus.SLMS.business_layer.customer_support_module.dto.DeliveryExceptionRequest;
-import Operimus.SLMS.business_layer.customer_support_module.dto.DeliveryExceptionResponse;
-import Operimus.SLMS.business_layer.customer_support_module.dto.DeliveryExceptionUpdateRequest;
-import Operimus.SLMS.business_layer.customer_support_module.dto.ExceptionSummaryResponse;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException;
-import Operimus.SLMS.business_layer.customer_support_module.service.DeliveryExceptionService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionRequest;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionResponse;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionUpdateRequest;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.ExceptionSummaryResponse;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

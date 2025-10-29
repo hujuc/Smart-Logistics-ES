@@ -1,8 +1,8 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.customer_service_bff;
 
-import Operimus.SLMS.business_layer.customer_support_module.dto.*;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException.*;
-import Operimus.SLMS.business_layer.customer_support_module.service.DeliveryExceptionService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;

@@ -46,6 +46,9 @@ class OrderServiceTest {
     @MockBean
     private OrderDocumentService orderDocumentService;
 
+    @MockBean
+    private CarrierService carrierService;
+
     private Warehouse warehouse;
 
     @BeforeEach

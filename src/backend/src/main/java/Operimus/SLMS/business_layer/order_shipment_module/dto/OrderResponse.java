@@ -22,6 +22,9 @@ public class OrderResponse {
     private String shippingAddress;
     private LocalDate estimatedDeliveryDate;
     private Long warehouseId;
+    private Long carrierId;
+    private String carrierCode;
+    private String carrierName;
     private String shippoShipmentId;
     private String shippoTransactionId;
     private String shipstationOrderId;

@@ -1,14 +1,16 @@
 package Operimus.SLMS.business_layer.visibility_module.exceptions.controller;
 
-import Operimus.SLMS.business_layer.customer_support_module.dto.*;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException.*;
-import Operimus.SLMS.business_layer.customer_support_module.service.DeliveryExceptionService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -27,7 +29,8 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(DeliveryExceptionController.class)
+@WebMvcTest(controllers = DeliveryExceptionController.class,
+    excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class})
 @AutoConfigureMockMvc(addFilters = false)
 class DeliveryExceptionControllerTest {
 
