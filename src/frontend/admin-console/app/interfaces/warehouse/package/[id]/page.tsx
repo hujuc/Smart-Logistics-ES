@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
-import type { Order } from "@/types"
+import type { Order, ShipmentOrderStatus } from "@/types"
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
 
@@ -28,6 +29,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [isQrLoading, setIsQrLoading] = useState(false)
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+  const [isStatusChanging, setIsStatusChanging] = useState(false)
 
   // Unwrap params Promise
   useEffect(() => {
@@ -166,6 +168,26 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
   }
 
+  const handleStatusChange = async (newStatus: ShipmentOrderStatus) => {
+    if (!order || !orderId) return
+
+    try {
+      setIsStatusChanging(true)
+      await warehouseService.updateOrderStatus(parseInt(orderId), newStatus)
+      
+      // Reload order to get updated data
+      const updatedOrder = await warehouseService.getOrderById(parseInt(orderId))
+      setOrder(updatedOrder)
+      
+      alert(`Status successfully changed to ${STATUS_LABELS[newStatus]}`)
+    } catch (err) {
+      console.error('Failed to update status:', err)
+      alert('Failed to update status. Please try again.')
+    } finally {
+      setIsStatusChanging(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -300,12 +322,23 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             </h3>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Input
+              <Select
                 id="status"
-                value={STATUS_LABELS[order.status]}
-                disabled
+                value={order.status}
+                onChange={(e) => handleStatusChange(e.target.value as ShipmentOrderStatus)}
+                disabled={isStatusChanging}
                 className="mt-1"
-              />
+              >
+                <option value="CREATED">Pending Labels</option>
+                <option value="READY_FOR_PICKUP">Ready for Dispatch</option>
+                <option value="COLLECTED">Collected</option>
+                <option value="IN_TRANSIT">In Transit</option>
+                <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancelled</option>
+              </Select>
+              {isStatusChanging && (
+                <p className="text-sm text-gray-500 mt-1">Updating status...</p>
+              )}
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
