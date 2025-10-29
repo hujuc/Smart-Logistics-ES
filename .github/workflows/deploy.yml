@@ -114,7 +114,8 @@ jobs:
         env:
           KEYCLOAK_HOST: localhost
           KEYCLOAK_PORT: "28180"
-          KEYCLOAK_REALM: slms
+          KEYCLOAK_REALM: ${{ env.KEYCLOAK_REALM }}
+          KEYCLOAK_ADMIN_CLIENT_ID: ${{ env.KEYCLOAK_ADMIN_CLIENT_ID }}
           KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ env.KEYCLOAK_ADMIN_CLIENT_SECRET }}
           MINIO_HOST: localhost
           MINIO_PORT: "39000"
