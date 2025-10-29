@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.driver_bff;
+package Operimus.SLMS.presentation_layer.driver_pwa_bff;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

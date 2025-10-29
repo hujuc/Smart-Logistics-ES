@@ -3,6 +3,7 @@ package Operimus.SLMS.business_layer.order_shipment_module.service;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.InMemoryMultipartFile;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.Carrier;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
@@ -10,6 +11,7 @@ import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrd
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,6 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import java.io.ByteArrayOutputStream;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -30,7 +31,9 @@ public class OrderService {
 
     private final ShipmentOrderRepository shipmentOrderRepository;
     private final WarehouseService warehouseService;
+    private final CarrierService carrierService;
     private final OrderDocumentService orderDocumentService;  // Adicionando dependência para o upload
+    private final ShipmentOrderEventService shipmentOrderEventService;
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
@@ -40,6 +43,7 @@ public class OrderService {
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
+        Carrier carrier = resolveCarrier(request.getCarrierId());
 
         // Criar a encomenda
         ShipmentOrder order = ShipmentOrder.builder()
@@ -49,6 +53,7 @@ public class OrderService {
                 .shippingAddress(request.getShippingAddress())
                 .estimatedDeliveryDate(request.getEstimatedDeliveryDate())
                 .warehouse(warehouse)
+                .carrier(carrier)
                 .shippoShipmentId(request.getShippoShipmentId())
                 .shippoTransactionId(request.getShippoTransactionId())
                 .shipstationOrderId(request.getShipstationOrderId())
@@ -59,6 +64,7 @@ public class OrderService {
 
         // Salvar a encomenda no banco (gera orderId)
         ShipmentOrder saved = shipmentOrderRepository.save(order);
+        shipmentOrderEventService.recordStatusChange(saved, null, saved.getStatus());
 
         // Gerar o QR code para a encomenda
         byte[] qrImage = generateQrCode(saved.getId().toString(), 300);  // Gerando o QR code
@@ -86,19 +92,29 @@ public class OrderService {
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
+        Carrier carrier = resolveCarrier(request.getCarrierId());
+
+        ShipmentOrderStatus previousStatus = order.getStatus();
+        ShipmentOrderStatus newStatus = resolveStatus(request.getStatus());
+        boolean statusChanged = previousStatus != newStatus;
 
         order.setReference(request.getReference());
         order.setDescription(request.getDescription());
-        order.setStatus(resolveStatus(request.getStatus()));
+        order.setStatus(newStatus);
         order.setShippingAddress(request.getShippingAddress());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
+        order.setCarrier(carrier);
         order.setShippoShipmentId(request.getShippoShipmentId());
         order.setShippoTransactionId(request.getShippoTransactionId());
         order.setShipstationOrderId(request.getShipstationOrderId());
         order.setShipstationCarrierCode(request.getShipstationCarrierCode());
         order.setShipstationServiceCode(request.getShipstationServiceCode());
         order.setTrackingNumber(request.getTrackingNumber());
+
+        if (statusChanged) {
+            shipmentOrderEventService.recordStatusChange(order, previousStatus, newStatus);
+        }
 
         return mapToResponse(order);
     }
@@ -133,6 +149,7 @@ public class OrderService {
         }
 
         order.setStatus(ShipmentOrderStatus.COLLECTED);
+        shipmentOrderEventService.recordStatusChange(order, currentStatus, ShipmentOrderStatus.COLLECTED);
         return mapToResponse(order);
     }
 
@@ -162,6 +179,9 @@ public class OrderService {
                 .shippingAddress(order.getShippingAddress())
                 .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                 .warehouseId(order.getWarehouse().getId())
+                .carrierId(order.getCarrier() != null ? order.getCarrier().getId() : null)
+                .carrierCode(order.getCarrier() != null ? order.getCarrier().getCode() : null)
+                .carrierName(order.getCarrier() != null ? order.getCarrier().getName() : null)
                 .shippoShipmentId(order.getShippoShipmentId())
                 .shippoTransactionId(order.getShippoTransactionId())
                 .shipstationOrderId(order.getShipstationOrderId())
@@ -171,6 +191,13 @@ public class OrderService {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+
+    private Carrier resolveCarrier(Long carrierId) {
+        if (carrierId == null) {
+            return null;
+        }
+        return carrierService.findEntityById(carrierId);
     }
     private byte[] generateQrCode(String orderId, int size) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
