@@ -15,17 +15,18 @@ SLMS uses **PostgreSQL 16** as the primary database with a comprehensive relatio
 
 ### Table Organization
 
-**17 tables grouped by functional domain:**
+**18 tables grouped by functional domain:**
 
 #### Foundation (2 tables)
 
 - `users` - Authentication and RBAC
 - `warehouses` - Multi-warehouse support
 
-#### Order Management (3 tables)
+#### Order Management (4 tables)
 
 - `carriers` - Third-party shipping providers
 - `orders` - Core shipment tracking
+- `order_events` - Status transition timeline for each order
 - `shipping_documents` - Labels, manifests, POD
 
 #### Tracking (2 tables)

@@ -1,0 +1,75 @@
+package Operimus.SLMS.business_layer.order_shipment_module.service;
+
+import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderEventResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderEvent;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderEventRepository;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
+import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class ShipmentOrderEventService {
+
+    private final ShipmentOrderEventRepository shipmentOrderEventRepository;
+    private final ShipmentOrderRepository shipmentOrderRepository;
+
+    public void recordStatusChange(
+            ShipmentOrder order, ShipmentOrderStatus previousStatus, ShipmentOrderStatus newStatus) {
+        if (newStatus == null) {
+            return;
+        }
+
+        String notes = previousStatus == null
+                ? "Order initialized with status %s".formatted(newStatus)
+                : "Order status changed from %s to %s".formatted(previousStatus, newStatus);
+
+        ShipmentOrderEvent event = ShipmentOrderEvent.builder()
+                .shipmentOrder(order)
+                .eventType(newStatus)
+                .notes(notes)
+                .build();
+
+        shipmentOrderEventRepository.save(event);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderEventResponse> getEventsForOrder(Long orderId) {
+        ensureOrderExists(orderId);
+        return shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(orderId).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderEventResponse getLatestEventForOrder(Long orderId) {
+        ensureOrderExists(orderId);
+        return shipmentOrderEventRepository
+                .findFirstByShipmentOrderIdOrderByOccurredAtDesc(orderId)
+                .map(this::mapToResponse)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No events recorded for order %d".formatted(orderId)));
+    }
+
+    private void ensureOrderExists(Long orderId) {
+        if (!shipmentOrderRepository.existsById(orderId)) {
+            throw new ResourceNotFoundException("Order %d not found".formatted(orderId));
+        }
+    }
+
+    private OrderEventResponse mapToResponse(ShipmentOrderEvent event) {
+        return OrderEventResponse.builder()
+                .id(event.getId())
+                .orderId(event.getShipmentOrder().getId())
+                .eventType(event.getEventType())
+                .occurredAt(event.getOccurredAt())
+                .notes(event.getNotes())
+                .build();
+    }
+}
