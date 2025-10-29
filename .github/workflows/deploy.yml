@@ -79,7 +79,7 @@ jobs:
       - name: Start integration dependencies
         working-directory: ${{ github.workspace }}
         shell: bash
-        run: docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
+        run: sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
 
       - name: Wait for Keycloak readiness
         working-directory: ${{ github.workspace }}
@@ -92,7 +92,7 @@ jobs:
             fi
             sleep 5
           done
-          docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
+          sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
           exit 1
 
       - name: Wait for MinIO readiness
@@ -106,7 +106,7 @@ jobs:
             fi
             sleep 5
           done
-          docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs minio
+          sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs minio
           exit 1
 
       - name: Run backend integration tests
@@ -128,7 +128,7 @@ jobs:
         if: always()
         working-directory: ${{ github.workspace }}
         shell: bash
-        run: docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml down -v
+        run: sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml down -v
 
       - name: Clean CI env file
         if: always()
@@ -251,5 +251,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose --env-file ./.env down --remove-orphans
-          docker compose --env-file ./.env up --build -d
+          sudo docker compose --env-file ./.env down --remove-orphans
+          sudo docker compose --env-file ./.env up --build -d
