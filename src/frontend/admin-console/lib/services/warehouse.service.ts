@@ -60,6 +60,29 @@ export const warehouseService = {
   },
 
   /**
+   * Update order status
+   */
+  async updateOrderStatus(id: number, status: string): Promise<Order> {
+    // Get the current order to preserve other fields
+    const currentOrder = await this.getOrderById(id);
+    
+    // Update only the status field
+    return apiFetch<Order>(API_ENDPOINTS.warehouse.order(id), {
+      method: 'PUT',
+      body: JSON.stringify({
+        reference: currentOrder.reference,
+        description: currentOrder.description,
+        status: status,
+        shippingAddress: currentOrder.shippingAddress,
+        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate,
+        warehouseId: currentOrder.warehouseId,
+        carrierId: currentOrder.carrierId,
+        trackingNumber: currentOrder.trackingNumber,
+      }),
+    });
+  },
+
+  /**
    * Delete an order
    */
   async deleteOrder(id: number): Promise<void> {
