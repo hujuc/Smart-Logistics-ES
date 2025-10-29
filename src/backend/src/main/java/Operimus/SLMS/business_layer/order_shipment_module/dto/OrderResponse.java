@@ -31,6 +31,7 @@ public class OrderResponse {
     private String shipstationCarrierCode;
     private String shipstationServiceCode;
     private String trackingNumber;
+    private String customerId;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

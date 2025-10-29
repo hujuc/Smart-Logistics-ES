@@ -77,6 +77,9 @@ public class ShipmentOrder {
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
 
+    @Column(name = "customer_id", length = 64)
+    private String customerId;
+
     @CreationTimestamp
     @Column(updatable = false)
     private OffsetDateTime createdAt;

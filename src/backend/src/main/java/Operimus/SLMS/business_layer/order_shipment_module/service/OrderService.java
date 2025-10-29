@@ -166,6 +166,14 @@ public class OrderService {
         return shipmentOrderRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByCustomerId(String customerId) {
+        return shipmentOrderRepository.findAll().stream()
+                .filter(order -> order.getCustomerId() != null && order.getCustomerId().equals(customerId))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
         return status == null ? ShipmentOrderStatus.CREATED : status;
     }
@@ -188,6 +196,7 @@ public class OrderService {
                 .shipstationCarrierCode(order.getShipstationCarrierCode())
                 .shipstationServiceCode(order.getShipstationServiceCode())
                 .trackingNumber(order.getTrackingNumber())
+                .customerId(order.getCustomerId())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
