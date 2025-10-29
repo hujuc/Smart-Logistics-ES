@@ -76,6 +76,17 @@ export interface Order {
     origin: string;
     actualDelivery?: Date;
     scannedAt?: Date;
+    carrierId?: number;
+    carrierCode?: string;
+    carrierName?: string;
+}
+
+export interface OrderEvent {
+    id: number;
+    orderId: number;
+    eventType: ShipmentOrderStatus;
+    occurredAt: string;
+    notes: string;
 }
 
 export interface OrderDocument {

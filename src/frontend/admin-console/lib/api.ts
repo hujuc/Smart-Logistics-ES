@@ -50,6 +50,15 @@ export const API_ENDPOINTS = {
   customerService: {
     base: CUSTOMER_SERVICE_BASE,
     health: `${CUSTOMER_SERVICE_BASE}/health`,
+    
+    // Order search and lookup
+    ordersSearch: (query: string) => `${CUSTOMER_SERVICE_BASE}/orders/search?query=${encodeURIComponent(query)}`,
+    order: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}`,
+    orderEvents: (orderId: number) => `${API_BASE}/admin/orders/${orderId}/events`,
+    orderTracking: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/tracking`,
+    
+    // Exceptions
+    orderExceptions: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/exceptions`,
   },
 };
 
