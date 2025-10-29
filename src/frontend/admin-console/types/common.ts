@@ -81,6 +81,14 @@ export interface Order {
     scannedAt?: Date;
 }
 
+export interface OrderEvent {
+    id: number;
+    orderId: number;
+    eventType: ShipmentOrderStatus;
+    occurredAt: string;
+    notes: string;
+}
+
 export interface OrderDocument {
     orderId: number;
     documentId: string;
