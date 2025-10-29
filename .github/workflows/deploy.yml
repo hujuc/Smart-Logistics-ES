@@ -11,16 +11,16 @@ jobs:
     runs-on: [self-hosted, slms]
     env:
       COMPOSE_PROJECT_NAME: slms-ci-tests
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
-      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'slms' }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'slms' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'slms' }}
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN || 'admin' }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD || 'admin' }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID || 'slms-backend' }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET || 'dev-secret-change-in-production' }}
       KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM || 'slms' }}
       KC_DB: postgres
-      KC_DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      KC_DB_USERNAME: ${{ secrets.DB_USERNAME  }}
       KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       KC_DB_URL: ${{ format('jdbc:postgresql://postgres:5432/{0}', secrets.POSTGRES_DB != '' && secrets.POSTGRES_DB || 'slms') }}
       MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
@@ -94,42 +94,6 @@ jobs:
           done
           sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
           exit 1
-
-      - name: Configure Keycloak client secret for CI
-        working-directory: ${{ github.workspace }}
-        shell: bash
-        run: |
-          set -e
-          echo "Configuring Keycloak client secret..."
-          
-          # Get admin token
-          ADMIN_TOKEN=$(curl -sf -X POST "http://localhost:28180/realms/master/protocol/openid-connect/token" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "username=${KEYCLOAK_ADMIN}" \
-            -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
-            -d "grant_type=password" \
-            -d "client_id=admin-cli" | jq -r '.access_token')
-          
-          # Get client UUID
-          CLIENT_UUID=$(curl -sf "http://localhost:28180/admin/realms/${KEYCLOAK_REALM}/clients?clientId=${KEYCLOAK_ADMIN_CLIENT_ID}" \
-            -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
-          
-          echo "Found client UUID: $CLIENT_UUID"
-          
-          # Set the client secret to match what's in GitHub Secrets
-          curl -sf -X POST "http://localhost:28180/admin/realms/${KEYCLOAK_REALM}/clients/$CLIENT_UUID/client-secret" \
-            -H "Authorization: Bearer $ADMIN_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"type\": \"secret\", \"value\": \"${KEYCLOAK_ADMIN_CLIENT_SECRET}\"}"
-          
-          echo "✓ Client secret configured successfully"
-          
-          # Verify authentication works
-          curl -sf -X POST "http://localhost:28180/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "client_id=${KEYCLOAK_ADMIN_CLIENT_ID}" \
-            -d "client_secret=${KEYCLOAK_ADMIN_CLIENT_SECRET}" \
-            -d "grant_type=client_credentials" > /dev/null && echo "✓ Client authentication verified"
 
       - name: Wait for MinIO readiness
         working-directory: ${{ github.workspace }}
