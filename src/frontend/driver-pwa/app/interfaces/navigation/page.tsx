@@ -36,6 +36,9 @@ function NavigationContent() {
     const [isLoadingLocation, setIsLoadingLocation] = useState(true);
     const [showLocationWarning, setShowLocationWarning] = useState(false);
     const hasInitialZoom = useRef(false); // Track if initial zoom has been done
+    const hasOptimized = useRef(false); // Track if route has been optimized
+    const [optimizedOrder, setOptimizedOrder] = useState<number[]>([]);
+    const [isOptimizing, setIsOptimizing] = useState(false);
 
     const deliveries: Record<number, Delivery> = {
         1: {
@@ -49,14 +52,165 @@ function NavigationContent() {
         2: {
             id: 2,
             customerName: 'Maria Santos',
-            address: '456 Ave Street, Aveiro',
+            address: 'Rua Dr. António Christo, Aveiro',
             coordinates: [-8.6500, 40.6400],
             eta: '18 min',
             distance: '1.5 km'
+        },
+        3: {
+            id: 3,
+            customerName: 'Pedro Costa',
+            address: 'Forum Aveiro, Aveiro',
+            coordinates: [-8.6291, 40.6404],
+            eta: '15 min',
+            distance: '1.2 km'
+        },
+        4: {
+            id: 4,
+            customerName: 'Ana Silva',
+            address: 'Estação de Aveiro, Aveiro',
+            coordinates: [-8.6447, 40.6420],
+            eta: '20 min',
+            distance: '1.8 km'
+        },
+        5: {
+            id: 5,
+            customerName: 'Carlos Rodrigues',
+            address: 'Universidade de Aveiro, Campus',
+            coordinates: [-8.6597, 40.6316],
+            eta: '25 min',
+            distance: '2.5 km'
         }
     };
 
     const currentDelivery = deliveries[Number(deliveryId)] || deliveries[1];
+
+    // Optimize delivery route using Mapbox Optimization API
+    useEffect(() => {
+        const optimizeRoute = async () => {
+            // Prevent multiple optimizations
+            if (hasOptimized.current || isLoadingLocation) return;
+            
+            hasOptimized.current = true;
+            setIsOptimizing(true);
+            
+            console.log('🚀 Starting route optimization...');
+            console.log('Current location (lng, lat):', currentLocation);
+            console.log('Current deliveryId from URL:', deliveryId);
+            
+            try {
+                // Build coordinates array: start location + all delivery locations
+                const allDeliveryIds = Object.keys(deliveries).map(Number);
+                const allCoordinates = [
+                    currentLocation,
+                    ...allDeliveryIds.map(id => deliveries[id].coordinates)
+                ];
+
+                console.log('Delivery IDs to optimize:', allDeliveryIds);
+                console.log('All coordinates (lng, lat):', allCoordinates);
+
+                // Validate coordinate count (Optimization API requires 2-12 coordinates)
+                if (allCoordinates.length < 2) {
+                    console.warn('⚠️ Need at least 2 coordinates for optimization (current + 1 delivery)');
+                    setOptimizedOrder(allDeliveryIds);
+                    setIsOptimizing(false);
+                    return;
+                }
+
+                if (allCoordinates.length > 12) {
+                    console.warn('⚠️ Optimization API supports max 12 coordinates. Using first 11 deliveries only.');
+                    allCoordinates.splice(12); // Keep first coordinate + 11 deliveries
+                }
+
+                // Format coordinates string (lon,lat;lon,lat;...)
+                const coordinates = allCoordinates
+                    .map(coord => {
+                        // Ensure we have valid numbers
+                        if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
+                            console.error('Invalid coordinate:', coord);
+                            throw new Error('Invalid coordinate format');
+                        }
+                        return `${coord[0]},${coord[1]}`;
+                    })
+                    .join(';');
+
+                console.log('Formatted coordinates string:', coordinates);
+                console.log('Number of waypoints:', allCoordinates.length);
+
+                // Call Mapbox Optimization API
+                // source=first: start from the first coordinate (current location)
+                // destination=last: end at the last coordinate
+                // roundtrip=false: don't need to return to start
+                // This combination (source=first, destination=last, roundtrip=false) is supported by v1 API
+                const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?source=first&destination=last&roundtrip=false&access_token=${mapboxgl.accessToken}`;
+                console.log('🔗 Optimization API URL:', url);
+                
+                const response = await fetch(url, { method: 'GET' });
+                console.log('📡 Response status:', response.status, response.statusText);
+                
+                const data = await response.json();
+                console.log('📦 Optimization API response:', data);
+                
+                if (data.code === 'Ok' && data.trips && data.trips.length > 0) {
+                    // Extract optimized waypoint order (excluding the starting point)
+                    const waypoints = data.waypoints;
+                    console.log('Waypoints from API:', waypoints);
+                    
+                    const optimized = waypoints
+                        .slice(1) // Skip first waypoint (current location)
+                        .map((wp: any) => {
+                            const deliveryId = allDeliveryIds[wp.waypoint_index - 1];
+                            console.log(`Waypoint index ${wp.waypoint_index} -> Delivery ID ${deliveryId}`);
+                            return deliveryId;
+                        });
+                    
+                    setOptimizedOrder(optimized);
+                    console.log('✅ Optimized delivery order:', optimized);
+                    console.log('📊 Total optimized distance:', (data.trips[0].distance / 1000).toFixed(1), 'km');
+                    console.log('⏱️ Total optimized duration:', Math.round(data.trips[0].duration / 60), 'min');
+                    
+                    // If no deliveryId in URL, redirect to the first optimized delivery
+                    if (!deliveryId && optimized.length > 0) {
+                        const firstDeliveryId = optimized[0];
+                        console.log('🎯 No deliveryId in URL, redirecting to first optimized delivery:', firstDeliveryId);
+                        router.push(`/interfaces/navigation?deliveryId=${firstDeliveryId}`);
+                    }
+                } else {
+                    // Fallback to original order if optimization fails
+                    setOptimizedOrder(allDeliveryIds);
+                    console.warn('⚠️ Optimization failed. Response code:', data.code);
+                    console.warn('⚠️ Response message:', data.message);
+                    console.warn('⚠️ Full response:', data);
+                    
+                    // Log possible reasons
+                    if (data.code === 'NotImplemented') {
+                        console.error('❌ NotImplemented error. Possible reasons:');
+                        console.error('   1. Mapbox token might not have Optimization API access');
+                        console.error('   2. Free tier might not support Optimization API');
+                        console.error('   3. Check token scopes at: https://account.mapbox.com/access-tokens/');
+                        console.error('   4. Coordinate format might be incorrect');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error optimizing route:', error);
+                if (error instanceof Error) {
+                    console.error('Error message:', error.message);
+                    console.error('Error stack:', error.stack);
+                }
+                // Fallback to original order
+                const allDeliveryIds = Object.keys(deliveries).map(Number);
+                setOptimizedOrder(allDeliveryIds);
+            } finally {
+                setIsOptimizing(false);
+                console.log('🏁 Optimization process completed');
+            }
+        };
+
+        // Only optimize once when location is available
+        if (!hasOptimized.current && !isLoadingLocation) {
+            optimizeRoute();
+        }
+    }, [isLoadingLocation, currentLocation]);
 
     // Get user's current location
     useEffect(() => {
@@ -373,26 +527,29 @@ function NavigationContent() {
     };
 
     const handleFinishPOD = () => {
-        // Get all delivery IDs and sort them
-        const deliveryIds = Object.keys(deliveries).map(Number).sort((a, b) => a - b);
-        const currentId = Number(deliveryId) || 1; // Default to 1 if deliveryId is null/undefined
+        // Use optimized order if available, otherwise fall back to original order
+        const deliveryIds = optimizedOrder.length > 0 
+            ? optimizedOrder 
+            : Object.keys(deliveries).map(Number).sort((a, b) => a - b);
+            
+        const currentId = Number(deliveryId) || 1;
         const currentIndex = deliveryIds.indexOf(currentId);
         
         console.log('Current delivery ID:', currentId);
-        console.log('All delivery IDs:', deliveryIds);
-        console.log('Current index:', currentIndex);
+        console.log('Optimized delivery order:', deliveryIds);
+        console.log('Current index in optimized order:', currentIndex);
         console.log('Total deliveries:', deliveryIds.length);
         
         // Check if there's a next delivery
         if (currentIndex !== -1 && currentIndex < deliveryIds.length - 1) {
-            // Go to next delivery
+            // Go to next delivery in optimized order
             const nextDeliveryId = deliveryIds[currentIndex + 1];
-            console.log('Going to next delivery:', nextDeliveryId);
+            console.log('Going to next optimized delivery:', nextDeliveryId);
             router.push(`/interfaces/navigation?deliveryId=${nextDeliveryId}`);
             setShowDeliverModal(false);
         } else {
             // No more deliveries, go back to daily schedule
-            console.log('No more deliveries, going back to daily schedule');
+            console.log('All deliveries completed! Going back to daily schedule');
             router.push('/interfaces/daily-schedule');
         }
     };
@@ -408,6 +565,19 @@ function NavigationContent() {
                     </div>
                     <p className="mt-6 text-lg font-semibold text-gray-800">Obtaining your location...</p>
                     <p className="mt-2 text-sm text-gray-600">This may take a few seconds</p>
+                </div>
+            )}
+
+            {/* Optimization Loading Indicator */}
+            {isOptimizing && !isLoadingLocation && (
+                <div className="absolute top-24 left-4 right-4 bg-blue-100 border-l-4 border-blue-500 text-blue-800 px-4 py-3 rounded-lg shadow-lg z-20 animate-slide-down">
+                    <div className="flex items-start gap-3">
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0 mt-0.5"></div>
+                        <div>
+                            <p className="font-semibold text-sm">Optimizing route</p>
+                            <p className="text-sm mt-1">Calculating the best delivery order...</p>
+                        </div>
+                    </div>
                 </div>
             )}
 
