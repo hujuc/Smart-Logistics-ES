@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.customer_support_module.entities;
+package Operimus.SLMS.business_layer.visibility_module.exceptions.entities;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
