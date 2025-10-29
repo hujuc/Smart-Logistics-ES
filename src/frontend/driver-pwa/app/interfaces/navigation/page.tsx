@@ -33,6 +33,8 @@ function NavigationContent() {
     const [arrivalTime, setArrivalTime] = useState<string>('');
     const [currentLocation, setCurrentLocation] = useState<[number, number]>([-8.6600, 40.6500]); // Default fallback location
     const [locationError, setLocationError] = useState<string>('');
+    const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+    const [showLocationWarning, setShowLocationWarning] = useState(false);
     const hasInitialZoom = useRef(false); // Track if initial zoom has been done
 
     const deliveries: Record<number, Delivery> = {
@@ -58,33 +60,98 @@ function NavigationContent() {
 
     // Get user's current location
     useEffect(() => {
+        let watchId: number | null = null;
+        
         if (navigator.geolocation) {
+            setIsLoadingLocation(true);
+            
+            // Set a timeout for geolocation (e.g., 10 seconds)
+            const timeoutId = setTimeout(() => {
+                setIsLoadingLocation(false);
+                setLocationError('Could not get your location. Using default location.');
+                setShowLocationWarning(true);
+                
+                // Hide warning after 5 seconds
+                setTimeout(() => {
+                    setShowLocationWarning(false);
+                }, 5000);
+            }, 10000);
+
             navigator.geolocation.getCurrentPosition(
                 (position) => {
+                    clearTimeout(timeoutId);
                     setCurrentLocation([position.coords.longitude, position.coords.latitude]);
                     setLocationError('');
+                    setIsLoadingLocation(false);
+                    
+                    // Only start watching position if initial position was successful
+                    watchId = navigator.geolocation.watchPosition(
+                        (position) => {
+                            setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+                        },
+                        (error) => {
+                            // Silently handle watch errors - user already has initial location
+                            console.debug('Watch position error (non-critical):', error.message || error);
+                        },
+                        {
+                            enableHighAccuracy: false, // Use less battery for continuous tracking
+                            timeout: 5000,
+                            maximumAge: 30000 // Accept cached positions up to 30 seconds old
+                        }
+                    );
                 },
                 (error) => {
-                    console.error('Error getting location:', error);
-                    setLocationError('Could not get your location. Using default location.');
-                }
-            );
-
-            // Watch position for real-time updates
-            const watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+                    clearTimeout(timeoutId);
+                    
+                    // Provide more specific error messages
+                    let errorMessage = 'Could not get your location. Using default location.';
+                    let errorCode = 'UNKNOWN';
+                    
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        errorMessage = 'Location access denied. Using default location.';
+                        errorCode = 'PERMISSION_DENIED';
+                    } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                        errorMessage = 'Location unavailable. Using default location.';
+                        errorCode = 'POSITION_UNAVAILABLE';
+                    } else if (error.code === 3) { // TIMEOUT
+                        errorMessage = 'Location request timeout. Using default location.';
+                        errorCode = 'TIMEOUT';
+                    }
+                    
+                    console.debug(`Geolocation error [${errorCode}]:`, error.message || errorMessage);
+                    
+                    setLocationError(errorMessage);
+                    setIsLoadingLocation(false);
+                    setShowLocationWarning(true);
+                    
+                    // Hide warning after 5 seconds
+                    setTimeout(() => {
+                        setShowLocationWarning(false);
+                    }, 5000);
+                    
+                    // Don't start watching if initial position failed
                 },
-                (error) => {
-                    console.error('Error watching location:', error);
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 }
             );
 
             return () => {
-                navigator.geolocation.clearWatch(watchId);
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
             };
         } else {
             setLocationError('Geolocation is not supported by your browser.');
+            setIsLoadingLocation(false);
+            setShowLocationWarning(true);
+            
+            // Hide warning after 5 seconds
+            setTimeout(() => {
+                setShowLocationWarning(false);
+            }, 5000);
         }
     }, []);
 
@@ -166,7 +233,7 @@ function NavigationContent() {
                 // Fetch route from Mapbox Directions API
                 try {
                     const query = await fetch(
-                        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentLocation[0]},${currentLocation[1]};${currentDelivery.coordinates[0]},${currentDelivery.coordinates[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`,
+                        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentLocation[0]},${currentLocation[1]};${currentDelivery.coordinates[0]},${currentDelivery.coordinates[1]}?steps=true&geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`,
                         { method: 'GET' }
                     );
                     const json = await query.json();
@@ -332,13 +399,33 @@ function NavigationContent() {
 
     return (
         <div className="relative h-screen w-full">
+            {/* Loading Screen */}
+            {isLoadingLocation && (
+                <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center">
+                    <div className="relative">
+                        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                        <MapPin className="w-8 h-8 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="mt-6 text-lg font-semibold text-gray-800">Obtaining your location...</p>
+                    <p className="mt-2 text-sm text-gray-600">This may take a few seconds</p>
+                </div>
+            )}
+
             {/* Map Container */}
             <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
 
-            {/* Location Error Message */}
-            {locationError && (
-                <div className="absolute top-20 left-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg z-20">
-                    <p className="text-sm">{locationError}</p>
+            {/* Location Warning Message */}
+            {showLocationWarning && locationError && (
+                <div className="absolute top-20 left-4 right-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 px-4 py-3 rounded-lg shadow-lg z-20 animate-slide-down">
+                    <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                            <p className="font-semibold text-sm">Location unavailable</p>
+                            <p className="text-sm mt-1">{locationError}</p>
+                        </div>
+                    </div>
                 </div>
             )}
 
