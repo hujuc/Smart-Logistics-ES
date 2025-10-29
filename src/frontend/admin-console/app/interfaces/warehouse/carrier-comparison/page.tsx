@@ -1,97 +1,66 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Package, Truck, CheckCircle, Filter, Star } from "lucide-react"
-import { Carrier, ShipmentCard } from "@/types"
+import { Package, Truck, CheckCircle, Filter, Star, Loader2 } from "lucide-react"
+import { Carrier, ShipmentCard, Order } from "@/types"
 import { ShipmentCards } from "@/components/logistics/shipment-cards"
 import { CarrierCompare } from "@/components/logistics/carrier-compare"
-
-// Mock data for shipment cards
-const mockShipments: ShipmentCard[] = [
-  { id: "2401851", weight: "3.2 kg", destination: "Lixa", priority: "Medium", date: "01/10/2025" },
-  { id: "2401852", weight: "2.8 kg", destination: "Porto", priority: "High", date: "01/10/2025" },
-  { id: "2401853", weight: "1.5 kg", destination: "Lisboa", priority: "Low", date: "01/10/2025" },
-  { id: "2401854", weight: "4.1 kg", destination: "Braga", priority: "Medium", date: "01/10/2025" },
-  { id: "2401855", weight: "2.3 kg", destination: "Coimbra", priority: "High", date: "01/10/2025" },
-  { id: "2401856", weight: "3.7 kg", destination: "Aveiro", priority: "Medium", date: "01/10/2025" },
-  { id: "2401857", weight: "1.9 kg", destination: "Leiria", priority: "Low", date: "01/10/2025" },
-  { id: "2401858", weight: "2.6 kg", destination: "Setúbal", priority: "Medium", date: "01/10/2025" },
-]
-
-// Mock data for carriers
-const mockCarriers: Carrier[] = [
-  {
-    id: "CAR001",
-    name: "FedEx",
-    service: "FedEx Express",
-    logo: "🚚",
-    cost: 24.5,
-    transitTime: "2-3 days",
-    reliability: 98,
-    features: ["Package Protection", "Express Delivery", "Insurance"],
-    totalShipments: 245,
-    onTimeDelivery: 98,
-  },
-  {
-    id: "CAR002",
-    name: "UPS",
-    service: "UPS Ground",
-    logo: "📦",
-    cost: 19.99,
-    transitTime: "3-5 days",
-    reliability: 95,
-    features: ["Package Protection", "Tracking"],
-    totalShipments: 189,
-    onTimeDelivery: 95,
-  },
-  {
-    id: "CAR003",
-    name: "DHL",
-    service: "DHL Express",
-    logo: "✈️",
-    cost: 28.75,
-    transitTime: "1-2 days",
-    reliability: 97,
-    features: ["Package Protection", "Express Delivery", "Insurance", "International"],
-    totalShipments: 167,
-    onTimeDelivery: 97,
-  },
-  {
-    id: "CAR004",
-    name: "USPS",
-    service: "Priority Mail",
-    logo: "📮",
-    cost: 15.5,
-    transitTime: "2-4 days",
-    reliability: 92,
-    features: ["Tracking"],
-    totalShipments: 98,
-    onTimeDelivery: 92,
-  },
-  {
-    id: "CAR005",
-    name: "Amazon",
-    service: "Amazon Logistics",
-    logo: "📦",
-    cost: 22.0,
-    transitTime: "1-3 days",
-    reliability: 94,
-    features: ["Package Protection", "Express Delivery"],
-    totalShipments: 76,
-    onTimeDelivery: 94,
-  },
-]
+import { warehouseService } from "@/lib/services/warehouse.service"
+import { calculateShippingRates } from "@/lib/carrier-api"
+import type { RateQuote } from "@/types"
 
 export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"new" | "current" | "all" | "details">("new")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3>(1) // 1: Add Orders, 2: Choose Carrier, 3: Confirm
   const [searchTerm, setSearchTerm] = useState("")
   const [currentTabSearchTerm, setCurrentTabSearchTerm] = useState("")
-  const [carriers] = useState(mockCarriers)
+
+  // Real data states
+  const [orders, setOrders] = useState<Order[]>([])
+  const [shipments, setShipments] = useState<ShipmentCard[]>([])
+  const [carriers, setCarriers] = useState<Carrier[]>([])
+  const [rateQuotes, setRateQuotes] = useState<RateQuote[]>([])
+
+  // Loading states
+  const [loadingOrders, setLoadingOrders] = useState(true)
+  const [loadingRates, setLoadingRates] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const [selectedShipments, setSelectedShipments] = useState<string[]>([])
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null)
   const [currentTabSelectedCarrier, setCurrentTabSelectedCarrier] = useState<Carrier | null>(null)
+
+  // Fetch orders on mount - only CREATED or READY_FOR_PICKUP
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoadingOrders(true)
+        // Fetch only orders that need carrier assignment
+        const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED", "READY_FOR_PICKUP"])
+        setOrders(fetchedOrders)
+
+        // Convert orders to shipment cards for display
+        const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
+          id: order.id.toString(),
+          weight: "N/A", // TODO: Add weight field to Order type
+          destination: order.shippingAddress,
+          priority: order.priority || "Medium",
+          date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"
+        }))
+
+        setShipments(shipmentCards)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to fetch orders:", err)
+        setError("Failed to load orders. Please try again.")
+      } finally {
+        setLoadingOrders(false)
+      }
+    }
+
+    fetchOrders()
+  }, [])
 
   const handleAddShipment = (id: string) => {
     setSelectedShipments((prev) => 
@@ -103,8 +72,107 @@ export default function CarrierComparisonPage() {
     setSelectedCarrier(carrier)
   }
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
+    // If moving from step 1 to step 2, calculate shipping rates
+    if (flowStep === 1) {
+      await calculateRatesForSelectedShipments()
+    }
+
     if (flowStep < 3) setFlowStep((flowStep + 1) as 1 | 2 | 3)
+  }
+
+  // Calculate shipping rates for selected shipments
+  const calculateRatesForSelectedShipments = async () => {
+    if (selectedShipments.length === 0) return
+
+    try {
+      setLoadingRates(true)
+      setError(null)
+
+      // Get the first selected order to calculate rates
+      // In a real scenario, you might want to batch this or calculate for each
+      const selectedOrder = orders.find(o => o.id.toString() === selectedShipments[0])
+
+      if (!selectedOrder) {
+        setError("Selected order not found")
+        return
+      }
+
+      // Build rate request from order data
+      // TODO: Warehouse address should come from warehouse configuration
+      // Using US addresses for demo as Shippo test account only supports US carriers
+      const rateRequest = {
+        fromAddress: {
+          name: "Warehouse",
+          addressLine1: "215 Clayton St",
+          city: "San Francisco",
+          state: "CA",
+          postalCode: "94117",
+          country: "US",
+        },
+        toAddress: {
+          name: "Customer",
+          addressLine1: "1092 Indian Summer Ct",
+          city: "San Jose",
+          state: "CA",
+          postalCode: "95122",
+          country: "US",
+        },
+        parcels: [{
+          weight: selectedOrder.weight || 2.5, // Default to 2.5kg if not set
+          weightUnit: selectedOrder.weightUnit || "kg",
+          length: selectedOrder.length || 30, // Default dimensions in cm
+          width: selectedOrder.width || 20,
+          height: selectedOrder.height || 15,
+          distanceUnit: selectedOrder.distanceUnit || "cm",
+        }]
+      }
+
+      const rateResponse = await calculateShippingRates(rateRequest)
+      setRateQuotes(rateResponse.rates)
+
+      // Check if we got any rates
+      if (!rateResponse.rates || rateResponse.rates.length === 0) {
+        console.log("No rates returned. Messages:", rateResponse.messages)
+        setError("No shipping rates available. The carrier accounts may not support this route.")
+        setCarriers([])
+        return
+      }
+
+      // Convert rate quotes to carrier format for display
+      const carriersFromRates: Carrier[] = rateResponse.rates.map((rate, index) => ({
+        id: `RATE_${index}`,
+        name: rate.provider, // Use provider instead of carrierCode (which is null)
+        service: rate.serviceLevel,
+        logo: getCarrierLogo(rate.provider),
+        cost: Number(rate.amount),
+        transitTime: rate.estimatedDays ? `${rate.estimatedDays} days` : "N/A",
+        reliability: 95, // TODO: Calculate from historical data
+        features: [],
+        totalShipments: 0,
+        onTimeDelivery: 95,
+      }))
+
+      setCarriers(carriersFromRates)
+    } catch (err) {
+      console.error("Failed to calculate shipping rates:", err)
+      setError("Failed to calculate shipping rates. Please try again.")
+    } finally {
+      setLoadingRates(false)
+    }
+  }
+
+  // Helper to get carrier logo based on provider name
+  const getCarrierLogo = (provider: string): string => {
+    const logos: Record<string, string> = {
+      'fedex': '🚚',
+      'ups': '📦',
+      'dhl': '✈️',
+      'usps': '📮',
+      'amazon': '📦',
+    }
+    const key = provider?.toLowerCase() || ''
+    return logos[key] || '📦'
   }
 
   const handlePreviousStep = () => {
@@ -140,9 +208,18 @@ export default function CarrierComparisonPage() {
       <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-black">Carrier Comparison</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1">Compare carriers for new shipments ({mockShipments.length})</p>
+          <p className="text-sm md:text-base text-gray-600 mt-1">
+            {loadingOrders ? "Loading orders..." : `Compare carriers for new shipments (${shipments.length})`}
+          </p>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
 
 
       {/* Tab Navigation */}
@@ -157,7 +234,7 @@ export default function CarrierComparisonPage() {
             }}
             className={activeTab === "new" ? "bg-brand-purple hover:bg-brand-purple-hover whitespace-nowrap" : "whitespace-nowrap"}
           >
-            New Shipment
+            New Shipment ({shipments.length})
           </Button>
           <Button
             variant={activeTab === "current" ? "default" : "outline"}
@@ -165,15 +242,7 @@ export default function CarrierComparisonPage() {
             onClick={() => setActiveTab("current")}
             className="whitespace-nowrap"
           >
-            Current Shipments (13)
-          </Button>
-          <Button
-            variant={activeTab === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("all")}
-            className="whitespace-nowrap"
-          >
-            All Orders (520)
+            Current Shipments ({orders.length})
           </Button>
           <Button
             variant={activeTab === "details" ? "default" : "outline"}
@@ -181,7 +250,7 @@ export default function CarrierComparisonPage() {
             onClick={() => setActiveTab("details")}
             className="whitespace-nowrap"
           >
-            Carrier Details
+            Carrier Details ({carriers.length})
           </Button>
           <div className="sm:ml-auto">
             <Button variant="outline" size="sm" className="whitespace-nowrap">
@@ -228,44 +297,73 @@ export default function CarrierComparisonPage() {
           {/* Step 1: Add Orders */}
           {flowStep === 1 && (
             <>
-              <ShipmentCards
-                shipments={mockShipments}
-                selectedShipments={selectedShipments}
-                onAddShipment={handleAddShipment}
-              />
-              <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
-                <p className="text-sm text-gray-600">
-                  Selected: <span className="font-bold text-black">{selectedShipments.length}</span> order(s)
-                </p>
-                <Button 
-                  onClick={handleNextStep}
-                  disabled={selectedShipments.length === 0}
-                  className="bg-brand-purple hover:bg-brand-purple-hover"
-                >
-                  Next: Choose Carrier
-                </Button>
-              </div>
+              {loadingOrders ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
+                </div>
+              ) : shipments.length === 0 ? (
+                <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
+                  <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-lg font-medium text-gray-600">No orders available</p>
+                  <p className="text-sm text-gray-500 mt-2">Create orders to compare carriers</p>
+                </div>
+              ) : (
+                <>
+                  <ShipmentCards
+                    shipments={shipments}
+                    selectedShipments={selectedShipments}
+                    onAddShipment={handleAddShipment}
+                  />
+                  <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-600">
+                      Selected: <span className="font-bold text-black">{selectedShipments.length}</span> order(s)
+                    </p>
+                    <Button
+                      onClick={handleNextStep}
+                      disabled={selectedShipments.length === 0 || loadingRates}
+                      className="bg-brand-purple hover:bg-brand-purple-hover"
+                    >
+                      {loadingRates ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Calculating Rates...
+                        </>
+                      ) : (
+                        "Next: Choose Carrier"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
 
           {/* Step 2: Choose Carrier */}
           {flowStep === 2 && (
             <>
-              <CarrierCompare
-                carriers={carriers}
-                selectedCarrier={selectedCarrier}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                handleSelectCarrier={handleSelectCarrier}
-              />
+              {carriers.length === 0 ? (
+                <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
+                  <Truck className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-lg font-medium text-gray-600">No carrier rates available</p>
+                  <p className="text-sm text-gray-500 mt-2">Unable to calculate shipping rates for the selected orders</p>
+                </div>
+              ) : (
+                <CarrierCompare
+                  carriers={carriers}
+                  selectedCarrier={selectedCarrier}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  handleSelectCarrier={handleSelectCarrier}
+                />
+              )}
               <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={handlePreviousStep}
                 >
                   Back to Orders
                 </Button>
-                <Button 
+                <Button
                   onClick={handleNextStep}
                   disabled={!selectedCarrier}
                   className="bg-brand-purple hover:bg-brand-purple-hover"
@@ -286,7 +384,7 @@ export default function CarrierComparisonPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-black mb-3">Selected Shipments ({selectedShipments.length})</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {mockShipments
+                      {shipments
                         .filter((s) => selectedShipments.includes(s.id))
                         .map((shipment) => (
                           <div key={shipment.id} className="border rounded-lg p-3">

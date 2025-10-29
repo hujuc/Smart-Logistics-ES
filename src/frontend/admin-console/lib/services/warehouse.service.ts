@@ -24,6 +24,15 @@ export const warehouseService = {
   },
 
   /**
+   * Get orders by status
+   * @param statuses Array of statuses to filter by (e.g., ["CREATED", "READY_FOR_PICKUP"])
+   */
+  async getOrdersByStatus(statuses: string[]): Promise<Order[]> {
+    const statusParam = statuses.join(',');
+    return apiFetch<Order[]>(`${API_ENDPOINTS.warehouse.orders}?status=${statusParam}`);
+  },
+
+  /**
    * Get order by ID
    */
   async getOrderById(id: number): Promise<Order> {

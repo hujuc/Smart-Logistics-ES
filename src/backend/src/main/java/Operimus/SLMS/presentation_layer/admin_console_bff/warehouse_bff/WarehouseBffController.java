@@ -4,6 +4,7 @@ import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadRe
 import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -65,14 +67,33 @@ public class WarehouseBffController {
         try {
             log.info("Warehouse BFF: Fetching orders - status={}, search={}", status, search);
 
-            // Delegate to business layer
-            List<OrderResponse> orders = orderService.getAll();
+            List<OrderResponse> orders;
 
-            // TODO: Add filtering by status and search in business layer
-            // For now, return all orders
+            // Filter by status if provided
+            if (status != null && !status.isBlank()) {
+                // Parse comma-separated statuses
+                List<ShipmentOrderStatus> statuses = Arrays.stream(status.split(","))
+                        .map(String::trim)
+                        .map(ShipmentOrderStatus::valueOf)
+                        .toList();
+                orders = orderService.getByStatus(statuses);
+            } else {
+                orders = orderService.getAll();
+            }
+
+            // TODO: Add search filtering if needed
+            // if (search != null && !search.isBlank()) {
+            //     orders = orders.stream()
+            //         .filter(order -> order.getReference().contains(search) ||
+            //                         order.getShippingAddress().contains(search))
+            //         .toList();
+            // }
 
             return ResponseEntity.ok(orders);
 
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid status parameter: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Failed to fetch orders via warehouse BFF: {}", e.getMessage());
             throw e;
