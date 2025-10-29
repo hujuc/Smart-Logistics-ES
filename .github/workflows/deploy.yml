@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
   integration-tests:
     runs-on: [self-hosted, slms]
@@ -12,17 +13,17 @@ jobs:
       COMPOSE_PROJECT_NAME: slms-ci-tests
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD  }}
-      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN  }}
-      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD  }}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID  }}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET  }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
       KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM || 'slms' }}
       KC_DB: postgres
-      KC_DB_USERNAME: ${{ secrets.DB_USERNAME  }}
+      KC_DB_USERNAME: ${{ secrets.DB_USERNAME }}
       KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       KC_DB_URL: ${{ format('jdbc:postgresql://postgres:5432/{0}', secrets.POSTGRES_DB != '' && secrets.POSTGRES_DB || 'slms') }}
-      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER  }}
+      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
       MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
       MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
     steps:
@@ -36,75 +37,76 @@ jobs:
 
       - name: Prepare Compose environment
         working-directory: infra
+        shell: bash
         run: |
-          cat > .env.ci <<EOF
-          POSTGRES_DB=${POSTGRES_DB}
-          POSTGRES_USER=${POSTGRES_USER}
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          POSTGRES_PORT=5432
-          DB_HOST=postgres
-          DB_PORT=5432
-          DB_NAME=${POSTGRES_DB}
-          DB_USERNAME=${KC_DB_USERNAME}
-          DB_PASSWORD=${KC_DB_PASSWORD}
-          KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
-          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-          KC_DB=${KC_DB}
-          KC_DB_URL=${KC_DB_URL}
-          KC_DB_USERNAME=${KC_DB_USERNAME}
-          KC_DB_PASSWORD=${KC_DB_PASSWORD}
-          KC_HOSTNAME=localhost
-          KC_HOSTNAME_PORT=80
-          KC_HOSTNAME_STRICT=false
-          KC_HTTP_ENABLED=true
-          KC_HEALTH_ENABLED=true
-          KC_PROXY_HEADERS=xforwarded
-          KC_PROXY=edge
-          KEYCLOAK_HOST=keycloak
-          KEYCLOAK_PORT=8080
-          KEYCLOAK_REALM=${KEYCLOAK_REALM}
-          KEYCLOAK_ADMIN_CLIENT_ID=${KEYCLOAK_ADMIN_CLIENT_ID}
-          KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
-          MINIO_ROOT_USER=${MINIO_ROOT_USER}
-          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-          MINIO_BUCKET=${MINIO_BUCKET}
-          MINIO_PORT=9000
-          MINIO_HOST=minio
-          EOF
+          set -euo pipefail
+          printf '%s\n' \
+          "POSTGRES_DB=${POSTGRES_DB}" \
+          "POSTGRES_USER=${POSTGRES_USER}" \
+          "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+          "POSTGRES_PORT=5432" \
+          "DB_HOST=postgres" \
+          "DB_PORT=5432" \
+          "DB_NAME=${POSTGRES_DB}" \
+          "DB_USERNAME=${KC_DB_USERNAME}" \
+          "DB_PASSWORD=${KC_DB_PASSWORD}" \
+          "KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}" \
+          "KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}" \
+          "KC_DB=${KC_DB}" \
+          "KC_DB_URL=${KC_DB_URL}" \
+          "KC_DB_USERNAME=${KC_DB_USERNAME}" \
+          "KC_DB_PASSWORD=${KC_DB_PASSWORD}" \
+          "KC_HOSTNAME=localhost" \
+          "KC_HOSTNAME_PORT=80" \
+          "KC_HOSTNAME_STRICT=false" \
+          "KC_HTTP_ENABLED=true" \
+          "KC_HEALTH_ENABLED=true" \
+          "KC_PROXY_HEADERS=xforwarded" \
+          "KC_PROXY=edge" \
+          "KEYCLOAK_HOST=keycloak" \
+          "KEYCLOAK_PORT=8080" \
+          "KEYCLOAK_REALM=${KEYCLOAK_REALM}" \
+          "KEYCLOAK_ADMIN_CLIENT_ID=${KEYCLOAK_ADMIN_CLIENT_ID}" \
+          "KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}" \
+          "MINIO_ROOT_USER=${MINIO_ROOT_USER}" \
+          "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
+          "MINIO_BUCKET=${MINIO_BUCKET}" \
+          "MINIO_PORT=9000" \
+          "MINIO_HOST=minio" \
+          > .env.ci
           cp .env.ci .env
 
       - name: Start integration dependencies
         working-directory: ${{ github.workspace }}
-        run: sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
+        shell: bash
+        run: docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml up -d postgres keycloak minio minio-create-bucket
 
       - name: Wait for Keycloak readiness
         working-directory: ${{ github.workspace }}
+        shell: bash
         run: |
+          set -e
           for attempt in {1..40}; do
             if curl -sSf http://localhost:28180/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration > /dev/null; then
-              echo "Keycloak is ready for integration tests."
               exit 0
             fi
-            echo "Waiting for Keycloak... (attempt ${attempt})"
             sleep 5
           done
-          echo "Keycloak did not become ready in time."
-          sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
+          docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
           exit 1
 
       - name: Wait for MinIO readiness
         working-directory: ${{ github.workspace }}
+        shell: bash
         run: |
+          set -e
           for attempt in {1..30}; do
             if curl -sSf http://localhost:39000/minio/health/live > /dev/null; then
-              echo "MinIO is ready for integration tests."
               exit 0
             fi
-            echo "Waiting for MinIO... (attempt ${attempt})"
             sleep 5
           done
-          echo "MinIO did not become ready in time."
-          sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs minio
+          docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs minio
           exit 1
 
       - name: Run backend integration tests
@@ -119,23 +121,26 @@ jobs:
           MINIO_ROOT_USER: ${{ env.MINIO_ROOT_USER }}
           MINIO_ROOT_PASSWORD: ${{ env.MINIO_ROOT_PASSWORD }}
           MINIO_BUCKET: ${{ env.MINIO_BUCKET }}
+        shell: bash
         run: mvn -B -ntp -DskipTests=false -Dtest='*IntegrationTest' test
 
       - name: Stop integration dependencies
         if: always()
         working-directory: ${{ github.workspace }}
-        run: sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml down -v
+        shell: bash
+        run: docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml down -v
 
       - name: Clean CI env file
         if: always()
         working-directory: infra
+        shell: bash
         run: rm -f .env.ci
 
   deploy:
-    runs-on: [self-hosted, slms]   
+    runs-on: [self-hosted, slms]
     needs: integration-tests
-
     env:
+      COMPOSE_PROJECT_NAME: slms-prod
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -179,66 +184,72 @@ jobs:
       KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
       KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
       KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
-
     steps:
       - name: Fix permissions before build
+        shell: bash
         run: |
           sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
           sudo chmod -R 777 /home/sousahugo/actions-runner/_work
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Write .env for Compose
         working-directory: infra
+        shell: bash
         run: |
-          cat > .env <<EOF
-          POSTGRES_DB=$POSTGRES_DB
-          POSTGRES_USER=$POSTGRES_USER
-          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-          POSTGRES_PORT=$POSTGRES_PORT
-          DB_HOST=$DB_HOST
-          DB_PORT=$DB_PORT
-          DB_NAME=$DB_NAME
-          DB_USERNAME=$DB_USERNAME
-          DB_PASSWORD=$DB_PASSWORD
-          KEYCLOAK_ADMIN=$KEYCLOAK_ADMIN
-          KEYCLOAK_ADMIN_PASSWORD=$KEYCLOAK_ADMIN_PASSWORD
-          KC_DB=$KC_DB
-          KC_DB_URL=$KC_DB_URL
-          KC_DB_USERNAME=$KC_DB_USERNAME
-          KC_DB_PASSWORD=$KC_DB_PASSWORD
-          KC_HOSTNAME=$KC_HOSTNAME
-          KC_HOSTNAME_PORT=$KC_HOSTNAME_PORT
-          KC_HOSTNAME_STRICT=$KC_HOSTNAME_STRICT
-          KC_HTTP_ENABLED=$KC_HTTP_ENABLED
-          KC_PROXY_HEADERS=$KC_PROXY_HEADERS
-          KC_PROXY=$KC_PROXY
-          KEYCLOAK_HOST=$KEYCLOAK_HOST
-          KEYCLOAK_PORT=$KEYCLOAK_PORT
-          KEYCLOAK_REALM=$KEYCLOAK_REALM
-          KEYCLOAK_ADMIN_CLIENT_ID=$KEYCLOAK_ADMIN_CLIENT_ID
-          KEYCLOAK_ADMIN_CLIENT_SECRET=$KEYCLOAK_ADMIN_CLIENT_SECRET
-          BACKEND_PORT=$BACKEND_PORT
-          FRONTEND_PORT=$FRONTEND_PORT
-          NEXT_TELEMETRY_DISABLED=$NEXT_TELEMETRY_DISABLED
-          NODE_ENV=$NODE_ENV
-          NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-          NEXTAUTH_URL=$NEXTAUTH_URL
-          NEXTAUTH_SECRET=$NEXTAUTH_SECRET
-          KEYCLOAK_CLIENT_ID=$KEYCLOAK_CLIENT_ID
-          KEYCLOAK_CLIENT_SECRET=$KEYCLOAK_CLIENT_SECRET
-          KEYCLOAK_ISSUER=$KEYCLOAK_ISSUER
-          KEYCLOAK_BASE_URL=$KEYCLOAK_BASE_URL
-          KEYCLOAK_INTERNAL_URL=$KEYCLOAK_INTERNAL_URL
-          MINIO_ROOT_USER=$MINIO_ROOT_USER
-          MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
-          MINIO_BUCKET=$MINIO_BUCKET
-          MINIO_PORT=$MINIO_PORT
-          MINIO_HOST=$MINIO_HOST
-          EOF
+          set -euo pipefail
+          printf '%s\n' \
+          "POSTGRES_DB=${POSTGRES_DB}" \
+          "POSTGRES_USER=${POSTGRES_USER}" \
+          "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+          "POSTGRES_PORT=${POSTGRES_PORT}" \
+          "DB_HOST=${DB_HOST}" \
+          "DB_PORT=${DB_PORT}" \
+          "DB_NAME=${DB_NAME}" \
+          "DB_USERNAME=${DB_USERNAME}" \
+          "DB_PASSWORD=${DB_PASSWORD}" \
+          "KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}" \
+          "KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}" \
+          "KC_DB=${KC_DB}" \
+          "KC_DB_URL=${KC_DB_URL}" \
+          "KC_DB_USERNAME=${KC_DB_USERNAME}" \
+          "KC_DB_PASSWORD=${KC_DB_PASSWORD}" \
+          "KC_HOSTNAME=${KC_HOSTNAME}" \
+          "KC_HOSTNAME_PORT=${KC_HOSTNAME_PORT}" \
+          "KC_HOSTNAME_STRICT=${KC_HOSTNAME_STRICT}" \
+          "KC_HTTP_ENABLED=${KC_HTTP_ENABLED}" \
+          "KC_PROXY_HEADERS=${KC_PROXY_HEADERS}" \
+          "KC_PROXY=${KC_PROXY}" \
+          "KEYCLOAK_HOST=${KEYCLOAK_HOST}" \
+          "KEYCLOAK_PORT=${KEYCLOAK_PORT}" \
+          "KEYCLOAK_REALM=${KEYCLOAK_REALM}" \
+          "KEYCLOAK_ADMIN_CLIENT_ID=${KEYCLOAK_ADMIN_CLIENT_ID}" \
+          "KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}" \
+          "BACKEND_PORT=${BACKEND_PORT}" \
+          "FRONTEND_PORT=${FRONTEND_PORT}" \
+          "NEXT_TELEMETRY_DISABLED=${NEXT_TELEMETRY_DISABLED}" \
+          "NODE_ENV=${NODE_ENV}" \
+          "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
+          "NEXTAUTH_URL=${NEXTAUTH_URL}" \
+          "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" \
+          "KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}" \
+          "KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}" \
+          "KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}" \
+          "KEYCLOAK_BASE_URL=${KEYCLOAK_BASE_URL}" \
+          "KEYCLOAK_INTERNAL_URL=${KEYCLOAK_INTERNAL_URL}" \
+          "MINIO_ROOT_USER=${MINIO_ROOT_USER}" \
+          "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
+          "MINIO_BUCKET=${MINIO_BUCKET}" \
+          "MINIO_PORT=${MINIO_PORT}" \
+          "MINIO_HOST=${MINIO_HOST}" \
+          > .env
+          head -n 5 .env | sed 's/=.*/=***/'
 
       - name: Deploy with Docker Compose
         working-directory: infra
+        shell: bash
         run: |
-          sudo docker-compose down --remove-orphans
-          sudo docker-compose up --build -d 
+          set -euo pipefail
+          docker compose --env-file ./.env down --remove-orphans
+          docker compose --env-file ./.env up --build -d
