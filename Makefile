@@ -25,6 +25,8 @@ help:
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make clean         - Remove all containers and volumes"
+	@echo ""
+	@echo "Note: Database backups run automatically at 2:00 AM daily (keeps last 3)"
 
 # Development environment
 dev-up:

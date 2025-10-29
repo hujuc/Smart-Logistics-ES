@@ -132,6 +132,25 @@ services:
       "
     restart: "no"
 
+  backup:
+    build:
+      context: ..
+      dockerfile: infra/docker/backup/Dockerfile
+    container_name: slms-backup
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      BACKUP_DIR: /backups
+      MAX_BACKUPS: ${MAX_BACKUPS:-3}
+    volumes:
+      - backup-data:/backups
+    # Uses cron to run backups daily at 2:00 AM
+    # Keeps only last 3 backups
+    restart: unless-stopped
+
   nginx:
     image: nginx:1.27-alpine
     container_name: slms-nginx
@@ -152,3 +171,4 @@ volumes:
   postgres-data:
   keycloak-data:
   minio-data:
+  backup-data:
