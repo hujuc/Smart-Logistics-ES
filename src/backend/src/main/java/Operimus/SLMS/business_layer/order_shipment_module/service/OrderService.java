@@ -10,6 +10,7 @@ import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrd
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,6 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import java.io.ByteArrayOutputStream;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -31,6 +31,7 @@ public class OrderService {
     private final ShipmentOrderRepository shipmentOrderRepository;
     private final WarehouseService warehouseService;
     private final OrderDocumentService orderDocumentService;  // Adicionando dependência para o upload
+    private final ShipmentOrderEventService shipmentOrderEventService;
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
@@ -59,6 +60,7 @@ public class OrderService {
 
         // Salvar a encomenda no banco (gera orderId)
         ShipmentOrder saved = shipmentOrderRepository.save(order);
+        shipmentOrderEventService.recordStatusChange(saved, null, saved.getStatus());
 
         // Gerar o QR code para a encomenda
         byte[] qrImage = generateQrCode(saved.getId().toString(), 300);  // Gerando o QR code
@@ -87,9 +89,13 @@ public class OrderService {
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
 
+        ShipmentOrderStatus previousStatus = order.getStatus();
+        ShipmentOrderStatus newStatus = resolveStatus(request.getStatus());
+        boolean statusChanged = previousStatus != newStatus;
+
         order.setReference(request.getReference());
         order.setDescription(request.getDescription());
-        order.setStatus(resolveStatus(request.getStatus()));
+        order.setStatus(newStatus);
         order.setShippingAddress(request.getShippingAddress());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
@@ -99,6 +105,10 @@ public class OrderService {
         order.setShipstationCarrierCode(request.getShipstationCarrierCode());
         order.setShipstationServiceCode(request.getShipstationServiceCode());
         order.setTrackingNumber(request.getTrackingNumber());
+
+        if (statusChanged) {
+            shipmentOrderEventService.recordStatusChange(order, previousStatus, newStatus);
+        }
 
         return mapToResponse(order);
     }
@@ -133,6 +143,7 @@ public class OrderService {
         }
 
         order.setStatus(ShipmentOrderStatus.COLLECTED);
+        shipmentOrderEventService.recordStatusChange(order, currentStatus, ShipmentOrderStatus.COLLECTED);
         return mapToResponse(order);
     }
 
