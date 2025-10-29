@@ -7,10 +7,12 @@
 // In production, you would integrate with Flagsmith API
 interface FeatureFlags {
   'order-lookup-version': 'A' | 'B';
+  'carrier-view-mode': 'table' | 'cards';
 }
 
 const defaultFlags: FeatureFlags = {
   'order-lookup-version': 'A', // Default to version A
+  'carrier-view-mode': 'table', // Default to table view
 };
 
 /**
@@ -48,16 +50,19 @@ class FeatureFlagManager {
     // For demo: randomly assign version based on user ID hash
     // In production, Flagsmith would handle this
     const hash = this.hashUserId(userId);
-    const version = hash % 2 === 0 ? 'A' : 'B';
+    const orderLookupVersion = hash % 2 === 0 ? 'A' : 'B';
+    const carrierViewMode = hash % 2 === 0 ? 'table' : 'cards';
     
-    this.flags['order-lookup-version'] = version;
+    this.flags['order-lookup-version'] = orderLookupVersion;
+    this.flags['carrier-view-mode'] = carrierViewMode;
     
     // Store in localStorage for consistency
     if (typeof window !== 'undefined') {
       localStorage.setItem('featureFlags', JSON.stringify(this.flags));
     }
     
-    console.log(`[Flagsmith] User ${userId} assigned to Order Lookup Version ${version}`);
+    console.log(`[Flagsmith] User ${userId} assigned to Order Lookup Version ${orderLookupVersion}`);
+    console.log(`[Flagsmith] User ${userId} assigned to Carrier View Mode ${carrierViewMode}`);
   }
 
   /**

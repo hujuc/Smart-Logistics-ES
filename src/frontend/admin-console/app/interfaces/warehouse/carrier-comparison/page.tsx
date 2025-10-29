@@ -2,42 +2,64 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Package, Truck, CheckCircle, Filter, Star, Loader2 } from "lucide-react"
+import { Package, Truck, CheckCircle, Loader2, Settings } from "lucide-react"
 import { Carrier, ShipmentCard, Order } from "@/types"
 import { ShipmentCards } from "@/components/logistics/shipment-cards"
 import { CarrierCompare } from "@/components/logistics/carrier-compare"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import { calculateShippingRates } from "@/lib/carrier-api"
-import type { RateQuote } from "@/types"
+import { featureFlagManager } from "@/lib/flagsmith"
 
 export default function CarrierComparisonPage() {
-  const [activeTab, setActiveTab] = useState<"new" | "current" | "all" | "details">("new")
+  const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3>(1) // 1: Add Orders, 2: Choose Carrier, 3: Confirm
   const [searchTerm, setSearchTerm] = useState("")
-  const [currentTabSearchTerm, setCurrentTabSearchTerm] = useState("")
+  const [carrierViewMode, setCarrierViewMode] = useState<"table" | "cards">("table") // Toggle between views in Step 2
+  const [showViewToggle, setShowViewToggle] = useState(false) // Show toggle control in development
 
   // Real data states
   const [orders, setOrders] = useState<Order[]>([])
+  const [allShipmentOrders, setAllShipmentOrders] = useState<Order[]>([])
   const [shipments, setShipments] = useState<ShipmentCard[]>([])
   const [carriers, setCarriers] = useState<Carrier[]>([])
-  const [rateQuotes, setRateQuotes] = useState<RateQuote[]>([])
+  const [allCarriers, setAllCarriers] = useState<Carrier[]>([])
 
   // Loading states
   const [loadingOrders, setLoadingOrders] = useState(true)
+  const [loadingAllShipments, setLoadingAllShipments] = useState(true)
   const [loadingRates, setLoadingRates] = useState(false)
+  const [loadingConfirm, setLoadingConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedShipments, setSelectedShipments] = useState<string[]>([])
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null)
-  const [currentTabSelectedCarrier, setCurrentTabSelectedCarrier] = useState<Carrier | null>(null)
 
-  // Fetch orders on mount - only CREATED or READY_FOR_PICKUP
+  // Initialize Flagsmith feature flags
+  useEffect(() => {
+    const initializeFlags = async () => {
+      // In production, you would get the user ID from authentication
+      const userId = 'warehouse_user' // Mock user ID
+      
+      await featureFlagManager.initialize(userId)
+      const assignedViewMode = featureFlagManager.getFlag('carrier-view-mode')
+      setCarrierViewMode(assignedViewMode)
+
+      // Show view toggle in development (for testing)
+      if (process.env.NODE_ENV === 'development') {
+        setShowViewToggle(true)
+      }
+    }
+
+    initializeFlags()
+  }, [])
+
+  // Fetch orders on mount - only CREATED (orders without carrier assigned)
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoadingOrders(true)
-        // Fetch only orders that need carrier assignment
-        const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED", "READY_FOR_PICKUP"])
+        // Fetch only CREATED orders that need carrier assignment
+        const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED"])
         setOrders(fetchedOrders)
 
         // Convert orders to shipment cards for display
@@ -60,6 +82,29 @@ export default function CarrierComparisonPage() {
     }
 
     fetchOrders()
+  }, [])
+
+  // Fetch all shipments on mount - orders that have been assigned carriers
+  useEffect(() => {
+    const fetchAllShipments = async () => {
+      try {
+        setLoadingAllShipments(true)
+        // Fetch all orders that have been assigned carriers (READY_FOR_PICKUP, COLLECTED, IN_TRANSIT, DELIVERED)
+        const fetchedOrders = await warehouseService.getOrdersByStatus([
+          "READY_FOR_PICKUP",
+          "COLLECTED", 
+          "IN_TRANSIT",
+          "DELIVERED"
+        ])
+        setAllShipmentOrders(fetchedOrders)
+      } catch (err) {
+        console.error("Failed to fetch all shipments:", err)
+      } finally {
+        setLoadingAllShipments(false)
+      }
+    }
+
+    fetchAllShipments()
   }, [])
 
   const handleAddShipment = (id: string) => {
@@ -129,7 +174,6 @@ export default function CarrierComparisonPage() {
       }
 
       const rateResponse = await calculateShippingRates(rateRequest)
-      setRateQuotes(rateResponse.rates)
 
       // Check if we got any rates
       if (!rateResponse.rates || rateResponse.rates.length === 0) {
@@ -147,13 +191,15 @@ export default function CarrierComparisonPage() {
         logo: getCarrierLogo(rate.provider),
         cost: Number(rate.amount),
         transitTime: rate.estimatedDays ? `${rate.estimatedDays} days` : "N/A",
-        reliability: 95, // TODO: Calculate from historical data
         features: [],
-        totalShipments: 0,
-        onTimeDelivery: 95,
       }))
 
       setCarriers(carriersFromRates)
+      
+      // Update allCarriers if not already set
+      if (allCarriers.length === 0) {
+        setAllCarriers(carriersFromRates)
+      }
     } catch (err) {
       console.error("Failed to calculate shipping rates:", err)
       setError("Failed to calculate shipping rates. Please try again.")
@@ -179,37 +225,116 @@ export default function CarrierComparisonPage() {
     if (flowStep > 1) setFlowStep((flowStep - 1) as 1 | 2 | 3)
   }
 
-  const handleConfirm = () => {
-    alert(`Order confirmed!\nShipments: ${selectedShipments.join(', ')}\nCarrier: ${selectedCarrier?.name}`)
+  const handleToggleViewMode = (mode: "table" | "cards") => {
+    featureFlagManager.setFlag('carrier-view-mode', mode)
+    setCarrierViewMode(mode)
+  }
+
+  const handleConfirm = async () => {
+    if (!selectedCarrier || selectedShipments.length === 0) {
+      setError("Please select shipments and a carrier")
+      return
+    }
+
+    try {
+      setLoadingConfirm(true)
+      setError(null)
+
+      // Update each selected order with carrier information
+      const updatePromises = selectedShipments.map(async (shipmentId) => {
+        const orderId = parseInt(shipmentId)
+        
+        // Assign carrier to the order
+        await warehouseService.assignCarrier(
+          orderId,
+          selectedCarrier.name,
+          selectedCarrier.service,
+          selectedCarrier.cost || 0,
+          selectedCarrier.transitTime || 'N/A'
+        )
+      })
+
+      await Promise.all(updatePromises)
+
+      // Show success message
+      alert(`✅ Successfully assigned ${selectedCarrier.name} (${selectedCarrier.service}) to ${selectedShipments.length} shipment(s)!\n\nOrders are now marked as READY_FOR_PICKUP and removed from the New Shipment list.`)
+
+      // Refresh orders list - only fetch CREATED orders (assigned orders are now READY_FOR_PICKUP)
+      const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED"])
+      setOrders(fetchedOrders)
+
+      const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
+        id: order.id.toString(),
+        weight: "N/A",
+        destination: order.shippingAddress,
+        priority: order.priority || "Medium",
+        date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"
+      }))
+
+      setShipments(shipmentCards)
+
+      // Refresh all shipments list
+      const allShipments = await warehouseService.getOrdersByStatus([
+        "READY_FOR_PICKUP",
+        "COLLECTED", 
+        "IN_TRANSIT",
+        "DELIVERED"
+      ])
+      setAllShipmentOrders(allShipments)
+
     // Reset flow
     setFlowStep(1)
     setSelectedShipments([])
     setSelectedCarrier(null)
-  }
-
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-4 w-4 ${
-              star <= Math.floor(rating / 20) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-            }`}
-          />
-        ))}
-        <span className="text-sm text-gray-600 ml-1">({rating}%)</span>
-      </div>
-    )
+    } catch (err) {
+      console.error("Failed to assign carrier:", err)
+      setError("Failed to assign carrier to shipments. Please try again.")
+    } finally {
+      setLoadingConfirm(false)
+    }
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="relative space-y-4 md:space-y-6">
+      {/* Development-only view toggle control */}
+      {showViewToggle && flowStep === 2 && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-white border-2 border-purple-300 rounded-lg shadow-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings className="w-4 h-4 text-purple-600" />
+              <span className="text-xs font-semibold text-gray-700">A/B Test Control - Carrier View</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">View Mode:</span>
+              <Button
+                size="sm"
+                variant={carrierViewMode === 'table' ? 'default' : 'outline'}
+                onClick={() => handleToggleViewMode('table')}
+                className={`h-7 text-xs ${carrierViewMode === 'table' ? 'bg-brand-purple hover:bg-brand-purple-hover' : ''}`}
+              >
+                {carrierViewMode === 'table' ? '✓ Table' : 'Table'}
+              </Button>
+              <Button
+                size="sm"
+                variant={carrierViewMode === 'cards' ? 'default' : 'outline'}
+                onClick={() => handleToggleViewMode('cards')}
+                className={`h-7 text-xs ${carrierViewMode === 'cards' ? 'bg-brand-purple hover:bg-brand-purple-hover' : ''}`}
+              >
+                {carrierViewMode === 'cards' ? '✓ Cards' : 'Cards'}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Testing mode: <span className="font-mono font-semibold">{carrierViewMode}</span>
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-black">Carrier Comparison</h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">
-            {loadingOrders ? "Loading orders..." : `Compare carriers for new shipments (${shipments.length})`}
+            {loadingOrders ? "Loading orders..." : `Assign carriers to orders awaiting shipment (${shipments.length} orders)`}
           </p>
         </div>
       </div>
@@ -222,47 +347,45 @@ export default function CarrierComparisonPage() {
       )}
 
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation with Statistics */}
       <div className="bg-white border rounded-lg p-2 shadow-sm overflow-x-auto">
-        <div className="flex gap-2 min-w-max sm:min-w-0">
+        <div className="flex gap-2 min-w-max sm:min-w-0 items-center">
           <Button
-            variant={activeTab === "new" ? "default" : "outline"}
+            variant={activeTab === "assign" ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              setActiveTab("new")
+              setActiveTab("assign")
               setFlowStep(1)
             }}
-            className={activeTab === "new" ? "bg-brand-purple hover:bg-brand-purple-hover whitespace-nowrap" : "whitespace-nowrap"}
+            className={activeTab === "assign" ? "bg-brand-purple hover:bg-brand-purple-hover whitespace-nowrap" : "whitespace-nowrap"}
           >
-            New Shipment ({shipments.length})
+            Assign Carrier ({shipments.length})
           </Button>
           <Button
-            variant={activeTab === "current" ? "default" : "outline"}
+            variant={activeTab === "allShipments" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveTab("current")}
-            className="whitespace-nowrap"
+            onClick={() => setActiveTab("allShipments")}
+            className={activeTab === "allShipments" ? "bg-brand-purple hover:bg-brand-purple-hover whitespace-nowrap" : "whitespace-nowrap"}
           >
-            Current Shipments ({orders.length})
+            All Shipments ({allShipmentOrders.length})
           </Button>
-          <Button
-            variant={activeTab === "details" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("details")}
-            className="whitespace-nowrap"
-          >
-            Carrier Details ({carriers.length})
-          </Button>
-          <div className="sm:ml-auto">
-            <Button variant="outline" size="sm" className="whitespace-nowrap">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
+          
+          {/* Stats badges */}
+          <div className="sm:ml-auto flex gap-2 items-center">
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-200 rounded-md">
+              <Truck className="h-4 w-4 text-green-600" />
+              <span className="text-xs font-medium text-green-700">{allCarriers.length} Carriers</span>
+            </div>
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md">
+              <Package className="h-4 w-4 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">Shippo API</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* New Shipment Flow */}
-      {activeTab === "new" && (
+      {/* Assign Carrier Flow */}
+      {activeTab === "assign" && (
         <>
           {/* Process Flow */}
           <div className="bg-white border rounded-lg p-6 shadow-sm">
@@ -304,8 +427,8 @@ export default function CarrierComparisonPage() {
               ) : shipments.length === 0 ? (
                 <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
                   <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                  <p className="text-lg font-medium text-gray-600">No orders available</p>
-                  <p className="text-sm text-gray-500 mt-2">Create orders to compare carriers</p>
+                  <p className="text-lg font-medium text-gray-600">No orders awaiting carrier assignment</p>
+                  <p className="text-sm text-gray-500 mt-2">All orders have been assigned to carriers. Create new orders or check the In Transit tab.</p>
                 </div>
               ) : (
                 <>
@@ -348,6 +471,39 @@ export default function CarrierComparisonPage() {
                   <p className="text-sm text-gray-500 mt-2">Unable to calculate shipping rates for the selected orders</p>
                 </div>
               ) : (
+                <>
+                  {/* View Toggle */}
+                  <div className="bg-white border rounded-lg p-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-black">Carrier View</h3>
+                        <p className="text-xs text-gray-600">Choose your preferred display mode</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={carrierViewMode === "table" ? "default" : "outline"}
+                          onClick={() => handleToggleViewMode("table")}
+                          className={carrierViewMode === "table" ? "bg-brand-purple hover:bg-brand-purple-hover" : ""}
+                        >
+                          <Package className="h-4 w-4 mr-2" />
+                          Table View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={carrierViewMode === "cards" ? "default" : "outline"}
+                          onClick={() => handleToggleViewMode("cards")}
+                          className={carrierViewMode === "cards" ? "bg-brand-purple hover:bg-brand-purple-hover" : ""}
+                        >
+                          <Truck className="h-4 w-4 mr-2" />
+                          Detailed View
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Table View */}
+                  {carrierViewMode === "table" && (
                 <CarrierCompare
                   carriers={carriers}
                   selectedCarrier={selectedCarrier}
@@ -355,6 +511,127 @@ export default function CarrierComparisonPage() {
                   setSearchTerm={setSearchTerm}
                   handleSelectCarrier={handleSelectCarrier}
                 />
+                  )}
+
+                  {/* Detailed Cards View */}
+                  {carrierViewMode === "cards" && (
+                    <div className="bg-white border rounded-lg p-6 shadow-sm">
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-xl font-bold text-black mb-2">Available Carriers</h3>
+                          <p className="text-sm text-gray-600">Compare carrier rates and transit times in detail</p>
+                        </div>
+
+                        {/* Carrier Statistics */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <p className="text-sm text-purple-600 font-medium mb-1">Total Carriers</p>
+                            <p className="text-3xl font-bold text-purple-900">{carriers.length}</p>
+                          </div>
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-sm text-blue-600 font-medium mb-1">Avg Cost</p>
+                            <p className="text-3xl font-bold text-blue-900">
+                              ${(carriers.reduce((sum, c) => sum + (c.cost || 0), 0) / carriers.length).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p className="text-sm text-green-600 font-medium mb-1">Lowest Cost</p>
+                            <p className="text-3xl font-bold text-green-900">
+                              ${Math.min(...carriers.map(c => c.cost || Infinity)).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                            <p className="text-sm text-orange-600 font-medium mb-1">Fastest</p>
+                            <p className="text-3xl font-bold text-orange-900">
+                              {(() => {
+                                const times = carriers
+                                  .map(c => c.transitTime?.match(/(\d+)/)?.[0])
+                                  .filter(Boolean)
+                                  .map(Number)
+                                return times.length > 0 ? `${Math.min(...times)}d` : 'N/A'
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Detailed Carrier Cards */}
+                        <div>
+                          <h4 className="text-lg font-semibold text-black mb-4">Select a Carrier</h4>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {carriers.map((carrier) => (
+                              <div 
+                                key={carrier.id} 
+                                className={`border-2 rounded-lg p-5 cursor-pointer transition-all ${
+                                  selectedCarrier?.id === carrier.id 
+                                    ? 'border-purple-500 bg-purple-50 shadow-lg' 
+                                    : 'border-gray-200 hover:shadow-lg hover:border-purple-300'
+                                }`}
+                                onClick={() => handleSelectCarrier(carrier)}
+                              >
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-4xl">{carrier.logo}</div>
+                                    <div>
+                                      <h5 className="text-lg font-bold text-black">{carrier.name}</h5>
+                                      <p className="text-sm text-gray-600">{carrier.service}</p>
+                                    </div>
+                                  </div>
+                                  {selectedCarrier?.id === carrier.id && (
+                                    <div className="bg-purple-600 text-white p-2 rounded-full">
+                                      <CheckCircle className="h-5 w-5" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-3">
+                                  {/* Pricing Information */}
+                                  <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <p className="text-xs text-green-700 font-medium mb-1">Shipping Cost</p>
+                                        <p className="text-2xl font-bold text-green-900">${carrier.cost}</p>
+                                      </div>
+                                      {carrier.cost === Math.min(...carriers.map(c => c.cost || Infinity)) && (
+                                        <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                                          BEST PRICE
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Transit Time */}
+                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <p className="text-xs text-blue-700 font-medium mb-1">Estimated Transit Time</p>
+                                    <p className="text-lg font-bold text-blue-900">{carrier.transitTime || 'N/A'}</p>
+                                  </div>
+
+                                  {/* Service Information */}
+                                  <div className="border-t pt-3">
+                                    <p className="text-xs text-gray-500 font-medium mb-2">SERVICE DETAILS</p>
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Provider:</span>
+                                        <span className="font-semibold text-black">{carrier.name}</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Service Level:</span>
+                                        <span className="font-semibold text-black">{carrier.service}</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">API Source:</span>
+                                        <span className="font-semibold text-black">Shippo</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
                 <Button
@@ -416,13 +693,9 @@ export default function CarrierComparisonPage() {
                             <p className="text-sm text-gray-600">Transit Time</p>
                             <p className="text-lg font-semibold text-black">{selectedCarrier.transitTime}</p>
                           </div>
-                          <div>
+                          <div className="col-span-2">
                             <p className="text-sm text-gray-600">Total Cost</p>
                             <p className="text-xl font-bold text-green-600">${((selectedCarrier.cost ?? 0) * selectedShipments.length).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Reliability</p>
-                            {renderStars(selectedCarrier.reliability ?? 0)}
                           </div>
                         </div>
                       </div>
@@ -435,15 +708,26 @@ export default function CarrierComparisonPage() {
                 <Button 
                   variant="outline"
                   onClick={handlePreviousStep}
+                  disabled={loadingConfirm}
                 >
                   Back to Carrier Selection
                 </Button>
                 <Button 
                   onClick={handleConfirm}
+                  disabled={loadingConfirm}
                   className="bg-brand-purple hover:bg-brand-purple-hover"
                 >
+                  {loadingConfirm ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Assigning Carrier...
+                    </>
+                  ) : (
+                    <>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Confirm Order
+                    </>
+                  )}
                 </Button>
               </div>
             </>
@@ -451,45 +735,81 @@ export default function CarrierComparisonPage() {
         </>
       )}
 
-      {/* Current Shipments Tab - Carrier Comparison Table */}
-      {activeTab === "current" && (
-        <CarrierCompare
-          carriers={carriers}
-          selectedCarrier={currentTabSelectedCarrier}
-          searchTerm={currentTabSearchTerm}
-          setSearchTerm={setCurrentTabSearchTerm}
-          handleSelectCarrier={setCurrentTabSelectedCarrier}
-        />
-      )}
-
-      {/* All Orders Tab */}
-      {activeTab === "all" && (
-        <div className="bg-white border rounded-lg p-6 shadow-sm">
-          <div className="text-center py-12">
-            <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-            <p className="text-lg font-medium text-gray-600">All Orders (520)</p>
-            <p className="text-sm text-gray-500 mt-2">View and manage all orders in the system</p>
+      {/* All Shipments Tab */}
+      {activeTab === "allShipments" && (
+        <>
+          {loadingAllShipments ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
+            </div>
+          ) : allShipmentOrders.length === 0 ? (
+            <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
+              <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+              <p className="text-lg font-medium text-gray-600">No shipments yet</p>
+              <p className="text-sm text-gray-500 mt-2">Assign carriers to orders to create shipments</p>
+            </div>
+          ) : (
+            <div className="bg-white border rounded-lg p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-black mb-4">All Shipments</h3>
+              <p className="text-sm text-gray-600 mb-6">Showing {allShipmentOrders.length} shipment(s) with assigned carriers</p>
+              
+              {/* Group orders by status */}
+              <div className="space-y-6">
+                {["READY_FOR_PICKUP", "COLLECTED", "IN_TRANSIT", "DELIVERED"].map((status) => {
+                  const ordersWithStatus = allShipmentOrders.filter(order => order.status === status)
+                  if (ordersWithStatus.length === 0) return null
+                  
+                  return (
+                    <div key={status} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold text-black">
+                          {status.replace(/_/g, ' ')} ({ordersWithStatus.length})
+                        </h4>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {ordersWithStatus.map((order) => (
+                          <div key={order.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <p className="font-semibold text-black">Order #{order.reference}</p>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                    order.priority === "High" ? "bg-red-100 text-red-700" :
+                                    order.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
+                                    "bg-green-100 text-green-700"
+                                  }`}>
+                                    {order.priority} Priority
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  <strong>Destination:</strong> {order.shippingAddress}
+                                </p>
+                                {order.description && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    <strong>Details:</strong> {order.description}
+                                  </p>
+                                )}
+                                {order.trackingNumber && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    <strong>Tracking:</strong> {order.trackingNumber}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Created: {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
+                                </p>
+                              </div>
           </div>
         </div>
-      )}
-
-      {/* Carrier Details Tab */}
-      {activeTab === "details" && (
-        <div className="bg-white border rounded-lg p-6 shadow-sm">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-black">Carrier Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Historical performance data</p>
-                <p className="text-sm font-medium text-gray-600">Recent delivery statistics</p>
+                        ))}
+                      </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Coverage map</p>
-                <p className="text-sm font-medium text-gray-600">Special services available</p>
+                  )
+                })}
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   )
