@@ -7,24 +7,28 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderEvent;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderEventRepository;
 import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
 import Operimus.SLMS.business_layer.order_shipment_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 @DataJpaTest
-@Import({OrderService.class, WarehouseService.class})
+@Import({OrderService.class, WarehouseService.class, ShipmentOrderEventService.class})
 class OrderServiceTest {
 
     @Autowired
@@ -35,6 +39,9 @@ class OrderServiceTest {
 
     @Autowired
     private WarehouseRepository warehouseRepository;
+
+    @Autowired
+    private ShipmentOrderEventRepository shipmentOrderEventRepository;
 
     @MockBean
     private OrderDocumentService orderDocumentService;
@@ -81,6 +88,25 @@ class OrderServiceTest {
         assertThat(saved.getWarehouse().getId()).isEqualTo(warehouse.getId());
         assertThat(saved.getShipstationCarrierCode()).isEqualTo("DHL");
         verify(orderDocumentService).uploadDocument(eq(saved.getId()), any());
+    }
+
+    @Test
+    void createShouldRecordInitialEvent() {
+        OrderRequest request = OrderRequest.builder()
+                .reference("ORD-010")
+                .description("Initial event")
+                .shippingAddress("456 Customer St, Porto")
+                .warehouseId(warehouse.getId())
+                .build();
+
+        OrderResponse response = orderService.create(request);
+
+        List<ShipmentOrderEvent> events =
+                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(response.getId());
+        assertThat(events).hasSize(1);
+        ShipmentOrderEvent event = events.get(0);
+        assertThat(event.getEventType()).isEqualTo(ShipmentOrderStatus.CREATED);
+        assertThat(event.getNotes()).contains("initialized");
     }
 
     @Test
@@ -146,6 +172,33 @@ class OrderServiceTest {
         ShipmentOrder updated = shipmentOrderRepository.findById(order.getId()).orElseThrow();
         assertThat(updated.getWarehouse().getId()).isEqualTo(newWarehouse.getId());
         assertThat(updated.getTrackingNumber()).isEqualTo("TRACK456");
+    }
+
+    @Test
+    void updateShouldRecordEventWhenStatusChanges() {
+        OrderResponse created = orderService.create(OrderRequest.builder()
+                .reference("ORD-CHANGE")
+                .description("Status change")
+                .shippingAddress("123 Street")
+                .warehouseId(warehouse.getId())
+                .build());
+
+        OrderRequest updateRequest = OrderRequest.builder()
+                .reference("ORD-CHANGE")
+                .description("Updated status")
+                .status(ShipmentOrderStatus.IN_TRANSIT)
+                .shippingAddress("123 Street")
+                .warehouseId(warehouse.getId())
+                .build();
+
+        orderService.update(created.getId(), updateRequest);
+
+        List<ShipmentOrderEvent> events =
+                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(created.getId());
+        assertThat(events).hasSize(2);
+        ShipmentOrderEvent latest = events.get(1);
+        assertThat(latest.getEventType()).isEqualTo(ShipmentOrderStatus.IN_TRANSIT);
+        assertThat(latest.getNotes()).contains("changed from CREATED to IN_TRANSIT");
     }
 
     @Test
@@ -246,6 +299,10 @@ class OrderServiceTest {
         assertThat(response.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
         ShipmentOrder reloaded = shipmentOrderRepository.findById(order.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
+        List<ShipmentOrderEvent> events =
+                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(order.getId());
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).getEventType()).isEqualTo(ShipmentOrderStatus.COLLECTED);
     }
 
     @Test
