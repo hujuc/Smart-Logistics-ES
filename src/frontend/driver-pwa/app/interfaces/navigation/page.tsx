@@ -152,13 +152,20 @@ function NavigationContent() {
                 console.log('📦 Optimization API response:', data);
                 
                 if (data.code === 'Ok' && data.trips && data.trips.length > 0) {
+                    // Define a minimal type for optimization waypoints returned by Mapbox
+                    type OptimizationWaypoint = {
+                        waypoint_index: number;
+                        location?: [number, number];
+                        name?: string;
+                    };
+
                     // Extract optimized waypoint order (excluding the starting point)
-                    const waypoints = data.waypoints;
+                    const waypoints = data.waypoints as OptimizationWaypoint[];
                     console.log('Waypoints from API:', waypoints);
                     
                     const optimized = waypoints
                         .slice(1) // Skip first waypoint (current location)
-                        .map((wp: any) => {
+                        .map((wp) => {
                             const deliveryId = allDeliveryIds[wp.waypoint_index - 1];
                             console.log(`Waypoint index ${wp.waypoint_index} -> Delivery ID ${deliveryId}`);
                             return deliveryId;
