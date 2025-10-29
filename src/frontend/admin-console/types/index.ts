@@ -10,6 +10,7 @@ export type {
   IssueType,
   Carrier,
   Order,
+  OrderEvent,
   OrderDocument,
   ContactInfo,
   Address,

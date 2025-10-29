@@ -3,7 +3,8 @@
  * Currently using mock data - ready to connect to backend when available
  */
 
-import type { Order } from '@/types';
+import { API_ENDPOINTS, apiFetch } from '../api';
+import type { Order, OrderEvent } from '@/types';
 import type {
   TicketWithDetails,
   ResolutionNote,
@@ -11,7 +12,52 @@ import type {
   CustomerServiceStats
 } from '@/types/customer-service';
 
-// Mock data - using same IDs as the tickets page for consistency
+// ========================================
+// Real API methods for Order Lookup
+// ========================================
+
+interface OrderTrackingInfo {
+  orderId: number;
+  trackingNumber: string;
+  status: string;
+  estimatedDelivery: string;
+  events: unknown[];
+}
+
+export const customerServiceOrderApi = {
+  /**
+   * Search orders by reference or tracking number
+   */
+  async searchOrders(query: string): Promise<Order[]> {
+    return apiFetch<Order[]>(API_ENDPOINTS.customerService.ordersSearch(query));
+  },
+
+  /**
+   * Get order by ID
+   */
+  async getOrderById(id: number): Promise<Order> {
+    return apiFetch<Order>(API_ENDPOINTS.customerService.order(id));
+  },
+
+  /**
+   * Get order events (timeline)
+   */
+  async getOrderEvents(id: number): Promise<OrderEvent[]> {
+    return apiFetch<OrderEvent[]>(API_ENDPOINTS.customerService.orderEvents(id));
+  },
+
+  /**
+   * Get order tracking information
+   */
+  async getOrderTracking(id: number): Promise<OrderTrackingInfo> {
+    return apiFetch<OrderTrackingInfo>(API_ENDPOINTS.customerService.orderTracking(id));
+  },
+};
+
+// ========================================
+// Mock data for tickets (temporary)
+// ========================================
+
 const MOCK_TICKETS: TicketWithDetails[] = [
   {
     id: 'TKT001',
