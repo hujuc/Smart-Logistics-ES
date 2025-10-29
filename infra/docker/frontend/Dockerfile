@@ -6,7 +6,7 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY ${FRONTEND_PATH}/package.json ./package.json
 COPY ${FRONTEND_PATH}/package-lock.json ./package-lock.json
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM node:${NODE_VERSION}-alpine AS builder
 ARG FRONTEND_PATH
@@ -14,13 +14,17 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY ${FRONTEND_PATH}/ ./
-RUN npm run build
+RUN npm run build \
+  && npm prune --omit=dev \
+  && rm -rf .next/cache node_modules/.cache
 
 FROM node:${NODE_VERSION}-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
-COPY --from=builder /app .
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
