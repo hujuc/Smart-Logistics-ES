@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import type { Order } from "@/types"
 import { STATUS_LABELS } from "@/types"
@@ -16,6 +19,7 @@ interface PackageDetailsPageProps {
 }
 
 export default function PackageDetailsPage({ params }: PackageDetailsPageProps) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +38,13 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   useEffect(() => {
     if (!orderId) return
 
+    if (!isAuthenticated()) {
+      setError("You must be logged in to view order details.")
+      setIsLoading(false)
+      router.push("/")
+      return
+    }
+
     const loadOrder = async () => {
       try {
         setIsLoading(true)
@@ -49,7 +60,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
 
     loadOrder()
-  }, [orderId])
+  }, [orderId, router])
 
   useEffect(() => {
     if (!orderId) {
@@ -61,6 +72,8 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       })
       return
     }
+
+    if (!isAuthenticated()) return
 
     let isMounted = true
     let currentUrl: string | null = null
@@ -188,7 +201,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         <h1 className="text-3xl font-bold text-black">Package Details</h1>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-black">
             {order.trackingNumber || order.reference}
@@ -362,7 +375,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
                   setOrder({ ...order, description: e.target.value })
                 }
                 disabled={!isEditing}
-                className="mt-1 flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                className="mt-1 flex min-h-[80px] w-full rounded-md border bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
               />
             </div>
           </div>
@@ -370,7 +383,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-2">
           <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
           <div className="space-y-3">
             {order.actualDelivery && (
@@ -404,7 +417,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-1">
+        <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-1">
           <h3 className="font-semibold text-black mb-4">Package QR Code</h3>
           {isQrLoading ? (
             <p className="text-gray-600 text-sm">Loading QR code...</p>
@@ -412,10 +425,12 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             <p className="text-red-600 text-sm">{qrError}</p>
           ) : qrImageUrl ? (
             <div className="flex flex-col items-center">
-              <img
+              <Image
                 src={qrImageUrl}
                 alt="Order QR code"
-                className="h-56 w-56 rounded-md border border-gray-200 bg-gray-50 p-4"
+                width={224}
+                height={224}
+                className="rounded-md border bg-gray-50 p-4"
               />
             </div>
           ) : (

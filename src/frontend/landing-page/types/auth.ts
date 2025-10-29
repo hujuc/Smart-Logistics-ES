@@ -14,6 +14,7 @@ export interface User {
 
 export interface SignUpData {
     name: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
@@ -21,7 +22,7 @@ export interface SignUpData {
 }
 
 export interface LoginData {
-    email: string;
+    username: string;
     password: string;
 }
 

@@ -70,7 +70,7 @@ jobs:
       matrix:
         app:
           - admin-console
-          - costumer-portal
+          - customer-portal
           - driver-pwa
           - landing-page
     env:
