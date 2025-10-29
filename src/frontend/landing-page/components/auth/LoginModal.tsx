@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock } from 'lucide-react';
+import { X, Mail, Lock, Package } from 'lucide-react';
 import type { LoginData } from '@/types/auth';
 
 interface LoginModalProps {
@@ -73,6 +73,10 @@ export default function LoginModal({ onClose, onSwitchToSignUp }: LoginModalProp
 
                 {/* Header */}
                 <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Package className="h-8 w-8 text-black" />
+                        <span className="text-2xl font-bold text-black">SLMS</span>
+                    </div>
                     <h2 className="text-3xl font-bold text-black mb-2">Welcome back</h2>
                     <p className="text-gray-600">Login to your SLMS account</p>
                 </div>

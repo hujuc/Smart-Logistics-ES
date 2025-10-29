@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Mail, Lock, User, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, User, CheckCircle, Package } from 'lucide-react';
 import type { SignUpData, UserRole } from '@/types/auth';
 import { ROLE_LABELS, ROLE_DESCRIPTIONS } from '@/types/auth';
 
@@ -134,6 +134,10 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
 
                 {/* Header */}
                 <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Package className="h-8 w-8 text-black" />
+                        <span className="text-2xl font-bold text-black">SLMS</span>
+                    </div>
                     <h2 className="text-3xl font-bold text-black mb-2">Create your account</h2>
                     <p className="text-gray-600">
                         {step === 1 ? 'Enter your details to get started' : 'Select your role in the system'}

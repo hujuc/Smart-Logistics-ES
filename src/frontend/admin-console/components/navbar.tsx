@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Package } from "lucide-react"
 
 export function Navbar() {
 
@@ -11,8 +12,9 @@ export function Navbar() {
         <div className="flex h-16 justify-center">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
-              <Link href="/" className="text-2xl font-bold text-black">
-                SLMS
+              <Link href="/" className="flex items-center gap-2">
+                <Package className="h-8 w-8 text-black" />
+                <span className="text-2xl font-bold text-black">SLMS</span>
               </Link>
             </div>
           </div>

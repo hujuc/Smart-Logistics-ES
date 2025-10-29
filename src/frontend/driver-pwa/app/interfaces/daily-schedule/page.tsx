@@ -135,6 +135,10 @@ export default function DriverDailySchedule() {
       <div className="min-h-screen bg-white pb-20">
         {/* Header */}
         <div className="bg-black text-white p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Package className="h-5 w-5 text-white" />
+            <span className="text-base font-bold text-white">SLMS</span>
+          </div>
           <h1 className="text-2xl font-bold">Daily Schedule</h1>
           <p className="text-gray-300 text-sm mt-1">Carlos Silva • Driver</p>
         </div>
