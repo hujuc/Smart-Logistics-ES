@@ -1,7 +1,7 @@
-package Operimus.SLMS.business_layer.customer_support_module.repository;
+package Operimus.SLMS.business_layer.visibility_module.exceptions.repository;
 
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

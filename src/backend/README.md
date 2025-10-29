@@ -46,4 +46,29 @@ Located in `business_layer/`, organized by domain modules:
 Frontend → BFF Controller → Business Service → Repository → Database
 ```
 
+## Project Structure
+
+- `src/main/java/Operimus/SLMS/business_layer/` - Domain models and business logic
+- `src/main/java/Operimus/SLMS/presentation_layer/` - REST controllers (BFFs)
+- `src/main/resources/` - Configuration files
+
+## Order Event API
+
+The order shipment module now exposes endpoints that surface the audit trail stored in the `order_events` table:
+
+- `GET /api/admin/orders/{orderId}/events` – return the full status timeline for the specified order ordered by `occurredAt`.
+- `GET /api/admin/orders/{orderId}/events/latest` – return only the most recent status change for the specified order.
+
+Both endpoints respond with a JSON array/object using the following shape:
+
+```jsonc
+{
+  "id": 42,
+  "orderId": 5,
+  "eventType": "IN_TRANSIT",
+  "occurredAt": "2024-03-04T10:15:00Z",
+  "notes": "Order status changed from READY_FOR_PICKUP to IN_TRANSIT"
+}
+```
+
 BFFs provide app-specific API contracts while business services ensure reusable, shared logic across all frontends.
