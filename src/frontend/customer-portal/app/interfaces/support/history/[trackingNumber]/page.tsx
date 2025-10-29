@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import {
   ArrowLeft,
   Package,
-  MapPin,
   Truck,
   CheckCircle,
   Clock,
@@ -16,8 +15,45 @@ import {
   FileText
 } from "lucide-react"
 
+interface OrderDetails {
+  trackingNumber: string;
+  orderNumber: string;
+  status: string;
+  description: string;
+  weight: string;
+  estimatedDelivery: string;
+  carrier: string;
+  origin: {
+    name: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+  destination: {
+    name: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+  timeline: Array<{
+    id: string | number;
+    status: string;
+    location: string;
+    timestamp: string | null;
+    completed: boolean;
+    description: string;
+    hasException?: boolean;
+  }>;
+  exception?: {
+    type: string;
+    reason: string;
+    nextAttempt?: string;
+  };
+  actualDelivery?: string;
+}
+
 // Mock data - in real app, this would come from API
-const mockOrderDetails: Record<string, any> = {
+const mockOrderDetails: Record<string, OrderDetails> = {
   "TRK123456789": {
     trackingNumber: "TRK123456789",
     orderNumber: "ORD-2025-001",
@@ -219,7 +255,6 @@ const mockOrderDetails: Record<string, any> = {
     exception: {
       type: "Delivery Failed",
       reason: "Recipient not available at delivery address",
-      date: "2025-10-24T15:00:00",
       nextAttempt: "2025-10-29T10:00:00"
     },
     origin: {
@@ -285,7 +320,7 @@ export default function OrderTrackingPage() {
   const router = useRouter()
   const trackingNumber = params.trackingNumber as string
 
-  const [order, setOrder] = useState<any>(null)
+  const [order, setOrder] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -350,7 +385,7 @@ export default function OrderTrackingPage() {
         <div className="bg-white border rounded-lg p-8 shadow-sm text-center">
           <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-black mb-2">Tracking Number Not Found</h2>
-          <p className="text-gray-600">We couldn't find any information for tracking number: {trackingNumber}</p>
+          <p className="text-gray-600">We couldn&apos;t find any information for tracking number: {trackingNumber}</p>
           <p className="text-sm text-gray-500 mt-2">Please check the number and try again.</p>
         </div>
       </div>
@@ -441,7 +476,7 @@ export default function OrderTrackingPage() {
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-black mb-6">Shipping Timeline</h2>
             <div className="relative">
-              {order.timeline.map((event: any, index: number) => (
+              {order.timeline.map((event, index: number) => (
                 <div key={event.id} className="relative pb-8 last:pb-0">
                   {index < order.timeline.length - 1 && (
                     <div
@@ -555,7 +590,7 @@ export default function OrderTrackingPage() {
                 Report a Ticket
               </Button>
               <p className="text-xs text-gray-500 text-center">
-                Having problems with your delivery? Create a support ticket and we'll help you.
+                Having problems with your delivery? Create a support ticket and we&apos;ll help you.
               </p>
             </div>
           </div>

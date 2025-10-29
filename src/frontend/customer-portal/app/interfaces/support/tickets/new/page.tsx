@@ -174,7 +174,7 @@ export default function NewTicketPage() {
                 Order information loaded
               </p>
               <p className="text-sm text-green-700 mt-1">
-                We've pre-filled this form with information from your order. Please review and add any additional details about your issue.
+                We&apos;ve pre-filled this form with information from your order. Please review and add any additional details about your issue.
               </p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import type { NextAuthOptions } from "next-auth";
-import type { OAuthConfig, OAuthUserConfig } from "next-auth/providers/oauth";
+import type { OAuthConfig } from "next-auth/providers/oauth";
 
 interface KeycloakProfile {
   sub: string;

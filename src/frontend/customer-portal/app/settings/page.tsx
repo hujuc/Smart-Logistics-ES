@@ -12,7 +12,6 @@ import {
   Save,
   CheckCircle2,
   Shield,
-  Package,
 } from "lucide-react"
 
 export default function SettingsPage() {

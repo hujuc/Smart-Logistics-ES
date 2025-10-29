@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
   // Check if user has access token in cookies (set from landing page)
   const accessToken = request.cookies.get("access_token");
 

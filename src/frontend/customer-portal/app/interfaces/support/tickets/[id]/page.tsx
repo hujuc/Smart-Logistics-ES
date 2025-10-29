@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
   Calendar,
@@ -13,7 +12,6 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  MessageSquare
 } from "lucide-react"
 
 // Mock data - in real app, this would come from API
@@ -136,7 +134,6 @@ export default function TicketDetailPage() {
 
   const [ticket, setTicket] = useState<typeof mockTickets[0] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [newMessage, setNewMessage] = useState("")
 
   useEffect(() => {
     // Simulate API call
@@ -146,13 +143,6 @@ export default function TicketDetailPage() {
       setLoading(false)
     }, 500)
   }, [ticketId])
-
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return
-    // In real app, send message via API
-    alert("Message sent! (This is a mock implementation)")
-    setNewMessage("")
-  }
 
   if (loading) {
     return (
@@ -175,7 +165,7 @@ export default function TicketDetailPage() {
         <div className="bg-white border rounded-lg p-8 shadow-sm text-center">
           <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-black mb-2">Ticket Not Found</h2>
-          <p className="text-gray-600">The ticket you're looking for doesn't exist or you don't have access to it.</p>
+          <p className="text-gray-600">The ticket you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
         </div>
       </div>
     )
@@ -350,7 +340,7 @@ export default function TicketDetailPage() {
                 <div>
                   <p className="font-medium text-blue-900">In Progress</p>
                   <p className="text-sm text-blue-700 mt-1">
-                    Our support team is working on your request. We'll update you soon.
+                    Our support team is working on your request. We&apos;ll update you soon.
                   </p>
                 </div>
               </div>
