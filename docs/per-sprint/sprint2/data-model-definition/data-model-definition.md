@@ -155,6 +155,33 @@ CREATE TABLE orders (
 - DELIVERY_MANIFESTS (order_id)
 - DELIVERY_EXCEPTIONS (order_id)
 - NOTIFICATION_LOGS (order_id)
+- ORDER_EVENTS (order_id)
+
+---
+
+### ORDER_EVENTS
+Immutable audit trail capturing every status transition an order experiences.
+
+```sql
+CREATE TABLE order_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    event_type VARCHAR(20) NOT NULL,
+    occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+
+    CONSTRAINT check_event_type CHECK (event_type IN (
+        'CREATED', 'READY_FOR_PICKUP', 'COLLECTED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'
+    )),
+
+    INDEX idx_order_events_order (order_id, occurred_at DESC)
+);
+```
+
+**Purpose:** Preserve a chronological history of order state changes for reporting and customer visibility
+
+**Connects to:**
+- ORDERS (order_id)
 
 ---
 

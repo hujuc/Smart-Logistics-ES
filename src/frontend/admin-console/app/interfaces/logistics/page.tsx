@@ -28,18 +28,18 @@ export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState<"kpis" | "charts">("kpis")
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:justify-between lg:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-black">Logistics Operations Dashboard</h1>
-          <p className="text-gray-600 mt-1">Monitor performance, costs, and carrier metrics</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-black">Logistics Operations Dashboard</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Monitor performance, costs, and carrier metrics</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => alert("Opening Analytics...")}>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => alert("Opening Analytics...")} className="w-full sm:w-auto">
             <BarChart3 className="mr-2 h-4 w-4" />
             Analytics
           </Button>
-          <Button variant="outline" onClick={() => alert("Exporting report...")}>
+          <Button variant="outline" onClick={() => alert("Exporting report...")} className="w-full sm:w-auto">
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>

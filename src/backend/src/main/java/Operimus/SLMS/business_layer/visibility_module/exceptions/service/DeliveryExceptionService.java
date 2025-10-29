@@ -1,9 +1,9 @@
-package Operimus.SLMS.business_layer.customer_support_module.service;
+package Operimus.SLMS.business_layer.visibility_module.exceptions.service;
 
-import Operimus.SLMS.business_layer.customer_support_module.dto.*;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException;
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException.*;
-import Operimus.SLMS.business_layer.customer_support_module.repository.DeliveryExceptionRepository;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,6 +1,6 @@
-package Operimus.SLMS.business_layer.customer_support_module.dto;
+package Operimus.SLMS.business_layer.visibility_module.exceptions.dto;
 
-import Operimus.SLMS.business_layer.customer_support_module.entities.DeliveryException.*;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

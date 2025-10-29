@@ -47,11 +47,11 @@ export default function TrackingPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-black">Real-Time Tracking</h1>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-black">Real-Time Tracking</h1>
         <Link href="/interfaces/logistics">
-          <Button variant="outline">Back to Routes</Button>
+          <Button variant="outline" className="w-full sm:w-auto">Back to Routes</Button>
         </Link>
       </div>
 

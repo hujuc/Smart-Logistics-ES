@@ -136,18 +136,18 @@ export default function CarrierComparisonPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-black">Carrier Comparison</h1>
-          <p className="text-gray-600 mt-1">Compare carriers for new shipments ({mockShipments.length})</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-black">Carrier Comparison</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Compare carriers for new shipments ({mockShipments.length})</p>
         </div>
       </div>
 
 
       {/* Tab Navigation */}
-      <div className="bg-white border rounded-lg p-2 shadow-sm">
-        <div className="flex gap-2">
+      <div className="bg-white border rounded-lg p-2 shadow-sm overflow-x-auto">
+        <div className="flex gap-2 min-w-max sm:min-w-0">
           <Button
             variant={activeTab === "new" ? "default" : "outline"}
             size="sm"
@@ -155,7 +155,7 @@ export default function CarrierComparisonPage() {
               setActiveTab("new")
               setFlowStep(1)
             }}
-            className={activeTab === "new" ? "bg-brand-purple hover:bg-brand-purple-hover" : ""}
+            className={activeTab === "new" ? "bg-brand-purple hover:bg-brand-purple-hover whitespace-nowrap" : "whitespace-nowrap"}
           >
             New Shipment
           </Button>
@@ -163,6 +163,7 @@ export default function CarrierComparisonPage() {
             variant={activeTab === "current" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveTab("current")}
+            className="whitespace-nowrap"
           >
             Current Shipments (13)
           </Button>
@@ -170,6 +171,7 @@ export default function CarrierComparisonPage() {
             variant={activeTab === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveTab("all")}
+            className="whitespace-nowrap"
           >
             All Orders (520)
           </Button>
@@ -177,11 +179,12 @@ export default function CarrierComparisonPage() {
             variant={activeTab === "details" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveTab("details")}
+            className="whitespace-nowrap"
           >
             Carrier Details
           </Button>
-          <div className="ml-auto">
-            <Button variant="outline" size="sm">
+          <div className="sm:ml-auto">
+            <Button variant="outline" size="sm" className="whitespace-nowrap">
               <Filter className="h-4 w-4 mr-2" />
               Filters
             </Button>
