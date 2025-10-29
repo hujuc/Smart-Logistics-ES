@@ -63,6 +63,9 @@ export interface Order {
     shippingAddress: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
+    carrierId?: number;
+    carrierCode?: string;
+    carrierName?: string;
     shippoShipmentId: string;
     shippoTransactionId: string;
     shipstationOrderId: string;
