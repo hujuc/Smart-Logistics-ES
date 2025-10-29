@@ -1,4 +1,4 @@
-import { Package, QrCode, Settings, Truck, MapPin, Users, FileText, BarChart } from "lucide-react"
+import { Package, QrCode, Settings, Truck, MapPin, Users, FileText, BarChart, Search } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -61,6 +61,11 @@ export const customerServiceNavItems: NavItem[] = [
     href: "/interfaces/customer-service/tickets",
     icon: FileText,
     label: "Tickets",
+  },
+  {
+    href: "/interfaces/customer-service/order-lookup",
+    icon: Search,
+    label: "Order Lookup",
   },
   {
     href: "/interfaces/customer-service/reports",
