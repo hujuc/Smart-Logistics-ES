@@ -72,9 +72,17 @@ export interface Order {
     shipstationCarrierCode: string;
     shipstationServiceCode: string;
     trackingNumber: string;
+
+    // Parcel dimensions for shipping rate calculation
+    weight?: number;
+    weightUnit?: string;
+    length?: number;
+    width?: number;
+    height?: number;
+    distanceUnit?: string;
+
     createdAt: Date;
     updatedAt: Date;
-    weight: number;
     priority: Priority;
     origin: string;
     actualDelivery?: Date;

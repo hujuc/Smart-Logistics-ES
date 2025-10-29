@@ -60,6 +60,12 @@ public class OrderService {
                 .shipstationCarrierCode(request.getShipstationCarrierCode())
                 .shipstationServiceCode(request.getShipstationServiceCode())
                 .trackingNumber(request.getTrackingNumber())
+                .weight(request.getWeight())
+                .weightUnit(request.getWeightUnit())
+                .length(request.getLength())
+                .width(request.getWidth())
+                .height(request.getHeight())
+                .distanceUnit(request.getDistanceUnit())
                 .build();
 
         // Salvar a encomenda no banco (gera orderId)
@@ -111,6 +117,12 @@ public class OrderService {
         order.setShipstationCarrierCode(request.getShipstationCarrierCode());
         order.setShipstationServiceCode(request.getShipstationServiceCode());
         order.setTrackingNumber(request.getTrackingNumber());
+        order.setWeight(request.getWeight());
+        order.setWeightUnit(request.getWeightUnit());
+        order.setLength(request.getLength());
+        order.setWidth(request.getWidth());
+        order.setHeight(request.getHeight());
+        order.setDistanceUnit(request.getDistanceUnit());
 
         if (statusChanged) {
             shipmentOrderEventService.recordStatusChange(order, previousStatus, newStatus);
@@ -166,6 +178,14 @@ public class OrderService {
         return shipmentOrderRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByStatus(List<ShipmentOrderStatus> statuses) {
+        return shipmentOrderRepository.findAll().stream()
+                .filter(order -> statuses.contains(order.getStatus()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
         return status == null ? ShipmentOrderStatus.CREATED : status;
     }
@@ -188,6 +208,12 @@ public class OrderService {
                 .shipstationCarrierCode(order.getShipstationCarrierCode())
                 .shipstationServiceCode(order.getShipstationServiceCode())
                 .trackingNumber(order.getTrackingNumber())
+                .weight(order.getWeight())
+                .weightUnit(order.getWeightUnit())
+                .length(order.getLength())
+                .width(order.getWidth())
+                .height(order.getHeight())
+                .distanceUnit(order.getDistanceUnit())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
