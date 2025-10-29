@@ -10,21 +10,21 @@ jobs:
     runs-on: [self-hosted, slms]
     env:
       COMPOSE_PROJECT_NAME: slms-ci-tests
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'slms' }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'slms' }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'slms' }}
-      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN || 'admin' }}
-      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD || 'admin' }}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID || 'slms-backend' }}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET || 'dev-secret-change-in-production' }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD  }}
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN  }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD  }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID  }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET  }}
       KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM || 'slms' }}
       KC_DB: postgres
-      KC_DB_USERNAME: ${{ secrets.DB_USERNAME || 'slms' }}
-      KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'slms' }}
+      KC_DB_USERNAME: ${{ secrets.DB_USERNAME  }}
+      KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       KC_DB_URL: ${{ format('jdbc:postgresql://postgres:5432/{0}', secrets.POSTGRES_DB != '' && secrets.POSTGRES_DB || 'slms') }}
-      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER || 'minioadmin' }}
-      MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD || 'minioadminsecret' }}
-      MINIO_BUCKET: ${{ secrets.MINIO_BUCKET || 'slms-documents' }}
+      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER  }}
+      MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+      MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
     steps:
       - uses: actions/checkout@v4
 
