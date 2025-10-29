@@ -46,7 +46,7 @@ make dev-up
 ```bash
 curl -X POST http://localhost:8180/realms/slms/protocol/openid-connect/token \
   -d "client_id=slms-backend" \
-  -d "client_secret=<your-secret>" \
+  -d "client_secret=<your-secret>" 
   -d "username=customer" \
   -d "password=customer" \
   -d "grant_type=password"

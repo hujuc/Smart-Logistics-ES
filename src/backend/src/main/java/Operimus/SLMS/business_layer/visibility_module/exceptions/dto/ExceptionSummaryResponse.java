@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.customer_support_module.dto;
+package Operimus.SLMS.business_layer.visibility_module.exceptions.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

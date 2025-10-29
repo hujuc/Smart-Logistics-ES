@@ -4,7 +4,7 @@ import { Package, Truck, UserCircle } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center -ml-32">
+    <div className="flex min-h-screen flex-col items-center justify-center pr-8">
       <div className="text-center space-y-8">
         <div className="flex items-center justify-center gap-3 mb-4">
           <Package className="h-16 w-16 text-black" />

@@ -33,6 +33,8 @@ public class OrderRequest {
     @NotNull
     private Long warehouseId;
 
+    private Long carrierId;
+
     private String shippoShipmentId;
 
     private String shippoTransactionId;
