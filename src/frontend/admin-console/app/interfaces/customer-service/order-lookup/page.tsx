@@ -16,9 +16,10 @@ import {
 } from "lucide-react"
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
 import type { Order, OrderEvent, ShipmentOrderStatus } from "@/types"
+import type { LucideIcon } from "lucide-react"
 
 // Status configuration for display
-const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: any; color: string; label: string }> = {
+const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string }> = {
   CREATED: { icon: Package, color: "text-gray-500", label: "Created" },
   READY_FOR_PICKUP: { icon: Package, color: "text-blue-500", label: "Ready for Pickup" },
   COLLECTED: { icon: CheckCircle, color: "text-purple-500", label: "Collected" },

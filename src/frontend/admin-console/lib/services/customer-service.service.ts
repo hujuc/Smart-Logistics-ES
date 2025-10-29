@@ -16,6 +16,14 @@ import type {
 // Real API methods for Order Lookup
 // ========================================
 
+interface OrderTrackingInfo {
+  orderId: number;
+  trackingNumber: string;
+  status: string;
+  estimatedDelivery: string;
+  events: unknown[];
+}
+
 export const customerServiceOrderApi = {
   /**
    * Search orders by reference or tracking number
@@ -41,8 +49,8 @@ export const customerServiceOrderApi = {
   /**
    * Get order tracking information
    */
-  async getOrderTracking(id: number): Promise<any> {
-    return apiFetch<any>(API_ENDPOINTS.customerService.orderTracking(id));
+  async getOrderTracking(id: number): Promise<OrderTrackingInfo> {
+    return apiFetch<OrderTrackingInfo>(API_ENDPOINTS.customerService.orderTracking(id));
   },
 };
 
