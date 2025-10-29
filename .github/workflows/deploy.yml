@@ -20,8 +20,8 @@ jobs:
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET || 'dev-secret-change-in-production' }}
       KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM || 'slms' }}
       KC_DB: postgres
-      KC_DB_USERNAME: ${{ secrets.DB_USERNAME  }}
-      KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      KC_DB_USERNAME: ${{ secrets.DB_USERNAME || 'slms' }}
+      KC_DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'slms' }}
       KC_DB_URL: ${{ format('jdbc:postgresql://postgres:5432/{0}', secrets.POSTGRES_DB != '' && secrets.POSTGRES_DB || 'slms') }}
       MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
       MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
