@@ -55,6 +55,10 @@ public class ShipmentOrder {
     @JoinColumn(name = "warehouse_id", nullable = false)
     private Warehouse warehouse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "carrier_id")
+    private Carrier carrier;
+
     @Column(name = "shippo_shipment_id", length = 128)
     private String shippoShipmentId;
 
