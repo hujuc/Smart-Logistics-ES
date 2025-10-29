@@ -95,25 +95,41 @@ jobs:
           sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak
           exit 1
 
-      - name: Debug Keycloak client authentication
+      - name: Configure Keycloak client secret for CI
         working-directory: ${{ github.workspace }}
         shell: bash
         run: |
           set -e
-          echo "Testing Keycloak client credentials grant..."
-          echo "Realm: ${KEYCLOAK_REALM}"
-          echo "Client ID: ${KEYCLOAK_ADMIN_CLIENT_ID}"
-          echo "Client secret length: ${#KEYCLOAK_ADMIN_CLIENT_SECRET}"
+          echo "Configuring Keycloak client secret..."
           
-          curl -v -X POST "http://localhost:28180/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" \
+          # Get admin token
+          ADMIN_TOKEN=$(curl -sf -X POST "http://localhost:28180/realms/master/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${KEYCLOAK_ADMIN}" \
+            -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+            -d "grant_type=password" \
+            -d "client_id=admin-cli" | jq -r '.access_token')
+          
+          # Get client UUID
+          CLIENT_UUID=$(curl -sf "http://localhost:28180/admin/realms/${KEYCLOAK_REALM}/clients?clientId=${KEYCLOAK_ADMIN_CLIENT_ID}" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
+          
+          echo "Found client UUID: $CLIENT_UUID"
+          
+          # Set the client secret to match what's in GitHub Secrets
+          curl -sf -X POST "http://localhost:28180/admin/realms/${KEYCLOAK_REALM}/clients/$CLIENT_UUID/client-secret" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"type\": \"secret\", \"value\": \"${KEYCLOAK_ADMIN_CLIENT_SECRET}\"}"
+          
+          echo "✓ Client secret configured successfully"
+          
+          # Verify authentication works
+          curl -sf -X POST "http://localhost:28180/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "client_id=${KEYCLOAK_ADMIN_CLIENT_ID}" \
             -d "client_secret=${KEYCLOAK_ADMIN_CLIENT_SECRET}" \
-            -d "grant_type=client_credentials" || {
-            echo "Failed to authenticate - checking Keycloak logs..."
-            sudo docker compose --env-file infra/.env.ci -f infra/docker-compose.ci.yml logs keycloak | tail -100
-            exit 1
-          }
+            -d "grant_type=client_credentials" > /dev/null && echo "✓ Client authentication verified"
 
       - name: Wait for MinIO readiness
         working-directory: ${{ github.workspace }}
