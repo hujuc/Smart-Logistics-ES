@@ -1,68 +1,74 @@
-# SLMS Backend
+# Backend Architecture
 
-Spring Boot backend for the Shipment and Logistics Management System (SLMS).
+## Overview
 
-Repository: https://github.com/detiuaveiro/group-project-es2526_304
+The backend follows a layered architecture with Backend-For-Frontend (BFF) pattern, separating presentation concerns from business logic.
 
-## Environment Setup
+## BFF Layer (Presentation Layer)
 
-1. Copy the environment template:
-   ```bash
-   cp .env.example .env
-   ```
+Located in `presentation_layer/`, contains frontend-specific REST controllers organized by application:
 
-2. Update `.env` with your database configuration:
-   ```bash
-   # Database Configuration
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=slms
-   DB_USERNAME=slms
-   DB_PASSWORD=slms
-   
-   # JPA Configuration
-   JPA_DDL_AUTO=update
-   JPA_SHOW_SQL=true
-   JPA_FORMAT_SQL=true
-   ```
+- `landing_page_bff/` - Landing page authentication endpoints
+- `admin_console_bff/` - Admin console endpoints (customer service, logistics, warehouse)
+- `driver_pwa_bff/` - Driver PWA endpoints
+- `customer_portal_bff/` - Customer portal endpoints
 
-## Database Setup
+**Responsibilities:**
+- Handle HTTP concerns (cookies, CORS, response formatting)
+- Delegate to business services
+- Provide app-specific API contracts
 
-1. Start PostgreSQL using Docker Compose:
-   ```bash
-   cd ../../infra
-   docker-compose up -d
-   ```
+**Endpoints:** `/api/{app-name}/*`
 
-2. The database will be available at `localhost:5432` with:
-   - Database: `slms`
-   - Username: `slms`
-   - Password: `slms`
+## Business Layer
 
-## Running the Application
+Located in `business_layer/`, organized by domain modules:
 
-1. Make sure PostgreSQL is running
-2. Ensure your `.env` file is configured
-3. Run the Spring Boot application:
-   ```bash
-   ./mvnw spring-boot:run
-   ```
+- `user_management_module/` - User and authentication management
+- `order_shipment_module/` - Order and shipment operations
+- `route_module/` - Route management
+- `visibility_module/` - Tracking and visibility
+- `rate_carrier_module/` - Carrier rating
+- `notification_module/` - Notifications
+- `reporting_module/` - Reporting
+- `shared/` - Shared configurations and exceptions
 
-## Environment Variables
+**Each module contains:**
+- **Controllers**: Internal REST endpoints (`/api/admin/users`, `/api/admin/orders`)
+- **Services**: Core business logic + external integrations (Keycloak, etc.)
+- **Repositories**: JPA data access
+- **Entities**: Domain models (JPA entities)
+- **DTOs**: Data transfer objects
 
-The application uses environment variables for configuration. Default values are provided as fallbacks:
+## Request Flow
 
-- `DB_HOST` - Database host (default: `localhost`)
-- `DB_PORT` - Database port (default: `5432`)
-- `DB_NAME` - Database name (default: `slms`)
-- `DB_USERNAME` - Database username (default: `slms`)
-- `DB_PASSWORD` - Database password (default: `slms`)
-- `JPA_DDL_AUTO` - Hibernate DDL mode (default: `update`)
-- `JPA_SHOW_SQL` - Show SQL queries (default: `true`)
-- `JPA_FORMAT_SQL` - Format SQL queries (default: `true`)
+```
+Frontend → BFF Controller → Business Service → Repository → Database
+```
 
 ## Project Structure
 
 - `src/main/java/Operimus/SLMS/business_layer/` - Domain models and business logic
 - `src/main/java/Operimus/SLMS/presentation_layer/` - REST controllers (BFFs)
 - `src/main/resources/` - Configuration files
+
+## Order Event API
+
+The order shipment module now exposes endpoints that surface the audit trail stored in the `order_events` table:
+
+- `GET /api/admin/orders/{orderId}/events` – return the full status timeline for the specified order ordered by `occurredAt`.
+- `GET /api/admin/orders/{orderId}/events/latest` – return only the most recent status change for the specified order.
+
+Both endpoints respond with a JSON array/object using the following shape:
+
+```jsonc
+{
+  "id": 42,
+  "orderId": 5,
+  "eventType": "IN_TRANSIT",
+  "occurredAt": "2024-03-04T10:15:00Z",
+  "notes": "Order status changed from READY_FOR_PICKUP to IN_TRANSIT"
+}
+```
+
+BFFs provide app-specific API contracts while business services ensure reusable, shared logic across all frontends.

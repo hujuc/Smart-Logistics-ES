@@ -12,7 +12,7 @@ interface KPICardProps {
 
 export function KPICard({ title, icon: Icon, stat, color }: KPICardProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+    <div className="bg-white border rounded-lg p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-2">
         <div className={`${color} rounded-lg p-2`}>
           <Icon className="h-5 w-5" />

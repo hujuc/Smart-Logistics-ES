@@ -1,4 +1,4 @@
-import { Package, QrCode, Settings, Truck, MapPin, Users, MessageSquare, FileText, BarChart } from "lucide-react"
+import { Package, QrCode, Settings, Truck, MapPin, Users, FileText, BarChart, Search } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -20,6 +20,11 @@ export const warehouseNavItems: NavItem[] = [
     label: "QR Scanner",
   },
   {
+    href: "/interfaces/warehouse/carrier-comparison",
+    icon: Truck,
+    label: "New Shipment",
+  },
+  {
     href: "/settings?from=warehouse",
     icon: Settings,
     label: "Settings",
@@ -34,19 +39,14 @@ export const logisticsNavItems: NavItem[] = [
     label: "Overview",
   },
   {
-    href: "/interfaces/logistics/carrier-comparison",
-    icon: Truck,
-    label: "New Shipment",
-  },
-  {
     href: "/interfaces/logistics/tracking",
     icon: MapPin,
     label: "Tracking",
   },
   {
-    href: "/interfaces/logistics/drivers",
+    href: "/interfaces/logistics/users",
     icon: Users,
-    label: "Drivers",
+    label: "Users",
   },
   {
     href: "/settings?from=logistics",
@@ -58,17 +58,17 @@ export const logisticsNavItems: NavItem[] = [
 // Customer Service Interface Navigation
 export const customerServiceNavItems: NavItem[] = [
   {
-    href: "/interfaces/costumer-service",
-    icon: MessageSquare,
-    label: "Inquiries",
-  },
-  {
-    href: "/interfaces/costumer-service/tickets",
+    href: "/interfaces/customer-service/tickets",
     icon: FileText,
     label: "Tickets",
   },
   {
-    href: "/interfaces/costumer-service/reports",
+    href: "/interfaces/customer-service/order-lookup",
+    icon: Search,
+    label: "Order Lookup",
+  },
+  {
+    href: "/interfaces/customer-service/reports",
     icon: BarChart,
     label: "Reports",
   },
@@ -90,7 +90,7 @@ export const navConfig = [
     items: logisticsNavItems,
   },
   {
-    basePath: "/interfaces/costumer-service",
+    basePath: "/interfaces/customer-service",
     items: customerServiceNavItems,
   },
   {

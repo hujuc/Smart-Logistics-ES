@@ -47,11 +47,11 @@ export default function TrackingPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-black">Real-Time Tracking</h1>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-black">Real-Time Tracking</h1>
         <Link href="/interfaces/logistics">
-          <Button variant="outline">Back to Routes</Button>
+          <Button variant="outline" className="w-full sm:w-auto">Back to Routes</Button>
         </Link>
       </div>
 
@@ -63,7 +63,7 @@ export default function TrackingPage() {
       />
 
       {/* Map Placeholder */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
         <div className="relative h-96 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
           <div className="text-center">
             <MapPin className="h-16 w-16 mx-auto mb-4 text-blue-600" />

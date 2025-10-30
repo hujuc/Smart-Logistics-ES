@@ -167,19 +167,32 @@ class KeycloakUserServiceIntegrationTest {
         // Then
         assertThat(createdUser).isNotNull();
 
-        // Verify roles were assigned
-        var roles = keycloakAdminClient.realm(realm)
+        // Verify user was added to groups (which provide the roles)
+        var groups = keycloakAdminClient.realm(realm)
+                .users()
+                .get(testUserId)
+                .groups();
+
+        List<String> assignedGroupNames = groups.stream()
+                .map(org.keycloak.representations.idm.GroupRepresentation::getName)
+                .toList();
+
+        assertThat(assignedGroupNames)
+                .contains("Customers", "Drivers");
+
+        // Verify roles are inherited from groups
+        var effectiveRoles = keycloakAdminClient.realm(realm)
                 .users()
                 .get(testUserId)
                 .roles()
                 .realmLevel()
                 .listEffective();
 
-        List<String> assignedRoleNames = roles.stream()
+        List<String> effectiveRoleNames = effectiveRoles.stream()
                 .map(org.keycloak.representations.idm.RoleRepresentation::getName)
                 .toList();
 
-        assertThat(assignedRoleNames)
+        assertThat(effectiveRoleNames)
                 .contains("CUSTOMER", "DRIVER");
     }
 
@@ -278,13 +291,27 @@ class KeycloakUserServiceIntegrationTest {
                 Arrays.asList("CUSTOMER", "NON_EXISTENT_ROLE")
         );
 
-        // When - Service should skip invalid roles and continue
+        // When - Service should skip invalid roles/groups and continue
         UserRepresentation createdUser = keycloakUserService.createUser(userDTO);
         testUserId = createdUser.getId();
 
-        // Then - User should be created with only valid roles
+        // Then - User should be created and added to valid groups only
         assertThat(createdUser).isNotNull();
 
+        // Verify user was added to the Customers group only
+        var groups = keycloakAdminClient.realm(realm)
+                .users()
+                .get(testUserId)
+                .groups();
+
+        List<String> assignedGroupNames = groups.stream()
+                .map(org.keycloak.representations.idm.GroupRepresentation::getName)
+                .toList();
+
+        assertThat(assignedGroupNames).contains("Customers");
+        // Note: Non-existent role doesn't have a corresponding group
+
+        // Verify roles inherited from groups
         var roles = keycloakAdminClient.realm(realm)
                 .users()
                 .get(testUserId)

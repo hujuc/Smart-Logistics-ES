@@ -15,6 +15,23 @@ concurrency:
 jobs:
   backend-quality:
     runs-on: [self-hosted, slms]
+    env:
+      KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
+      KEYCLOAK_PORT: '28180'
+      JWT_ISSUER_URI: http://localhost:28180/realms/slms
+      MINIO_HOST: ${{ secrets.MINIO_HOST }}
+      MINIO_PORT: '39000'
+      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+      MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+      MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     defaults:
       run:
         working-directory: src/backend
@@ -70,11 +87,27 @@ jobs:
       matrix:
         app:
           - admin-console
-          - costumer-portal
+          - customer-portal
           - driver-pwa
           - landing-page
     env:
       CI: true
+      KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
+      KEYCLOAK_PORT: '28180'
+      JWT_ISSUER_URI: http://localhost:28180/realms/slms
+      MINIO_HOST: ${{ secrets.MINIO_HOST }}
+      MINIO_PORT: '39000'
+      MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+      MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+      MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     defaults:
       run:
         working-directory: src/frontend/${{ matrix.app }}
@@ -84,9 +117,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
+          node-version: '20'
 
       - name: Install dependencies
         run: npm ci

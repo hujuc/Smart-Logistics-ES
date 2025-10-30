@@ -4,7 +4,7 @@
 
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
-export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
+export type IssueStatus = "Open" | "In Progress" | "Escalated" | "Resolved" | "Closed";
 
 // Backend enum values - must match Java ShipmentOrderStatus enum
 export type ShipmentOrderStatus =
@@ -63,19 +63,38 @@ export interface Order {
     shippingAddress: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
+    carrierId?: number;
+    carrierCode?: string;
+    carrierName?: string;
     shippoShipmentId: string;
     shippoTransactionId: string;
     shipstationOrderId: string;
     shipstationCarrierCode: string;
     shipstationServiceCode: string;
     trackingNumber: string;
+
+    // Parcel dimensions for shipping rate calculation
+    weight?: number;
+    weightUnit?: string;
+    length?: number;
+    width?: number;
+    height?: number;
+    distanceUnit?: string;
+
     createdAt: Date;
     updatedAt: Date;
-    weight: number;
     priority: Priority;
     origin: string;
     actualDelivery?: Date;
     scannedAt?: Date;
+}
+
+export interface OrderEvent {
+    id: number;
+    orderId: number;
+    eventType: ShipmentOrderStatus;
+    occurredAt: string;
+    notes: string;
 }
 
 export interface OrderDocument {
@@ -114,3 +133,45 @@ export interface DateRange {
     from: Date;
     to: Date;
 }
+
+// User Management Types
+export interface User {
+    id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    enabled: boolean;
+    emailVerified: boolean;
+    createdTimestamp?: number;
+    groups?: string[] | null;
+    attributes?: Record<string, string[]>;
+}
+
+export interface CreateUserRequest {
+    username: string;
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+}
+
+export interface UpdateUserRequest {
+    username?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    roles?: string[];
+}
+
+export interface PasswordUpdateRequest {
+    password: string;
+}
+
+export type UserRole =
+    | "LOGISTICS_MANAGER"
+    | "WAREHOUSE_STAFF"
+    | "CUSTOMER_SERVICE_REP"
+    | "DRIVER"
+    | "CUSTOMER";

@@ -4,10 +4,14 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
-import type { Order } from "@/types"
+import type { Order, ShipmentOrderStatus } from "@/types"
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
 
@@ -16,6 +20,7 @@ interface PackageDetailsPageProps {
 }
 
 export default function PackageDetailsPage({ params }: PackageDetailsPageProps) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,6 +29,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [isQrLoading, setIsQrLoading] = useState(false)
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+  const [isStatusChanging, setIsStatusChanging] = useState(false)
 
   // Unwrap params Promise
   useEffect(() => {
@@ -33,6 +39,13 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   // Fetch order data
   useEffect(() => {
     if (!orderId) return
+
+    if (!isAuthenticated()) {
+      setError("You must be logged in to view order details.")
+      setIsLoading(false)
+      router.push("/")
+      return
+    }
 
     const loadOrder = async () => {
       try {
@@ -49,7 +62,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
 
     loadOrder()
-  }, [orderId])
+  }, [orderId, router])
 
   useEffect(() => {
     if (!orderId) {
@@ -61,6 +74,8 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       })
       return
     }
+
+    if (!isAuthenticated()) return
 
     let isMounted = true
     let currentUrl: string | null = null
@@ -153,6 +168,26 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
   }
 
+  const handleStatusChange = async (newStatus: ShipmentOrderStatus) => {
+    if (!order || !orderId) return
+
+    try {
+      setIsStatusChanging(true)
+      await warehouseService.updateOrderStatus(parseInt(orderId), newStatus)
+      
+      // Reload order to get updated data
+      const updatedOrder = await warehouseService.getOrderById(parseInt(orderId))
+      setOrder(updatedOrder)
+      
+      alert(`Status successfully changed to ${STATUS_LABELS[newStatus]}`)
+    } catch (err) {
+      console.error('Failed to update status:', err)
+      alert('Failed to update status. Please try again.')
+    } finally {
+      setIsStatusChanging(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -188,7 +223,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         <h1 className="text-3xl font-bold text-black">Package Details</h1>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-black">
             {order.trackingNumber || order.reference}
@@ -287,12 +322,23 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             </h3>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Input
+              <Select
                 id="status"
-                value={STATUS_LABELS[order.status]}
-                disabled
+                value={order.status}
+                onChange={(e) => handleStatusChange(e.target.value as ShipmentOrderStatus)}
+                disabled={isStatusChanging}
                 className="mt-1"
-              />
+              >
+                <option value="CREATED">Pending Labels</option>
+                <option value="READY_FOR_PICKUP">Ready for Dispatch</option>
+                <option value="COLLECTED">Collected</option>
+                <option value="IN_TRANSIT">In Transit</option>
+                <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancelled</option>
+              </Select>
+              {isStatusChanging && (
+                <p className="text-sm text-gray-500 mt-1">Updating status...</p>
+              )}
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
@@ -362,7 +408,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
                   setOrder({ ...order, description: e.target.value })
                 }
                 disabled={!isEditing}
-                className="mt-1 flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                className="mt-1 flex min-h-[80px] w-full rounded-md border bg-white px-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
               />
             </div>
           </div>
@@ -370,7 +416,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-2">
+        <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-2">
           <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
           <div className="space-y-3">
             {order.actualDelivery && (
@@ -404,7 +450,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm lg:col-span-1">
+        <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-1">
           <h3 className="font-semibold text-black mb-4">Package QR Code</h3>
           {isQrLoading ? (
             <p className="text-gray-600 text-sm">Loading QR code...</p>
@@ -412,10 +458,12 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             <p className="text-red-600 text-sm">{qrError}</p>
           ) : qrImageUrl ? (
             <div className="flex flex-col items-center">
-              <img
+              <Image
                 src={qrImageUrl}
                 alt="Order QR code"
-                className="h-56 w-56 rounded-md border border-gray-200 bg-gray-50 p-4"
+                width={224}
+                height={224}
+                className="rounded-md border bg-gray-50 p-4"
               />
             </div>
           ) : (

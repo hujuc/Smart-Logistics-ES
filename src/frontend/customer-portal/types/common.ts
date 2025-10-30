@@ -1,0 +1,116 @@
+/**
+ * Common types shared across the application
+ */
+
+export type Priority = "Low" | "Medium" | "High" | "Critical";
+
+export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
+
+// Backend enum values - must match Java ShipmentOrderStatus enum
+export type ShipmentOrderStatus =
+    | "CREATED"
+    | "READY_FOR_PICKUP"
+    | "COLLECTED"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "CANCELLED";
+    
+export type IssueType = 
+  | "Delivery Delay"
+  | "Failed Delivery"
+  | "Address Issue"
+  | "Damaged Package"
+  | "Missing Package"
+  | "Wrong Item"
+  | "Other"
+
+export type Carrier = {
+    id: string;
+    name: string;
+    service: string;
+    logo: string;
+    features: string[];
+    cost?: number;
+    transitTime?: string;
+    reliability?: number;
+    totalShipments?: number;
+    onTimeDelivery?: number;
+};
+
+
+export interface DeliveryItem {
+  id: string
+  trackingNumber: string
+  currentLocation: string
+  destination: string
+  estimatedArrival: string
+  status: ShipmentOrderStatus
+  driver: string
+  vehicle: string
+  progress: number
+}
+export interface ActiveDeliveriesProps {
+  deliveries: DeliveryItem[]
+  onViewDetails?: (id: string) => void
+  onContactDriver?: (id: string) => void
+}
+
+export interface Order {
+    id: number;
+    reference: string;
+    description: string;
+    status: ShipmentOrderStatus;
+    shippingAddress: string;
+    estimatedDeliveryDate: Date;
+    warehouseId: number;
+    shippoShipmentId: string;
+    shippoTransactionId: string;
+    shipstationOrderId: string;
+    shipstationCarrierCode: string;
+    shipstationServiceCode: string;
+    trackingNumber: string;
+    createdAt: Date;
+    updatedAt: Date;
+    weight: number;
+    priority: Priority;
+    origin: string;
+    actualDelivery?: Date;
+    scannedAt?: Date;
+}
+
+export interface OrderDocument {
+    orderId: number;
+    documentId: string;
+    objectKey: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    url: string;
+}
+
+export interface ContactInfo {
+    phone: string;
+    email: string;
+}
+
+export interface Address {
+    street?: string;
+    city: string;
+    postalCode?: string;
+    country?: string;
+    fullAddress: string; // For simplified storage
+}
+
+export interface StatCard {
+    value: number;
+    trend?: number;
+    label?: string;
+    alert?: string;
+    hasWarning?: boolean;
+    color?: string;
+}
+
+export interface DateRange {
+    from: Date;
+    to: Date;
+}

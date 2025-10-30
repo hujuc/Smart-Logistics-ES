@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from 'react';
-import { X, Mail, Lock, User, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, User, CheckCircle, Package } from 'lucide-react';
 import type { SignUpData, UserRole } from '@/types/auth';
 import { ROLE_LABELS, ROLE_DESCRIPTIONS } from '@/types/auth';
 
@@ -14,45 +12,111 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
     const [step, setStep] = useState<1 | 2>(1);
     const [formData, setFormData] = useState<SignUpData>({
         name: '',
+        username: '',
         email: '',
         password: '',
         confirmPassword: '',
         role: 'customer'
     });
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const validateEmail = (email: string): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // const validateUsername = (username: string): boolean => {
+    //     // Username should be 3-20 characters, alphanumeric and underscores
+    //     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    //     return usernameRegex.test(username);
+    // };
+
+    // const validatePassword = (password: string): boolean => {
+    //     // At least 8 characters, one uppercase, one lowercase, one number
+    //     return password.length >= 8 &&
+    //            /[A-Z]/.test(password) &&
+    //            /[a-z]/.test(password) &&
+    //            /[0-9]/.test(password);
+    // };
 
     const handleStep1Submit = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         // Validation
-        if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+        if (!formData.name || !formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
             setError('Please fill in all fields');
             return;
         }
+
+        if (!formData.name.trim().includes(' ')) {
+            setError('Please enter your full name (first and last name)');
+            return;
+        }
+
+        // if (!validateUsername(formData.username)) {
+        //     setError('Username must be 3-20 characters and contain only letters, numbers, and underscores');
+        //     return;
+        // }
+
+        if (!validateEmail(formData.email)) {
+            setError('Please enter a valid email address');
+            return;
+        }
+
+        // if (!validatePassword(formData.password)) {
+        //     setError('Password must be at least 8 characters and include uppercase, lowercase, and a number');
+        //     return;
+        // }
 
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
             return;
         }
 
-        if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters');
-            return;
-        }
-
         setStep(2);
     };
 
-    const handleStep2Submit = (e: React.FormEvent) => {
+    const handleStep2Submit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
-        // TODO: Implement actual sign up logic
-        console.log('Sign up data:', formData);
+        try {
+            const { register: registerUser, handleSuccessfulAuth } = await import('@/lib/api');
 
-        // Simulate successful sign up
-        alert(`Account created successfully as ${ROLE_LABELS[formData.role]}! (TODO: Implement actual authentication)`);
-        onClose();
+            // Split name into first and last name
+            const nameParts = formData.name.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            // Map frontend role to backend role format
+            const roleMap: Record<UserRole, string> = {
+                'logistics_manager': 'LOGISTICS_MANAGER',
+                'warehouse_staff': 'WAREHOUSE_STAFF',
+                'customer_service': 'CUSTOMER_SERVICE_REP',
+                'driver': 'DRIVER',
+                'customer': 'CUSTOMER'
+            };
+
+            const response = await registerUser({
+                username: formData.username,
+                email: formData.email,
+                password: formData.password,
+                firstName,
+                lastName,
+                roles: [roleMap[formData.role]],
+            });
+
+            // Store token and redirect based on role
+            handleSuccessfulAuth(response);
+
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+            setError(errorMessage);
+            setIsLoading(false);
+        }
     };
 
     const roles: UserRole[] = ['logistics_manager', 'warehouse_staff', 'customer_service', 'driver', 'customer'];
@@ -70,6 +134,10 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
 
                 {/* Header */}
                 <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Package className="h-8 w-8 text-black" />
+                        <span className="text-2xl font-bold text-black">SLMS</span>
+                    </div>
                     <h2 className="text-3xl font-bold text-black mb-2">Create your account</h2>
                     <p className="text-gray-600">
                         {step === 1 ? 'Enter your details to get started' : 'Select your role in the system'}
@@ -117,6 +185,25 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
                             </div>
                         </div>
 
+                        {/* Username Field */}
+                        <div>
+                            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                                Username
+                            </label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                <input
+                                    id="username"
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                                    placeholder="your_username"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">3-20 characters, letters, numbers, and underscores only</p>
+                        </div>
+
                         {/* Email Field */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -130,7 +217,7 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="your@email.com"
+                                    placeholder="your.email@example.com"
                                 />
                             </div>
                         </div>
@@ -151,7 +238,7 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
                                     placeholder="••••••••"
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                            <p className="text-xs text-gray-500 mt-1">At least 8 characters with uppercase, lowercase, and a number</p>
                         </div>
 
                         {/* Confirm Password Field */}
@@ -197,6 +284,13 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
                 {/* Step 2: Role Selection */}
                 {step === 2 && (
                     <form onSubmit={handleStep2Submit} className="space-y-6">
+                        {/* Error Message */}
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="space-y-3">
                             {roles.map((role) => (
                                 <label
@@ -235,15 +329,17 @@ export default function SignUpModal({ onClose, onSwitchToLogin }: SignUpModalPro
                             <button
                                 type="button"
                                 onClick={() => setStep(1)}
-                                className="flex-1 bg-white border border-gray-300 text-black py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                disabled={isLoading}
+                                className="flex-1 bg-white border border-gray-300 text-black py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Back
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+                                disabled={isLoading}
+                                className="flex-1 bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                             >
-                                Create Account
+                                {isLoading ? 'Creating Account...' : 'Create Account'}
                             </button>
                         </div>
                     </form>

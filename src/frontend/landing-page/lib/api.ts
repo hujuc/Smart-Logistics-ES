@@ -1,0 +1,140 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/landing-page';
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface SignUpRequest {
+  username: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  roles: string[];
+}
+
+/**
+ * Login user via Landing Page BFF
+ */
+export async function login(credentials: LoginRequest): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include', // Include cookies
+    body: JSON.stringify(credentials),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Login failed');
+  }
+
+  return response.json();
+}
+
+/**
+ * Register new user via Landing Page BFF
+ */
+export async function register(userData: SignUpRequest): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include', // Include cookies
+    body: JSON.stringify(userData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Registration failed');
+  }
+
+  return response.json();
+}
+
+/**
+ * Logout user via Landing Page BFF
+ */
+export async function logout(): Promise<void> {
+  await fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+}
+
+/**
+ * Get role-based redirect URL - redirects to specific interface pages
+ * Uses relative paths to work in both development and production
+ */
+export function getRoleBasedRedirect(roles: string[]): string {
+  if (!roles || roles.length === 0) {
+    return '/';
+  }
+
+  // Redirect to specific interface pages based on primary role
+  // Priority order: Logistics Manager > Warehouse Staff > Customer Service > Driver > Customer
+
+  // Check for both lowercase (from Keycloak) and uppercase (legacy) role names
+  if (roles.includes('logistics_manager') || roles.includes('LOGISTICS_MANAGER')) {
+    return '/admin/interfaces/logistics';
+  }
+
+  if (roles.includes('warehouse_staff') || roles.includes('WAREHOUSE_STAFF')) {
+    return '/admin/interfaces/warehouse';
+  }
+
+  if (roles.includes('customer_service_rep') || roles.includes('CUSTOMER_SERVICE_REP')) {
+    return '/admin/interfaces/customer-service';
+  }
+
+  if (roles.includes('driver') || roles.includes('DRIVER')) {
+    return '/driver';
+  }
+
+  if (roles.includes('customer') || roles.includes('CUSTOMER')) {
+    return '/customer';
+  }
+
+  // Default to root if no recognized role
+  return '/';
+}
+
+/**
+ * Store access token in localStorage and cookies, then redirect based on role
+ */
+export function handleSuccessfulAuth(response: LoginResponse): void {
+  // Store access token in localStorage
+  localStorage.setItem('access_token', response.accessToken);
+  localStorage.setItem('user', JSON.stringify({
+    username: response.username,
+    email: response.email,
+    firstName: response.firstName,
+    lastName: response.lastName,
+    roles: response.roles,
+  }));
+
+  // Also store in cookie for middleware access
+  // Set cookie with path=/ so it's accessible across all frontends
+  const expiresInMs = response.expiresIn * 1000; // Convert seconds to milliseconds
+  const expiryDate = new Date(Date.now() + expiresInMs);
+  document.cookie = `access_token=${response.accessToken}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+
+  // Redirect to appropriate frontend based on role
+  const redirectUrl = getRoleBasedRedirect(response.roles);
+  window.location.href = redirectUrl;
+}

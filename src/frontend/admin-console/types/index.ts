@@ -10,6 +10,7 @@ export type {
   IssueType,
   Carrier,
   Order,
+  OrderEvent,
   OrderDocument,
   ContactInfo,
   Address,
@@ -39,3 +40,16 @@ export type {
   CustomerServiceStats,
   SupportTicket,
 } from "./customer-service"
+
+// Carrier API types
+export type {
+  ShippingRateRequest,
+  ShippingRateResponse,
+  RateQuote,
+  CarrierResponse,
+  CarrierIntegrationSnapshot,
+  CarrierSourceDetails,
+  AddressValidationRequest,
+  AddressValidationResponse,
+  Parcel,
+} from "./carrier"

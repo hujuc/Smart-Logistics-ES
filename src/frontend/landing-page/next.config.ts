@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: "/landing-page",
-  assetPrefix: "/landing-page",
+  output: "standalone",
+  // No basePath - landing page is at root /
   trailingSlash: false,
 };
 

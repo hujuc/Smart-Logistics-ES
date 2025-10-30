@@ -22,12 +22,24 @@ public class OrderResponse {
     private String shippingAddress;
     private LocalDate estimatedDeliveryDate;
     private Long warehouseId;
+    private Long carrierId;
+    private String carrierCode;
+    private String carrierName;
     private String shippoShipmentId;
     private String shippoTransactionId;
     private String shipstationOrderId;
     private String shipstationCarrierCode;
     private String shipstationServiceCode;
     private String trackingNumber;
+
+    // Parcel dimensions for shipping rate calculation
+    private Double weight;
+    private String weightUnit;
+    private Double length;
+    private Double width;
+    private Double height;
+    private String distanceUnit;
+
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

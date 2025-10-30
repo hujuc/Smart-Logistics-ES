@@ -16,6 +16,10 @@ export default function DriverHome() {
       <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="bg-black text-white p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Package className="h-6 w-6 text-white" />
+            <span className="text-lg font-bold text-white">SLMS</span>
+          </div>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold">Welcome Back</h1>
@@ -74,15 +78,20 @@ export default function DriverHome() {
               </button>
             </Link>
 
-            <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-              <Package className="w-5 h-5" />
-              Scan Package
-            </button>
+            <Link href="/">
+              <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                <Package className="w-5 h-5" />
+                Scan Package
+              </button>
+            </Link>
 
-            <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-              <Truck className="w-5 h-5" />
-              Start Navigation
-            </button>
+            <Link href="/interfaces/navigation">
+              <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                <Truck className="w-5 h-5" />
+                Start Navigation
+              </button>
+            </Link>
+
           </div>
 
           {/* Next Deliveries Preview */}

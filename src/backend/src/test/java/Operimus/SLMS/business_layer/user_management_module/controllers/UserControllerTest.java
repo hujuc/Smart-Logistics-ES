@@ -1,12 +1,14 @@
 package Operimus.SLMS.business_layer.user_management_module.controllers;
 
 import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
+import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -32,7 +34,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = UserController.class)
+@WebMvcTest(controllers = UserController.class,
+    excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class})
 @Import(SecurityConfig.class)
 class UserControllerTest {
 
@@ -64,6 +67,7 @@ class UserControllerTest {
         when(userService.createUser(any(UserDTO.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isCreated())
@@ -83,6 +87,7 @@ class UserControllerTest {
         );
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidUserDTO)))
                 .andExpect(status().isBadRequest());
@@ -103,6 +108,7 @@ class UserControllerTest {
                 .thenThrow(new RuntimeException("User already exists"));
 
         mockMvc.perform(post("/api/users/register")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDTO)))
                 .andExpect(status().isBadRequest())
@@ -235,6 +241,124 @@ class UserControllerTest {
     void whenAccessProtectedEndpointWithoutAuth_thenUnauthorized() throws Exception {
         mockMvc.perform(get("/api/users/test-user-id"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser
+    void whenUpdateUser_thenUserIsUpdated() throws Exception {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO(
+                "updateduser",
+                "updated@example.com",
+                "Updated",
+                "User",
+                Arrays.asList("DRIVER")
+        );
+
+        UserRepresentation updatedUser = createUserRepresentation("updateduser", "updated@example.com");
+        updatedUser.setFirstName("Updated");
+        updatedUser.setLastName("User");
+        updatedUser.setGroups(Arrays.asList("Drivers"));
+
+        when(userService.updateUser(anyString(), any(UpdateUserDTO.class))).thenReturn(updatedUser);
+
+        mockMvc.perform(put("/api/users/{userId}", userId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateUserDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username", is("updateduser")))
+                .andExpect(jsonPath("$.email", is("updated@example.com")))
+                .andExpect(jsonPath("$.firstName", is("Updated")))
+                .andExpect(jsonPath("$.lastName", is("User")))
+                .andExpect(jsonPath("$.groups[0]", is("Drivers")));
+    }
+
+    @Test
+    @WithMockUser
+    void whenUpdateUserPartialFields_thenOnlyProvidedFieldsAreUpdated() throws Exception {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO();
+        updateUserDTO.setEmail("newemail@example.com");
+
+        UserRepresentation updatedUser = createUserRepresentation("testuser", "newemail@example.com");
+
+        when(userService.updateUser(anyString(), any(UpdateUserDTO.class))).thenReturn(updatedUser);
+
+        mockMvc.perform(put("/api/users/{userId}", userId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateUserDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username", is("testuser")))
+                .andExpect(jsonPath("$.email", is("newemail@example.com")));
+    }
+
+    @Test
+    @WithMockUser
+    void whenUpdateUserWithInvalidData_thenBadRequest() throws Exception {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO();
+        updateUserDTO.setEmail("invalid-email");
+
+        mockMvc.perform(put("/api/users/{userId}", userId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateUserDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    void whenUpdateUserFails_thenBadRequest() throws Exception {
+        String userId = "test-user-id";
+        UpdateUserDTO updateUserDTO = new UpdateUserDTO(
+                "updateduser",
+                "updated@example.com",
+                "Updated",
+                "User",
+                Arrays.asList("DRIVER")
+        );
+
+        when(userService.updateUser(anyString(), any(UpdateUserDTO.class)))
+                .thenThrow(new RuntimeException("Update failed"));
+
+        mockMvc.perform(put("/api/users/{userId}", userId)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateUserDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", containsString("Update failed")));
+    }
+
+    @Test
+    @WithMockUser
+    void whenGetAllUsers_thenUsersAreReturned() throws Exception {
+        List<UserRepresentation> users = Arrays.asList(
+                createUserRepresentation("user1", "user1@example.com"),
+                createUserRepresentation("user2", "user2@example.com")
+        );
+
+        when(userService.getAllUsers()).thenReturn(users);
+
+        mockMvc.perform(get("/api/users")
+                        .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].username", is("user1")))
+                .andExpect(jsonPath("$[1].username", is("user2")));
+    }
+
+    @Test
+    @WithMockUser
+    void whenGetAllUsersFails_thenInternalServerError() throws Exception {
+        when(userService.getAllUsers())
+                .thenThrow(new RuntimeException("Failed to fetch users"));
+
+        mockMvc.perform(get("/api/users")
+                        .with(jwt()))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error", is("Failed to fetch users")));
     }
 
     private UserRepresentation createUserRepresentation(String username, String email) {
