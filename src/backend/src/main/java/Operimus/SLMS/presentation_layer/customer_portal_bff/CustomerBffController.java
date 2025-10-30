@@ -61,11 +61,30 @@ public class CustomerBffController {
                 log.info("Customer BFF: JWT claims: {}", jwt.getClaims());
             }
             
-            String customerId = jwt != null ? jwt.getSubject() : null;
+            // Extract customer ID from JWT
+            // Try multiple claim sources: sub, user_id, or preferred_username
+            String customerId = null;
+            if (jwt != null) {
+                customerId = jwt.getSubject(); // Standard 'sub' claim
+                if (customerId == null) {
+                    customerId = jwt.getClaimAsString("user_id"); // Try 'user_id'
+                }
+                if (customerId == null) {
+                    customerId = jwt.getClaimAsString("sub"); // Try explicit 'sub'
+                }
+                if (customerId == null) {
+                    // Last resort: use preferred_username to lookup the user
+                    String username = jwt.getClaimAsString("preferred_username");
+                    log.warn("Customer BFF: No sub/user_id claim found. Using preferred_username: {}", username);
+                    // For now, we'll return empty list if we can't get a proper ID
+                    // In production, you might want to lookup user by username via Keycloak
+                }
+            }
+            
             log.info("Customer BFF: Fetching orders for customer {}", customerId);
             
             if (customerId == null) {
-                log.error("Customer BFF: customerId is null - JWT was null or had no subject");
+                log.error("Customer BFF: customerId is null - JWT had no sub/user_id claim");
                 return ResponseEntity.ok(java.util.Collections.emptyList());
             }
             
@@ -74,6 +93,37 @@ public class CustomerBffController {
             return ResponseEntity.ok(orders);
         } catch (Exception e) {
             log.error("Failed to fetch customer orders: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Get order by tracking number
+     * GET /api/customer/orders/tracking/{trackingNumber}
+     *
+     * @param trackingNumber Order tracking number
+     * @param jwt JWT token with customer information
+     * @return Order details (only if it belongs to the authenticated customer)
+     */
+    @GetMapping("/orders/tracking/{trackingNumber}")
+    public ResponseEntity<OrderResponse> getOrderByTrackingNumber(@PathVariable String trackingNumber, @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Fetching order with tracking {} for customer {}", trackingNumber, customerId);
+            
+            OrderResponse order = orderService.getByTrackingNumber(trackingNumber);
+            
+            // Security check: verify that the order belongs to this customer
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to access order with tracking {} (order customerId: {})", 
+                        customerId, trackingNumber, order.getCustomerId());
+                throw new RuntimeException("Access denied: Order does not belong to this customer");
+            }
+            
+            log.info("Customer BFF: Successfully fetched order with tracking {}", trackingNumber);
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            log.error("Failed to fetch order with tracking {}: {}", trackingNumber, e.getMessage());
             throw e;
         }
     }

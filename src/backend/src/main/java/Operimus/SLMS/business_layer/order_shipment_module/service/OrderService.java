@@ -174,6 +174,15 @@ public class OrderService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public OrderResponse getByTrackingNumber(String trackingNumber) {
+        ShipmentOrder order = shipmentOrderRepository.findAll().stream()
+                .filter(o -> trackingNumber.equals(o.getTrackingNumber()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Order with tracking number '%s' not found".formatted(trackingNumber)));
+        return mapToResponse(order);
+    }
+
     private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
         return status == null ? ShipmentOrderStatus.CREATED : status;
     }

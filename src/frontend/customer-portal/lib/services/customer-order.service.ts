@@ -30,6 +30,15 @@ export const customerOrderApi = {
   },
 
   /**
+   * Get order by tracking number
+   */
+  async getOrderByTrackingNumber(trackingNumber: string): Promise<Order> {
+    return apiFetch<Order>(API_ENDPOINTS.orderByTracking(trackingNumber), {
+      method: 'GET',
+    });
+  },
+
+  /**
    * Get order events (timeline)
    */
   async getOrderEvents(id: number): Promise<OrderEvent[]> {

@@ -26,20 +26,26 @@ export default function OrderHistoryPage() {
 
   // Load orders on mount
   useEffect(() => {
+    console.log('[OrderHistory] Component mounted, loading orders...')
     loadOrders()
   }, [])
 
   const loadOrders = async () => {
+    console.log('[OrderHistory] loadOrders: Starting...')
     setIsLoading(true)
     setError(null)
     try {
+      console.log('[OrderHistory] loadOrders: Calling customerOrderApi.getAllOrders()')
       const data = await customerOrderApi.getAllOrders()
+      console.log('[OrderHistory] loadOrders: Received data:', data)
+      console.log('[OrderHistory] loadOrders: Number of orders:', data?.length || 0)
       setOrders(data)
     } catch (err) {
-      console.error('Failed to load orders:', err)
+      console.error('[OrderHistory] loadOrders: Error occurred:', err)
       setError('Failed to load orders. Please try again.')
     } finally {
       setIsLoading(false)
+      console.log('[OrderHistory] loadOrders: Finished')
     }
   }
 
