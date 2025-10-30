@@ -59,7 +59,7 @@ export const customerServiceOrderApi = {
    */
   async getOrderWithEvents(id: number): Promise<{ order: Order; events: OrderEvent[] }> {
     return apiFetch<{ order: Order; events: OrderEvent[] }>(
-      `${API_ENDPOINTS.customerService.base}/orders/${id}/with-events`,
+      API_ENDPOINTS.customerService.orderWithEvents(id),
       {
         method: 'GET',
       }

@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
     order: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}`,
     orderEvents: (orderId: number) => `${API_BASE}/admin/orders/${orderId}/events`,
     orderTracking: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/tracking`,
+    orderWithEvents: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/with-events`,
     
     // Exceptions
     orderExceptions: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/exceptions`,
