@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, TrendingUp, Package, CheckCircle, Star } from "lucide-react"
+import { Search, TrendingUp } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Carrier } from "@/types"
 
@@ -13,22 +13,6 @@ interface CarrierCompareProps {
   setSearchTerm: (value: string) => void
   handleSelectCarrier: (carrier: Carrier) => void
   showSearch?: boolean
-}
-
-const renderStars = (rating: number) => {
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          className={`h-4 w-4 ${
-            star <= Math.floor(rating / 20) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }`}
-        />
-      ))}
-      <span className="text-sm text-gray-600 ml-1">({rating}%)</span>
-    </div>
-  )
 }
 
 export function CarrierCompare({
@@ -79,13 +63,6 @@ export function CarrierCompare({
                   <TrendingUp className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">
-                  Reliability
-                  <TrendingUp className="h-3 w-3" />
-                </div>
-              </TableHead>
-              <TableHead>Features</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -111,29 +88,6 @@ export function CarrierCompare({
                 </TableCell>
                 <TableCell>
                   <span className="text-sm">{carrier.transitTime}</span>
-                </TableCell>
-                <TableCell>{renderStars(carrier.reliability ?? 0)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <div
-                      className="h-8 w-8 bg-yellow-100 rounded flex items-center justify-center"
-                      title="Package Protection"
-                    >
-                      <Package className="h-4 w-4 text-yellow-600" />
-                    </div>
-                    <div
-                      className="h-8 w-8 bg-green-100 rounded flex items-center justify-center"
-                      title="Express Delivery"
-                    >
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div
-                      className="h-8 w-8 bg-blue-100 rounded flex items-center justify-center"
-                      title="Insurance"
-                    >
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                    </div>
-                  </div>
                 </TableCell>
                 <TableCell>
                   <Button

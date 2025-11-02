@@ -46,4 +46,12 @@ public class OrderRequest {
     private String shipstationServiceCode;
 
     private String trackingNumber;
+
+    // Parcel dimensions for shipping rate calculation
+    private Double weight;
+    private String weightUnit;
+    private Double length;
+    private Double width;
+    private Double height;
+    private String distanceUnit;
 }

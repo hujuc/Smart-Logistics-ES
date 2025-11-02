@@ -31,6 +31,15 @@ public class OrderResponse {
     private String shipstationCarrierCode;
     private String shipstationServiceCode;
     private String trackingNumber;
+
+    // Parcel dimensions for shipping rate calculation
+    private Double weight;
+    private String weightUnit;
+    private Double length;
+    private Double width;
+    private Double height;
+    private String distanceUnit;
+
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

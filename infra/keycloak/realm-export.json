@@ -954,7 +954,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "dev-secret-change-in-production",
       "redirectUris": [
         "http://localhost:8180/*",
         "http://localhost/*",

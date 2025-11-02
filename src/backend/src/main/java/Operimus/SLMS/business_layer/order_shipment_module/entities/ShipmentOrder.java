@@ -77,6 +77,25 @@ public class ShipmentOrder {
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
 
+    // Parcel dimensions for shipping rate calculation
+    @Column(name = "weight")
+    private Double weight;
+
+    @Column(name = "weight_unit", length = 16)
+    private String weightUnit;
+
+    @Column(name = "length")
+    private Double length;
+
+    @Column(name = "width")
+    private Double width;
+
+    @Column(name = "height")
+    private Double height;
+
+    @Column(name = "distance_unit", length = 16)
+    private String distanceUnit;
+
     @CreationTimestamp
     @Column(updatable = false)
     private OffsetDateTime createdAt;

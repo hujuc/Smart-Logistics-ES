@@ -24,6 +24,15 @@ export const warehouseService = {
   },
 
   /**
+   * Get orders by status
+   * @param statuses Array of statuses to filter by (e.g., ["CREATED", "READY_FOR_PICKUP"])
+   */
+  async getOrdersByStatus(statuses: string[]): Promise<Order[]> {
+    const statusParam = statuses.join(',');
+    return apiFetch<Order[]>(`${API_ENDPOINTS.warehouse.orders}?status=${statusParam}`);
+  },
+
+  /**
    * Get order by ID
    */
   async getOrderById(id: number): Promise<Order> {
@@ -88,6 +97,36 @@ export const warehouseService = {
   async deleteOrder(id: number): Promise<void> {
     await apiFetch<void>(API_ENDPOINTS.warehouse.order(id), {
       method: 'DELETE',
+    });
+  },
+
+  /**
+   * Assign carrier to an order
+   * When a carrier is assigned, the order status is updated to READY_FOR_PICKUP
+   */
+  async assignCarrier(
+    id: number, 
+    carrierName: string, 
+    carrierService: string,
+    carrierCost: number,
+    transitTime: string
+  ): Promise<Order> {
+    // Get the current order to preserve other fields
+    const currentOrder = await this.getOrderById(id);
+    
+    // Update with carrier information and status
+    // Store carrier details in available fields
+    return apiFetch<Order>(API_ENDPOINTS.warehouse.order(id), {
+      method: 'PUT',
+      body: JSON.stringify({
+        reference: currentOrder.reference,
+        description: `${currentOrder.description || ''} | Carrier: ${carrierName} - ${carrierService} ($${carrierCost}, ${transitTime})`.trim(),
+        status: 'READY_FOR_PICKUP', // Update status when carrier is assigned
+        shippingAddress: currentOrder.shippingAddress,
+        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate,
+        warehouseId: currentOrder.warehouseId,
+        trackingNumber: currentOrder.trackingNumber,
+      }),
     });
   },
 };
