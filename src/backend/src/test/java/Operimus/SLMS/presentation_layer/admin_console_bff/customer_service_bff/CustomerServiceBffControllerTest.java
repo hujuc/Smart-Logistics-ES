@@ -6,6 +6,7 @@ import Operimus.SLMS.business_layer.visibility_module.exceptions.service.Deliver
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +48,9 @@ class CustomerServiceBffControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private ShipmentOrderEventService shipmentOrderEventService;
 
     // ========================================
     // Health Check Tests
