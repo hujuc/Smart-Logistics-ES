@@ -4,7 +4,9 @@ import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderEventResponse;
 import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class CustomerServiceBffController {
 
     private final DeliveryExceptionService exceptionService;
     private final OrderService orderService;
+    private final ShipmentOrderEventService shipmentOrderEventService;
 
     /**
      * Health check endpoint
@@ -402,6 +405,43 @@ public class CustomerServiceBffController {
             ));
         } catch (Exception e) {
             log.error("Failed to fetch tracking for order {}: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Get order with events in a single optimized call (Version B - Feature Flag)
+     * GET /api/customer-service/orders/{id}/with-events
+     * 
+     * This endpoint returns order details along with all events in a single response,
+     * reducing the number of API calls needed and improving performance.
+     * Used by Version B of the order lookup interface for A/B testing.
+     */
+    @GetMapping("/orders/{id}/with-events")
+    public ResponseEntity<Map<String, Object>> getOrderWithEvents(@PathVariable Long id) {
+        try {
+            log.info("Customer Service BFF (Version B): Fetching order {} with events", id);
+            
+            // Fetch order
+            OrderResponse order = orderService.getById(id);
+            
+            // Fetch events
+            List<OrderEventResponse> events = shipmentOrderEventService.getEventsForOrder(id);
+            
+            // Return combined response
+            Map<String, Object> response = Map.of(
+                    "order", order,
+                    "events", events,
+                    "version", "B",
+                    "optimized", true
+            );
+            
+            log.info("Customer Service BFF (Version B): Successfully fetched order {} with {} events", 
+                    id, events.size());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch order {} with events: {}", id, e.getMessage());
             throw e;
         }
     }
