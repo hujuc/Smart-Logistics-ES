@@ -12,7 +12,6 @@ import {
   Clock,
   AlertTriangle,
   ArrowLeft,
-  Calendar,
   ArrowRight,
 } from "lucide-react"
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
@@ -124,7 +123,6 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
   // Details view - Compact table layout
   if (selectedOrder) {
     const statusConfig = STATUS_CONFIG[selectedOrder.status]
-    const StatusIcon = statusConfig.icon
 
     return (
       <div className="space-y-4">
