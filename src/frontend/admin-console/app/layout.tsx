@@ -3,6 +3,8 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
+import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
+import { UserStateDebugger } from "@shared/components/UserStateDebugger";
 
 export const metadata: Metadata = {
   title: "SLMS - Smart Logistics Management System",
@@ -17,6 +19,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+          <UserStoreInitializer />
+          <UserStateDebugger />
           <Navbar />
           <Suspense fallback={null}>
             <DynamicFloatingNav />
