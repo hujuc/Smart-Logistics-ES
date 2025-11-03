@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.order_shipment_module.controllers;
+package Operimus.SLMS.business_layer.order_module.controllers;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
@@ -15,9 +15,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,12 +1,12 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.order_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.WarehouseRepository;
+import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseRequest;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
+import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;

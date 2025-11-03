@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.order_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,11 +10,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.entities.Order;
+import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.shared.exception.DocumentStorageException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.time.LocalDate;
@@ -59,16 +59,16 @@ class OrderDocumentServiceTest {
     private S3Client s3Client;
 
     @Mock
-    private ShipmentOrderRepository shipmentOrderRepository;
+    private OrderRepository shipmentOrderRepository;
 
     private OrderDocumentService service;
 
-    private ShipmentOrder order;
+    private Order order;
 
     @BeforeEach
     void setUp() {
         service = new OrderDocumentService(s3Client, shipmentOrderRepository, BUCKET, ENDPOINT);
-        order = ShipmentOrder.builder()
+        order = Order.builder()
                 .id(1L)
                 .reference("ORD-001")
                 .shippingAddress("Some address")

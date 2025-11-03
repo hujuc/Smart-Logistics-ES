@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.order_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -6,16 +6,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderEvent;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderEventRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.WarehouseRepository;
+import Operimus.SLMS.business_layer.order_module.entities.Order;
+import Operimus.SLMS.business_layer.order_module.entities.OrderEvent;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.repository.OrderEventRepository;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
+import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.time.LocalDate;
@@ -28,26 +27,23 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 @DataJpaTest
-@Import({OrderService.class, WarehouseService.class, ShipmentOrderEventService.class})
+@Import({OrderService.class, WarehouseService.class, OrderEventService.class})
 class OrderServiceTest {
 
     @Autowired
     private OrderService orderService;
 
     @Autowired
-    private ShipmentOrderRepository shipmentOrderRepository;
+    private OrderRepository orderRepository;
 
     @Autowired
     private WarehouseRepository warehouseRepository;
 
     @Autowired
-    private ShipmentOrderEventRepository shipmentOrderEventRepository;
+    private OrderEventRepository orderEventRepository;
 
     @MockBean
     private OrderDocumentService orderDocumentService;
-
-    @MockBean
-    private CarrierService carrierService;
 
     private Warehouse warehouse;
 
@@ -66,30 +62,34 @@ class OrderServiceTest {
     }
 
     @Test
-    void createShouldPersistShipmentOrder() {
+    void createShouldPersistOrder() {
         OrderRequest request = OrderRequest.builder()
                 .reference("ORD-001")
-                .description("Electronics shipment")
+                .description("Electronics order")
                 .shippingAddress("456 Customer St, Porto")
                 .estimatedDeliveryDate(LocalDate.now().plusDays(5))
                 .warehouseId(warehouse.getId())
-                .shippoShipmentId("shippo-shipment")
-                .shippoTransactionId("shippo-transaction")
-                .shipstationOrderId("shipstation-order")
-                .shipstationCarrierCode("DHL")
-                .shipstationServiceCode("EXPRESS")
+                .customerId("customer-uuid-123")
                 .trackingNumber("TRACK123")
+                .weight(2.5)
+                .weightUnit("kg")
+                .length(30.0)
+                .width(20.0)
+                .height(15.0)
+                .distanceUnit("cm")
                 .build();
 
         OrderResponse response = orderService.create(request);
 
         assertThat(response.getId()).isNotNull();
         assertThat(response.getReference()).isEqualTo("ORD-001");
-        assertThat(response.getStatus()).isEqualTo(ShipmentOrderStatus.CREATED);
-        assertThat(shipmentOrderRepository.count()).isEqualTo(1);
-        ShipmentOrder saved = shipmentOrderRepository.findById(response.getId()).orElseThrow();
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(orderRepository.count()).isEqualTo(1);
+        Order saved = orderRepository.findById(response.getId()).orElseThrow();
         assertThat(saved.getWarehouse().getId()).isEqualTo(warehouse.getId());
-        assertThat(saved.getShipstationCarrierCode()).isEqualTo("DHL");
+        assertThat(saved.getCustomerId()).isEqualTo("customer-uuid-123");
+        assertThat(saved.getWeight()).isEqualTo(2.5);
+        assertThat(saved.getShipmentId()).isNull();
         verify(orderDocumentService).uploadDocument(eq(saved.getId()), any());
     }
 
@@ -104,17 +104,17 @@ class OrderServiceTest {
 
         OrderResponse response = orderService.create(request);
 
-        List<ShipmentOrderEvent> events =
-                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(response.getId());
+        List<OrderEvent> events =
+                orderEventRepository.findByOrderIdOrderByOccurredAtAsc(response.getId());
         assertThat(events).hasSize(1);
-        ShipmentOrderEvent event = events.get(0);
-        assertThat(event.getEventType()).isEqualTo(ShipmentOrderStatus.CREATED);
+        OrderEvent event = events.get(0);
+        assertThat(event.getEventType()).isEqualTo(OrderStatus.CREATED);
         assertThat(event.getNotes()).contains("initialized");
     }
 
     @Test
     void createShouldFailWhenReferenceExists() {
-        shipmentOrderRepository.save(ShipmentOrder.builder()
+        orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("Existing order")
                 .shippingAddress("123 Street")
@@ -134,8 +134,8 @@ class OrderServiceTest {
     }
 
     @Test
-    void updateShouldModifyShipmentOrder() {
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+    void updateShouldModifyOrder() {
+        Order order = orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("Initial")
                 .shippingAddress("123 Street")
@@ -156,25 +156,23 @@ class OrderServiceTest {
         OrderRequest request = OrderRequest.builder()
                 .reference("ORD-002")
                 .description("Updated description")
-                .status(ShipmentOrderStatus.IN_TRANSIT)
+                .status(OrderStatus.IN_TRANSIT)
                 .shippingAddress("987 Customer Ave")
                 .estimatedDeliveryDate(LocalDate.now().plusDays(3))
                 .warehouseId(newWarehouse.getId())
-                .shippoShipmentId("new-shippo-shipment")
-                .shippoTransactionId("new-shippo-transaction")
-                .shipstationOrderId("new-shipstation-order")
-                .shipstationCarrierCode("FedEx")
-                .shipstationServiceCode("STANDARD")
                 .trackingNumber("TRACK456")
+                .weight(1.5)
+                .weightUnit("kg")
                 .build();
 
         OrderResponse response = orderService.update(order.getId(), request);
 
         assertThat(response.getReference()).isEqualTo("ORD-002");
-        assertThat(response.getStatus()).isEqualTo(ShipmentOrderStatus.IN_TRANSIT);
-        ShipmentOrder updated = shipmentOrderRepository.findById(order.getId()).orElseThrow();
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.IN_TRANSIT);
+        Order updated = orderRepository.findById(order.getId()).orElseThrow();
         assertThat(updated.getWarehouse().getId()).isEqualTo(newWarehouse.getId());
         assertThat(updated.getTrackingNumber()).isEqualTo("TRACK456");
+        assertThat(updated.getWeight()).isEqualTo(1.5);
     }
 
     @Test
@@ -189,30 +187,30 @@ class OrderServiceTest {
         OrderRequest updateRequest = OrderRequest.builder()
                 .reference("ORD-CHANGE")
                 .description("Updated status")
-                .status(ShipmentOrderStatus.IN_TRANSIT)
+                .status(OrderStatus.IN_TRANSIT)
                 .shippingAddress("123 Street")
                 .warehouseId(warehouse.getId())
                 .build();
 
         orderService.update(created.getId(), updateRequest);
 
-        List<ShipmentOrderEvent> events =
-                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(created.getId());
+        List<OrderEvent> events =
+                orderEventRepository.findByOrderIdOrderByOccurredAtAsc(created.getId());
         assertThat(events).hasSize(2);
-        ShipmentOrderEvent latest = events.get(1);
-        assertThat(latest.getEventType()).isEqualTo(ShipmentOrderStatus.IN_TRANSIT);
+        OrderEvent latest = events.get(1);
+        assertThat(latest.getEventType()).isEqualTo(OrderStatus.IN_TRANSIT);
         assertThat(latest.getNotes()).contains("changed from CREATED to IN_TRANSIT");
     }
 
     @Test
     void updateShouldFailWhenChangingToExistingReference() {
-        shipmentOrderRepository.save(ShipmentOrder.builder()
+        orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("Existing")
                 .shippingAddress("123 Street")
                 .warehouse(warehouse)
                 .build());
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+        Order order = orderRepository.save(Order.builder()
                 .reference("ORD-002")
                 .description("Target")
                 .shippingAddress("456 Street")
@@ -232,8 +230,8 @@ class OrderServiceTest {
     }
 
     @Test
-    void deleteShouldRemoveShipmentOrder() {
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+    void deleteShouldRemoveOrder() {
+        Order order = orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("To delete")
                 .shippingAddress("123 Street")
@@ -242,12 +240,12 @@ class OrderServiceTest {
 
         orderService.delete(order.getId());
 
-        assertThat(shipmentOrderRepository.findById(order.getId())).isEmpty();
+        assertThat(orderRepository.findById(order.getId())).isEmpty();
     }
 
     @Test
     void getByIdShouldReturnOrder() {
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
+        Order order = orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("Lookup")
                 .shippingAddress("123 Street")
@@ -269,13 +267,13 @@ class OrderServiceTest {
 
     @Test
     void getAllShouldReturnAllOrders() {
-        shipmentOrderRepository.save(ShipmentOrder.builder()
+        orderRepository.save(Order.builder()
                 .reference("ORD-001")
                 .description("First")
                 .shippingAddress("123 Street")
                 .warehouse(warehouse)
                 .build());
-        shipmentOrderRepository.save(ShipmentOrder.builder()
+        orderRepository.save(Order.builder()
                 .reference("ORD-002")
                 .description("Second")
                 .shippingAddress("456 Street")
@@ -285,41 +283,5 @@ class OrderServiceTest {
         assertThat(orderService.getAll())
                 .extracting(OrderResponse::getReference)
                 .containsExactlyInAnyOrder("ORD-001", "ORD-002");
-    }
-
-    @Test
-    void confirmPickupShouldSetStatusToCollectedWhenReadyForPickup() {
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
-                .reference("ORD-READY")
-                .description("Awaiting pickup")
-                .shippingAddress("123 Street")
-                .status(ShipmentOrderStatus.READY_FOR_PICKUP)
-                .warehouse(warehouse)
-                .build());
-
-        OrderResponse response = orderService.confirmPickup(order.getId());
-
-        assertThat(response.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
-        ShipmentOrder reloaded = shipmentOrderRepository.findById(order.getId()).orElseThrow();
-        assertThat(reloaded.getStatus()).isEqualTo(ShipmentOrderStatus.COLLECTED);
-        List<ShipmentOrderEvent> events =
-                shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(order.getId());
-        assertThat(events).hasSize(1);
-        assertThat(events.get(0).getEventType()).isEqualTo(ShipmentOrderStatus.COLLECTED);
-    }
-
-    @Test
-    void confirmPickupShouldFailWhenOrderIsNotReadyForPickup() {
-        ShipmentOrder order = shipmentOrderRepository.save(ShipmentOrder.builder()
-                .reference("ORD-NOT-READY")
-                .description("Not ready")
-                .shippingAddress("123 Street")
-                .status(ShipmentOrderStatus.CREATED)
-                .warehouse(warehouse)
-                .build());
-
-        assertThatThrownBy(() -> orderService.confirmPickup(order.getId()))
-                .isInstanceOf(ResourceConflictException.class)
-                .hasMessageContaining("must be ready for pickup");
     }
 }

@@ -1,18 +1,18 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.rate_carrier_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierAddressView;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierIntegrationSnapshot;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierIntegrationSourceDetails;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.integration.ShipEngineApiClient;
-import Operimus.SLMS.business_layer.order_shipment_module.integration.ShipEngineCarrier;
-import Operimus.SLMS.business_layer.order_shipment_module.integration.ShippoApiClient;
-import Operimus.SLMS.business_layer.order_shipment_module.integration.ShippoCarrierAccount;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierAddressView;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierIntegrationSnapshot;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierIntegrationSourceDetails;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierResponse;
+import Operimus.SLMS.business_layer.rate_carrier_module.integration.ShipEngineApiClient;
+import Operimus.SLMS.business_layer.rate_carrier_module.integration.ShipEngineCarrier;
+import Operimus.SLMS.business_layer.rate_carrier_module.integration.ShippoApiClient;
+import Operimus.SLMS.business_layer.rate_carrier_module.integration.ShippoCarrierAccount;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

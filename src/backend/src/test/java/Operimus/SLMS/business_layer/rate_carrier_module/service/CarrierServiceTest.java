@@ -1,15 +1,15 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.rate_carrier_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierAddressView;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierIntegrationSnapshot;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierIntegrationSourceDetails;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Carrier;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.CarrierRepository;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierAddressView;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierIntegrationSnapshot;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierIntegrationSourceDetails;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierRequest;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierResponse;
+import Operimus.SLMS.business_layer.rate_carrier_module.entities.Carrier;
+import Operimus.SLMS.business_layer.rate_carrier_module.repository.CarrierRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.util.List;

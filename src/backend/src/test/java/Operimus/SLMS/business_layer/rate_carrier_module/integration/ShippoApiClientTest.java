@@ -1,4 +1,4 @@
-package Operimus.SLMS.business_layer.order_shipment_module.integration;
+package Operimus.SLMS.business_layer.rate_carrier_module.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -8,11 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.AddressValidationRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.AddressValidationResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.CarrierAddressView;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.ShippingRateRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.ShippingRateResponse;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationRequest;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationResponse;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierAddressView;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateRequest;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateResponse;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

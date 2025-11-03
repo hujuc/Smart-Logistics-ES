@@ -1,12 +1,12 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.warehouse_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,8 +66,8 @@ class WarehouseBffControllerTest {
     @Test
     void whenGetOrders_thenReturnOrdersList() throws Exception {
         List<OrderResponse> orders = Arrays.asList(
-                createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.CREATED),
-                createOrderResponse(2L, "ORD-002", ShipmentOrderStatus.COLLECTED)
+                createOrderResponse(1L, "ORD-001", OrderStatus.CREATED),
+                createOrderResponse(2L, "ORD-002", OrderStatus.DELIVERED)
         );
 
         when(orderService.getAll()).thenReturn(orders);
@@ -86,7 +86,7 @@ class WarehouseBffControllerTest {
     @Test
     void whenGetOrdersWithFilters_thenReturnFilteredOrders() throws Exception {
         List<OrderResponse> orders = Arrays.asList(
-                createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.CREATED)
+                createOrderResponse(1L, "ORD-001", OrderStatus.CREATED)
         );
 
         when(orderService.getByStatus(any())).thenReturn(orders);
@@ -115,7 +115,7 @@ class WarehouseBffControllerTest {
 
     @Test
     void whenGetOrderById_thenReturnOrder() throws Exception {
-        OrderResponse order = createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.CREATED);
+        OrderResponse order = createOrderResponse(1L, "ORD-001", OrderStatus.CREATED);
 
         when(orderService.getById(1L)).thenReturn(order);
 
@@ -135,7 +135,7 @@ class WarehouseBffControllerTest {
     @Test
     void whenCreateOrder_thenReturnCreatedOrder() throws Exception {
         OrderRequest request = createOrderRequest("ORD-001");
-        OrderResponse response = createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.CREATED);
+        OrderResponse response = createOrderResponse(1L, "ORD-001", OrderStatus.CREATED);
 
         when(orderService.create(any(OrderRequest.class))).thenReturn(response);
 
@@ -168,7 +168,7 @@ class WarehouseBffControllerTest {
     @Test
     void whenUpdateOrder_thenReturnUpdatedOrder() throws Exception {
         OrderRequest request = createOrderRequest("ORD-001-UPDATED");
-        OrderResponse response = createOrderResponse(1L, "ORD-001-UPDATED", ShipmentOrderStatus.READY_FOR_PICKUP);
+        OrderResponse response = createOrderResponse(1L, "ORD-001-UPDATED", OrderStatus.IN_TRANSIT);
 
         when(orderService.update(eq(1L), any(OrderRequest.class))).thenReturn(response);
 
@@ -180,24 +180,6 @@ class WarehouseBffControllerTest {
                 .andExpect(jsonPath("$.reference", is("ORD-001-UPDATED")));
 
         verify(orderService).update(eq(1L), any(OrderRequest.class));
-    }
-
-    // ========================================
-    // Confirm Pickup Tests
-    // ========================================
-
-    @Test
-    void whenConfirmPickup_thenReturnUpdatedOrder() throws Exception {
-        OrderResponse response = createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.COLLECTED);
-
-        when(orderService.confirmPickup(1L)).thenReturn(response);
-
-        mockMvc.perform(post("/api/warehouse/orders/{id}/collect", 1L))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(1)))
-                .andExpect(jsonPath("$.status", is("COLLECTED")));
-
-        verify(orderService).confirmPickup(1L);
     }
 
     // ========================================
@@ -276,7 +258,7 @@ class WarehouseBffControllerTest {
     // Helper Methods
     // ========================================
 
-    private OrderResponse createOrderResponse(Long id, String reference, ShipmentOrderStatus status) {
+    private OrderResponse createOrderResponse(Long id, String reference, OrderStatus status) {
         return OrderResponse.builder()
                 .id(id)
                 .reference(reference)

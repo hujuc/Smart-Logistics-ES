@@ -1,11 +1,11 @@
-package Operimus.SLMS.business_layer.order_shipment_module.service;
+package Operimus.SLMS.business_layer.order_module.service;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.WarehouseRepository;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.entities.Order;
+import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
+import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.shared.exception.DocumentStorageException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import Operimus.SLMS.config.TestSecurityConfig;
@@ -44,7 +44,7 @@ class OrderDocumentServiceIntegrationTest {
     private OrderDocumentService orderDocumentService;
 
     @Autowired
-    private ShipmentOrderRepository shipmentOrderRepository;
+    private OrderRepository shipmentOrderRepository;
 
     @Autowired
     private WarehouseRepository warehouseRepository;
@@ -55,7 +55,7 @@ class OrderDocumentServiceIntegrationTest {
     @Value("${aws.s3.bucket}")
     private String bucketName;
 
-    private ShipmentOrder testOrder;
+    private Order testOrder;
     private Warehouse testWarehouse;
 
     @BeforeEach
@@ -74,7 +74,7 @@ class OrderDocumentServiceIntegrationTest {
         testWarehouse = warehouseRepository.save(testWarehouse);
 
         // Create test order
-        testOrder = ShipmentOrder.builder()
+        testOrder = Order.builder()
                 .reference("TEST-ORD-" + System.currentTimeMillis())
                 .shippingAddress("Test Address 456")
                 .warehouse(testWarehouse)

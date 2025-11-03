@@ -3,10 +3,10 @@ package Operimus.SLMS.presentation_layer.admin_console_bff.customer_service_bff;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +50,7 @@ class CustomerServiceBffControllerTest {
     private OrderService orderService;
 
     @MockBean
-    private ShipmentOrderEventService shipmentOrderEventService;
+    private OrderEventService shipmentOrderEventService;
 
     // ========================================
     // Health Check Tests
@@ -409,7 +409,7 @@ class CustomerServiceBffControllerTest {
                 .id(id)
                 .reference(reference)
                 .description("Test order")
-                .status(ShipmentOrderStatus.CREATED)
+                .status(OrderStatus.CREATED)
                 .shippingAddress("123 Test St")
                 .build();
     }
