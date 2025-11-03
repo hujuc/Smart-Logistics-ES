@@ -217,7 +217,7 @@ function NavigationContent() {
         if (!hasOptimized.current && !isLoadingLocation) {
             optimizeRoute();
         }
-    }, [isLoadingLocation, currentLocation]);
+    }, [isLoadingLocation, currentLocation, deliveries, deliveryId, router]);
 
     // Get user's current location
     useEffect(() => {
@@ -352,7 +352,7 @@ function NavigationContent() {
                 destinationMarker.current = null;
             }
         };
-    }, []);
+    }, [currentLocation]);
 
     // Update route when location or delivery changes
     useEffect(() => {
