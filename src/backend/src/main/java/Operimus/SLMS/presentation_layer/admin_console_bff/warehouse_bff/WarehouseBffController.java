@@ -1,12 +1,12 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.warehouse_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,9 +72,9 @@ public class WarehouseBffController {
             // Filter by status if provided
             if (status != null && !status.isBlank()) {
                 // Parse comma-separated statuses
-                List<ShipmentOrderStatus> statuses = Arrays.stream(status.split(","))
+                List<OrderStatus> statuses = Arrays.stream(status.split(","))
                         .map(String::trim)
-                        .map(ShipmentOrderStatus::valueOf)
+                        .map(OrderStatus::valueOf)
                         .toList();
                 orders = orderService.getByStatus(statuses);
             } else {
@@ -167,28 +167,6 @@ public class WarehouseBffController {
 
         } catch (Exception e) {
             log.error("Failed to update order {} via warehouse BFF: {}", id, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
-     * Confirm carrier pickup for an order
-     *
-     * @param id Order ID
-     * @return Updated order
-     */
-    @PostMapping("/orders/{id}/collect")
-    public ResponseEntity<OrderResponse> confirmPickup(@PathVariable Long id) {
-        try {
-            log.info("Warehouse BFF: Confirming pickup for order {}", id);
-
-            // Delegate to business layer
-            OrderResponse response = orderService.confirmPickup(id);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Failed to confirm pickup for order {} via warehouse BFF: {}", id, e.getMessage());
             throw e;
         }
     }

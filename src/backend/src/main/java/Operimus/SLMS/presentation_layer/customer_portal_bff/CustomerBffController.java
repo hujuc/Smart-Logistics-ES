@@ -1,9 +1,9 @@
 package Operimus.SLMS.presentation_layer.customer_portal_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderEventResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +29,7 @@ import java.util.List;
 public class CustomerBffController {
 
     private final OrderService orderService;
-    private final ShipmentOrderEventService shipmentOrderEventService;
+    private final OrderEventService shipmentOrderEventService;
 
     /**
      * Health check endpoint

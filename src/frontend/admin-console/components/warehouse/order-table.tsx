@@ -60,17 +60,6 @@ export function OrderTable({ packages, onViewPackage, onCollectPackage }: OrderT
                     <Button variant="ghost" size="sm" onClick={() => onViewPackage?.(pkg.id)} title="View Details">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {pkg.status === "READY_FOR_PICKUP" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onCollectPackage?.(pkg.id)}
-                        title="Mark as Collected"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Package className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
                 </TableCell>
               </TableRow>
