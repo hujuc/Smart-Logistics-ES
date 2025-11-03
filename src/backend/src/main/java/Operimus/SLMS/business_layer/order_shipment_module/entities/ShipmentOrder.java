@@ -77,6 +77,9 @@ public class ShipmentOrder {
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
 
+    @Column(name = "customer_id", length = 64)
+    private String customerId;
+
     // Parcel dimensions for shipping rate calculation
     @Column(name = "weight")
     private Double weight;

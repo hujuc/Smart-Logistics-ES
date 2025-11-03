@@ -69,6 +69,7 @@ export interface Order {
     shipstationCarrierCode: string;
     shipstationServiceCode: string;
     trackingNumber: string;
+    customerId?: string;
     createdAt: Date;
     updatedAt: Date;
     weight: number;
@@ -86,6 +87,14 @@ export interface OrderDocument {
     contentType: string;
     size: number;
     url: string;
+}
+
+export interface OrderEvent {
+    id: number;
+    orderId: number;
+    eventType: ShipmentOrderStatus;
+    occurredAt: string;
+    notes: string;
 }
 
 export interface ContactInfo {
