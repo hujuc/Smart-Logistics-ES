@@ -89,10 +89,9 @@ export default function CarrierComparisonPage() {
     const fetchAllShipments = async () => {
       try {
         setLoadingAllShipments(true)
-        // Fetch all orders that have been assigned carriers (READY_FOR_PICKUP, COLLECTED, IN_TRANSIT, DELIVERED)
+        // Fetch all orders that have been assigned carriers (ASSIGNED_TO_SHIPMENT, IN_TRANSIT, DELIVERED)
         const fetchedOrders = await warehouseService.getOrdersByStatus([
-          "READY_FOR_PICKUP",
-          "COLLECTED", 
+          "ASSIGNED_TO_SHIPMENT",
           "IN_TRANSIT",
           "DELIVERED"
         ])
@@ -257,9 +256,9 @@ export default function CarrierComparisonPage() {
       await Promise.all(updatePromises)
 
       // Show success message
-      alert(`✅ Successfully assigned ${selectedCarrier.name} (${selectedCarrier.service}) to ${selectedShipments.length} shipment(s)!\n\nOrders are now marked as READY_FOR_PICKUP and removed from the New Shipment list.`)
+      alert(`✅ Successfully assigned ${selectedCarrier.name} (${selectedCarrier.service}) to ${selectedShipments.length} shipment(s)!\n\nOrders are now marked as ASSIGNED_TO_SHIPMENT and removed from the New Shipment list.`)
 
-      // Refresh orders list - only fetch CREATED orders (assigned orders are now READY_FOR_PICKUP)
+      // Refresh orders list - only fetch CREATED orders (assigned orders are now ASSIGNED_TO_SHIPMENT)
       const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED"])
       setOrders(fetchedOrders)
 
@@ -275,8 +274,7 @@ export default function CarrierComparisonPage() {
 
       // Refresh all shipments list
       const allShipments = await warehouseService.getOrdersByStatus([
-        "READY_FOR_PICKUP",
-        "COLLECTED", 
+        "ASSIGNED_TO_SHIPMENT",
         "IN_TRANSIT",
         "DELIVERED"
       ])
@@ -755,7 +753,7 @@ export default function CarrierComparisonPage() {
               
               {/* Group orders by status */}
               <div className="space-y-6">
-                {["READY_FOR_PICKUP", "COLLECTED", "IN_TRANSIT", "DELIVERED"].map((status) => {
+                {["ASSIGNED_TO_SHIPMENT", "IN_TRANSIT", "DELIVERED"].map((status) => {
                   const ordersWithStatus = allShipmentOrders.filter(order => order.status === status)
                   if (ordersWithStatus.length === 0) return null
                   

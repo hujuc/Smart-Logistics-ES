@@ -43,7 +43,6 @@ export const API_ENDPOINTS = {
       `${WAREHOUSE_BASE}/orders/${orderId}/documents/${encodeURIComponent(documentId)}`,
     orderDocumentDownload: (orderId: number, documentId: string) =>
       `${WAREHOUSE_BASE}/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
-    orderCollect: (orderId: number) => `${WAREHOUSE_BASE}/orders/${orderId}/collect`,
   },
 
   // Customer Service BFF

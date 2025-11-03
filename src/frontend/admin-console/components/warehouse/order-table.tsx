@@ -15,10 +15,9 @@ import { WarehousePackage, STATUS_COLORS, STATUS_LABELS } from "@/types"
 interface OrderTableProps {
   packages: WarehousePackage[]
   onViewPackage?: (id: string) => void
-  onCollectPackage?: (id: string) => void
 }
 
-export function OrderTable({ packages, onViewPackage, onCollectPackage }: OrderTableProps) {
+export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
   return (
     <div className="bg-white border rounded-lg shadow-sm">
       <div className="p-6">

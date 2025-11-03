@@ -25,7 +25,7 @@ export const warehouseService = {
 
   /**
    * Get orders by status
-   * @param statuses Array of statuses to filter by (e.g., ["CREATED", "READY_FOR_PICKUP"])
+   * @param statuses Array of statuses to filter by (e.g., ["CREATED", "ASSIGNED_TO_SHIPMENT"])
    */
   async getOrdersByStatus(statuses: string[]): Promise<Order[]> {
     const statusParam = statuses.join(',');
@@ -56,15 +56,6 @@ export const warehouseService = {
     return apiFetch<Order>(API_ENDPOINTS.warehouse.order(id), {
       method: 'PUT',
       body: JSON.stringify(order),
-    });
-  },
-
-  /**
-   * Confirm pickup for an order
-   */
-  async confirmPickup(id: number): Promise<Order> {
-    return apiFetch<Order>(API_ENDPOINTS.warehouse.orderCollect(id), {
-      method: 'POST',
     });
   },
 
@@ -102,18 +93,18 @@ export const warehouseService = {
 
   /**
    * Assign carrier to an order
-   * When a carrier is assigned, the order status is updated to READY_FOR_PICKUP
+   * When a carrier is assigned, the order status is updated to ASSIGNED_TO_SHIPMENT
    */
   async assignCarrier(
-    id: number, 
-    carrierName: string, 
+    id: number,
+    carrierName: string,
     carrierService: string,
     carrierCost: number,
     transitTime: string
   ): Promise<Order> {
     // Get the current order to preserve other fields
     const currentOrder = await this.getOrderById(id);
-    
+
     // Update with carrier information and status
     // Store carrier details in available fields
     return apiFetch<Order>(API_ENDPOINTS.warehouse.order(id), {
@@ -121,7 +112,7 @@ export const warehouseService = {
       body: JSON.stringify({
         reference: currentOrder.reference,
         description: `${currentOrder.description || ''} | Carrier: ${carrierName} - ${carrierService} ($${carrierCost}, ${transitTime})`.trim(),
-        status: 'READY_FOR_PICKUP', // Update status when carrier is assigned
+        status: 'ASSIGNED_TO_SHIPMENT', // Update status when carrier is assigned
         shippingAddress: currentOrder.shippingAddress,
         estimatedDeliveryDate: currentOrder.estimatedDeliveryDate,
         warehouseId: currentOrder.warehouseId,
