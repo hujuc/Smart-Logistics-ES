@@ -2,17 +2,18 @@ package Operimus.SLMS.business_layer.order_shipment_module.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,37 +29,25 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "orders")
-public class ShipmentOrder {
+@Table(name = "shipments")
+public class Shipment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true, length = 64)
-    private String reference;
+    private String shipmentCode;
 
-    @Column(length = 512)
-    private String description;
-
-    @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private ShipmentOrderStatus status = ShipmentOrderStatus.CREATED;
-
-    @Column(nullable = false)
-    private String shippingAddress;
-
-    private LocalDate estimatedDeliveryDate;
-
+    // Assignment to carrier and driver (both required at creation)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "warehouse_id", nullable = false)
-    private Warehouse warehouse;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "carrier_id")
+    @JoinColumn(name = "carrier_id", nullable = false)
     private Carrier carrier;
 
+    @Column(name = "driver_id", nullable = false, length = 64)
+    private String driverId; // Keycloak driver UUID (required)
+
+    // Shippo/ShipStation integration fields (moved from Order)
     @Column(name = "shippo_shipment_id", length = 128)
     private String shippoShipmentId;
 
@@ -74,35 +63,36 @@ public class ShipmentOrder {
     @Column(name = "shipstation_service_code", length = 64)
     private String shipstationServiceCode;
 
-    @Column(name = "tracking_number", length = 64)
-    private String trackingNumber;
+    // Shipment details
+    @Column(name = "total_orders")
+    private Integer totalOrders;
 
-    @Column(name = "customer_id", length = 64)
-    private String customerId;
-
-    // Parcel dimensions for shipping rate calculation
-    @Column(name = "weight")
-    private Double weight;
+    @Column(name = "total_weight")
+    private Double totalWeight;
 
     @Column(name = "weight_unit", length = 16)
     private String weightUnit;
 
-    @Column(name = "length")
-    private Double length;
+    @Column(name = "estimated_delivery_date")
+    private LocalDate estimatedDeliveryDate;
 
-    @Column(name = "width")
-    private Double width;
+    // Costs
+    @Column(name = "shipping_cost")
+    private Double shippingCost;
 
-    @Column(name = "height")
-    private Double height;
+    @Column(name = "transit_time", length = 64)
+    private String transitTime;
 
-    @Column(name = "distance_unit", length = 16)
-    private String distanceUnit;
-
+    // Timestamps
     @CreationTimestamp
     @Column(updatable = false)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
     private OffsetDateTime updatedAt;
+
+    // Relationship: One shipment has many orders
+    @Builder.Default
+    @OneToMany(mappedBy = "shipment", fetch = FetchType.LAZY)
+    private List<Order> orders = new ArrayList<>();
 }

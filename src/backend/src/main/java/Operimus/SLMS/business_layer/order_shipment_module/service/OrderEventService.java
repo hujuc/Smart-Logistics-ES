@@ -1,11 +1,11 @@
 package Operimus.SLMS.business_layer.order_shipment_module.service;
 
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderEventResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderEvent;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderEventRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.Order;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.OrderEvent;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.OrderEventRepository;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -15,13 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class ShipmentOrderEventService {
+public class OrderEventService {
 
-    private final ShipmentOrderEventRepository shipmentOrderEventRepository;
-    private final ShipmentOrderRepository shipmentOrderRepository;
+    private final OrderEventRepository orderEventRepository;
+    private final OrderRepository orderRepository;
 
     public void recordStatusChange(
-            ShipmentOrder order, ShipmentOrderStatus previousStatus, ShipmentOrderStatus newStatus) {
+            Order order, OrderStatus previousStatus, OrderStatus newStatus) {
         if (newStatus == null) {
             return;
         }
@@ -30,19 +30,19 @@ public class ShipmentOrderEventService {
                 ? "Order initialized with status %s".formatted(newStatus)
                 : "Order status changed from %s to %s".formatted(previousStatus, newStatus);
 
-        ShipmentOrderEvent event = ShipmentOrderEvent.builder()
-                .shipmentOrder(order)
+        OrderEvent event = OrderEvent.builder()
+                .order(order)
                 .eventType(newStatus)
                 .notes(notes)
                 .build();
 
-        shipmentOrderEventRepository.save(event);
+        orderEventRepository.save(event);
     }
 
     @Transactional(readOnly = true)
     public List<OrderEventResponse> getEventsForOrder(Long orderId) {
         ensureOrderExists(orderId);
-        return shipmentOrderEventRepository.findByShipmentOrderIdOrderByOccurredAtAsc(orderId).stream()
+        return orderEventRepository.findByOrderIdOrderByOccurredAtAsc(orderId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -50,23 +50,23 @@ public class ShipmentOrderEventService {
     @Transactional(readOnly = true)
     public OrderEventResponse getLatestEventForOrder(Long orderId) {
         ensureOrderExists(orderId);
-        return shipmentOrderEventRepository
-                .findFirstByShipmentOrderIdOrderByOccurredAtDesc(orderId)
+        return orderEventRepository
+                .findFirstByOrderIdOrderByOccurredAtDesc(orderId)
                 .map(this::mapToResponse)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No events recorded for order %d".formatted(orderId)));
     }
 
     private void ensureOrderExists(Long orderId) {
-        if (!shipmentOrderRepository.existsById(orderId)) {
+        if (!orderRepository.existsById(orderId)) {
             throw new ResourceNotFoundException("Order %d not found".formatted(orderId));
         }
     }
 
-    private OrderEventResponse mapToResponse(ShipmentOrderEvent event) {
+    private OrderEventResponse mapToResponse(OrderEvent event) {
         return OrderEventResponse.builder()
                 .id(event.getId())
-                .orderId(event.getShipmentOrder().getId())
+                .orderId(event.getOrder().getId())
                 .eventType(event.getEventType())
                 .occurredAt(event.getOccurredAt())
                 .notes(event.getNotes())

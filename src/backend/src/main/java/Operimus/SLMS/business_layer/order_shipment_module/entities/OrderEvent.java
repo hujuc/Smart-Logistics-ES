@@ -27,19 +27,19 @@ import org.hibernate.annotations.CreationTimestamp;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Entity
 @Table(name = "order_events")
-public class ShipmentOrderEvent {
+public class OrderEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "shipment_order_id", nullable = false)
-    private ShipmentOrder shipmentOrder;
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 32)
-    private ShipmentOrderStatus eventType;
+    private OrderStatus eventType;
 
     @CreationTimestamp
     @Column(name = "occurred_at", nullable = false, updatable = false)

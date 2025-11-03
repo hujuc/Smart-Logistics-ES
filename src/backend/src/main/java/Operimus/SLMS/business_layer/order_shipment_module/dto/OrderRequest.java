@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.OrderStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,7 +23,7 @@ public class OrderRequest {
 
     private String description;
 
-    private ShipmentOrderStatus status;
+    private OrderStatus status;
 
     @NotBlank
     private String shippingAddress;
@@ -33,17 +33,9 @@ public class OrderRequest {
     @NotNull
     private Long warehouseId;
 
-    private Long carrierId;
+    private Long shipmentId; // Link to shipment (nullable)
 
-    private String shippoShipmentId;
-
-    private String shippoTransactionId;
-
-    private String shipstationOrderId;
-
-    private String shipstationCarrierCode;
-
-    private String shipstationServiceCode;
+    private String customerId; // Keycloak customer UUID
 
     private String trackingNumber;
 

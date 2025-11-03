@@ -3,11 +3,10 @@ package Operimus.SLMS.business_layer.order_shipment_module.service;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.InMemoryMultipartFile;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Carrier;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.Order;
+import Operimus.SLMS.business_layer.order_shipment_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
+import Operimus.SLMS.business_layer.order_shipment_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
@@ -24,41 +23,35 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class OrderService {
 
-    private final ShipmentOrderRepository shipmentOrderRepository;
+    private final OrderRepository orderRepository;
     private final WarehouseService warehouseService;
-    private final CarrierService carrierService;
-    private final OrderDocumentService orderDocumentService;  // Adicionando dependência para o upload
-    private final ShipmentOrderEventService shipmentOrderEventService;
+    private final OrderDocumentService orderDocumentService;
+    private final OrderEventService orderEventService;
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
-        if (shipmentOrderRepository.existsByReferenceIgnoreCase(request.getReference())) {
+        if (orderRepository.existsByReferenceIgnoreCase(request.getReference())) {
             throw new ResourceConflictException(
                     "An order with reference '%s' already exists.".formatted(request.getReference()));
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
-        Carrier carrier = resolveCarrier(request.getCarrierId());
 
-        // Criar a encomenda
-        ShipmentOrder order = ShipmentOrder.builder()
+        // Create the order
+        Order order = Order.builder()
                 .reference(request.getReference())
                 .description(request.getDescription())
                 .status(resolveStatus(request.getStatus()))
                 .shippingAddress(request.getShippingAddress())
                 .estimatedDeliveryDate(request.getEstimatedDeliveryDate())
                 .warehouse(warehouse)
-                .carrier(carrier)
-                .shippoShipmentId(request.getShippoShipmentId())
-                .shippoTransactionId(request.getShippoTransactionId())
-                .shipstationOrderId(request.getShipstationOrderId())
-                .shipstationCarrierCode(request.getShipstationCarrierCode())
-                .shipstationServiceCode(request.getShipstationServiceCode())
+                .customerId(request.getCustomerId())
                 .trackingNumber(request.getTrackingNumber())
                 .weight(request.getWeight())
                 .weightUnit(request.getWeightUnit())
@@ -68,39 +61,38 @@ public class OrderService {
                 .distanceUnit(request.getDistanceUnit())
                 .build();
 
-        // Salvar a encomenda no banco (gera orderId)
-        ShipmentOrder saved = shipmentOrderRepository.save(order);
-        shipmentOrderEventService.recordStatusChange(saved, null, saved.getStatus());
+        // Save the order in the database (generates orderId)
+        Order saved = orderRepository.save(order);
+        orderEventService.recordStatusChange(saved, null, saved.getStatus());
 
-        // Gerar o QR code para a encomenda
-        byte[] qrImage = generateQrCode(saved.getId().toString(), 300);  // Gerando o QR code
+        // Generate the QR code for the order
+        byte[] qrImage = generateQrCode(saved.getId().toString(), 300);
 
-        // Criar o MultipartFile a partir do byte[] do QR code
+        // Create the MultipartFile from the byte[] of the QR code
         MultipartFile qrFile = new InMemoryMultipartFile("qr-" + saved.getId() + ".png", qrImage);
 
-        // Fazer o upload do QR code para o MinIO
-        orderDocumentService.uploadDocument(saved.getId(), qrFile);  // Realizando o upload do QR code
+        // Upload the QR code to MinIO
+        orderDocumentService.uploadDocument(saved.getId(), qrFile);
 
         return mapToResponse(saved);
     }
 
     @Transactional
     public OrderResponse update(Long id, OrderRequest request) {
-        ShipmentOrder order = shipmentOrderRepository
+        Order order = orderRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
 
         boolean isReferenceChanging = !order.getReference().equalsIgnoreCase(request.getReference());
-        if (isReferenceChanging && shipmentOrderRepository.existsByReferenceIgnoreCase(request.getReference())) {
+        if (isReferenceChanging && orderRepository.existsByReferenceIgnoreCase(request.getReference())) {
             throw new ResourceConflictException(
                     "An order with reference '%s' already exists.".formatted(request.getReference()));
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
-        Carrier carrier = resolveCarrier(request.getCarrierId());
 
-        ShipmentOrderStatus previousStatus = order.getStatus();
-        ShipmentOrderStatus newStatus = resolveStatus(request.getStatus());
+        OrderStatus previousStatus = order.getStatus();
+        OrderStatus newStatus = resolveStatus(request.getStatus());
         boolean statusChanged = previousStatus != newStatus;
 
         order.setReference(request.getReference());
@@ -109,12 +101,7 @@ public class OrderService {
         order.setShippingAddress(request.getShippingAddress());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
-        order.setCarrier(carrier);
-        order.setShippoShipmentId(request.getShippoShipmentId());
-        order.setShippoTransactionId(request.getShippoTransactionId());
-        order.setShipstationOrderId(request.getShipstationOrderId());
-        order.setShipstationCarrierCode(request.getShipstationCarrierCode());
-        order.setShipstationServiceCode(request.getShipstationServiceCode());
+        order.setCustomerId(request.getCustomerId());
         order.setTrackingNumber(request.getTrackingNumber());
         order.setWeight(request.getWeight());
         order.setWeightUnit(request.getWeightUnit());
@@ -124,7 +111,7 @@ public class OrderService {
         order.setDistanceUnit(request.getDistanceUnit());
 
         if (statusChanged) {
-            shipmentOrderEventService.recordStatusChange(order, previousStatus, newStatus);
+            orderEventService.recordStatusChange(order, previousStatus, newStatus);
         }
 
         return mapToResponse(order);
@@ -132,41 +119,15 @@ public class OrderService {
 
     @Transactional
     public void delete(Long id) {
-        ShipmentOrder order = shipmentOrderRepository
+        Order order = orderRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
-        shipmentOrderRepository.delete(order);
-    }
-
-    @Transactional
-    public OrderResponse confirmPickup(Long id) {
-        ShipmentOrder order = shipmentOrderRepository
-                .findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
-
-        ShipmentOrderStatus currentStatus = order.getStatus();
-        if (currentStatus == ShipmentOrderStatus.CANCELLED) {
-            throw new ResourceConflictException("Cancelled order %d cannot be collected.".formatted(id));
-        }
-        if (currentStatus == ShipmentOrderStatus.DELIVERED) {
-            throw new ResourceConflictException("Delivered order %d cannot be collected again.".formatted(id));
-        }
-        if (currentStatus == ShipmentOrderStatus.COLLECTED) {
-            return mapToResponse(order);
-        }
-        if (currentStatus != ShipmentOrderStatus.READY_FOR_PICKUP) {
-            throw new ResourceConflictException(
-                    "Order %d must be ready for pickup before it can be collected.".formatted(id));
-        }
-
-        order.setStatus(ShipmentOrderStatus.COLLECTED);
-        shipmentOrderEventService.recordStatusChange(order, currentStatus, ShipmentOrderStatus.COLLECTED);
-        return mapToResponse(order);
+        orderRepository.delete(order);
     }
 
     @Transactional(readOnly = true)
     public OrderResponse getById(Long id) {
-        ShipmentOrder order = shipmentOrderRepository
+        Order order = orderRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
         return mapToResponse(order);
@@ -174,20 +135,20 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getAll() {
-        return shipmentOrderRepository.findAll().stream().map(this::mapToResponse).toList();
+        return orderRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getByCustomerId(String customerId) {
-        return shipmentOrderRepository.findAll().stream()
+        return orderRepository.findAll().stream()
                 .filter(order -> order.getCustomerId() != null && order.getCustomerId().equals(customerId))
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getByStatus(List<ShipmentOrderStatus> statuses) {
-        return shipmentOrderRepository.findAll().stream()
+    public List<OrderResponse> getByStatus(List<OrderStatus> statuses) {
+        return orderRepository.findAll().stream()
                 .filter(order -> statuses.contains(order.getStatus()))
                 .map(this::mapToResponse)
                 .toList();
@@ -195,18 +156,18 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderResponse getByTrackingNumber(String trackingNumber) {
-        ShipmentOrder order = shipmentOrderRepository.findAll().stream()
+        Order order = orderRepository.findAll().stream()
                 .filter(o -> trackingNumber.equals(o.getTrackingNumber()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Order with tracking number '%s' not found".formatted(trackingNumber)));
         return mapToResponse(order);
     }
 
-    private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
-        return status == null ? ShipmentOrderStatus.CREATED : status;
+    private OrderStatus resolveStatus(OrderStatus status) {
+        return status == null ? OrderStatus.CREATED : status;
     }
 
-    private OrderResponse mapToResponse(ShipmentOrder order) {
+    private OrderResponse mapToResponse(Order order) {
         return OrderResponse.builder()
                 .id(order.getId())
                 .reference(order.getReference())
@@ -215,16 +176,11 @@ public class OrderService {
                 .shippingAddress(order.getShippingAddress())
                 .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                 .warehouseId(order.getWarehouse().getId())
-                .carrierId(order.getCarrier() != null ? order.getCarrier().getId() : null)
-                .carrierCode(order.getCarrier() != null ? order.getCarrier().getCode() : null)
-                .carrierName(order.getCarrier() != null ? order.getCarrier().getName() : null)
-                .shippoShipmentId(order.getShippoShipmentId())
-                .shippoTransactionId(order.getShippoTransactionId())
-                .shipstationOrderId(order.getShipstationOrderId())
-                .shipstationCarrierCode(order.getShipstationCarrierCode())
-                .shipstationServiceCode(order.getShipstationServiceCode())
+                .shipmentId(order.getShipment() != null ? order.getShipment().getId() : null)
+                .shipmentCode(order.getShipment() != null ? order.getShipment().getShipmentCode() : null)
                 .trackingNumber(order.getTrackingNumber())
                 .customerId(order.getCustomerId())
+                .qrCodeUrl(order.getQrCodeUrl())
                 .weight(order.getWeight())
                 .weightUnit(order.getWeightUnit())
                 .length(order.getLength())
@@ -236,25 +192,19 @@ public class OrderService {
                 .build();
     }
 
-    private Carrier resolveCarrier(Long carrierId) {
-        if (carrierId == null) {
-            return null;
-        }
-        return carrierService.findEntityById(carrierId);
-    }
     private byte[] generateQrCode(String orderId, int size) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         BitMatrix bitMatrix = null;
-         try {
+        try {
             bitMatrix = qrCodeWriter.encode(orderId, BarcodeFormat.QR_CODE, size, size);
         } catch (WriterException e) {
-            throw new RuntimeException("Erro ao gerar QR code", e);  // Tratar a exceção adequadamente
+            throw new RuntimeException("Error generating QR code", e);
         }
         ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
         try {
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
         } catch (IOException e) {
-            throw new RuntimeException("Erro ao gerar QR code", e);
+            throw new RuntimeException("Error generating QR code", e);
         }
         return pngOutputStream.toByteArray();
     }
