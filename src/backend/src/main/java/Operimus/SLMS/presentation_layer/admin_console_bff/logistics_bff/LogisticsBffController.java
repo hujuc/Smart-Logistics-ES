@@ -4,6 +4,8 @@ import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO
 import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
+import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ import java.util.Map;
 public class LogisticsBffController {
 
     private final KeycloakUserService userService;
+    private final LogisticsStatsService statsService;
 
     /**
      * Health check endpoint
@@ -44,6 +47,36 @@ public class LogisticsBffController {
                 "service", "Logistics BFF",
                 "timestamp", java.time.Instant.now().toString()
         ));
+    }
+
+    // ===========================
+    // Dashboard Statistics Endpoints
+    // ===========================
+
+    /**
+     * Get comprehensive logistics statistics for dashboard
+     *
+     * @param period Time period for trend calculation: "daily", "weekly", or "monthly" (default: "daily")
+     * @return Comprehensive statistics with breakdowns
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStatistics(@RequestParam(defaultValue = "daily") String period) {
+        try {
+            log.info("Fetching logistics statistics for period: {}", period);
+
+            // Validate period parameter
+            if (!period.matches("daily|weekly|monthly")) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Invalid period. Must be 'daily', 'weekly', or 'monthly'"));
+            }
+
+            LogisticsStatsResponse stats = statsService.calculateStats(period);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error fetching logistics statistics: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch statistics: " + e.getMessage()));
+        }
     }
 
     // ===========================

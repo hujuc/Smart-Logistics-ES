@@ -23,11 +23,13 @@ export const API_ENDPOINTS = {
     health: `${LOGISTICS_BASE}/health`,
     orders: `${LOGISTICS_BASE}/orders`,
     users: `${LOGISTICS_BASE}/users`,
+    stats: `${LOGISTICS_BASE}/stats`,
 
     // Helper functions for user-specific paths
     user: (userId: string) => `${LOGISTICS_BASE}/users/${userId}`,
     userPassword: (userId: string) => `${LOGISTICS_BASE}/users/${userId}/password`,
     userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
+    statsWithPeriod: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/stats?period=${period}`,
   },
 
   // Warehouse Staff BFF
