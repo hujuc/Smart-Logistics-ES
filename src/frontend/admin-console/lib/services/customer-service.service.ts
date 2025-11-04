@@ -52,6 +52,19 @@ export const customerServiceOrderApi = {
   async getOrderTracking(id: number): Promise<OrderTrackingInfo> {
     return apiFetch<OrderTrackingInfo>(API_ENDPOINTS.customerService.orderTracking(id));
   },
+
+  /**
+   * Get order with events in a single optimized call (Version B)
+   * This endpoint reduces latency by fetching both order and events in one request
+   */
+  async getOrderWithEvents(id: number): Promise<{ order: Order; events: OrderEvent[] }> {
+    return apiFetch<{ order: Order; events: OrderEvent[] }>(
+      API_ENDPOINTS.customerService.orderWithEvents(id),
+      {
+        method: 'GET',
+      }
+    );
+  },
 };
 
 // ========================================

@@ -12,7 +12,6 @@ import {
   Clock,
   AlertTriangle,
   ArrowLeft,
-  Calendar,
   ArrowRight,
 } from "lucide-react"
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
@@ -83,10 +82,12 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
     setError(null)
 
     try {
-      const events = await customerServiceOrderApi.getOrderEvents(order.id)
-      setOrderEvents(events)
+      // Version B: Use optimized single endpoint that returns both order and events
+      const data = await customerServiceOrderApi.getOrderWithEvents(order.id)
+      setSelectedOrder(data.order)
+      setOrderEvents(data.events)
     } catch (err) {
-      console.error('Failed to load order events:', err)
+      console.error('Failed to load order details:', err)
       setError('Failed to load order timeline')
     } finally {
       setIsLoadingEvents(false)
@@ -124,7 +125,6 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
   // Details view - Compact table layout
   if (selectedOrder) {
     const statusConfig = STATUS_CONFIG[selectedOrder.status]
-    const StatusIcon = statusConfig.icon
 
     return (
       <div className="space-y-4">

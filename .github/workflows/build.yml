@@ -118,6 +118,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
+
+      - name: Add Node to PATH
+        run: |
+          echo "${{ runner.tool_cache }}/node/20.19.5/x64/bin" >> $GITHUB_PATH
+          export PATH="${{ runner.tool_cache }}/node/20.19.5/x64/bin:$PATH"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
 
       - name: Install dependencies
         run: npm ci

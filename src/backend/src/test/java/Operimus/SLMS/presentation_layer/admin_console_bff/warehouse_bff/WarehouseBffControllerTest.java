@@ -89,15 +89,15 @@ class WarehouseBffControllerTest {
                 createOrderResponse(1L, "ORD-001", ShipmentOrderStatus.CREATED)
         );
 
-        when(orderService.getAll()).thenReturn(orders);
+        when(orderService.getByStatus(any())).thenReturn(orders);
 
         mockMvc.perform(get("/api/warehouse/orders")
-                        .param("status", "PENDING")
+                        .param("status", "CREATED")
                         .param("search", "ORD-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
 
-        verify(orderService).getAll();
+        verify(orderService).getByStatus(any());
     }
 
     @Test

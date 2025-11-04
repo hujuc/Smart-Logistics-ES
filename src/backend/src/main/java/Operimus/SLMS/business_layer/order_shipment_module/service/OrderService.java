@@ -79,7 +79,6 @@ public class OrderService {
         MultipartFile qrFile = new InMemoryMultipartFile("qr-" + saved.getId() + ".png", qrImage);
 
         // Fazer o upload do QR code para o MinIO
-        String qrKey = "orders/" + saved.getId() + "/qr.png";  // Definindo a chave do arquivo no MinIO
         orderDocumentService.uploadDocument(saved.getId(), qrFile);  // Realizando o upload do QR code
 
         return mapToResponse(saved);
@@ -179,11 +178,28 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderResponse> getByCustomerId(String customerId) {
+        return shipmentOrderRepository.findAll().stream()
+                .filter(order -> order.getCustomerId() != null && order.getCustomerId().equals(customerId))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderResponse> getByStatus(List<ShipmentOrderStatus> statuses) {
         return shipmentOrderRepository.findAll().stream()
                 .filter(order -> statuses.contains(order.getStatus()))
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse getByTrackingNumber(String trackingNumber) {
+        ShipmentOrder order = shipmentOrderRepository.findAll().stream()
+                .filter(o -> trackingNumber.equals(o.getTrackingNumber()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Order with tracking number '%s' not found".formatted(trackingNumber)));
+        return mapToResponse(order);
     }
 
     private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
@@ -208,6 +224,7 @@ public class OrderService {
                 .shipstationCarrierCode(order.getShipstationCarrierCode())
                 .shipstationServiceCode(order.getShipstationServiceCode())
                 .trackingNumber(order.getTrackingNumber())
+                .customerId(order.getCustomerId())
                 .weight(order.getWeight())
                 .weightUnit(order.getWeightUnit())
                 .length(order.getLength())

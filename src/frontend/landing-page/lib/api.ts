@@ -1,3 +1,5 @@
+import { useUserStore } from '@shared/lib/user-store';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/landing-page';
 
 export interface LoginRequest {
@@ -118,15 +120,20 @@ export function getRoleBasedRedirect(roles: string[]): string {
  * Store access token in localStorage and cookies, then redirect based on role
  */
 export function handleSuccessfulAuth(response: LoginResponse): void {
-  // Store access token in localStorage
-  localStorage.setItem('access_token', response.accessToken);
-  localStorage.setItem('user', JSON.stringify({
+  const userData = {
     username: response.username,
     email: response.email,
     firstName: response.firstName,
     lastName: response.lastName,
     roles: response.roles,
-  }));
+  };
+
+  // Store access token in localStorage
+  localStorage.setItem('access_token', response.accessToken);
+  localStorage.setItem('user', JSON.stringify(userData));
+
+  // Update user store for reactive state management
+  useUserStore.getState().setUser(userData);
 
   // Also store in cookie for middleware access
   // Set cookie with path=/ so it's accessible across all frontends
