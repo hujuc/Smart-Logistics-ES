@@ -12,6 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const LOGISTICS_BASE = `${API_BASE}/logistics`;
 const WAREHOUSE_BASE = `${API_BASE}/warehouse`;
 const CUSTOMER_SERVICE_BASE = `${API_BASE}/customer-service`;
+const ADMIN_BASE = `${API_BASE}/admin`;
 
 /**
  * API endpoints for different admin interfaces
@@ -35,7 +36,8 @@ export const API_ENDPOINTS = {
     base: WAREHOUSE_BASE,
     health: `${WAREHOUSE_BASE}/health`,
     orders: `${WAREHOUSE_BASE}/orders`,
-    
+    drivers: `${WAREHOUSE_BASE}/drivers`, // Get all drivers for shipment assignment
+
     // Helper function to build order-specific paths
     order: (orderId: number) => `${WAREHOUSE_BASE}/orders/${orderId}`,
     orderDocuments: (orderId: number) => `${WAREHOUSE_BASE}/orders/${orderId}/documents`,
@@ -43,23 +45,44 @@ export const API_ENDPOINTS = {
       `${WAREHOUSE_BASE}/orders/${orderId}/documents/${encodeURIComponent(documentId)}`,
     orderDocumentDownload: (orderId: number, documentId: string) =>
       `${WAREHOUSE_BASE}/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
-    orderCollect: (orderId: number) => `${WAREHOUSE_BASE}/orders/${orderId}/collect`,
   },
 
   // Customer Service BFF
   customerService: {
     base: CUSTOMER_SERVICE_BASE,
     health: `${CUSTOMER_SERVICE_BASE}/health`,
-    
+
     // Order search and lookup
     ordersSearch: (query: string) => `${CUSTOMER_SERVICE_BASE}/orders/search?query=${encodeURIComponent(query)}`,
     order: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}`,
     orderEvents: (orderId: number) => `${API_BASE}/admin/orders/${orderId}/events`,
     orderTracking: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/tracking`,
     orderWithEvents: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/with-events`,
-    
+
     // Exceptions
     orderExceptions: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/exceptions`,
+  },
+
+  // Admin API - Direct backend endpoints (not through BFF)
+  admin: {
+    base: ADMIN_BASE,
+
+    // Shipments
+    shipments: `${ADMIN_BASE}/shipments`,
+    shipment: (shipmentId: number) => `${ADMIN_BASE}/shipments/${shipmentId}`,
+    shipmentDriver: (shipmentId: number) => `${ADMIN_BASE}/shipments/${shipmentId}/driver`,
+    shipmentsByCarrier: (carrierId: number) => `${ADMIN_BASE}/shipments/carrier/${carrierId}`,
+    shipmentsByDriver: (driverId: string) => `${ADMIN_BASE}/shipments/driver/${driverId}`,
+
+    // Carriers
+    carriers: `${ADMIN_BASE}/carriers`,
+    carrier: (carrierId: number) => `${ADMIN_BASE}/carriers/${carrierId}`,
+    carrierSync: `${ADMIN_BASE}/carriers/integrations/sync`,
+    carrierSnapshot: `${ADMIN_BASE}/carriers/integrations/snapshot`,
+
+    // Warehouses
+    warehouses: `${ADMIN_BASE}/warehouses`,
+    warehouse: (warehouseId: number) => `${ADMIN_BASE}/warehouses/${warehouseId}`,
   },
 };
 
