@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/shipments")
+@RequestMapping("/api/admin/shipments")
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class ShipmentController {

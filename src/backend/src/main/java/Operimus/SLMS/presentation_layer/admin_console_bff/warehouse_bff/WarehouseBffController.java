@@ -7,9 +7,11 @@ import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +42,7 @@ public class WarehouseBffController {
 
     private final OrderService orderService;
     private final OrderDocumentService orderDocumentService;
+    private final KeycloakUserService keycloakUserService;
 
     /**
      * Health check endpoint
@@ -189,6 +192,46 @@ public class WarehouseBffController {
 
         } catch (Exception e) {
             log.error("Failed to delete order {} via warehouse BFF: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // Driver Operations
+    // ========================================
+
+    /**
+     * Get all drivers (users with DRIVER role)
+     * This endpoint allows warehouse staff to view available drivers for shipment assignment
+     *
+     * @return List of drivers
+     */
+    @GetMapping("/drivers")
+    public ResponseEntity<List<UserRepresentation>> getDrivers() {
+        try {
+            log.info("Warehouse BFF: Fetching all drivers");
+
+            // Get all users from Keycloak
+            List<UserRepresentation> allUsers = keycloakUserService.getAllUsers();
+
+            // Filter for users in the "Drivers" group
+            List<UserRepresentation> drivers = allUsers.stream()
+                    .filter(user -> {
+                        List<String> groups = user.getGroups();
+                        return groups != null && (
+                                groups.contains("Drivers") ||
+                                groups.contains("DRIVER") ||
+                                groups.contains("driver")
+                        );
+                    })
+                    .toList();
+
+            log.info("Warehouse BFF: Found {} drivers out of {} total users", drivers.size(), allUsers.size());
+
+            return ResponseEntity.ok(drivers);
+
+        } catch (Exception e) {
+            log.error("Failed to fetch drivers via warehouse BFF: {}", e.getMessage());
             throw e;
         }
     }

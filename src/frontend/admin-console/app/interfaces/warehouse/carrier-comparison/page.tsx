@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Package, Truck, CheckCircle, Loader2, Settings } from "lucide-react"
-import { Carrier, ShipmentCard, Order } from "@/types"
+import { Package, Truck, CheckCircle, Loader2, Settings, UserCheck } from "lucide-react"
+import { Carrier, ShipmentCard, Order, User } from "@/types"
 import { ShipmentCards } from "@/components/logistics/shipment-cards"
 import { CarrierCompare } from "@/components/logistics/carrier-compare"
 import { warehouseService } from "@/lib/services/warehouse.service"
+import { carrierService } from "@/lib/services/carrier.service"
+import { shipmentService } from "@/lib/services/shipment.service"
 import { calculateShippingRates } from "@/lib/carrier-api"
 import { featureFlagManager } from "@/lib/flagsmith"
+import { API_ENDPOINTS, apiFetch } from "@/lib/api"
 
 export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
-  const [flowStep, setFlowStep] = useState<1 | 2 | 3>(1) // 1: Add Orders, 2: Choose Carrier, 3: Confirm
+  const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
   const [searchTerm, setSearchTerm] = useState("")
   const [carrierViewMode, setCarrierViewMode] = useState<"table" | "cards">("table") // Toggle between views in Step 2
   const [showViewToggle, setShowViewToggle] = useState(false) // Show toggle control in development
@@ -23,16 +26,20 @@ export default function CarrierComparisonPage() {
   const [shipments, setShipments] = useState<ShipmentCard[]>([])
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [allCarriers, setAllCarriers] = useState<Carrier[]>([])
+  const [drivers, setDrivers] = useState<User[]>([])
+  const [allShipments, setAllShipments] = useState<any[]>([]) // Real shipment entities from backend
 
   // Loading states
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [loadingAllShipments, setLoadingAllShipments] = useState(true)
+  const [loadingDrivers, setLoadingDrivers] = useState(false)
   const [loadingRates, setLoadingRates] = useState(false)
   const [loadingConfirm, setLoadingConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedShipments, setSelectedShipments] = useState<string[]>([])
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null)
+  const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
 
   // Initialize Flagsmith feature flags
   useEffect(() => {
@@ -84,12 +91,17 @@ export default function CarrierComparisonPage() {
     fetchOrders()
   }, [])
 
-  // Fetch all shipments on mount - orders that have been assigned carriers
+  // Fetch all shipments on mount - real shipment entities from backend
   useEffect(() => {
     const fetchAllShipments = async () => {
       try {
         setLoadingAllShipments(true)
-        // Fetch all orders that have been assigned carriers (ASSIGNED_TO_SHIPMENT, IN_TRANSIT, DELIVERED)
+
+        // Fetch real shipment entities
+        const shipmentsData = await shipmentService.getAllShipments()
+        setAllShipments(shipmentsData)
+
+        // Also fetch orders for backward compatibility (if needed elsewhere)
         const fetchedOrders = await warehouseService.getOrdersByStatus([
           "ASSIGNED_TO_SHIPMENT",
           "IN_TRANSIT",
@@ -122,7 +134,39 @@ export default function CarrierComparisonPage() {
       await calculateRatesForSelectedShipments()
     }
 
-    if (flowStep < 3) setFlowStep((flowStep + 1) as 1 | 2 | 3)
+    // If moving from step 2 to step 3, fetch available drivers
+    if (flowStep === 2) {
+      await fetchDrivers()
+    }
+
+    if (flowStep < 4) setFlowStep((flowStep + 1) as 1 | 2 | 3 | 4)
+  }
+
+  // Fetch available drivers from warehouse BFF
+  const fetchDrivers = async () => {
+    try {
+      setLoadingDrivers(true)
+      setError(null)
+
+      // Fetch drivers from warehouse BFF endpoint
+      // This endpoint returns users with DRIVER role only
+      const driverUsers = await apiFetch<User[]>(API_ENDPOINTS.warehouse.drivers)
+
+      setDrivers(driverUsers)
+
+      if (driverUsers.length === 0) {
+        setError("No drivers available. Please create driver accounts first.")
+      }
+    } catch (err) {
+      console.error("Failed to fetch drivers:", err)
+      setError("Failed to load drivers. Please try again.")
+    } finally {
+      setLoadingDrivers(false)
+    }
+  }
+
+  const handleSelectDriver = (driver: User) => {
+    setSelectedDriver(driver)
   }
 
   // Calculate shipping rates for selected shipments
@@ -221,7 +265,7 @@ export default function CarrierComparisonPage() {
   }
 
   const handlePreviousStep = () => {
-    if (flowStep > 1) setFlowStep((flowStep - 1) as 1 | 2 | 3)
+    if (flowStep > 1) setFlowStep((flowStep - 1) as 1 | 2 | 3 | 4)
   }
 
   const handleToggleViewMode = (mode: "table" | "cards") => {
@@ -230,8 +274,8 @@ export default function CarrierComparisonPage() {
   }
 
   const handleConfirm = async () => {
-    if (!selectedCarrier || selectedShipments.length === 0) {
-      setError("Please select shipments and a carrier")
+    if (!selectedCarrier || !selectedDriver || selectedShipments.length === 0) {
+      setError("Please select shipments, a carrier, and a driver")
       return
     }
 
@@ -239,24 +283,38 @@ export default function CarrierComparisonPage() {
       setLoadingConfirm(true)
       setError(null)
 
-      // Update each selected order with carrier information
-      const updatePromises = selectedShipments.map(async (shipmentId) => {
-        const orderId = parseInt(shipmentId)
-        
-        // Assign carrier to the order
-        await warehouseService.assignCarrier(
-          orderId,
-          selectedCarrier.name,
-          selectedCarrier.service,
-          selectedCarrier.cost || 0,
-          selectedCarrier.transitTime || 'N/A'
-        )
+      // Step 1: Resolve carrier ID (get from DB or create on-the-fly)
+      let carrier = await carrierService.findCarrierByName(selectedCarrier.name)
+
+      if (!carrier) {
+        console.log(`Carrier ${selectedCarrier.name} not found in DB, creating...`)
+        carrier = await carrierService.getOrCreateCarrierByName(selectedCarrier.name)
+      }
+
+      // Step 2: Create the shipment
+      const shipmentCode = `SHIP-${Date.now()}`
+      const orderIds = selectedShipments.map(id => parseInt(id))
+
+      const newShipment = await shipmentService.createShipment({
+        shipmentCode,
+        carrierId: carrier.id,
+        driverId: selectedDriver.id,
+        orderIds,
+        totalOrders: orderIds.length,
+        shippingCost: selectedCarrier.cost,
+        transitTime: selectedCarrier.transitTime,
       })
 
-      await Promise.all(updatePromises)
+      // Step 3: Update order statuses (if needed - backend should handle this)
+      // The backend should automatically update orders when they're added to a shipment
 
       // Show success message
-      alert(`✅ Successfully assigned ${selectedCarrier.name} (${selectedCarrier.service}) to ${selectedShipments.length} shipment(s)!\n\nOrders are now marked as ASSIGNED_TO_SHIPMENT and removed from the New Shipment list.`)
+      alert(`✅ Shipment Created Successfully!\n\n` +
+        `Shipment Code: ${newShipment.shipmentCode}\n` +
+        `Carrier: ${newShipment.carrierName}\n` +
+        `Driver: ${selectedDriver.firstName} ${selectedDriver.lastName}\n` +
+        `Orders: ${orderIds.length}\n\n` +
+        `Orders are now marked as ASSIGNED_TO_SHIPMENT.`)
 
       // Refresh orders list - only fetch CREATED orders (assigned orders are now ASSIGNED_TO_SHIPMENT)
       const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED"])
@@ -272,21 +330,26 @@ export default function CarrierComparisonPage() {
 
       setShipments(shipmentCards)
 
-      // Refresh all shipments list
-      const allShipments = await warehouseService.getOrdersByStatus([
+      // Refresh all shipments list (fetch real shipment entities)
+      const allShipmentsData = await shipmentService.getAllShipments()
+      setAllShipments(allShipmentsData)
+
+      // Also refresh orders with assigned status for backward compatibility
+      const assignedOrders = await warehouseService.getOrdersByStatus([
         "ASSIGNED_TO_SHIPMENT",
         "IN_TRANSIT",
         "DELIVERED"
       ])
-      setAllShipmentOrders(allShipments)
+      setAllShipmentOrders(assignedOrders)
 
-    // Reset flow
-    setFlowStep(1)
-    setSelectedShipments([])
-    setSelectedCarrier(null)
+      // Reset flow
+      setFlowStep(1)
+      setSelectedShipments([])
+      setSelectedCarrier(null)
+      setSelectedDriver(null)
     } catch (err) {
-      console.error("Failed to assign carrier:", err)
-      setError("Failed to assign carrier to shipments. Please try again.")
+      console.error("Failed to create shipment:", err)
+      setError(`Failed to create shipment: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`)
     } finally {
       setLoadingConfirm(false)
     }
@@ -387,30 +450,39 @@ export default function CarrierComparisonPage() {
         <>
           {/* Process Flow */}
           <div className="bg-white border rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-center gap-8">
+            <div className="flex items-center justify-center gap-4 md:gap-8">
               <div className="flex flex-col items-center gap-2">
-                <div className={`h-16 w-16 rounded-full ${flowStep === 1 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
-                  <Package className={`h-8 w-8 text-gray-600 ${flowStep === 1 ? 'text-white' : ''}`} />
+                <div className={`h-12 w-12 md:h-16 md:w-16 rounded-full ${flowStep === 1 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
+                  <Package className={`h-6 w-6 md:h-8 md:w-8 text-gray-600 ${flowStep === 1 ? 'text-white' : ''}`} />
                 </div>
-                <span className={`text-sm font-medium ${flowStep === 1 ? 'text-brand-purple' : 'text-gray-600'}`}>Add Orders</span>
+                <span className={`text-xs md:text-sm font-medium ${flowStep === 1 ? 'text-brand-purple' : 'text-gray-600'}`}>Add Orders</span>
               </div>
               <div className={`flex-1 h-0.5 ${flowStep > 1 ? 'bg-brand-purple' : 'bg-gray-300'} relative transition-colors`}>
-                <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 ${flowStep > 1 ? 'bg-brand-purple' : 'bg-gray-300'} rotate-45 transition-colors`}></div>
+                <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-2 md:w-3 md:h-3 ${flowStep > 1 ? 'bg-brand-purple' : 'bg-gray-300'} rotate-45 transition-colors`}></div>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <div className={`h-16 w-16 rounded-full ${flowStep === 2 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
-                  <Truck className={`h-8 w-8 ${flowStep === 2 ? 'text-white' : 'text-gray-600'}`} />
+                <div className={`h-12 w-12 md:h-16 md:w-16 rounded-full ${flowStep === 2 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
+                  <Truck className={`h-6 w-6 md:h-8 md:w-8 ${flowStep === 2 ? 'text-white' : 'text-gray-600'}`} />
                 </div>
-                <span className={`text-sm font-medium ${flowStep === 2 ? 'text-brand-purple' : 'text-gray-600'}`}>Choose Carrier</span>
+                <span className={`text-xs md:text-sm font-medium ${flowStep === 2 ? 'text-brand-purple' : 'text-gray-600'}`}>Choose Carrier</span>
               </div>
               <div className={`flex-1 h-0.5 ${flowStep > 2 ? 'bg-brand-purple' : 'bg-gray-300'} relative transition-colors`}>
-                <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 ${flowStep > 2 ? 'bg-brand-purple' : 'bg-gray-300'} rotate-45 transition-colors`}></div>
+                <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-2 md:w-3 md:h-3 ${flowStep > 2 ? 'bg-brand-purple' : 'bg-gray-300'} rotate-45 transition-colors`}></div>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <div className={`h-16 w-16 rounded-full ${flowStep === 3 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
-                  <CheckCircle className={`h-8 w-8 ${flowStep === 3 ? 'text-white' : 'text-gray-600'}`} />
+                <div className={`h-12 w-12 md:h-16 md:w-16 rounded-full ${flowStep === 3 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
+                  <UserCheck className={`h-6 w-6 md:h-8 md:w-8 ${flowStep === 3 ? 'text-white' : 'text-gray-600'}`} />
                 </div>
-                <span className={`text-sm font-medium ${flowStep === 3 ? 'text-brand-purple' : 'text-gray-600'}`}>Confirm</span>
+                <span className={`text-xs md:text-sm font-medium ${flowStep === 3 ? 'text-brand-purple' : 'text-gray-600'}`}>Select Driver</span>
+              </div>
+              <div className={`flex-1 h-0.5 ${flowStep > 3 ? 'bg-brand-purple' : 'bg-gray-300'} relative transition-colors`}>
+                <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-2 md:w-3 md:h-3 ${flowStep > 3 ? 'bg-brand-purple' : 'bg-gray-300'} rotate-45 transition-colors`}></div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className={`h-12 w-12 md:h-16 md:w-16 rounded-full ${flowStep === 4 ? 'bg-brand-purple' : 'bg-gray-100'} flex items-center justify-center transition-colors`}>
+                  <CheckCircle className={`h-6 w-6 md:h-8 md:w-8 ${flowStep === 4 ? 'text-white' : 'text-gray-600'}`} />
+                </div>
+                <span className={`text-xs md:text-sm font-medium ${flowStep === 4 ? 'text-brand-purple' : 'text-gray-600'}`}>Confirm</span>
               </div>
             </div>
           </div>
@@ -649,21 +721,116 @@ export default function CarrierComparisonPage() {
             </>
           )}
 
-          {/* Step 3: Confirm */}
+          {/* Step 3: Select Driver */}
           {flowStep === 3 && (
             <>
+              {loadingDrivers ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
+                </div>
+              ) : drivers.length === 0 ? (
+                <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
+                  <UserCheck className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-lg font-medium text-gray-600">No drivers available</p>
+                  <p className="text-sm text-gray-500 mt-2">Please create driver accounts before creating shipments.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-white border rounded-lg p-6 shadow-sm">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-black mb-2">Select a Driver</h3>
+                        <p className="text-sm text-gray-600">Choose the best available driver for this shipment</p>
+                      </div>
+
+                      {/* Driver Selection Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {drivers.map((driver) => (
+                          <div
+                            key={driver.id}
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                              selectedDriver?.id === driver.id
+                                ? 'border-purple-500 bg-purple-50 shadow-lg'
+                                : 'border-gray-200 hover:shadow-md hover:border-purple-300'
+                            }`}
+                            onClick={() => handleSelectDriver(driver)}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                                  <UserCheck className="h-6 w-6 text-purple-600" />
+                                </div>
+                                <div>
+                                  <h5 className="text-base font-bold text-black">
+                                    {driver.firstName} {driver.lastName}
+                                  </h5>
+                                  <p className="text-xs text-gray-600">@{driver.username}</p>
+                                </div>
+                              </div>
+                              {selectedDriver?.id === driver.id && (
+                                <div className="bg-purple-600 text-white p-1.5 rounded-full">
+                                  <CheckCircle className="h-4 w-4" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Email:</span>
+                                <span className="font-medium text-black truncate ml-2">{driver.email}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Status:</span>
+                                <span className={`font-medium ${driver.enabled ? 'text-green-600' : 'text-red-600'}`}>
+                                  {driver.enabled ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">ID:</span>
+                                <span className="font-mono text-xs text-gray-500 truncate ml-2">{driver.id}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
+                    <Button
+                      variant="outline"
+                      onClick={handlePreviousStep}
+                    >
+                      Back to Carrier Selection
+                    </Button>
+                    <Button
+                      onClick={handleNextStep}
+                      disabled={!selectedDriver}
+                      className="bg-brand-purple hover:bg-brand-purple-hover"
+                    >
+                      Next: Confirm Shipment
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Step 4: Confirm */}
+          {flowStep === 4 && (
+            <>
               <div className="bg-white border rounded-lg p-6 shadow-sm">
-                <h2 className="text-2xl font-bold text-black mb-6">Order Summary</h2>
-                
+                <h2 className="text-2xl font-bold text-black mb-6">Shipment Summary</h2>
+
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-black mb-3">Selected Shipments ({selectedShipments.length})</h3>
+                    <h3 className="text-lg font-semibold text-black mb-3">Selected Orders ({selectedShipments.length})</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {shipments
                         .filter((s) => selectedShipments.includes(s.id))
                         .map((shipment) => (
                           <div key={shipment.id} className="border rounded-lg p-3">
-                            <p className="font-medium text-sm">ID: {shipment.id}</p>
+                            <p className="font-medium text-sm">Order ID: {shipment.id}</p>
                             <p className="text-sm text-gray-600">Destination: {shipment.destination}</p>
                             <p className="text-sm text-gray-600">Weight: {shipment.weight}</p>
                           </div>
@@ -684,16 +851,43 @@ export default function CarrierComparisonPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="text-sm text-gray-600">Cost per shipment</p>
+                            <p className="text-sm text-gray-600">Shipping Cost</p>
                             <p className="text-xl font-bold text-black">${selectedCarrier.cost}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-600">Transit Time</p>
                             <p className="text-lg font-semibold text-black">{selectedCarrier.transitTime}</p>
                           </div>
-                          <div className="col-span-2">
-                            <p className="text-sm text-gray-600">Total Cost</p>
-                            <p className="text-xl font-bold text-green-600">${((selectedCarrier.cost ?? 0) * selectedShipments.length).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedDriver && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-black mb-3">Assigned Driver</h3>
+                      <div className="border rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                            <UserCheck className="h-6 w-6 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-lg text-black">
+                              {selectedDriver.firstName} {selectedDriver.lastName}
+                            </p>
+                            <p className="text-gray-600">@{selectedDriver.username}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">Email</p>
+                            <p className="text-sm font-medium text-black">{selectedDriver.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Status</p>
+                            <p className={`text-sm font-medium ${selectedDriver.enabled ? 'text-green-600' : 'text-red-600'}`}>
+                              {selectedDriver.enabled ? 'Active' : 'Inactive'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -701,14 +895,14 @@ export default function CarrierComparisonPage() {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={handlePreviousStep}
                   disabled={loadingConfirm}
                 >
-                  Back to Carrier Selection
+                  Back to Driver Selection
                 </Button>
                 <Button 
                   onClick={handleConfirm}
@@ -740,70 +934,115 @@ export default function CarrierComparisonPage() {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
             </div>
-          ) : allShipmentOrders.length === 0 ? (
+          ) : allShipments.length === 0 ? (
             <div className="bg-white border rounded-lg p-6 shadow-sm text-center">
               <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
               <p className="text-lg font-medium text-gray-600">No shipments yet</p>
-              <p className="text-sm text-gray-500 mt-2">Assign carriers to orders to create shipments</p>
+              <p className="text-sm text-gray-500 mt-2">Create shipments by assigning carriers and drivers to orders</p>
             </div>
           ) : (
             <div className="bg-white border rounded-lg p-6 shadow-sm">
               <h3 className="text-xl font-bold text-black mb-4">All Shipments</h3>
-              <p className="text-sm text-gray-600 mb-6">Showing {allShipmentOrders.length} shipment(s) with assigned carriers</p>
-              
-              {/* Group orders by status */}
-              <div className="space-y-6">
-                {["ASSIGNED_TO_SHIPMENT", "IN_TRANSIT", "DELIVERED"].map((status) => {
-                  const ordersWithStatus = allShipmentOrders.filter(order => order.status === status)
-                  if (ordersWithStatus.length === 0) return null
-                  
-                  return (
-                    <div key={status} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-lg font-semibold text-black">
-                          {status.replace(/_/g, ' ')} ({ordersWithStatus.length})
-                        </h4>
+              <p className="text-sm text-gray-600 mb-6">Showing {allShipments.length} active shipment(s)</p>
+
+              {/* Display all shipments */}
+              <div className="space-y-4">
+                {allShipments.map((shipment) => (
+                  <div key={shipment.id} className="border-2 rounded-lg p-5 bg-gradient-to-r from-purple-50 to-white hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <Truck className="h-6 w-6 text-purple-600" />
+                          <h4 className="text-lg font-bold text-black">{shipment.shipmentCode}</h4>
+                          <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                            ID: {shipment.id}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Created: {new Date(shipment.createdAt).toLocaleString()}
+                        </p>
                       </div>
-                      
-                      <div className="space-y-3">
-                        {ordersWithStatus.map((order) => (
-                          <div key={order.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <p className="font-semibold text-black">Order #{order.reference}</p>
-                                  <span className={`text-xs px-2 py-1 rounded-full ${
-                                    order.priority === "High" ? "bg-red-100 text-red-700" :
-                                    order.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
-                                    "bg-green-100 text-green-700"
-                                  }`}>
-                                    {order.priority} Priority
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                  <strong>Destination:</strong> {order.shippingAddress}
-                                </p>
-                                {order.description && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    <strong>Details:</strong> {order.description}
-                                  </p>
-                                )}
-                                {order.trackingNumber && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    <strong>Tracking:</strong> {order.trackingNumber}
-                                  </p>
-                                )}
-                                <p className="text-xs text-gray-500 mt-2">
-                                  Created: {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
-                                </p>
-                              </div>
-          </div>
-        </div>
-                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Carrier Info */}
+                      <div className="border rounded-lg p-3 bg-white">
+                        <p className="text-xs text-gray-500 mb-1">CARRIER</p>
+                        <p className="font-semibold text-black">{shipment.carrierName}</p>
+                        <p className="text-sm text-gray-600">{shipment.carrierCode}</p>
                       </div>
-              </div>
-                  )
-                })}
+
+                      {/* Driver Info */}
+                      <div className="border rounded-lg p-3 bg-white">
+                        <p className="text-xs text-gray-500 mb-1">DRIVER</p>
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="h-4 w-4 text-purple-600" />
+                          <p className="font-semibold text-black truncate" title={shipment.driverId}>
+                            {shipment.driverId}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Shipment Details */}
+                      <div className="border rounded-lg p-3 bg-white">
+                        <p className="text-xs text-gray-500 mb-1">DETAILS</p>
+                        <p className="text-sm text-gray-700">
+                          <strong>{shipment.totalOrders || 0}</strong> orders
+                        </p>
+                        {shipment.totalWeight && (
+                          <p className="text-sm text-gray-600">
+                            {shipment.totalWeight} {shipment.weightUnit}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cost and Transit Info */}
+                    {(shipment.shippingCost || shipment.transitTime || shipment.estimatedDeliveryDate) && (
+                      <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {shipment.shippingCost && (
+                          <div>
+                            <p className="text-xs text-gray-500">Shipping Cost</p>
+                            <p className="text-lg font-bold text-green-600">${shipment.shippingCost.toFixed(2)}</p>
+                          </div>
+                        )}
+                        {shipment.transitTime && (
+                          <div>
+                            <p className="text-xs text-gray-500">Transit Time</p>
+                            <p className="text-sm font-semibold text-black">{shipment.transitTime}</p>
+                          </div>
+                        )}
+                        {shipment.estimatedDeliveryDate && (
+                          <div>
+                            <p className="text-xs text-gray-500">Est. Delivery</p>
+                            <p className="text-sm font-semibold text-black">
+                              {new Date(shipment.estimatedDeliveryDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Integration IDs (if present) */}
+                    {(shipment.shippoShipmentId || shipment.shipstationOrderId) && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-gray-500 mb-2">INTEGRATION IDs</p>
+                        <div className="flex flex-wrap gap-2">
+                          {shipment.shippoShipmentId && (
+                            <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-mono">
+                              Shippo: {shipment.shippoShipmentId}
+                            </span>
+                          )}
+                          {shipment.shipstationOrderId && (
+                            <span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 font-mono">
+                              ShipStation: {shipment.shipstationOrderId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
