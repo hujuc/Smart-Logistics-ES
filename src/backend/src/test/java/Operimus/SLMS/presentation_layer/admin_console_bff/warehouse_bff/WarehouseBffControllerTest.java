@@ -7,6 +7,7 @@ import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ class WarehouseBffControllerTest {
 
     @MockBean
     private OrderDocumentService orderDocumentService;
+
+    @MockBean
+    private KeycloakUserService keycloakUserService;
 
     // ========================================
     // Health Check Tests
