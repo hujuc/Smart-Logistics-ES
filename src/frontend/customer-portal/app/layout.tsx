@@ -3,6 +3,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
+import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 
 export const metadata: Metadata = {
   title: "SLMS - Customer Portal",
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <UserStoreInitializer />
         <Navbar />
         <Suspense fallback={null}>
           <DynamicFloatingNav />

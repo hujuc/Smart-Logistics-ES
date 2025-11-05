@@ -329,9 +329,8 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
                 disabled={isStatusChanging}
                 className="mt-1"
               >
-                <option value="CREATED">Pending Labels</option>
-                <option value="READY_FOR_PICKUP">Ready for Dispatch</option>
-                <option value="COLLECTED">Collected</option>
+                <option value="CREATED">Created</option>
+                <option value="ASSIGNED_TO_SHIPMENT">Assigned to Shipment</option>
                 <option value="IN_TRANSIT">In Transit</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>

@@ -12,7 +12,6 @@ import {
   Clock,
   AlertTriangle,
   ArrowLeft,
-  Calendar,
   ArrowRight,
 } from "lucide-react"
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
@@ -22,8 +21,7 @@ import type { LucideIcon } from "lucide-react"
 // Status configuration for display
 const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
   CREATED: { icon: Package, color: "text-gray-700", label: "Created", bgColor: "bg-gray-100" },
-  READY_FOR_PICKUP: { icon: Package, color: "text-blue-700", label: "Ready", bgColor: "bg-blue-100" },
-  COLLECTED: { icon: CheckCircle, color: "text-purple-700", label: "Collected", bgColor: "bg-purple-100" },
+  ASSIGNED_TO_SHIPMENT: { icon: Package, color: "text-blue-700", label: "Assigned to Shipment", bgColor: "bg-blue-100" },
   IN_TRANSIT: { icon: MapPin, color: "text-orange-700", label: "In Transit", bgColor: "bg-orange-100" },
   DELIVERED: { icon: CheckCircle, color: "text-green-700", label: "Delivered", bgColor: "bg-green-100" },
   CANCELLED: { icon: AlertTriangle, color: "text-red-700", label: "Cancelled", bgColor: "bg-red-100" },
@@ -83,10 +81,12 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
     setError(null)
 
     try {
-      const events = await customerServiceOrderApi.getOrderEvents(order.id)
-      setOrderEvents(events)
+      // Version B: Use optimized single endpoint that returns both order and events
+      const data = await customerServiceOrderApi.getOrderWithEvents(order.id)
+      setSelectedOrder(data.order)
+      setOrderEvents(data.events)
     } catch (err) {
-      console.error('Failed to load order events:', err)
+      console.error('Failed to load order details:', err)
       setError('Failed to load order timeline')
     } finally {
       setIsLoadingEvents(false)
@@ -124,7 +124,6 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
   // Details view - Compact table layout
   if (selectedOrder) {
     const statusConfig = STATUS_CONFIG[selectedOrder.status]
-    const StatusIcon = statusConfig.icon
 
     return (
       <div className="space-y-4">
