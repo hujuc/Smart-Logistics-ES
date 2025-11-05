@@ -60,6 +60,7 @@ public class OrderService {
                 .shipstationCarrierCode(request.getShipstationCarrierCode())
                 .shipstationServiceCode(request.getShipstationServiceCode())
                 .trackingNumber(request.getTrackingNumber())
+                .customerId(request.getCustomerId())
                 .weight(request.getWeight())
                 .weightUnit(request.getWeightUnit())
                 .length(request.getLength())

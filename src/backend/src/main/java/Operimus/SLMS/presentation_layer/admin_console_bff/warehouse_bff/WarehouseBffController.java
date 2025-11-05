@@ -124,13 +124,19 @@ public class WarehouseBffController {
 
     /**
      * Create a new order
+     * 
+     * DEPRECATED: Order creation has been moved to the Customer Portal BFF.
+     * Customers now create orders directly through /api/customer/orders endpoint.
+     * This endpoint is kept for backward compatibility and testing purposes only.
      *
      * @param request Order creation request
      * @return Created order
      */
+    @Deprecated
     @PostMapping("/orders")
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         try {
+            log.warn("Warehouse BFF: DEPRECATED endpoint called - order creation should be done via Customer Portal BFF");
             log.info("Warehouse BFF: Creating new order");
 
             // Delegate to business layer

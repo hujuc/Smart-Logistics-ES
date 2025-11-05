@@ -47,6 +47,8 @@ public class OrderRequest {
 
     private String trackingNumber;
 
+    private String customerId;
+
     // Parcel dimensions for shipping rate calculation
     private Double weight;
     private String weightUnit;

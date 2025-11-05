@@ -7,20 +7,18 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { isAuthenticated } from "@/lib/shared-auth"
-import { warehouseService } from "@/lib/services/warehouse.service"
+import { isAuthenticated } from "@/shared/lib/auth"
+import { customerOrderApi } from "@/lib/services/customer-order.service"
 
-export default function NewPackagePage() {
+export default function NewOrderPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     reference: "",
     description: "",
-    recipient: "",
-    recipientAddress: "",
+    shippingAddress: "",
     warehouseId: "1", // Default warehouse ID
-    weight: "",
     trackingNumber: "",
   })
 
@@ -37,15 +35,15 @@ export default function NewPackagePage() {
     setError(null)
 
     try {
-      await warehouseService.createOrder({
+      await customerOrderApi.createOrder({
         reference: formData.reference,
         description: formData.description || undefined,
-        shippingAddress: formData.recipientAddress,
+        shippingAddress: formData.shippingAddress,
         warehouseId: parseInt(formData.warehouseId),
         trackingNumber: formData.trackingNumber || undefined,
       })
 
-      router.push("/interfaces/warehouse")
+      router.push("/interfaces/support/history")
     } catch (err: unknown) {
       console.error("Failed to create order:", err)
       setError(err instanceof Error ? err.message : "Failed to create order. Please try again.")
@@ -56,12 +54,12 @@ export default function NewPackagePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/interfaces/warehouse">
+        <Link href="/interfaces/support/history">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-black">Add New Package</h1>
+        <h1 className="text-3xl font-bold text-black">Create New Order</h1>
       </div>
 
       {error && (
@@ -109,28 +107,17 @@ export default function NewPackagePage() {
 
             <div className="space-y-4">
               <h3 className="font-semibold text-black border-b pb-2">
-                Recipient Information
+                Shipping Information
               </h3>
               <div>
-                <Label htmlFor="recipient">Recipient Name</Label>
+                <Label htmlFor="shippingAddress">Shipping Address *</Label>
                 <Input
-                  id="recipient"
-                  value={formData.recipient}
-                  onChange={(e) =>
-                    setFormData({ ...formData, recipient: e.target.value })
-                  }
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="recipientAddress">Shipping Address *</Label>
-                <Input
-                  id="recipientAddress"
-                  value={formData.recipientAddress}
+                  id="shippingAddress"
+                  value={formData.shippingAddress}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      recipientAddress: e.target.value,
+                      shippingAddress: e.target.value,
                     })
                   }
                   required
@@ -166,7 +153,7 @@ export default function NewPackagePage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/interfaces/warehouse")}
+              onClick={() => router.push("/interfaces/support/history")}
               disabled={isSubmitting}
             >
               Cancel

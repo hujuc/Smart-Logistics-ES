@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react"
+import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle, Plus } from "lucide-react"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
 import type { Order, ShipmentOrderStatus } from "@/types/common"
 
@@ -51,6 +51,10 @@ export default function OrderHistoryPage() {
 
   const handleTrackOrder = (trackingNumber: string) => {
     router.push(`/interfaces/support/history/${trackingNumber}`)
+  }
+
+  const handleNewOrder = () => {
+    router.push("/interfaces/new-order")
   }
 
   const filteredOrders = orders
@@ -125,9 +129,15 @@ export default function OrderHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-black">Order History</h1>
-        <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-black">Order History</h1>
+          <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+        </div>
+        <Button className="gap-2" onClick={handleNewOrder}>
+          <Plus className="h-4 w-4" />
+          Create Order
+        </Button>
       </div>
 
       {/* Search and Filters */}
