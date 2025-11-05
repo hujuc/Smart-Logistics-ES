@@ -16,6 +16,11 @@ export type {
   Address,
   StatCard,
   DateRange,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  PasswordUpdateRequest,
+  UserRole,
 } from "./common"
 
 // Warehouse types
