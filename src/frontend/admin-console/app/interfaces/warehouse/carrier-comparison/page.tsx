@@ -13,6 +13,24 @@ import { calculateShippingRates } from "@/lib/carrier-api"
 import { featureFlagManager } from "@/lib/flagsmith"
 import { API_ENDPOINTS, apiFetch } from "@/lib/api"
 
+// Shipment entity type from backend
+interface Shipment {
+  id: number
+  shipmentCode: string
+  createdAt: string
+  carrierName: string
+  carrierCode?: string
+  driverId: string
+  totalOrders?: number
+  totalWeight?: number
+  weightUnit?: string
+  shippingCost?: number
+  transitTime?: string
+  estimatedDeliveryDate?: string
+  shippoShipmentId?: string
+  shipstationOrderId?: string
+}
+
 export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
@@ -27,7 +45,7 @@ export default function CarrierComparisonPage() {
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [allCarriers, setAllCarriers] = useState<Carrier[]>([])
   const [drivers, setDrivers] = useState<User[]>([])
-  const [allShipments, setAllShipments] = useState<any[]>([]) // Real shipment entities from backend
+  const [allShipments, setAllShipments] = useState<Shipment[]>([]) // Real shipment entities from backend
 
   // Loading states
   const [loadingOrders, setLoadingOrders] = useState(true)

@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Eye, Package } from "lucide-react"
+import { Eye } from "lucide-react"
 import { WarehousePackage, STATUS_COLORS, STATUS_LABELS } from "@/types"
 
 interface OrderTableProps {
