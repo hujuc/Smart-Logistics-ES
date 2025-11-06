@@ -360,7 +360,7 @@ export default function TicketsPage() {
                       <span className={`ml-2 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                         orderResult.status === "DELIVERED" ? "bg-green-100 text-green-700" :
                         orderResult.status === "IN_TRANSIT" ? "bg-blue-100 text-blue-700" :
-                        orderResult.status === "READY_FOR_PICKUP" ? "bg-yellow-100 text-yellow-700" :
+                        orderResult.status === "ASSIGNED_TO_SHIPMENT" ? "bg-yellow-100 text-yellow-700" :
                         "bg-gray-100 text-gray-700"
                       }`}>
                         {orderResult.status.replace(/_/g, ' ')}

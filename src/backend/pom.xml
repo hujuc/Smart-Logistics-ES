@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.1.5</version>
+		<version>3.5.0</version>
 		<relativePath/> 
 	</parent>
 	<groupId>Operimus</groupId>
@@ -31,6 +31,8 @@
 		<cucumber.version>7.20.1</cucumber.version>
 		<selenium.version>4.27.0</selenium.version>
 		<lombok.version>1.18.30</lombok.version>
+		<allure.version>2.27.0</allure.version>
+		<allure.maven.plugin.version>2.12.0</allure.maven.plugin.version>
 	</properties>
         <dependencies>
                 <!-- Spring Boot Core Dependencies -->
@@ -132,6 +134,12 @@
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-params</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.qameta.allure</groupId>
+			<artifactId>allure-junit5</artifactId>
+			<version>${allure.version}</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -269,7 +277,15 @@
 					<includes>
 						<include>**/*Test.java</include>
 					</includes>
+					<systemPropertyVariables>
+						<allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
+					</systemPropertyVariables>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>io.qameta.allure</groupId>
+				<artifactId>allure-maven</artifactId>
+				<version>${allure.maven.plugin.version}</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>

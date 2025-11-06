@@ -41,6 +41,9 @@ class LogisticsBffControllerTest {
 
     @MockBean
     private KeycloakUserService userService;
+    
+    @MockBean
+    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService statsService;
 
     @Test
     void whenHealthCheck_thenReturnStatus() throws Exception {

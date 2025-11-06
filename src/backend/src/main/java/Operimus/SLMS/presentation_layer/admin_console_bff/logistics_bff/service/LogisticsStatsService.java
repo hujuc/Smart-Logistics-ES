@@ -1,11 +1,11 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service;
 
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrder;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.Warehouse;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.CarrierRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.ShipmentOrderRepository;
-import Operimus.SLMS.business_layer.order_shipment_module.repository.WarehouseRepository;
+import Operimus.SLMS.business_layer.order_module.entities.Order;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
+import Operimus.SLMS.business_layer.rate_carrier_module.repository.CarrierRepository;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
+import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
 import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LogisticsStatsService {
 
-    private final ShipmentOrderRepository shipmentOrderRepository;
+    private final OrderRepository orderRepository;
     private final WarehouseRepository warehouseRepository;
     private final CarrierRepository carrierRepository;
     private final DeliveryExceptionRepository deliveryExceptionRepository;
@@ -47,7 +47,7 @@ public class LogisticsStatsService {
         log.info("Calculating logistics statistics for period: {}", period);
 
         // Fetch all orders (in production, you'd optimize with queries and date ranges)
-        List<ShipmentOrder> allOrders = shipmentOrderRepository.findAll();
+        List<Order> allOrders = orderRepository.findAll();
         List<DeliveryException> allExceptions = deliveryExceptionRepository.findAll();
         List<Warehouse> allWarehouses = warehouseRepository.findAll();
 
@@ -57,8 +57,8 @@ public class LogisticsStatsService {
         LocalDateTime previousPeriodStart = getPeriodStart(periodStart.minusNanos(1), period);
 
         // Filter orders by current and previous periods
-        List<ShipmentOrder> currentPeriodOrders = filterOrdersByPeriod(allOrders, periodStart, now);
-        List<ShipmentOrder> previousPeriodOrders = filterOrdersByPeriod(allOrders, previousPeriodStart, periodStart);
+        List<Order> currentPeriodOrders = filterOrdersByPeriod(allOrders, periodStart, now);
+        List<Order> previousPeriodOrders = filterOrdersByPeriod(allOrders, previousPeriodStart, periodStart);
 
         // Build response
         return LogisticsStatsResponse.builder()
@@ -78,9 +78,9 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private TotalShipmentsMetric calculateTotalShipments(List<ShipmentOrder> allOrders,
-                                                         List<ShipmentOrder> current,
-                                                         List<ShipmentOrder> previous,
+    private TotalShipmentsMetric calculateTotalShipments(List<Order> allOrders,
+                                                         List<Order> current,
+                                                         List<Order> previous,
                                                          String period) {
         int currentCount = current.size();
         int previousCount = previous.size();
@@ -88,16 +88,16 @@ public class LogisticsStatsService {
 
         // Status breakdown
         StatusBreakdown statusBreakdown = StatusBreakdown.builder()
-                .created((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.CREATED).count())
-                .readyForPickup((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.READY_FOR_PICKUP).count())
-                .collected((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.COLLECTED).count())
-                .inTransit((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.IN_TRANSIT).count())
-                .delivered((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.DELIVERED).count())
-                .cancelled((int) allOrders.stream().filter(o -> o.getStatus() == ShipmentOrderStatus.CANCELLED).count())
+                .created((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.CREATED).count())
+                .readyForPickup((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.ASSIGNED_TO_SHIPMENT).count())
+                .collected((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.ASSIGNED_TO_SHIPMENT).count())
+                .inTransit((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.IN_TRANSIT).count())
+                .delivered((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).count())
+                .cancelled((int) allOrders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count())
                 .build();
 
-        // Carrier breakdown
-        List<CarrierBreakdown> carrierBreakdown = calculateCarrierBreakdown(allOrders);
+        // Carrier breakdown - TODO: Orders don't have direct carrier relationship
+        List<CarrierBreakdown> carrierBreakdown = new ArrayList<>();
 
         return TotalShipmentsMetric.builder()
                 .value(currentCount)
@@ -108,9 +108,9 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private OrdersMetric calculateOrdersToday(List<ShipmentOrder> allOrders,
-                                              List<ShipmentOrder> current,
-                                              List<ShipmentOrder> previous,
+    private OrdersMetric calculateOrdersToday(List<Order> allOrders,
+                                              List<Order> current,
+                                              List<Order> previous,
                                               String period) {
         int currentCount = current.size();
         int previousCount = previous.size();
@@ -135,18 +135,18 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private PendingPickupsMetric calculatePendingPickups(List<ShipmentOrder> allOrders,
-                                                         List<ShipmentOrder> current,
-                                                         List<ShipmentOrder> previous,
+    private PendingPickupsMetric calculatePendingPickups(List<Order> allOrders,
+                                                         List<Order> current,
+                                                         List<Order> previous,
                                                          String period) {
-        List<ShipmentOrder> currentPending = allOrders.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.READY_FOR_PICKUP)
+        List<Order> currentPending = allOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.CREATED)
                 .collect(Collectors.toList());
 
         int currentCount = currentPending.size();
 
-        List<ShipmentOrder> previousPending = previous.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.READY_FOR_PICKUP)
+        List<Order> previousPending = previous.stream()
+                .filter(o -> o.getStatus() == OrderStatus.CREATED)
                 .collect(Collectors.toList());
 
         Integer trend = calculateTrendPercentage(currentCount, previousPending.size());
@@ -188,24 +188,24 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private InTransitMetric calculateInTransit(List<ShipmentOrder> allOrders,
-                                               List<ShipmentOrder> current,
-                                               List<ShipmentOrder> previous,
+    private InTransitMetric calculateInTransit(List<Order> allOrders,
+                                               List<Order> current,
+                                               List<Order> previous,
                                                String period) {
-        List<ShipmentOrder> currentInTransit = allOrders.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.IN_TRANSIT)
+        List<Order> currentInTransit = allOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.IN_TRANSIT)
                 .collect(Collectors.toList());
 
         int currentCount = currentInTransit.size();
 
-        List<ShipmentOrder> previousInTransit = previous.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.IN_TRANSIT)
+        List<Order> previousInTransit = previous.stream()
+                .filter(o -> o.getStatus() == OrderStatus.IN_TRANSIT)
                 .collect(Collectors.toList());
 
         Integer trend = calculateTrendPercentage(currentCount, previousInTransit.size());
 
-        // Carrier breakdown
-        List<CarrierBreakdown> carrierBreakdown = calculateCarrierBreakdown(currentInTransit);
+        // Carrier breakdown - TODO: Orders don't have direct carrier relationship
+        List<CarrierBreakdown> carrierBreakdown = new ArrayList<>();
 
         // Delivery time breakdown
         LocalDate tomorrow = LocalDate.now().plusDays(1);
@@ -236,24 +236,24 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private DeliveredMetric calculateDelivered(List<ShipmentOrder> allOrders,
-                                               List<ShipmentOrder> current,
-                                               List<ShipmentOrder> previous,
+    private DeliveredMetric calculateDelivered(List<Order> allOrders,
+                                               List<Order> current,
+                                               List<Order> previous,
                                                String period) {
-        List<ShipmentOrder> currentDelivered = current.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.DELIVERED)
+        List<Order> currentDelivered = current.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .collect(Collectors.toList());
 
         int currentCount = currentDelivered.size();
 
-        List<ShipmentOrder> previousDelivered = previous.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.DELIVERED)
+        List<Order> previousDelivered = previous.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .collect(Collectors.toList());
 
         Integer trend = calculateTrendPercentage(currentCount, previousDelivered.size());
 
-        // Carrier breakdown
-        List<CarrierBreakdown> carrierBreakdown = calculateCarrierBreakdown(currentDelivered);
+        // Carrier breakdown - TODO: Orders don't have direct carrier relationship
+        List<CarrierBreakdown> carrierBreakdown = new ArrayList<>();
 
         // On-time calculation (delivered before or on estimated date)
         int onTime = (int) currentDelivered.stream()
@@ -279,8 +279,8 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private CostMetric calculateAverageCost(List<ShipmentOrder> current,
-                                            List<ShipmentOrder> previous,
+    private CostMetric calculateAverageCost(List<Order> current,
+                                            List<Order> previous,
                                             String period) {
         // Note: ShipmentOrder doesn't have cost field yet, so using placeholder
         // In production, you'd add a cost field or fetch from a pricing service
@@ -299,8 +299,8 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private CostMetric calculateTotalCosts(List<ShipmentOrder> current,
-                                           List<ShipmentOrder> previous,
+    private CostMetric calculateTotalCosts(List<Order> current,
+                                           List<Order> previous,
                                            String period) {
         // Placeholder calculation
         double totalCost = current.size() * 15.50;
@@ -318,12 +318,12 @@ public class LogisticsStatsService {
                 .build();
     }
 
-    private TimeMetric calculateAverageDeliveryTime(List<ShipmentOrder> current,
-                                                    List<ShipmentOrder> previous,
+    private TimeMetric calculateAverageDeliveryTime(List<Order> current,
+                                                    List<Order> previous,
                                                     String period) {
         // Calculate average delivery time for delivered orders
-        List<ShipmentOrder> deliveredOrders = current.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.DELIVERED && o.getCreatedAt() != null)
+        List<Order> deliveredOrders = current.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED && o.getCreatedAt() != null)
                 .collect(Collectors.toList());
 
         double avgHours = deliveredOrders.stream()
@@ -333,8 +333,8 @@ public class LogisticsStatsService {
 
         double avgDays = avgHours / 24.0;
 
-        List<ShipmentOrder> previousDeliveredOrders = previous.stream()
-                .filter(o -> o.getStatus() == ShipmentOrderStatus.DELIVERED && o.getCreatedAt() != null)
+        List<Order> previousDeliveredOrders = previous.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED && o.getCreatedAt() != null)
                 .collect(Collectors.toList());
 
         double previousAvgHours = previousDeliveredOrders.stream()
@@ -377,8 +377,8 @@ public class LogisticsStatsService {
     }
 
     private ExceptionsMetric calculateExceptions(List<DeliveryException> allExceptions,
-                                                 List<ShipmentOrder> current,
-                                                 List<ShipmentOrder> previous,
+                                                 List<Order> current,
+                                                 List<Order> previous,
                                                  LocalDateTime periodStart,
                                                  LocalDateTime previousPeriodStart,
                                                  String period) {
@@ -416,32 +416,8 @@ public class LogisticsStatsService {
                         Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
                 ));
 
-        // By carrier (need to join with orders)
-        Map<Long, ShipmentOrder> orderMap = current.stream()
-                .collect(Collectors.toMap(ShipmentOrder::getId, o -> o));
-
-        List<CarrierBreakdown> byCarrier = currentExceptions.stream()
-                .map(e -> orderMap.get(e.getOrderId()))
-                .filter(Objects::nonNull)
-                .filter(o -> o.getCarrier() != null)
-                .collect(Collectors.groupingBy(
-                        o -> o.getCarrier().getCode(),
-                        Collectors.counting()
-                ))
-                .entrySet().stream()
-                .map(entry -> {
-                    ShipmentOrder sampleOrder = current.stream()
-                            .filter(o -> o.getCarrier() != null && o.getCarrier().getCode().equals(entry.getKey()))
-                            .findFirst()
-                            .orElse(null);
-                    return CarrierBreakdown.builder()
-                            .carrierCode(entry.getKey())
-                            .carrierName(sampleOrder != null ? sampleOrder.getCarrier().getName() : entry.getKey())
-                            .count(entry.getValue().intValue())
-                            .percentage(currentCount > 0 ? (int)(entry.getValue() * 100 / currentCount) : 0)
-                            .build();
-                })
-                .collect(Collectors.toList());
+        // By carrier - TODO: Orders don't have direct carrier relationship
+        List<CarrierBreakdown> byCarrier = new ArrayList<>();
 
         return ExceptionsMetric.builder()
                 .value(currentCount)
@@ -505,7 +481,7 @@ public class LogisticsStatsService {
     }
 
     private WarehousesMetric calculateWarehouses(List<Warehouse> allWarehouses,
-                                                 List<ShipmentOrder> allOrders) {
+                                                 List<Order> allOrders) {
         int count = allWarehouses.size();
 
         List<WarehouseBreakdown> warehouses = allWarehouses.stream()
@@ -579,7 +555,7 @@ public class LogisticsStatsService {
         };
     }
 
-    private List<ShipmentOrder> filterOrdersByPeriod(List<ShipmentOrder> orders,
+    private List<Order> filterOrdersByPeriod(List<Order> orders,
                                                      LocalDateTime start,
                                                      LocalDateTime end) {
         OffsetDateTime startOffset = start.atOffset(ZoneOffset.UTC);
@@ -598,31 +574,13 @@ public class LogisticsStatsService {
         return ((current - previous) * 100) / previous;
     }
 
-    private List<CarrierBreakdown> calculateCarrierBreakdown(List<ShipmentOrder> orders) {
-        int total = orders.size();
-        return orders.stream()
-                .filter(o -> o.getCarrier() != null)
-                .collect(Collectors.groupingBy(
-                        o -> o.getCarrier().getCode(),
-                        Collectors.counting()
-                ))
-                .entrySet().stream()
-                .map(entry -> {
-                    ShipmentOrder sampleOrder = orders.stream()
-                            .filter(o -> o.getCarrier() != null && o.getCarrier().getCode().equals(entry.getKey()))
-                            .findFirst()
-                            .orElse(null);
-                    return CarrierBreakdown.builder()
-                            .carrierCode(entry.getKey())
-                            .carrierName(sampleOrder != null ? sampleOrder.getCarrier().getName() : entry.getKey())
-                            .count(entry.getValue().intValue())
-                            .percentage(total > 0 ? (int)(entry.getValue() * 100 / total) : 0)
-                            .build();
-                })
-                .collect(Collectors.toList());
+    private List<CarrierBreakdown> calculateCarrierBreakdown(List<Order> orders) {
+        // TODO: Orders don't have direct carrier relationship
+        // This would need to be calculated through Shipment entity
+        return new ArrayList<>();
     }
 
-    private List<WarehouseBreakdown> calculateWarehouseBreakdown(List<ShipmentOrder> orders) {
+    private List<WarehouseBreakdown> calculateWarehouseBreakdown(List<Order> orders) {
         int total = orders.size();
         return orders.stream()
                 .collect(Collectors.groupingBy(
@@ -631,7 +589,7 @@ public class LogisticsStatsService {
                 ))
                 .entrySet().stream()
                 .map(entry -> {
-                    ShipmentOrder sampleOrder = orders.stream()
+                    Order sampleOrder = orders.stream()
                             .filter(o -> o.getWarehouse().getId().equals(entry.getKey()))
                             .findFirst()
                             .orElse(null);
