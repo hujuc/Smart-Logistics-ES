@@ -2,11 +2,11 @@
 
 **Team Members:**
 
-- Jo�o Rold�o - 113920
+- João Roldão - 113920
 - Hugo Castro - 113889
 - Hugo Sousa - 112733
 - Henrique Teixeira - 114588
-- Jo�o Varela - 113780
+- João Varela - 113780
 
 ---
 
@@ -69,7 +69,7 @@
 
 ### 2.1 Coding Standards & Practices
 
-**Style guides:** Adopt language-specific conventions (e.g., Java � Google Java Style; TypeScript/JS � ESLint + Prettier).
+**Style guides:** Adopt language-specific conventions (e.g., Java  Google Java Style; TypeScript/JS  ESLint + Prettier).
 
 **Static analysis (on Pull Requests):** Linting and formatting are mandatory before pushing (e.g., via husky/lint-staged).
 

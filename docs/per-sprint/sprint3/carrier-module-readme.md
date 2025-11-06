@@ -106,23 +106,23 @@ Orders can be linked to carriers via `carrierId` field:
    ```bash
    POST https://api.goshippo.com/addresses/
    ```
-   - ✅ Validates and corrects addresses
-   - ✅ Returns validation results with corrections
+   - [OK] Validates and corrects addresses
+   - [OK] Returns validation results with corrections
 
 2. **Rate Calculation**
    ```bash
    POST https://api.goshippo.com/shipments/
    ```
-   - ✅ Returns shipping rates from multiple carriers
-   - ✅ USPS, Canada Post rates working
-   - ⚠️ UPS rates limited in test account
+   - [OK] Returns shipping rates from multiple carriers
+   - [OK] USPS, Canada Post rates working
+   - [WARN]️ UPS rates limited in test account
 
 3. **Carrier Accounts**
    ```bash
    GET https://api.goshippo.com/carrier_accounts/
    ```
-   - ✅ Returns available carrier accounts
-   - ✅ Integrated via `fetchCarrierAccounts()` method
+   - [OK] Returns available carrier accounts
+   - [OK] Integrated via `fetchCarrierAccounts()` method
 
 ### ShipEngine API Features (Working)
 
@@ -130,27 +130,27 @@ Orders can be linked to carriers via `carrierId` field:
    ```bash
    POST https://api.shipengine.com/v1/addresses/validate
    ```
-   - ✅ Validates and standardizes addresses
-   - ✅ Returns validation status and normalized addresses
-   - ✅ Provides address quality scores
-   - ✅ Identifies residential vs commercial addresses
+   - [OK] Validates and standardizes addresses
+   - [OK] Returns validation status and normalized addresses
+   - [OK] Provides address quality scores
+   - [OK] Identifies residential vs commercial addresses
 
 2. **Carrier Management**
-   - ✅ Fetches UPS and FedEx carrier details
-   - ✅ Provides comprehensive service levels
-   - ✅ Returns 23 UPS services, 26 FedEx services
+   - [OK] Fetches UPS and FedEx carrier details
+   - [OK] Provides comprehensive service levels
+   - [OK] Returns 23 UPS services, 26 FedEx services
 
 3. **Account Information**
-   - ✅ Provides carrier IDs and account numbers
-   - ✅ Active status and contact information
+   - [OK] Provides carrier IDs and account numbers
+   - [OK] Active status and contact information
 
 ## Current Integration Status
 
 ### Synchronized Carriers
 | Carrier | ShipEngine ID | Shippo ID | Status |
 |---------|---------------|-----------|---------|
-| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | ✅ Full Integration |
-| FedEx | se-338910 | null | ✅ ShipEngine Only |
+| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | [OK] Full Integration |
+| FedEx | se-338910 | null | [OK] ShipEngine Only |
 
 ### Filtering Logic
 - **Inclusion Criteria**: Must have `shipEngineCarrierId != null`
@@ -294,23 +294,23 @@ Encomendas podem ser ligadas a transportadoras via campo `carrierId`:
    ```bash
    POST https://api.goshippo.com/addresses/
    ```
-   - ✅ Valida e corrige endereços
-   - ✅ Retorna resultados de validação com correções
+   - [OK] Valida e corrige endereços
+   - [OK] Retorna resultados de validação com correções
 
 2. **Cálculo de Tarifas**
    ```bash
    POST https://api.goshippo.com/shipments/
    ```
-   - ✅ Retorna tarifas de envio de múltiplas transportadoras
-   - ✅ Tarifas USPS, Canada Post funcionais
-   - ⚠️ Tarifas UPS limitadas na conta teste
+   - [OK] Retorna tarifas de envio de múltiplas transportadoras
+   - [OK] Tarifas USPS, Canada Post funcionais
+   - [WARN]️ Tarifas UPS limitadas na conta teste
 
 3. **Contas de Transportadoras**
    ```bash
    GET https://api.goshippo.com/carrier_accounts/
    ```
-   - ✅ Retorna contas de transportadoras disponíveis
-   - ✅ Integrado via método `fetchCarrierAccounts()`
+   - [OK] Retorna contas de transportadoras disponíveis
+   - [OK] Integrado via método `fetchCarrierAccounts()`
 
 ### Funcionalidades API ShipEngine (Funcionais)
 
@@ -318,27 +318,27 @@ Encomendas podem ser ligadas a transportadoras via campo `carrierId`:
    ```bash
    POST https://api.shipengine.com/v1/addresses/validate
    ```
-   - ✅ Valida e normaliza endereços
-   - ✅ Retorna estado de validação e endereços normalizados
-   - ✅ Fornece scores de qualidade do endereço
-   - ✅ Identifica endereços residenciais vs comerciais
+   - [OK] Valida e normaliza endereços
+   - [OK] Retorna estado de validação e endereços normalizados
+   - [OK] Fornece scores de qualidade do endereço
+   - [OK] Identifica endereços residenciais vs comerciais
 
 2. **Gestão de Transportadoras**
-   - ✅ Obtém detalhes das transportadoras UPS e FedEx
-   - ✅ Fornece níveis de serviço abrangentes
-   - ✅ Retorna 23 serviços UPS, 26 serviços FedEx
+   - [OK] Obtém detalhes das transportadoras UPS e FedEx
+   - [OK] Fornece níveis de serviço abrangentes
+   - [OK] Retorna 23 serviços UPS, 26 serviços FedEx
 
 3. **Informação de Contas**
-   - ✅ Fornece IDs de transportadoras e números de conta
-   - ✅ Estado ativo e informações de contacto
+   - [OK] Fornece IDs de transportadoras e números de conta
+   - [OK] Estado ativo e informações de contacto
 
 ## Estado Atual da Integração
 
 ### Transportadoras Sincronizadas
 | Transportadora | ID ShipEngine | ID Shippo | Estado |
 |----------------|---------------|-----------|---------|
-| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | ✅ Integração Completa |
-| FedEx | se-338910 | null | ✅ Apenas ShipEngine |
+| UPS | se-338909 | fb695995b21f4f80b55ea6b9d73f2a1c | [OK] Integração Completa |
+| FedEx | se-338910 | null | [OK] Apenas ShipEngine |
 
 ### Lógica de Filtragem
 - **Critério de Inclusão**: Deve ter `shipEngineCarrierId != null`

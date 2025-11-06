@@ -1,0 +1,27 @@
+# PostgreSQL
+postgres_user     = "slms_user"
+postgres_password = "slms_password_dev"
+postgres_db       = "slms_db"
+postgres_host_port = 5432
+
+# Keycloak
+keycloak_realm         = "slms"
+keycloak_client_id     = "slms-backend"
+keycloak_client_secret = "your-keycloak-client-secret"
+
+# MinIO
+minio_endpoint    = "http://minio:9000"
+minio_access_key  = "minioadmin"
+minio_secret_key  = "minioadmin"
+minio_bucket_name = "slms-documents"
+
+# Shippo API
+shippo_api_key  = "your-shippo-api-key"
+shippo_base_url = "https://api.goshippo.com"
+
+# ShipEngine API
+shipengine_api_key  = "your-shipengine-api-key"
+shipengine_base_url = "https://api.shipengine.com/v1"
+
+# Docker Network
+docker_network_name = "slms-network"
