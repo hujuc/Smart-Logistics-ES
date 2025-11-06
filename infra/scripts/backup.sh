@@ -16,9 +16,17 @@ MAX_BACKUPS=${MAX_BACKUPS:-3}
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
-# Generate backup filename with timestamp
+# Generate backup filename with timestamp and optional label
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="$BACKUP_DIR/backup_${POSTGRES_DB}_${TIMESTAMP}.sql.gz"
+LABEL_SUFFIX=""
+SANITIZED_LABEL=""
+if [ -n "${BACKUP_LABEL:-}" ]; then
+    SANITIZED_LABEL=$(printf '%s' "$BACKUP_LABEL" | tr -c 'A-Za-z0-9_-.' '-')
+    if [ -n "$SANITIZED_LABEL" ]; then
+        LABEL_SUFFIX="_$SANITIZED_LABEL"
+    fi
+fi
+BACKUP_FILE="$BACKUP_DIR/backup_${POSTGRES_DB}_${TIMESTAMP}${LABEL_SUFFIX}.sql.gz"
 
 echo "=========================================="
 echo "Starting database backup"
@@ -26,6 +34,11 @@ echo "=========================================="
 echo "Host: $POSTGRES_HOST"
 echo "Database: $POSTGRES_DB"
 echo "Timestamp: $TIMESTAMP"
+if [ -n "$SANITIZED_LABEL" ]; then
+    echo "Label: $SANITIZED_LABEL"
+else
+    echo "Label: (none)"
+fi
 echo "=========================================="
 
 # Wait for database to be available

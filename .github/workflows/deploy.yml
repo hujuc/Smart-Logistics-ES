@@ -116,6 +116,21 @@ jobs:
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
+      - name: Backup database before deployment
+        if: github.event_name == 'push'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="pre-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env up --build -d backup
+          sudo docker compose --env-file ./.env exec -T -e BACKUP_LABEL="$BACKUP_LABEL" backup /usr/local/bin/backup.sh
+          PRE_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp backup:/backups/"$PRE_BACKUP_FILE" ../backups/"$PRE_BACKUP_FILE"
+          echo "PRE_BACKUP_FILE=$PRE_BACKUP_FILE" >> "$GITHUB_ENV"
+
       - name: Deploy with Docker Compose
         working-directory: infra
         shell: bash
@@ -123,3 +138,17 @@ jobs:
           set -euo pipefail
           sudo docker compose --env-file ./.env down --remove-orphans
           sudo docker compose --env-file ./.env up --build -d
+
+      - name: Backup database after deployment
+        if: github.event_name == 'push'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="post-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env exec -T -e BACKUP_LABEL="$BACKUP_LABEL" backup /usr/local/bin/backup.sh
+          POST_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp backup:/backups/"$POST_BACKUP_FILE" ../backups/"$POST_BACKUP_FILE"
+          echo "POST_BACKUP_FILE=$POST_BACKUP_FILE" >> "$GITHUB_ENV"
