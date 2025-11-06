@@ -1,7 +1,7 @@
 package Operimus.SLMS.presentation_layer.customer_portal_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.ShipmentOrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
@@ -28,7 +28,7 @@ class CustomerBffControllerTest {
     private OrderService orderService;
 
     @MockBean
-    private ShipmentOrderEventService shipmentOrderEventService;
+    private OrderEventService shipmentOrderEventService;
 
     @Test
     void whenHealthCheck_thenReturnStatus() throws Exception {
