@@ -41,12 +41,12 @@ export function WarehouseDeleteDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/50 z-0"
         onClick={() => onOpenChange(false)}
       />
 
       {/* Dialog */}
-      <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="relative z-50 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">

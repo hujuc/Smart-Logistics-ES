@@ -33,12 +33,30 @@ export function FloatingNavbar({ navItems }) {
     if (pathname === pathWithoutQuery) return true
 
     // For child routes not in the nav (like /interfaces/warehouse/package/123),
-    // highlight the parent if no exact match exists
+    // highlight the most specific parent
     const hasExactMatch = navItems.some(item => {
       const itemPathWithoutQuery = item.href.split('?')[0]
       return itemPathWithoutQuery === pathname
     })
+
     if (!hasExactMatch && pathname?.startsWith(pathWithoutQuery + '/')) {
+      // Find the longest (most specific) matching nav item
+      const matchingItems = navItems.filter(item => {
+        const itemPathWithoutQuery = item.href.split('?')[0]
+        return pathname?.startsWith(itemPathWithoutQuery + '/')
+      })
+
+      if (matchingItems.length > 0) {
+        // Sort by length (longest first) and only return true for the longest match
+        const longestMatch = matchingItems.reduce((longest, current) => {
+          const currentPath = current.href.split('?')[0]
+          const longestPath = longest.href.split('?')[0]
+          return currentPath.length > longestPath.length ? current : longest
+        })
+
+        return longestMatch.href.split('?')[0] === pathWithoutQuery
+      }
+
       return true
     }
 
