@@ -266,27 +266,29 @@ class LogisticsStatsServiceTest {
     private List<Warehouse> createTestWarehouses() {
         List<Warehouse> warehouses = new ArrayList<>();
 
-        Warehouse warehouse1 = new Warehouse();
-        warehouse1.setId(1L);
-        warehouse1.setCode("WH-001");
-        warehouse1.setName("Main Warehouse");
-        warehouse1.setAddressLine1("123 Main St");
-        warehouse1.setCity("New York");
-        warehouse1.setStateOrProvince("NY");
-        warehouse1.setCountry("USA");
-        warehouse1.setPostalCode("10001");
-        warehouse1.setActive(true);
+        Warehouse warehouse1 = Warehouse.builder()
+                .id(1L)
+                .code("WH-001")
+                .name("Main Warehouse")
+                .addressLine1("123 Main St")
+                .city("New York")
+                .stateOrProvince("NY")
+                .country("USA")
+                .postalCode("10001")
+                .active(true)
+                .build();
 
-        Warehouse warehouse2 = new Warehouse();
-        warehouse2.setId(2L);
-        warehouse2.setCode("WH-002");
-        warehouse2.setName("Secondary Warehouse");
-        warehouse2.setAddressLine1("456 Second St");
-        warehouse2.setCity("Los Angeles");
-        warehouse2.setStateOrProvince("CA");
-        warehouse2.setCountry("USA");
-        warehouse2.setPostalCode("90001");
-        warehouse2.setActive(true);
+        Warehouse warehouse2 = Warehouse.builder()
+                .id(2L)
+                .code("WH-002")
+                .name("Secondary Warehouse")
+                .addressLine1("456 Second St")
+                .city("Los Angeles")
+                .stateOrProvince("CA")
+                .country("USA")
+                .postalCode("90001")
+                .active(true)
+                .build();
 
         warehouses.add(warehouse1);
         warehouses.add(warehouse2);
@@ -310,37 +312,41 @@ class LogisticsStatsServiceTest {
     }
 
     private Order createOrder(Long id, OrderStatus status, Warehouse warehouse, OffsetDateTime createdAt) {
-        Order order = new Order();
-        order.setId(id);
-        order.setReference("ORD-" + id);
-        order.setStatus(status);
-        order.setWarehouse(warehouse);
-        order.setCreatedAt(createdAt);
-        order.setUpdatedAt(OffsetDateTime.now());
-        order.setEstimatedDeliveryDate(LocalDate.now().plusDays(2));
-        return order;
+        return Order.builder()
+                .id(id)
+                .reference("ORD-" + id)
+                .status(status)
+                .warehouse(warehouse)
+                .shippingAddress("123 Test St, Test City")
+                .createdAt(createdAt)
+                .updatedAt(OffsetDateTime.now())
+                .estimatedDeliveryDate(LocalDate.now().plusDays(2))
+                .build();
     }
 
     private List<Carrier> createTestCarriers() {
         List<Carrier> carriers = new ArrayList<>();
 
-        Carrier carrier1 = new Carrier();
-        carrier1.setId(1L);
-        carrier1.setCode("UPS");
-        carrier1.setName("UPS");
-        carrier1.setActive(true);
+        Carrier carrier1 = Carrier.builder()
+                .id(1L)
+                .code("UPS")
+                .name("UPS")
+                .active(true)
+                .build();
 
-        Carrier carrier2 = new Carrier();
-        carrier2.setId(2L);
-        carrier2.setCode("FEDEX");
-        carrier2.setName("FedEx");
-        carrier2.setActive(true);
+        Carrier carrier2 = Carrier.builder()
+                .id(2L)
+                .code("FEDEX")
+                .name("FedEx")
+                .active(true)
+                .build();
 
-        Carrier carrier3 = new Carrier();
-        carrier3.setId(3L);
-        carrier3.setCode("DHL");
-        carrier3.setName("DHL");
-        carrier3.setActive(false);
+        Carrier carrier3 = Carrier.builder()
+                .id(3L)
+                .code("DHL")
+                .name("DHL")
+                .active(false)
+                .build();
 
         carriers.add(carrier1);
         carriers.add(carrier2);
