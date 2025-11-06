@@ -34,7 +34,7 @@ public class OrderEvent {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "shipment_order_id", nullable = false)
     private Order order;
 
     @Enumerated(EnumType.STRING)

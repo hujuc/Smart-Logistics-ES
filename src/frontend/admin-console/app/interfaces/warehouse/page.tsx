@@ -95,10 +95,8 @@ export default function WarehousePage() {
         <div>
           <h1 className="text-3xl font-bold text-black">Order Processing Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage incoming orders and prepare for dispatch</p>
+          <p className="text-sm text-gray-500 mt-1">Note: Order creation is now handled by customers through the Customer Portal</p>
         </div>
-        <Link href="/interfaces/warehouse/new-package">
-          <Button>Add New Package</Button>
-        </Link>
       </div>
 
       {/* Quick Stats */}

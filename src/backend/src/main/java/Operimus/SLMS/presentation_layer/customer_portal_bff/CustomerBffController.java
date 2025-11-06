@@ -2,8 +2,12 @@ package Operimus.SLMS.presentation_layer.customer_portal_bff;
 
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -29,7 +34,8 @@ import java.util.List;
 public class CustomerBffController {
 
     private final OrderService orderService;
-    private final OrderEventService shipmentOrderEventService;
+    private final OrderEventService orderEventService;
+    private final WarehouseService warehouseService;
 
     /**
      * Health check endpoint
@@ -43,6 +49,25 @@ public class CustomerBffController {
                 "service", "Customer BFF",
                 "timestamp", java.time.Instant.now().toString()
         ));
+    }
+
+    /**
+     * Get all active warehouses
+     * GET /api/customer/warehouses
+     *
+     * @return List of active warehouses
+     */
+    @GetMapping("/warehouses")
+    public ResponseEntity<List<WarehouseResponse>> getWarehouses() {
+        try {
+            log.info("Customer BFF: Fetching all warehouses");
+            List<WarehouseResponse> warehouses = warehouseService.getAll();
+            log.info("Customer BFF: Successfully fetched {} warehouses", warehouses.size());
+            return ResponseEntity.ok(warehouses);
+        } catch (Exception e) {
+            log.error("Failed to fetch warehouses: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -181,11 +206,45 @@ public class CustomerBffController {
                 throw new RuntimeException("Access denied: Order does not belong to this customer");
             }
             
-            List<OrderEventResponse> events = shipmentOrderEventService.getEventsForOrder(id);
+            List<OrderEventResponse> events = orderEventService.getEventsForOrder(id);
             log.info("Customer BFF: Successfully fetched {} events for order {}", events.size(), id);
             return ResponseEntity.ok(events);
         } catch (Exception e) {
             log.error("Failed to fetch events for order {}: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Create a new order (Customer creates their own order)
+     * POST /api/customer/orders
+     *
+     * @param request Order creation request
+     * @param jwt JWT token with customer information
+     * @return Created order
+     */
+    @PostMapping("/orders")
+    public ResponseEntity<OrderResponse> createOrder(
+            @Valid @RequestBody OrderRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Customer {} creating new order", customerId);
+
+            // Set the customer ID from the JWT token (security: customer can only create orders for themselves)
+            request.setCustomerId(customerId);
+
+            // Create the order via business layer
+            OrderResponse response = orderService.create(request);
+            
+            log.info("Customer BFF: Successfully created order {} for customer {}", response.getId(), customerId);
+
+            return ResponseEntity
+                    .created(URI.create("/api/customer/orders/" + response.getId()))
+                    .body(response);
+
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to create order: {}", e.getMessage(), e);
             throw e;
         }
     }
