@@ -8,9 +8,10 @@ import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Carrier;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.CarrierRepository;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
-import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.ExceptionStatus;
-import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.ExceptionType;
-import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.Severity;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionType;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Severity;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
 import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,9 +22,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -349,20 +352,30 @@ class LogisticsStatsServiceTest {
     private List<DeliveryException> createTestExceptions() {
         List<DeliveryException> exceptions = new ArrayList<>();
 
-        DeliveryException exception1 = new DeliveryException();
-        exception1.setId(1L);
-        exception1.setType(ExceptionType.DELAY);
-        exception1.setStatus(ExceptionStatus.OPEN);
-        exception1.setSeverity(Severity.HIGH);
-        exception1.setReportedAt(OffsetDateTime.now().minusHours(2));
+        DeliveryException exception1 = DeliveryException.builder()
+                .id(UUID.randomUUID())
+                .orderId(1L)
+                .type(ExceptionType.DELAYED)
+                .category("Delivery")
+                .severity(Severity.HIGH)
+                .description("Package delayed due to weather")
+                .source(Source.SYSTEM)
+                .status(ExceptionStatus.OPEN)
+                .reportedAt(LocalDateTime.now().minusHours(2))
+                .build();
 
-        DeliveryException exception2 = new DeliveryException();
-        exception2.setId(2L);
-        exception2.setType(ExceptionType.DAMAGE);
-        exception2.setStatus(ExceptionStatus.RESOLVED);
-        exception2.setSeverity(Severity.MEDIUM);
-        exception2.setReportedAt(OffsetDateTime.now().minusHours(5));
-        exception2.setResolvedAt(OffsetDateTime.now().minusHours(1));
+        DeliveryException exception2 = DeliveryException.builder()
+                .id(UUID.randomUUID())
+                .orderId(2L)
+                .type(ExceptionType.DAMAGED)
+                .category("Quality")
+                .severity(Severity.MEDIUM)
+                .description("Package arrived damaged")
+                .source(Source.CUSTOMER)
+                .status(ExceptionStatus.RESOLVED)
+                .reportedAt(LocalDateTime.now().minusHours(5))
+                .resolvedAt(LocalDateTime.now().minusHours(1))
+                .build();
 
         exceptions.add(exception1);
         exceptions.add(exception2);
