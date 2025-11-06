@@ -1,7 +1,7 @@
 "use client"
 
-import { Package, Truck, CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react"
-import { Order, ShipmentOrderStatus } from "@/types/common"
+import { Package, Truck, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Order } from "@/types/common"
 
 interface WarehouseDetailsStatsProps {
   orders: Order[]
@@ -10,12 +10,10 @@ interface WarehouseDetailsStatsProps {
 export function WarehouseDetailsStats({ orders }: WarehouseDetailsStatsProps) {
   // Calculate statistics
   const totalOrders = orders.length
+  const created = orders.filter(o => o.status === "CREATED").length
+  const assignedToShipment = orders.filter(o => o.status === "ASSIGNED_TO_SHIPMENT").length
   const inTransit = orders.filter(o => o.status === "IN_TRANSIT").length
   const delivered = orders.filter(o => o.status === "DELIVERED").length
-  const pendingPickup = orders.filter(o =>
-    o.status === "CREATED" || o.status === "READY_FOR_PICKUP"
-  ).length
-  const collected = orders.filter(o => o.status === "COLLECTED").length
   const cancelled = orders.filter(o => o.status === "CANCELLED").length
 
   const stats = [
@@ -26,10 +24,16 @@ export function WarehouseDetailsStats({ orders }: WarehouseDetailsStatsProps) {
       color: "bg-blue-100 text-blue-700",
     },
     {
-      label: "Pending Pickup",
-      value: pendingPickup,
+      label: "Created",
+      value: created,
       icon: Clock,
       color: "bg-yellow-100 text-yellow-700",
+    },
+    {
+      label: "Assigned to Shipment",
+      value: assignedToShipment,
+      icon: Package,
+      color: "bg-indigo-100 text-indigo-700",
     },
     {
       label: "In Transit",
@@ -42,12 +46,6 @@ export function WarehouseDetailsStats({ orders }: WarehouseDetailsStatsProps) {
       value: delivered,
       icon: CheckCircle,
       color: "bg-green-100 text-green-700",
-    },
-    {
-      label: "Collected",
-      value: collected,
-      icon: Package,
-      color: "bg-indigo-100 text-indigo-700",
     },
     {
       label: "Cancelled",

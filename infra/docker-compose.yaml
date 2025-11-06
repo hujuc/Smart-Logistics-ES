@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -21,9 +25,13 @@ services:
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_HOSTNAME_URL: ${KC_HOSTNAME_URL}
+      KC_HOSTNAME_ADMIN_URL: ${KC_HOSTNAME_ADMIN_URL}
       KC_HOSTNAME_STRICT: ${KC_HOSTNAME_STRICT:-false}
+      KC_HOSTNAME_STRICT_BACKCHANNEL: ${KC_HOSTNAME_STRICT_BACKCHANNEL:-false}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
+      KC_PROXY: ${KC_PROXY:-edge}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
     command: start --import-realm
     depends_on:

@@ -1,11 +1,11 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.WarehouseResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseRequest;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
 import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
@@ -201,7 +201,7 @@ public class LogisticsBffController {
             List<OrderResponse> orders;
             if (status != null && !status.isEmpty()) {
                 try {
-                    ShipmentOrderStatus orderStatus = ShipmentOrderStatus.valueOf(status.toUpperCase());
+                    OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
                     orders = orderService.getByWarehouseAndStatus(id, orderStatus);
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest()

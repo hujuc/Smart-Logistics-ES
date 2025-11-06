@@ -4,20 +4,18 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, MapPin, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { warehouseManagementService } from "@/lib/services/warehouse-management.service"
 import { apiFetch, API_ENDPOINTS } from "@/lib/api"
 import { WarehouseDetailsStats } from "@/components/logistics/warehouse-details-stats"
 import { WarehouseOrdersTable } from "@/components/logistics/warehouse-orders-table"
 import type { Warehouse } from "@/types/warehouse"
-import type { Order, ShipmentOrderStatus } from "@/types/common"
+import type { Order } from "@/types/common"
 
 interface WarehouseDetailsPageProps {
   params: Promise<{ id: string }>
 }
 
 export default function WarehouseDetailsPage({ params }: WarehouseDetailsPageProps) {
-  const router = useRouter()
   const [warehouseId, setWarehouseId] = useState<string | null>(null)
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
@@ -193,19 +191,15 @@ export default function WarehouseDetailsPage({ params }: WarehouseDetailsPagePro
             className="px-3 py-2 border rounded-md text-sm"
           >
             <option value="all">All Status</option>
-            <option value="CREATED">Pending Labels</option>
-            <option value="READY_FOR_PICKUP">Ready for Dispatch</option>
-            <option value="COLLECTED">Collected</option>
+            <option value="CREATED">Created</option>
+            <option value="ASSIGNED_TO_SHIPMENT">Assigned to Shipment</option>
             <option value="IN_TRANSIT">In Transit</option>
             <option value="DELIVERED">Delivered</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
 
-        <WarehouseOrdersTable
-          orders={filteredOrders}
-          warehouseId={parseInt(warehouseId!)}
-        />
+        <WarehouseOrdersTable orders={filteredOrders} />
       </div>
     </div>
   )

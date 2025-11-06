@@ -37,8 +37,7 @@ public class OrderService {
     @Transactional
     public OrderResponse create(OrderRequest request) {
         if (orderRepository.existsByReferenceIgnoreCase(request.getReference())) {
-            throw new ResourceConflictException(
-                    "An order with reference '%s' already exists.".formatted(request.getReference()));
+            throw new ResourceConflictException("An order with reference '%s' already exists.".formatted(request.getReference()));
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
@@ -155,32 +154,28 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-<<<<<<< HEAD:src/backend/src/main/java/Operimus/SLMS/business_layer/order_shipment_module/service/OrderService.java
     public List<OrderResponse> getByWarehouse(Long warehouseId) {
         Warehouse warehouse = warehouseService.findEntityById(warehouseId);
-        return shipmentOrderRepository.findByWarehouse(warehouse).stream()
+        return orderRepository.findByWarehouse(warehouse).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getByWarehouseAndStatus(Long warehouseId, ShipmentOrderStatus status) {
+    public List<OrderResponse> getByWarehouseAndStatus(Long warehouseId, OrderStatus status) {
         Warehouse warehouse = warehouseService.findEntityById(warehouseId);
-        return shipmentOrderRepository.findByWarehouseAndStatus(warehouse, status).stream()
+        return orderRepository.findByWarehouseAndStatus(warehouse, status).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-    private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
-        return status == null ? ShipmentOrderStatus.CREATED : status;
-=======
+    @Transactional(readOnly = true)
     public OrderResponse getByTrackingNumber(String trackingNumber) {
         Order order = orderRepository.findAll().stream()
                 .filter(o -> trackingNumber.equals(o.getTrackingNumber()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Order with tracking number '%s' not found".formatted(trackingNumber)));
         return mapToResponse(order);
->>>>>>> 4e4439382711e8e388b1bfa69bf314f9315e7ee8:src/backend/src/main/java/Operimus/SLMS/business_layer/order_module/service/OrderService.java
     }
 
     private OrderStatus resolveStatus(OrderStatus status) {
