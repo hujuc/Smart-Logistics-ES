@@ -18,11 +18,75 @@ locals {
   customer_portal_dir = "${local.repo_root}/src/frontend/customer-portal"
   driver_pwa_dir      = "${local.repo_root}/src/frontend/driver-pwa"
   landing_page_dir    = "${local.repo_root}/src/frontend/landing-page"
+
+  env_file_path = (
+    var.env_file != null && trimspace(var.env_file) != "" ?
+    (
+      startswith(var.env_file, "/") ?
+      var.env_file :
+      abspath("${path.module}/${var.env_file}")
+    ) :
+    ""
+  )
+
+  env_file_contents = local.env_file_path != "" && fileexists(local.env_file_path) ? file(local.env_file_path) : ""
+
+  env_lines = [
+    for raw_line in split("\n", local.env_file_contents) : trimspace(raw_line)
+    if trimspace(raw_line) != "" && !startswith(trimspace(raw_line), "#") && can(regex("^[A-Za-z_][A-Za-z0-9_]*\\s*=", trimspace(raw_line)))
+  ]
+
+  env_keys = [
+    for line in local.env_lines : trimspace(split(line, "=")[0])
+  ]
+
+  env_values = [
+    for line in local.env_lines :
+    trimspace(replace(join("=", slice(split(line, "="), 1, length(split(line, "=")))), "\"", ""))
+  ]
+
+  env_map = zipmap(local.env_keys, local.env_values)
+
+  config_postgres_user     = coalesce(var.postgres_user, lookup(local.env_map, "POSTGRES_USER", lookup(local.env_map, "DB_USERNAME", null)))
+  config_postgres_password = coalesce(var.postgres_password, lookup(local.env_map, "POSTGRES_PASSWORD", lookup(local.env_map, "DB_PASSWORD", null)))
+  config_postgres_db       = coalesce(var.postgres_db, lookup(local.env_map, "POSTGRES_DB", lookup(local.env_map, "DB_NAME", null)))
+  config_postgres_host_port = coalesce(
+    var.postgres_host_port,
+    try(tonumber(lookup(local.env_map, "POSTGRES_HOST_PORT", "")), null),
+    try(tonumber(lookup(local.env_map, "DB_PORT", "")), null),
+    5432
+  )
+
+  config_keycloak_realm     = coalesce(var.keycloak_realm, lookup(local.env_map, "KEYCLOAK_REALM", null))
+  config_keycloak_client_id = coalesce(var.keycloak_client_id, lookup(local.env_map, "KEYCLOAK_CLIENT_ID", lookup(local.env_map, "KEYCLOAK_ADMIN_CLIENT_ID", null)))
+  config_keycloak_client_secret = coalesce(
+    var.keycloak_client_secret,
+    lookup(local.env_map, "KEYCLOAK_CLIENT_SECRET", lookup(local.env_map, "KEYCLOAK_ADMIN_CLIENT_SECRET", null))
+  )
+
+  config_minio_endpoint = coalesce(
+    var.minio_endpoint,
+    lookup(local.env_map, "MINIO_ENDPOINT", null),
+    (lookup(local.env_map, "MINIO_HOST", null) != null && lookup(local.env_map, "MINIO_PORT", null) != null ?
+      "http://${lookup(local.env_map, "MINIO_HOST", "")}:${lookup(local.env_map, "MINIO_PORT", "")}" :
+    null)
+  )
+  config_minio_access_key  = coalesce(var.minio_access_key, lookup(local.env_map, "MINIO_ACCESS_KEY", lookup(local.env_map, "MINIO_ROOT_USER", null)))
+  config_minio_secret_key  = coalesce(var.minio_secret_key, lookup(local.env_map, "MINIO_SECRET_KEY", lookup(local.env_map, "MINIO_ROOT_PASSWORD", null)))
+  config_minio_bucket_name = coalesce(var.minio_bucket_name, lookup(local.env_map, "MINIO_BUCKET_NAME", lookup(local.env_map, "MINIO_BUCKET", null)))
+
+  config_shippo_api_key  = coalesce(var.shippo_api_key, lookup(local.env_map, "SHIPPO_API_KEY", null))
+  config_shippo_base_url = coalesce(var.shippo_base_url, lookup(local.env_map, "SHIPPO_BASE_URL", "https://api.goshippo.com"))
+
+  config_shipengine_api_key  = coalesce(var.shipengine_api_key, lookup(local.env_map, "SHIPENGINE_API_KEY", lookup(local.env_map, "SANDBOX_API_KEY", null)))
+  config_shipengine_base_url = coalesce(var.shipengine_base_url, lookup(local.env_map, "SHIPENGINE_BASE_URL", "https://api.shipengine.com/v1"))
+
+  config_docker_network = coalesce(var.docker_network_name, lookup(local.env_map, "DOCKER_NETWORK_NAME", "slms-network"))
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
 data "docker_network" "slms_network" {
-  name = var.docker_network_name
+  name = local.config_docker_network
 }
 
 # PostgreSQL Database
@@ -35,16 +99,16 @@ resource "docker_container" "postgres" {
   image = docker_image.postgres.image_id
 
   env = [
-    "POSTGRES_USER=${var.postgres_user}",
-    "POSTGRES_PASSWORD=${var.postgres_password}",
-    "POSTGRES_DB=${var.postgres_db}",
+    "POSTGRES_USER=${local.config_postgres_user}",
+    "POSTGRES_PASSWORD=${local.config_postgres_password}",
+    "POSTGRES_DB=${local.config_postgres_db}",
     "POSTGRES_HOST_AUTH_METHOD=scram-sha-256",
     "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256"
   ]
 
   ports {
     internal = 5432
-    external = var.postgres_host_port
+    external = local.config_postgres_host_port
   }
 
   volumes {
@@ -59,7 +123,7 @@ resource "docker_container" "postgres" {
   restart = "unless-stopped"
 
   healthcheck {
-    test     = ["CMD-SHELL", "pg_isready -U ${var.postgres_user} -d ${var.postgres_db}"]
+    test     = ["CMD-SHELL", "pg_isready -U ${local.config_postgres_user} -d ${local.config_postgres_db}"]
     interval = "10s"
     timeout  = "5s"
     retries  = 5
@@ -88,21 +152,21 @@ resource "docker_container" "backend" {
   image = docker_image.backend.image_id
 
   env = [
-    "SPRING_DATASOURCE_URL=jdbc:postgresql://${docker_container.postgres.name}:5432/${var.postgres_db}",
-    "SPRING_DATASOURCE_USERNAME=${var.postgres_user}",
-    "SPRING_DATASOURCE_PASSWORD=${var.postgres_password}",
+    "SPRING_DATASOURCE_URL=jdbc:postgresql://${docker_container.postgres.name}:5432/${local.config_postgres_db}",
+    "SPRING_DATASOURCE_USERNAME=${local.config_postgres_user}",
+    "SPRING_DATASOURCE_PASSWORD=${local.config_postgres_password}",
     "SPRING_JPA_HIBERNATE_DDL_AUTO=update",
-    "KEYCLOAK_REALM=${var.keycloak_realm}",
-    "KEYCLOAK_CLIENT_ID=${var.keycloak_client_id}",
-    "KEYCLOAK_CLIENT_SECRET=${var.keycloak_client_secret}",
-    "MINIO_ENDPOINT=${var.minio_endpoint}",
-    "MINIO_ACCESS_KEY=${var.minio_access_key}",
-    "MINIO_SECRET_KEY=${var.minio_secret_key}",
-    "MINIO_BUCKET_NAME=${var.minio_bucket_name}",
-    "SHIPPO_API_KEY=${var.shippo_api_key}",
-    "SHIPPO_BASE_URL=${var.shippo_base_url}",
-    "SHIPENGINE_API_KEY=${var.shipengine_api_key}",
-    "SHIPENGINE_BASE_URL=${var.shipengine_base_url}"
+    "KEYCLOAK_REALM=${local.config_keycloak_realm}",
+    "KEYCLOAK_CLIENT_ID=${local.config_keycloak_client_id}",
+    "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "MINIO_ENDPOINT=${local.config_minio_endpoint}",
+    "MINIO_ACCESS_KEY=${local.config_minio_access_key}",
+    "MINIO_SECRET_KEY=${local.config_minio_secret_key}",
+    "MINIO_BUCKET_NAME=${local.config_minio_bucket_name}",
+    "SHIPPO_API_KEY=${local.config_shippo_api_key}",
+    "SHIPPO_BASE_URL=${local.config_shippo_base_url}",
+    "SHIPENGINE_API_KEY=${local.config_shipengine_api_key}",
+    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}"
   ]
 
   ports {

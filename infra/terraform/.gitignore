@@ -10,7 +10,7 @@ terraform.tfvars
 # Terraform CLI configuration files
 .terraformrc
 terraform.rc
-
+/
 # Terraform directory
 .terraform/
 .terraform.lock.hcl

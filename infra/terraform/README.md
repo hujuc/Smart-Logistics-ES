@@ -29,19 +29,23 @@ All services communicate through the shared `slms-network` Docker network.
 
 ### 1. Configure Environment Variables
 
-Copy the example file and configure your values:
+Populate the shared dotenv file used by both Docker Compose and Terraform:
 
 ```bash
-cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars
+cd infra
+cp .env.example .env  # only if you still need to create it
 ```
 
-Edit `terraform.tfvars` with your actual credentials:
-- Database passwords
+Update `.env` with your actual credentials:
+- Database passwords and host/port
 - Keycloak secrets
 - API keys (Shippo, ShipEngine)
 - MinIO credentials
-- Host port overrides (for example `postgres_host_port` if 5432 is busy)
+- Host port overrides (e.g. `DB_PORT` if 5432 is busy)
+
+Terraform automatically reads from this file (or whatever path you set via `var.env_file`).
+If you need to override a specific value for Terraform only, create an optional
+`terraform.tfvars` and set just the values you want to override.
 
 ### 2. Initialize Terraform
 
@@ -242,7 +246,7 @@ Ensure these ports are free before starting:
 sudo lsof -i :[port]
 ```
 
-If PostgreSQL is already running locally, set `postgres_host_port` in `terraform.tfvars` to an available value (e.g. `15432`) and update your clients accordingly.
+If PostgreSQL is already running locally, adjust `DB_PORT` in `.env` (or override `postgres_host_port` via `terraform.tfvars`) to an available value (e.g. `15432`) and update your clients accordingly.
 
 ### Container fails to start
 
@@ -299,8 +303,8 @@ If migrating from the old all-in-compose setup:
 
 ## Security Notes
 
-- The `terraform.tfvars` file contains sensitive data - **never commit it to git**
-- Use `.tfvars` file or environment variables for secrets
+- The `.env` file contains sensitive data - **never commit it to git**
+- Use `.env`, TF_VAR_* environment variables, or Terraform Cloud/CI secrets for sensitive values
 - For production, use proper secrets management (HashiCorp Vault, AWS Secrets Manager, etc.)
 - The current setup is for development/testing only
 
@@ -312,8 +316,8 @@ infra/
 │   ├── main.tf              # Main Terraform configuration
 │   ├── variables.tf         # Variable definitions
 │   ├── outputs.tf           # Output values
-│   ├── terraform.tfvars     # Your actual values (gitignored)
-│   └── terraform.tfvars.example  # Example values
+│   ├── terraform.tfvars     # Optional overrides (gitignored)
+│   └── terraform.tfvars.example  # Example overrides
 ├── docker-compose.yaml      # External services only
 ├── .env                     # Environment variables for compose
 └── nginx/
