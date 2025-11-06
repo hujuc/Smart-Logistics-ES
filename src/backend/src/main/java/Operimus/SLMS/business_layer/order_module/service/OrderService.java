@@ -53,7 +53,6 @@ public class OrderService {
                 .warehouse(warehouse)
                 .customerId(request.getCustomerId())
                 .trackingNumber(request.getTrackingNumber())
-                .customerId(request.getCustomerId())
                 .weight(request.getWeight())
                 .weightUnit(request.getWeightUnit())
                 .length(request.getLength())
