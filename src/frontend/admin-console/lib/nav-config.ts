@@ -20,6 +20,11 @@ export const warehouseNavItems: NavItem[] = [
     label: "QR Scanner",
   },
   {
+    href: "/interfaces/warehouse/carrier-comparison",
+    icon: Truck,
+    label: "New Shipment",
+  },
+  {
     href: "/settings?from=warehouse",
     icon: Settings,
     label: "Settings",
@@ -32,11 +37,6 @@ export const logisticsNavItems: NavItem[] = [
     href: "/interfaces/logistics",
     icon: BarChart,
     label: "Overview",
-  },
-  {
-    href: "/interfaces/logistics/carrier-comparison",
-    icon: Truck,
-    label: "New Shipment",
   },
   {
     href: "/interfaces/logistics/tracking",

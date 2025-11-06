@@ -6,14 +6,16 @@ export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type IssueStatus = "Open" | "In Progress" | "Escalated" | "Resolved" | "Closed";
 
-// Backend enum values - must match Java ShipmentOrderStatus enum
-export type ShipmentOrderStatus =
+// Backend enum values - must match Java OrderStatus enum
+export type OrderStatus =
     | "CREATED"
-    | "READY_FOR_PICKUP"
-    | "COLLECTED"
+    | "ASSIGNED_TO_SHIPMENT"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
+
+// Legacy alias for backward compatibility during migration
+export type ShipmentOrderStatus = OrderStatus;
     
 export type IssueType = 
   | "Delivery Delay"
@@ -72,9 +74,17 @@ export interface Order {
     shipstationCarrierCode: string;
     shipstationServiceCode: string;
     trackingNumber: string;
+
+    // Parcel dimensions for shipping rate calculation
+    weight?: number;
+    weightUnit?: string;
+    length?: number;
+    width?: number;
+    height?: number;
+    distanceUnit?: string;
+
     createdAt: Date;
     updatedAt: Date;
-    weight: number;
     priority: Priority;
     origin: string;
     actualDelivery?: Date;

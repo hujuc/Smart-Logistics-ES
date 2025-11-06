@@ -49,6 +49,40 @@ jobs:
         id: build
         run: mvn -B -ntp -DskipTests=false -Dtest='!**/*IntegrationTest' clean verify
 
+      - name: Generate Allure report
+        if: always()
+        run: |
+          if [ -d target/allure-results ] && [ "$(ls -A target/allure-results)" ]; then
+            mvn -B -ntp allure:report
+          else
+            echo "No Allure results found; skipping HTML report generation."
+          fi
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: src/backend/target/allure-results
+          if-no-files-found: ignore
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: src/backend/target/site/allure-maven
+          if-no-files-found: ignore
+
+      - name: Publish backend JUnit report
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: src/backend/target/surefire-reports/*.xml
+          check_name: Backend Tests
+          detailed_summary: true
+          fail_on_failure: false
+
       - name: Upload JaCoCo HTML (if present)
         if: always()
         uses: actions/upload-artifact@v4
@@ -118,6 +152,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
+
+      - name: Add Node to PATH
+        run: |
+          echo "${{ runner.tool_cache }}/node/20.19.5/x64/bin" >> $GITHUB_PATH
+          export PATH="${{ runner.tool_cache }}/node/20.19.5/x64/bin:$PATH"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
 
       - name: Install dependencies
         run: npm ci

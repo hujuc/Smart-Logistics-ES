@@ -16,6 +16,11 @@ export type {
   Address,
   StatCard,
   DateRange,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  PasswordUpdateRequest,
+  UserRole,
 } from "./common"
 
 // Warehouse types
@@ -40,3 +45,16 @@ export type {
   CustomerServiceStats,
   SupportTicket,
 } from "./customer-service"
+
+// Carrier API types
+export type {
+  ShippingRateRequest,
+  ShippingRateResponse,
+  RateQuote,
+  CarrierResponse,
+  CarrierIntegrationSnapshot,
+  CarrierSourceDetails,
+  AddressValidationRequest,
+  AddressValidationResponse,
+  Parcel,
+} from "./carrier"

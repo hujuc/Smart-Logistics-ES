@@ -1,14 +1,17 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.warehouse_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -38,6 +42,7 @@ public class WarehouseBffController {
 
     private final OrderService orderService;
     private final OrderDocumentService orderDocumentService;
+    private final KeycloakUserService keycloakUserService;
 
     /**
      * Health check endpoint
@@ -65,14 +70,33 @@ public class WarehouseBffController {
         try {
             log.info("Warehouse BFF: Fetching orders - status={}, search={}", status, search);
 
-            // Delegate to business layer
-            List<OrderResponse> orders = orderService.getAll();
+            List<OrderResponse> orders;
 
-            // TODO: Add filtering by status and search in business layer
-            // For now, return all orders
+            // Filter by status if provided
+            if (status != null && !status.isBlank()) {
+                // Parse comma-separated statuses
+                List<OrderStatus> statuses = Arrays.stream(status.split(","))
+                        .map(String::trim)
+                        .map(OrderStatus::valueOf)
+                        .toList();
+                orders = orderService.getByStatus(statuses);
+            } else {
+                orders = orderService.getAll();
+            }
+
+            // TODO: Add search filtering if needed
+            // if (search != null && !search.isBlank()) {
+            //     orders = orders.stream()
+            //         .filter(order -> order.getReference().contains(search) ||
+            //                         order.getShippingAddress().contains(search))
+            //         .toList();
+            // }
 
             return ResponseEntity.ok(orders);
 
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid status parameter: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Failed to fetch orders via warehouse BFF: {}", e.getMessage());
             throw e;
@@ -151,28 +175,6 @@ public class WarehouseBffController {
     }
 
     /**
-     * Confirm carrier pickup for an order
-     *
-     * @param id Order ID
-     * @return Updated order
-     */
-    @PostMapping("/orders/{id}/collect")
-    public ResponseEntity<OrderResponse> confirmPickup(@PathVariable Long id) {
-        try {
-            log.info("Warehouse BFF: Confirming pickup for order {}", id);
-
-            // Delegate to business layer
-            OrderResponse response = orderService.confirmPickup(id);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Failed to confirm pickup for order {} via warehouse BFF: {}", id, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
      * Delete an order
      *
      * @param id Order ID
@@ -190,6 +192,46 @@ public class WarehouseBffController {
 
         } catch (Exception e) {
             log.error("Failed to delete order {} via warehouse BFF: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // Driver Operations
+    // ========================================
+
+    /**
+     * Get all drivers (users with DRIVER role)
+     * This endpoint allows warehouse staff to view available drivers for shipment assignment
+     *
+     * @return List of drivers
+     */
+    @GetMapping("/drivers")
+    public ResponseEntity<List<UserRepresentation>> getDrivers() {
+        try {
+            log.info("Warehouse BFF: Fetching all drivers");
+
+            // Get all users from Keycloak
+            List<UserRepresentation> allUsers = keycloakUserService.getAllUsers();
+
+            // Filter for users in the "Drivers" group
+            List<UserRepresentation> drivers = allUsers.stream()
+                    .filter(user -> {
+                        List<String> groups = user.getGroups();
+                        return groups != null && (
+                                groups.contains("Drivers") ||
+                                groups.contains("DRIVER") ||
+                                groups.contains("driver")
+                        );
+                    })
+                    .toList();
+
+            log.info("Warehouse BFF: Found {} drivers out of {} total users", drivers.size(), allUsers.size());
+
+            return ResponseEntity.ok(drivers);
+
+        } catch (Exception e) {
+            log.error("Failed to fetch drivers via warehouse BFF: {}", e.getMessage());
             throw e;
         }
     }
