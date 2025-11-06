@@ -37,9 +37,9 @@ export interface WarehouseFormData {
   shipstationWarehouseId?: string
 }
 
-export interface CreateWarehouseRequest extends WarehouseFormData {}
+export type CreateWarehouseRequest = WarehouseFormData
 
-export interface UpdateWarehouseRequest extends WarehouseFormData {}
+export type UpdateWarehouseRequest = WarehouseFormData
 
 // ===========================
 // Warehouse Package Types
