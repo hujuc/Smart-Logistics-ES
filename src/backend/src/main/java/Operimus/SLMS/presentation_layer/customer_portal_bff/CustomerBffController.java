@@ -3,8 +3,10 @@ package Operimus.SLMS.presentation_layer.customer_portal_bff;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class CustomerBffController {
 
     private final OrderService orderService;
     private final OrderEventService orderEventService;
+    private final WarehouseService warehouseService;
 
     /**
      * Health check endpoint
@@ -46,6 +49,25 @@ public class CustomerBffController {
                 "service", "Customer BFF",
                 "timestamp", java.time.Instant.now().toString()
         ));
+    }
+
+    /**
+     * Get all active warehouses
+     * GET /api/customer/warehouses
+     *
+     * @return List of active warehouses
+     */
+    @GetMapping("/warehouses")
+    public ResponseEntity<List<WarehouseResponse>> getWarehouses() {
+        try {
+            log.info("Customer BFF: Fetching all warehouses");
+            List<WarehouseResponse> warehouses = warehouseService.getAll();
+            log.info("Customer BFF: Successfully fetched {} warehouses", warehouses.size());
+            return ResponseEntity.ok(warehouses);
+        } catch (Exception e) {
+            log.error("Failed to fetch warehouses: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

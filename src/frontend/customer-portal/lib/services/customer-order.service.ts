@@ -5,7 +5,7 @@
  */
 
 import { apiFetch, API_ENDPOINTS } from '../api';
-import { Order, OrderEvent } from '@/types/common';
+import { Order, OrderEvent, Warehouse } from '@/types/common';
 
 /**
  * Request payload for creating an order
@@ -66,6 +66,15 @@ export const customerOrderApi = {
     return apiFetch<Order>(API_ENDPOINTS.orders, {
       method: 'POST',
       body: JSON.stringify(order),
+    });
+  },
+
+  /**
+   * Get all warehouses
+   */
+  async getWarehouses(): Promise<Warehouse[]> {
+    return apiFetch<Warehouse[]>('/api/customer/warehouses', {
+      method: 'GET',
     });
   },
 };

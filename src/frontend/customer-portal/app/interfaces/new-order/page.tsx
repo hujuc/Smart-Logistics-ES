@@ -4,21 +4,24 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, MapPin } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/shared/lib/auth"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
+import { Warehouse } from "@/types/common"
 
 export default function NewOrderPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true)
   const [formData, setFormData] = useState({
     reference: "",
     description: "",
     shippingAddress: "",
-    warehouseId: "1", // Default warehouse ID
+    warehouseId: "", // Will be set after loading warehouses
     trackingNumber: "",
   })
 
@@ -28,6 +31,24 @@ export default function NewOrderPage() {
       router.push("/")
     }
   }, [router])
+
+  useEffect(() => {
+    // Load warehouses
+    const loadWarehouses = async () => {
+      try {
+        setIsLoadingWarehouses(true)
+        const data = await customerOrderApi.getWarehouses()
+        setWarehouses(data.filter(w => w.active))
+      } catch (err) {
+        console.error("Failed to load warehouses:", err)
+        setError("Failed to load warehouses. Please refresh the page.")
+      } finally {
+        setIsLoadingWarehouses(false)
+      }
+    }
+
+    loadWarehouses()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -109,6 +130,38 @@ export default function NewOrderPage() {
               <h3 className="font-semibold text-black border-b pb-2">
                 Shipping Information
               </h3>
+              <div>
+                <Label htmlFor="warehouse">Warehouse *</Label>
+                <div className="relative mt-1">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <select
+                    id="warehouse"
+                    value={formData.warehouseId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        warehouseId: e.target.value,
+                      })
+                    }
+                    required
+                    disabled={isLoadingWarehouses}
+                    className="flex h-10 w-full rounded-md border bg-white pl-10 pr-3 py-2 text-base text-black shadow-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 md:text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select a warehouse</option>
+                    {isLoadingWarehouses ? (
+                      <option disabled>Loading warehouses...</option>
+                    ) : warehouses.length === 0 ? (
+                      <option disabled>No warehouses available</option>
+                    ) : (
+                      warehouses.map((warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name} - {warehouse.city}, {warehouse.country}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
               <div>
                 <Label htmlFor="shippingAddress">Shipping Address *</Label>
                 <Input

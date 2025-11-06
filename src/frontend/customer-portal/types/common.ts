@@ -98,6 +98,19 @@ export interface OrderEvent {
     notes: string;
 }
 
+export interface Warehouse {
+    id: number;
+    code: string;
+    name: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    stateOrProvince: string;
+    country: string;
+    postalCode: string;
+    active: boolean;
+}
+
 export interface ContactInfo {
     phone: string;
     email: string;
