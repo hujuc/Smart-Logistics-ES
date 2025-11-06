@@ -101,7 +101,10 @@ public class OrderService {
         order.setShippingAddress(request.getShippingAddress());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
-        order.setCustomerId(request.getCustomerId());
+        // Only update customerId if provided in request (preserve existing if null)
+        if (request.getCustomerId() != null) {
+            order.setCustomerId(request.getCustomerId());
+        }
         order.setTrackingNumber(request.getTrackingNumber());
         order.setWeight(request.getWeight());
         order.setWeightUnit(request.getWeightUnit());
