@@ -78,6 +78,7 @@ export const warehouseService = {
         warehouseId: currentOrder.warehouseId,
         carrierId: currentOrder.carrierId,
         trackingNumber: currentOrder.trackingNumber,
+        customerId: currentOrder.customerId, // Preserve customer association
       }),
     });
   },

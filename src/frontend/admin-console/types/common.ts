@@ -65,6 +65,7 @@ export interface Order {
     shippingAddress: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
+    customerId?: string; // Keycloak customer UUID
     carrierId?: number;
     carrierCode?: string;
     carrierName?: string;
