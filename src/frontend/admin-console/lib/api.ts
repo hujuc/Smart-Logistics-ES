@@ -24,12 +24,18 @@ export const API_ENDPOINTS = {
     orders: `${LOGISTICS_BASE}/orders`,
     users: `${LOGISTICS_BASE}/users`,
     stats: `${LOGISTICS_BASE}/stats`,
+    warehouses: `${LOGISTICS_BASE}/warehouses`,
 
     // Helper functions for user-specific paths
     user: (userId: string) => `${LOGISTICS_BASE}/users/${userId}`,
     userPassword: (userId: string) => `${LOGISTICS_BASE}/users/${userId}/password`,
     userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
     statsWithPeriod: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/stats?period=${period}`,
+
+    // Helper functions for warehouse-specific paths
+    warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
+    warehouseOrders: (warehouseId: number, status?: string) =>
+      `${LOGISTICS_BASE}/warehouses/${warehouseId}/orders${status ? `?status=${status}` : ''}`,
   },
 
   // Warehouse Staff BFF

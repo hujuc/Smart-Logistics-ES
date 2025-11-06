@@ -4,6 +4,47 @@
 
 import type { ShipmentOrderStatus, Priority } from "./common"
 
+// ===========================
+// Warehouse Entity Types
+// ===========================
+
+export interface Warehouse {
+  id: number
+  code: string
+  name: string
+  addressLine1: string
+  addressLine2?: string
+  city: string
+  stateOrProvince: string
+  country: string
+  postalCode: string
+  active: boolean
+  shippoLocationToken?: string
+  shipstationWarehouseId?: string
+}
+
+export interface WarehouseFormData {
+  code: string
+  name: string
+  addressLine1: string
+  addressLine2?: string
+  city: string
+  stateOrProvince: string
+  country: string
+  postalCode: string
+  active: boolean
+  shippoLocationToken?: string
+  shipstationWarehouseId?: string
+}
+
+export interface CreateWarehouseRequest extends WarehouseFormData {}
+
+export interface UpdateWarehouseRequest extends WarehouseFormData {}
+
+// ===========================
+// Warehouse Package Types
+// ===========================
+
 export interface WarehousePackage {
   id: string
   reference: string

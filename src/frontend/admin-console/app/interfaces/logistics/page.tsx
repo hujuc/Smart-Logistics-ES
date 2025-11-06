@@ -7,6 +7,7 @@ import { KPICard } from "@/components/logistics/kpi-cards"
 import { PerformanceCharts } from "@/components/logistics/performance-charts"
 import { KPIChartsNav } from "@/components/logistics/kpi-charts-nav"
 import { logisticsService, LogisticsStats, TrendPeriod, CarrierBreakdown, WarehouseBreakdown, StatusBreakdown } from "@/lib/services/logistics.service"
+import Masonry from "react-masonry-css"
 
 export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState<"kpis" | "charts">("kpis")
@@ -99,8 +100,8 @@ export default function LogisticsPage() {
     </div>
   )
 
-  // KPI Card Configuration
-  const coreKPIConfig = stats ? [
+  // KPI Card Configuration - All cards in a single masonry layout
+  const allKPIConfig = stats ? [
     {
       id: 'orders-today',
       title: 'Orders Today',
@@ -163,10 +164,7 @@ export default function LogisticsPage() {
           {stats.deliveredToday.byCarrier.length > 0 && renderCarrierBreakdown(stats.deliveredToday.byCarrier)}
         </div>
       )
-    }
-  ] : []
-
-  const additionalKPIConfig = stats ? [
+    },
     {
       id: 'total-shipments',
       title: 'Total Shipments',
@@ -300,6 +298,13 @@ export default function LogisticsPage() {
     }
   ] : []
 
+  // Masonry breakpoint configuration for responsive columns
+  const breakpointColumns = {
+    default: 4,  // 4 columns on large screens
+    1024: 2,     // 2 columns on tablets
+    640: 1       // 1 column on mobile
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col lg:flex-row gap-4 lg:justify-between lg:items-center">
@@ -346,37 +351,23 @@ export default function LogisticsPage() {
 
           {/* KPIs View - All Stats */}
           {activeTab === "kpis" && (
-            <div className="space-y-6">
-              {/* Core KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {coreKPIConfig.map((config) => (
-                  <KPICard
-                    key={config.id}
-                    title={config.title}
-                    icon={config.icon}
-                    stat={config.stat}
-                    color={config.color}
-                    expandable
-                    breakdown={config.breakdown}
-                  />
-                ))}
-              </div>
-
-              {/* Additional Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {additionalKPIConfig.map((config) => (
-                  <KPICard
-                    key={config.id}
-                    title={config.title}
-                    icon={config.icon}
-                    stat={config.stat}
-                    color={config.color}
-                    expandable
-                    breakdown={config.breakdown}
-                  />
-                ))}
-              </div>
-            </div>
+            <Masonry
+              breakpointCols={breakpointColumns}
+              className="masonry-grid"
+              columnClassName="masonry-grid-column"
+            >
+              {allKPIConfig.map((config) => (
+                <KPICard
+                  key={config.id}
+                  title={config.title}
+                  icon={config.icon}
+                  stat={config.stat}
+                  color={config.color}
+                  expandable
+                  breakdown={config.breakdown}
+                />
+              ))}
+            </Masonry>
           )}
 
           {/* Performance Charts View */}

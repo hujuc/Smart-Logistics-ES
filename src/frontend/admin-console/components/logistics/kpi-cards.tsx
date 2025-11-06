@@ -38,24 +38,30 @@ export function KPICard({ title, icon: Icon, stat, color, breakdown, expandable 
         </div>
         <p className="text-4xl font-bold text-black mb-2">{stat.value}</p>
 
-        {stat.trend !== undefined && stat.trend !== null && (
-          <div className={`flex items-center gap-1 ${stat.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {stat.trend >= 0 ? (
-              <TrendingUp className="h-4 w-4" />
-            ) : (
-              <TrendingDown className="h-4 w-4" />
-            )}
-            <span className="text-sm font-medium">{Math.abs(stat.trend)}%</span>
-            {stat.label && <span className="text-xs text-gray-500">{stat.label}</span>}
-          </div>
-        )}
+        {/* Trend section - always reserve space for consistent height */}
+        <div className="h-6 mb-1">
+          {stat.trend !== undefined && stat.trend !== null && (
+            <div className={`flex items-center gap-1 ${stat.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {stat.trend >= 0 ? (
+                <TrendingUp className="h-4 w-4" />
+              ) : (
+                <TrendingDown className="h-4 w-4" />
+              )}
+              <span className="text-sm font-medium">{Math.abs(stat.trend)}%</span>
+              {stat.label && <span className="text-xs text-gray-500">{stat.label}</span>}
+            </div>
+          )}
+        </div>
 
-        {stat.hasWarning && stat.alert && (
-          <div className="flex items-center gap-1 text-yellow-600">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">{stat.alert}</span>
-          </div>
-        )}
+        {/* Warning section - always reserve space for consistent height */}
+        <div className="h-6">
+          {stat.hasWarning && stat.alert && (
+            <div className="flex items-center gap-1 text-yellow-600">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">{stat.alert}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Expandable breakdown section */}

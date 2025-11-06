@@ -186,6 +186,22 @@ public class OrderService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByWarehouse(Long warehouseId) {
+        Warehouse warehouse = warehouseService.findEntityById(warehouseId);
+        return shipmentOrderRepository.findByWarehouse(warehouse).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByWarehouseAndStatus(Long warehouseId, ShipmentOrderStatus status) {
+        Warehouse warehouse = warehouseService.findEntityById(warehouseId);
+        return shipmentOrderRepository.findByWarehouseAndStatus(warehouse, status).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private ShipmentOrderStatus resolveStatus(ShipmentOrderStatus status) {
         return status == null ? ShipmentOrderStatus.CREATED : status;
     }
