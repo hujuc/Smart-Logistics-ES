@@ -13,14 +13,14 @@ log() {
 }
 
 ensure_tools() {
-  command -v docker >/dev/null || { log "Docker não encontrado"; exit 1; }
-  command -v terraform >/dev/null || { log "Terraform não encontrado"; exit 1; }
+  command -v docker >/dev/null || { log "Docker not found"; exit 1; }
+  command -v terraform >/dev/null || { log "Terraform not found"; exit 1; }
 }
 
 ensure_network() {
   local network="${1:-slms-network}"
   if ! docker network inspect "${network}" >/dev/null 2>&1; then
-    log "Criando rede docker ${network}"
+    log "Creating docker network ${network}"
     docker network create "${network}"
   fi
 }
@@ -36,7 +36,7 @@ cleanup_containers() {
   )
   for name in "${containers[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
-      log "Removendo container existente ${name}"
+      log "Removing existing container ${name}"
       docker rm -f "${name}" >/dev/null
     fi
   done
@@ -55,12 +55,12 @@ terraform_destroy() {
 }
 
 compose_up() {
-  log "Subindo serviços auxiliares (Keycloak, MinIO, Nginx)"
+  log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
   docker compose up -d keycloak minio minio-create-bucket nginx
 }
 
 compose_down() {
-  log "Desligando serviços Docker Compose"
+  log "Stopping Docker Compose services"
   docker compose down --remove-orphans
 }
 
@@ -72,7 +72,7 @@ case "${1:-}" in
     terraform_init
     terraform_apply
     compose_up
-    log "Infraestrutura disponível:"
+    log "Infrastructure available at:"
     log "  Backend:        http://localhost:8080"
     log "  Admin Console:  http://localhost:3001"
     log "  Customer Portal:http://localhost:3002"
@@ -91,7 +91,7 @@ case "${1:-}" in
     (cd "${TERRAFORM_DIR}" && terraform state list || true)
     ;;
 *)
-  echo "Uso: $0 {deploy|up|destroy|down|status}"
+  echo "Usage: $0 {deploy|up|destroy|down|status}"
   exit 1
   ;;
 esac
