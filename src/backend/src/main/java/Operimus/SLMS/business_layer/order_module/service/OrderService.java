@@ -37,8 +37,7 @@ public class OrderService {
     @Transactional
     public OrderResponse create(OrderRequest request) {
         if (orderRepository.existsByReferenceIgnoreCase(request.getReference())) {
-            throw new ResourceConflictException(
-                    "An order with reference '%s' already exists.".formatted(request.getReference()));
+            throw new ResourceConflictException("An order with reference '%s' already exists.".formatted(request.getReference()));
         }
 
         Warehouse warehouse = warehouseService.findEntityById(request.getWarehouseId());
@@ -153,6 +152,22 @@ public class OrderService {
     public List<OrderResponse> getByStatus(List<OrderStatus> statuses) {
         return orderRepository.findAll().stream()
                 .filter(order -> statuses.contains(order.getStatus()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByWarehouse(Long warehouseId) {
+        Warehouse warehouse = warehouseService.findEntityById(warehouseId);
+        return orderRepository.findByWarehouse(warehouse).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getByWarehouseAndStatus(Long warehouseId, OrderStatus status) {
+        Warehouse warehouse = warehouseService.findEntityById(warehouseId);
+        return orderRepository.findByWarehouseAndStatus(warehouse, status).stream()
                 .map(this::mapToResponse)
                 .toList();
     }

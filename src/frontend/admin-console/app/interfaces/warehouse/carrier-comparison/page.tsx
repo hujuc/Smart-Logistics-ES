@@ -673,14 +673,14 @@ export default function CarrierComparisonPage() {
 
                                 <div className="space-y-3">
                                   {/* Pricing Information */}
-                                  <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
+                                  <div className="border-purple-200 rounded-lg p-3">
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <p className="text-xs text-green-700 font-medium mb-1">Shipping Cost</p>
-                                        <p className="text-2xl font-bold text-green-900">${carrier.cost}</p>
+                                        <p className="text-xs text-purple-700 font-medium mb-1">Shipping Cost</p>
+                                        <p className="text-2xl font-bold text-purple-900">${carrier.cost}</p>
                                       </div>
                                       {carrier.cost === Math.min(...carriers.map(c => c.cost || Infinity)) && (
-                                        <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                                        <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
                                           BEST PRICE
                                         </span>
                                       )}
@@ -688,9 +688,9 @@ export default function CarrierComparisonPage() {
                                   </div>
 
                                   {/* Transit Time */}
-                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p className="text-xs text-blue-700 font-medium mb-1">Estimated Transit Time</p>
-                                    <p className="text-lg font-bold text-blue-900">{carrier.transitTime || 'N/A'}</p>
+                                  <div className="border border-purple-200 rounded-lg p-3">
+                                    <p className="text-xs text-purple-700 font-medium mb-1">Estimated Transit Time</p>
+                                    <p className="text-lg font-bold text-purple-900">{carrier.transitTime || 'N/A'}</p>
                                   </div>
 
                                   {/* Service Information */}

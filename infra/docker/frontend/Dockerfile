@@ -10,8 +10,10 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM node:${NODE_VERSION}-alpine AS builder
 ARG FRONTEND_PATH
+ARG NEXT_PUBLIC_API_URL
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY ${FRONTEND_PATH}/ ./
 RUN npm run build \

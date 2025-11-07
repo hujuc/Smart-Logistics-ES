@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -21,15 +25,19 @@ services:
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_HOSTNAME_URL: ${KC_HOSTNAME_URL}
+      KC_HOSTNAME_ADMIN_URL: ${KC_HOSTNAME_ADMIN_URL}
       KC_HOSTNAME_STRICT: ${KC_HOSTNAME_STRICT:-false}
+      KC_HOSTNAME_STRICT_BACKCHANNEL: ${KC_HOSTNAME_STRICT_BACKCHANNEL:-false}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
+      KC_PROXY: ${KC_PROXY:-edge}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
     command: start --import-realm
     depends_on:
       - postgres
-    expose:
-      - "8080"
+    ports:
+      - "8180:8080"
     volumes:
       - keycloak-data:/opt/keycloak/data
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
@@ -56,6 +64,7 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/admin-console
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: slms-admin-console
     env_file:
       - .env
@@ -69,6 +78,7 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/customer-portal
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: slms-customer-portal
     env_file:
       - .env
@@ -82,6 +92,7 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/driver-pwa
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: slms-driver-pwa
     env_file:
       - .env
@@ -95,6 +106,7 @@ services:
       dockerfile: infra/docker/frontend/Dockerfile
       args:
         FRONTEND_PATH: src/frontend/landing-page
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: slms-landing-page
     env_file:
       - .env
