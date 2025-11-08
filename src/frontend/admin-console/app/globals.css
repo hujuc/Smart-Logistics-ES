@@ -135,3 +135,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Masonry layout styles for expandable cards */
+.masonry-grid {
+  display: flex;
+  margin-left: -1rem; /* Negative gap value (16px) */
+  width: auto;
+}
+
+.masonry-grid-column {
+  padding-left: 1rem; /* Matches gap (16px) */
+  background-clip: padding-box;
+}
+
+.masonry-grid-column > div {
+  margin-bottom: 1rem; /* Vertical spacing between cards (16px) */
+}

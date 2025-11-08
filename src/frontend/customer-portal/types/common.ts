@@ -6,11 +6,12 @@ export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
 
-// Backend enum values - must match Java ShipmentOrderStatus enum
+// Backend enum values - must match Java OrderStatus enum
 export type ShipmentOrderStatus =
     | "CREATED"
     | "READY_FOR_PICKUP"
     | "COLLECTED"
+    | "ASSIGNED_TO_SHIPMENT"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
@@ -95,6 +96,19 @@ export interface OrderEvent {
     eventType: ShipmentOrderStatus;
     occurredAt: string;
     notes: string;
+}
+
+export interface Warehouse {
+    id: number;
+    code: string;
+    name: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    stateOrProvince: string;
+    country: string;
+    postalCode: string;
+    active: boolean;
 }
 
 export interface ContactInfo {

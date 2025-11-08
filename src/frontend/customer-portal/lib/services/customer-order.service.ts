@@ -5,7 +5,19 @@
  */
 
 import { apiFetch, API_ENDPOINTS } from '../api';
-import { Order, OrderEvent } from '@/types/common';
+import { Order, OrderEvent, Warehouse } from '@/types/common';
+
+/**
+ * Request payload for creating an order
+ */
+export interface CreateOrderRequest {
+  reference: string;
+  description?: string;
+  shippingAddress: string;
+  estimatedDeliveryDate?: string; // ISO date string
+  warehouseId: number;
+  trackingNumber?: string;
+}
 
 /**
  * Customer Order API methods
@@ -43,6 +55,25 @@ export const customerOrderApi = {
    */
   async getOrderEvents(id: number): Promise<OrderEvent[]> {
     return apiFetch<OrderEvent[]>(API_ENDPOINTS.orderEvents(id), {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Create a new order
+   */
+  async createOrder(order: CreateOrderRequest): Promise<Order> {
+    return apiFetch<Order>(API_ENDPOINTS.orders, {
+      method: 'POST',
+      body: JSON.stringify(order),
+    });
+  },
+
+  /**
+   * Get all warehouses
+   */
+  async getWarehouses(): Promise<Warehouse[]> {
+    return apiFetch<Warehouse[]>('/api/customer/warehouses', {
       method: 'GET',
     });
   },
