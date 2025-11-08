@@ -104,9 +104,3 @@ variable "docker_network_name" {
   type        = string
   default     = null
 }
-
-variable "env_file" {
-  description = "Path to the dotenv file providing default values when variables are unset"
-  type        = string
-  default     = "../.env"
-}

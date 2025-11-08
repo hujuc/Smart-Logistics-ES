@@ -19,69 +19,29 @@ locals {
   driver_pwa_dir      = "${local.repo_root}/src/frontend/driver-pwa"
   landing_page_dir    = "${local.repo_root}/src/frontend/landing-page"
 
-  env_file_path = (
-    var.env_file != null && trimspace(var.env_file) != "" ?
-    (
-      startswith(var.env_file, "/") ?
-      var.env_file :
-      abspath("${path.module}/${var.env_file}")
-    ) :
-    ""
-  )
+  # Use variables directly (from terraform.tfvars or CLI)
+  # Provide sensible defaults where variables are null
+  config_postgres_user      = var.postgres_user != null ? var.postgres_user : "slms"
+  config_postgres_password  = var.postgres_password != null ? var.postgres_password : "slms"
+  config_postgres_db        = var.postgres_db != null ? var.postgres_db : "slms"
+  config_postgres_host_port = var.postgres_host_port != null ? var.postgres_host_port : 5432
 
-  env_file_contents = local.env_file_path != "" && fileexists(local.env_file_path) ? file(local.env_file_path) : ""
+  config_keycloak_realm         = var.keycloak_realm != null ? var.keycloak_realm : "slms"
+  config_keycloak_client_id     = var.keycloak_client_id != null ? var.keycloak_client_id : "slms-backend"
+  config_keycloak_client_secret = var.keycloak_client_secret != null ? var.keycloak_client_secret : ""
 
-  env_lines = [
-    for raw_line in split("\n", local.env_file_contents) : trimspace(raw_line)
-    if trimspace(raw_line) != "" && !startswith(trimspace(raw_line), "#") && can(regex("^[A-Za-z_][A-Za-z0-9_]*\\s*=", trimspace(raw_line)))
-  ]
+  config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://minio:9000"
+  config_minio_access_key  = var.minio_access_key != null ? var.minio_access_key : "minioadmin"
+  config_minio_secret_key  = var.minio_secret_key != null ? var.minio_secret_key : "minioadmin"
+  config_minio_bucket_name = var.minio_bucket_name != null ? var.minio_bucket_name : "slms-documents"
 
-  env_keys = [
-    for line in local.env_lines : trimspace(split(line, "=")[0])
-  ]
+  config_shippo_api_key  = var.shippo_api_key != null ? var.shippo_api_key : ""
+  config_shippo_base_url = var.shippo_base_url != null ? var.shippo_base_url : "https://api.goshippo.com"
 
-  env_values = [
-    for line in local.env_lines :
-    trimspace(replace(join("=", slice(split(line, "="), 1, length(split(line, "=")))), "\"", ""))
-  ]
+  config_shipengine_api_key  = var.shipengine_api_key != null ? var.shipengine_api_key : ""
+  config_shipengine_base_url = var.shipengine_base_url != null ? var.shipengine_base_url : "https://api.shipengine.com/v1"
 
-  env_map = zipmap(local.env_keys, local.env_values)
-
-  config_postgres_user     = coalesce(var.postgres_user, lookup(local.env_map, "POSTGRES_USER", lookup(local.env_map, "DB_USERNAME", null)))
-  config_postgres_password = coalesce(var.postgres_password, lookup(local.env_map, "POSTGRES_PASSWORD", lookup(local.env_map, "DB_PASSWORD", null)))
-  config_postgres_db       = coalesce(var.postgres_db, lookup(local.env_map, "POSTGRES_DB", lookup(local.env_map, "DB_NAME", null)))
-  config_postgres_host_port = coalesce(
-    var.postgres_host_port,
-    try(tonumber(lookup(local.env_map, "POSTGRES_HOST_PORT", "")), null),
-    try(tonumber(lookup(local.env_map, "DB_PORT", "")), null),
-    5432
-  )
-
-  config_keycloak_realm     = coalesce(var.keycloak_realm, lookup(local.env_map, "KEYCLOAK_REALM", null))
-  config_keycloak_client_id = coalesce(var.keycloak_client_id, lookup(local.env_map, "KEYCLOAK_CLIENT_ID", lookup(local.env_map, "KEYCLOAK_ADMIN_CLIENT_ID", null)))
-  config_keycloak_client_secret = coalesce(
-    var.keycloak_client_secret,
-    lookup(local.env_map, "KEYCLOAK_CLIENT_SECRET", lookup(local.env_map, "KEYCLOAK_ADMIN_CLIENT_SECRET", null))
-  )
-
-  config_minio_endpoint = coalesce(
-    var.minio_endpoint,
-    lookup(local.env_map, "MINIO_ENDPOINT", null),
-    (lookup(local.env_map, "MINIO_HOST", null) != null && lookup(local.env_map, "MINIO_PORT", null) != null ?
-      "http://${lookup(local.env_map, "MINIO_HOST", "")}:${lookup(local.env_map, "MINIO_PORT", "")}" :
-    null)
-  )
-  config_minio_access_key  = coalesce(var.minio_access_key, lookup(local.env_map, "MINIO_ACCESS_KEY", lookup(local.env_map, "MINIO_ROOT_USER", null)))
-  config_minio_secret_key  = coalesce(var.minio_secret_key, lookup(local.env_map, "MINIO_SECRET_KEY", lookup(local.env_map, "MINIO_ROOT_PASSWORD", null)))
-  config_minio_bucket_name = coalesce(var.minio_bucket_name, lookup(local.env_map, "MINIO_BUCKET_NAME", lookup(local.env_map, "MINIO_BUCKET", null)))
-
-  config_shippo_api_key  = coalesce(var.shippo_api_key, lookup(local.env_map, "SHIPPO_API_KEY", null))
-  config_shippo_base_url = coalesce(var.shippo_base_url, lookup(local.env_map, "SHIPPO_BASE_URL", "https://api.goshippo.com"))
-
-  config_shipengine_api_key  = coalesce(var.shipengine_api_key, lookup(local.env_map, "SHIPENGINE_API_KEY", lookup(local.env_map, "SANDBOX_API_KEY", null)))
-  config_shipengine_base_url = coalesce(var.shipengine_base_url, lookup(local.env_map, "SHIPENGINE_BASE_URL", "https://api.shipengine.com/v1"))
-
-  config_docker_network = coalesce(var.docker_network_name, lookup(local.env_map, "DOCKER_NETWORK_NAME", "slms-network"))
+  config_docker_network = var.docker_network_name != null ? var.docker_network_name : "slms-network"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -91,7 +51,8 @@ data "docker_network" "slms_network" {
 
 # PostgreSQL Database
 resource "docker_image" "postgres" {
-  name = "postgres:16-alpine"
+  name         = "postgres:16-alpine"
+  keep_locally = true  # Keep image locally to avoid re-pulling on every apply
 }
 
 resource "docker_container" "postgres" {
@@ -106,10 +67,8 @@ resource "docker_container" "postgres" {
     "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256"
   ]
 
-  ports {
-    internal = 5432
-    external = local.config_postgres_host_port
-  }
+  # No port exposure needed - PostgreSQL only needs to be accessible within the Docker network
+  # Other containers can connect using the container name 'slms-postgres'
 
   volumes {
     volume_name    = docker_volume.postgres_data.name
@@ -136,7 +95,8 @@ resource "docker_volume" "postgres_data" {
 
 # Backend Service
 resource "docker_image" "backend" {
-  name = "slms-backend:latest"
+  name         = "slms-backend:latest"
+  keep_locally = true  # Keep image locally for faster rebuilds
   build {
     context    = local.backend_dir
     dockerfile = "Dockerfile"
@@ -194,7 +154,8 @@ resource "docker_container" "backend" {
 
 # Admin Console Frontend
 resource "docker_image" "admin_console" {
-  name = "slms-admin-console:latest"
+  name         = "slms-admin-console:latest"
+  keep_locally = true
   build {
     context    = local.repo_root
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
@@ -230,7 +191,8 @@ resource "docker_container" "admin_console" {
 
 # Customer Portal Frontend
 resource "docker_image" "customer_portal" {
-  name = "slms-customer-portal:latest"
+  name         = "slms-customer-portal:latest"
+  keep_locally = true
   build {
     context    = local.repo_root
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
@@ -266,7 +228,8 @@ resource "docker_container" "customer_portal" {
 
 # Driver PWA Frontend
 resource "docker_image" "driver_pwa" {
-  name = "slms-driver-pwa:latest"
+  name         = "slms-driver-pwa:latest"
+  keep_locally = true
   build {
     context    = local.repo_root
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
@@ -303,7 +266,8 @@ resource "docker_container" "driver_pwa" {
 # Landing Page Frontend
 # Landing Page Frontend
 resource "docker_image" "landing_page" {
-  name = "slms-landing-page:latest"
+  name         = "slms-landing-page:latest"
+  keep_locally = true
   build {
     context    = local.repo_root
     dockerfile = "infra/docker/frontend/Dockerfile.prod"

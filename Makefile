@@ -1,7 +1,7 @@
 .PHONY: help up down restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
 
 help:
-	@echo "🚀 Quick Start (Terraform + Docker Compose):"
+	@echo "Production commands (Terraform + Docker Compose):"
 	@echo "  make up            - Start complete production environment (Terraform + Docker Compose)"
 	@echo "  make down          - Stop all services"
 	@echo "  make restart       - Restart all services"
@@ -14,14 +14,8 @@ help:
 	@echo "  make dev-restart   - Restart development environment"
 	@echo "  make dev-logs      - View development logs"
 	@echo ""
-	@echo "Production commands (Docker Compose only):"
-	@echo "  make prod-up       - Start production environment"
-	@echo "  make prod-down     - Stop production environment"
-	@echo "  make prod-restart  - Restart production environment"
-	@echo "  make prod-logs     - View production logs"
-	@echo ""
 	@echo "Test commands:"
-	@echo "  make test                      - Run all unit tests and integration tests"
+	@echo "  make test          - Run all unit tests and integration tests"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make clean         - Remove all containers and volumes"
@@ -38,6 +32,7 @@ up:
 	@echo "3️⃣  Waiting for services to be ready..."
 	@sleep 5
 	@echo "4️⃣  Deploying application with Terraform..."
+	@rm -f infra/terraform/.terraform.tfstate.lock.info
 	@cd infra/terraform && terraform init -upgrade && terraform apply -auto-approve
 	@echo "5️⃣  Restarting Nginx to refresh DNS..."
 	@docker restart slms-nginx-dev
@@ -57,6 +52,7 @@ up:
 
 down:
 	@echo "🛑 Stopping all services..."
+	@rm -f infra/terraform/.terraform.tfstate.lock.info
 	@cd infra/terraform && terraform destroy -auto-approve || true
 	@docker compose -f infra/docker-compose.yaml down
 	@echo "✅ All services stopped"
@@ -92,19 +88,6 @@ dev-restart:
 
 dev-logs:
 	docker compose -f infra/docker-compose.dev.yml logs -f
-
-# Production environment
-prod-up:
-	docker compose -f infra/docker-compose.yaml up --build -d
-
-prod-down:
-	docker compose -f infra/docker-compose.yaml down
-
-prod-restart:
-	docker compose -f infra/docker-compose.yaml restart
-
-prod-logs:
-	docker compose -f infra/docker-compose.yaml logs -f
 
 # Test commands
 test:
