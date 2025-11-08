@@ -156,9 +156,18 @@ resource "docker_container" "backend" {
     "SPRING_DATASOURCE_USERNAME=${local.config_postgres_user}",
     "SPRING_DATASOURCE_PASSWORD=${local.config_postgres_password}",
     "SPRING_JPA_HIBERNATE_DDL_AUTO=update",
+    "KEYCLOAK_HOST=slms-keycloak-dev",
+    "KEYCLOAK_PORT=8080",
     "KEYCLOAK_REALM=${local.config_keycloak_realm}",
     "KEYCLOAK_CLIENT_ID=${local.config_keycloak_client_id}",
     "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "KEYCLOAK_ADMIN_CLIENT_ID=${local.config_keycloak_client_id}",
+    "KEYCLOAK_ADMIN_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "MINIO_HOST=minio",
+    "MINIO_PORT=9000",
+    "MINIO_ROOT_USER=${local.config_minio_access_key}",
+    "MINIO_ROOT_PASSWORD=${local.config_minio_secret_key}",
+    "MINIO_BUCKET=${local.config_minio_bucket_name}",
     "MINIO_ENDPOINT=${local.config_minio_endpoint}",
     "MINIO_ACCESS_KEY=${local.config_minio_access_key}",
     "MINIO_SECRET_KEY=${local.config_minio_secret_key}",
@@ -188,7 +197,7 @@ resource "docker_image" "admin_console" {
   name = "slms-admin-console:latest"
   build {
     context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.dev"
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-admin-console:latest"]
     build_args = {
       FRONTEND_PATH = "src/frontend/admin-console"
@@ -197,16 +206,12 @@ resource "docker_image" "admin_console" {
 }
 
 resource "docker_container" "admin_console" {
-  name  = "slms-admin-console-dev"
+  name  = "slms-admin-console-prod"
   image = docker_image.admin_console.image_id
 
-  command = ["npm", "run", "dev"]
-
   env = [
-    "NODE_ENV=development",
-    "NEXT_TELEMETRY_DISABLED=1",
-    "CHOKIDAR_USEPOLLING=true",
-    "WATCHPACK_POLLING=true"
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
   ]
 
   working_dir = "/app"
@@ -216,16 +221,6 @@ resource "docker_container" "admin_console" {
     external = 3001
   }
 
-  volumes {
-    host_path      = local.admin_console_dir
-    container_path = "/app"
-  }
-
-  volumes {
-    volume_name    = docker_volume.admin_console_node_modules.name
-    container_path = "/app/node_modules"
-  }
-
   networks_advanced {
     name = data.docker_network.slms_network.name
   }
@@ -233,16 +228,12 @@ resource "docker_container" "admin_console" {
   restart = "unless-stopped"
 }
 
-resource "docker_volume" "admin_console_node_modules" {
-  name = "slms-admin-console-node-modules"
-}
-
 # Customer Portal Frontend
 resource "docker_image" "customer_portal" {
   name = "slms-customer-portal:latest"
   build {
     context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.dev"
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
       FRONTEND_PATH = "src/frontend/customer-portal"
@@ -251,16 +242,12 @@ resource "docker_image" "customer_portal" {
 }
 
 resource "docker_container" "customer_portal" {
-  name  = "slms-customer-portal-dev"
+  name  = "slms-customer-portal-prod"
   image = docker_image.customer_portal.image_id
 
-  command = ["npm", "run", "dev"]
-
   env = [
-    "NODE_ENV=development",
-    "NEXT_TELEMETRY_DISABLED=1",
-    "CHOKIDAR_USEPOLLING=true",
-    "WATCHPACK_POLLING=true"
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
   ]
 
   working_dir = "/app"
@@ -270,16 +257,6 @@ resource "docker_container" "customer_portal" {
     external = 3002
   }
 
-  volumes {
-    host_path      = local.customer_portal_dir
-    container_path = "/app"
-  }
-
-  volumes {
-    volume_name    = docker_volume.customer_portal_node_modules.name
-    container_path = "/app/node_modules"
-  }
-
   networks_advanced {
     name = data.docker_network.slms_network.name
   }
@@ -287,16 +264,12 @@ resource "docker_container" "customer_portal" {
   restart = "unless-stopped"
 }
 
-resource "docker_volume" "customer_portal_node_modules" {
-  name = "slms-customer-portal-node-modules"
-}
-
 # Driver PWA Frontend
 resource "docker_image" "driver_pwa" {
   name = "slms-driver-pwa:latest"
   build {
     context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.dev"
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
       FRONTEND_PATH = "src/frontend/driver-pwa"
@@ -305,16 +278,12 @@ resource "docker_image" "driver_pwa" {
 }
 
 resource "docker_container" "driver_pwa" {
-  name  = "slms-driver-pwa-dev"
+  name  = "slms-driver-pwa-prod"
   image = docker_image.driver_pwa.image_id
 
-  command = ["npm", "run", "dev"]
-
   env = [
-    "NODE_ENV=development",
-    "NEXT_TELEMETRY_DISABLED=1",
-    "CHOKIDAR_USEPOLLING=true",
-    "WATCHPACK_POLLING=true"
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
   ]
 
   working_dir = "/app"
@@ -324,16 +293,6 @@ resource "docker_container" "driver_pwa" {
     external = 3003
   }
 
-  volumes {
-    host_path      = local.driver_pwa_dir
-    container_path = "/app"
-  }
-
-  volumes {
-    volume_name    = docker_volume.driver_pwa_node_modules.name
-    container_path = "/app/node_modules"
-  }
-
   networks_advanced {
     name = data.docker_network.slms_network.name
   }
@@ -341,16 +300,13 @@ resource "docker_container" "driver_pwa" {
   restart = "unless-stopped"
 }
 
-resource "docker_volume" "driver_pwa_node_modules" {
-  name = "slms-driver-pwa-node-modules"
-}
-
+# Landing Page Frontend
 # Landing Page Frontend
 resource "docker_image" "landing_page" {
   name = "slms-landing-page:latest"
   build {
     context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.dev"
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-landing-page:latest"]
     build_args = {
       FRONTEND_PATH = "src/frontend/landing-page"
@@ -359,16 +315,12 @@ resource "docker_image" "landing_page" {
 }
 
 resource "docker_container" "landing_page" {
-  name  = "slms-landing-page-dev"
+  name  = "slms-landing-page-prod"
   image = docker_image.landing_page.image_id
 
-  command = ["npm", "run", "dev"]
-
   env = [
-    "NODE_ENV=development",
-    "NEXT_TELEMETRY_DISABLED=1",
-    "CHOKIDAR_USEPOLLING=true",
-    "WATCHPACK_POLLING=true"
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
   ]
 
   working_dir = "/app"
@@ -378,23 +330,9 @@ resource "docker_container" "landing_page" {
     external = 3004
   }
 
-  volumes {
-    host_path      = local.landing_page_dir
-    container_path = "/app"
-  }
-
-  volumes {
-    volume_name    = docker_volume.landing_page_node_modules.name
-    container_path = "/app/node_modules"
-  }
-
   networks_advanced {
     name = data.docker_network.slms_network.name
   }
 
   restart = "unless-stopped"
-}
-
-resource "docker_volume" "landing_page_node_modules" {
-  name = "slms-landing-page-node-modules"
 }

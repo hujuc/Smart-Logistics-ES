@@ -64,6 +64,42 @@ compose_down() {
   docker compose down --remove-orphans
 }
 
+terraform_stop() {
+  log "Stopping Terraform-managed containers"
+  local containers=(
+    slms-postgres
+    slms-backend-dev
+    slms-admin-console-dev
+    slms-customer-portal-dev
+    slms-driver-pwa-dev
+    slms-landing-page-dev
+  )
+  for name in "${containers[@]}"; do
+    if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
+      log "Stopping container ${name}"
+      docker stop "${name}" >/dev/null
+    fi
+  done
+}
+
+terraform_restart() {
+  log "Restarting Terraform-managed containers"
+  local containers=(
+    slms-postgres
+    slms-backend-dev
+    slms-admin-console-dev
+    slms-customer-portal-dev
+    slms-driver-pwa-dev
+    slms-landing-page-dev
+  )
+  for name in "${containers[@]}"; do
+    if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
+      log "Restarting container ${name}"
+      docker restart "${name}" >/dev/null
+    fi
+  done
+}
+
 case "${1:-}" in
   up|deploy)
     ensure_tools
@@ -86,12 +122,47 @@ case "${1:-}" in
     compose_down
     terraform_destroy
     ;;
+  stop)
+    log "Stopping all services..."
+    terraform_stop
+    compose_down
+    log "All services stopped"
+    ;;
+  restart)
+    log "Restarting all services..."
+    terraform_restart
+    docker compose restart
+    log "All services restarted"
+    ;;
+  logs)
+    service="${2:-backend}"
+    case "${service}" in
+      backend) docker logs -f slms-backend-dev ;;
+      admin) docker logs -f slms-admin-console-dev ;;
+      customer) docker logs -f slms-customer-portal-dev ;;
+      driver) docker logs -f slms-driver-pwa-dev ;;
+      landing) docker logs -f slms-landing-page-dev ;;
+      postgres) docker logs -f slms-postgres ;;
+      keycloak) docker logs -f slms-keycloak-dev ;;
+      nginx) docker logs -f slms-nginx-dev ;;
+      minio) docker logs -f minio ;;
+      *) log "Unknown service: ${service}"; exit 1 ;;
+    esac
+    ;;
   status)
     docker compose ps
     (cd "${TERRAFORM_DIR}" && terraform state list || true)
     ;;
 *)
-  echo "Usage: $0 {deploy|up|destroy|down|status}"
+  echo "Usage: $0 {deploy|up|destroy|down|stop|restart|status|logs [service]}"
+  echo ""
+  echo "Commands:"
+  echo "  deploy|up       - Deploy full infrastructure"
+  echo "  destroy|down    - Destroy all infrastructure"
+  echo "  stop            - Stop all containers (without removing)"
+  echo "  restart         - Restart all containers"
+  echo "  status          - Show status of all services"
+  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
   exit 1
   ;;
 esac

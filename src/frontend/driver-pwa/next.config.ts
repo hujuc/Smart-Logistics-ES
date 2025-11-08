@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   basePath: "/driver",
   assetPrefix: "/driver",
-  trailingSlash: false,
+  trailingSlash: true,
 };
 
 export default nextConfig;
