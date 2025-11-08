@@ -42,6 +42,39 @@ class LogisticsBffControllerTest {
     @MockBean
     private KeycloakUserService userService;
 
+    @MockBean
+    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService statsService;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.service.WarehouseService warehouseService;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.service.OrderService orderService;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.repository.OrderRepository orderRepository;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository warehouseRepository;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.rate_carrier_module.repository.CarrierRepository carrierRepository;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository deliveryExceptionRepository;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.service.OrderDocumentService orderDocumentService;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.service.OrderEventService orderEventService;
+
+    @MockBean
+    private Operimus.SLMS.business_layer.order_module.repository.OrderEventRepository orderEventRepository;
+
+    @MockBean
+    private software.amazon.awssdk.services.s3.S3Client s3Client;
+
     @Test
     void whenHealthCheck_thenReturnStatus() throws Exception {
         mockMvc.perform(get("/api/logistics/health"))

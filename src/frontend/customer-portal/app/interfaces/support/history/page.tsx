@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react"
+import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle, Plus } from "lucide-react"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
 import type { Order, ShipmentOrderStatus } from "@/types/common"
 
@@ -53,6 +53,10 @@ export default function OrderHistoryPage() {
     router.push(`/interfaces/support/history/${trackingNumber}`)
   }
 
+  const handleNewOrder = () => {
+    router.push("/interfaces/new-order")
+  }
+
   const filteredOrders = orders
     .filter((order) => {
       const matchesSearch =
@@ -70,6 +74,7 @@ export default function OrderHistoryPage() {
       CREATED: "bg-gray-100 text-gray-800",
       READY_FOR_PICKUP: "bg-blue-100 text-blue-800",
       COLLECTED: "bg-purple-100 text-purple-800",
+      ASSIGNED_TO_SHIPMENT: "bg-indigo-100 text-indigo-800",
       IN_TRANSIT: "bg-yellow-100 text-yellow-800",
       DELIVERED: "bg-green-100 text-green-800",
       CANCELLED: "bg-red-100 text-red-800",
@@ -83,6 +88,7 @@ export default function OrderHistoryPage() {
       case "READY_FOR_PICKUP":
         return <Clock className="h-4 w-4 text-blue-600" />
       case "COLLECTED":
+      case "ASSIGNED_TO_SHIPMENT":
       case "IN_TRANSIT":
         return <Truck className="h-4 w-4 text-yellow-600" />
       case "DELIVERED":
@@ -99,6 +105,7 @@ export default function OrderHistoryPage() {
       CREATED: "Created",
       READY_FOR_PICKUP: "Ready for Pickup",
       COLLECTED: "Collected",
+      ASSIGNED_TO_SHIPMENT: "Assigned to Shipment",
       IN_TRANSIT: "In Transit",
       DELIVERED: "Delivered",
       CANCELLED: "Cancelled",
@@ -117,7 +124,7 @@ export default function OrderHistoryPage() {
   // Calculate stats
   const stats = {
     processing: orders.filter(o => ['CREATED', 'READY_FOR_PICKUP'].includes(o.status)).length,
-    inTransit: orders.filter(o => ['COLLECTED', 'IN_TRANSIT'].includes(o.status)).length,
+    inTransit: orders.filter(o => ['COLLECTED', 'ASSIGNED_TO_SHIPMENT', 'IN_TRANSIT'].includes(o.status)).length,
     delivered: orders.filter(o => o.status === 'DELIVERED').length,
     total: orders.length,
   }
@@ -125,9 +132,15 @@ export default function OrderHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-black">Order History</h1>
-        <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-black">Order History</h1>
+          <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+        </div>
+        <Button className="gap-2" onClick={handleNewOrder}>
+          <Plus className="h-4 w-4" />
+          Create Order
+        </Button>
       </div>
 
       {/* Search and Filters */}

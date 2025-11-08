@@ -1,41 +1,204 @@
 package Operimus.SLMS.presentation_layer.customer_portal_bff;
 
+import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.is;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = CustomerBffController.class,
-    excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class})
-@AutoConfigureMockMvc(addFilters = false)
+    excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class})
+@Import(SecurityConfig.class)
 class CustomerBffControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockBean
     private OrderService orderService;
 
     @MockBean
-    private OrderEventService shipmentOrderEventService;
+    private OrderEventService orderEventService;
+
+    @MockBean
+    private WarehouseService warehouseService;
+
+    @MockBean
+    private JwtDecoder jwtDecoder;
+
+    private String customerId;
+    private OrderResponse mockOrder;
+    private WarehouseResponse mockWarehouse;
+
+    @BeforeEach
+    void setUp() {
+        customerId = "customer-uuid-123";
+        
+        mockWarehouse = WarehouseResponse.builder()
+                .id(1L)
+                .code("WH001")
+                .name("Main Warehouse")
+                .city("Aveiro")
+                .country("Portugal")
+                .active(true)
+                .build();
+
+        mockOrder = OrderResponse.builder()
+                .id(1L)
+                .reference("ORD-001")
+                .description("Test order")
+                .status(OrderStatus.CREATED)
+                .shippingAddress("Test Address")
+                .warehouseId(1L)
+                .trackingNumber("TRK-001")
+                .customerId(customerId)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+    }
+
+    private org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor createJwtWithCustomerRole(String customerId) {
+        return jwt()
+                .jwt(jwt -> jwt.subject(customerId))
+                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"));
+    }
 
     @Test
     void whenHealthCheck_thenReturnStatus() throws Exception {
-        mockMvc.perform(get("/api/customer/health"))
+        mockMvc.perform(get("/api/customer/health")
+                        .with(createJwtWithCustomerRole(customerId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("UP")))
                 .andExpect(jsonPath("$.service", is("Customer BFF")))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
+
+    @Test
+    void whenGetWarehouses_thenReturnWarehouseList() throws Exception {
+        when(warehouseService.getAll()).thenReturn(List.of(mockWarehouse));
+
+        mockMvc.perform(get("/api/customer/warehouses")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].name", is("Main Warehouse")))
+                .andExpect(jsonPath("$[0].city", is("Aveiro")));
+    }
+
+    @Test
+    void whenGetCustomerOrders_thenReturnOrderList() throws Exception {
+        when(orderService.getByCustomerId(anyString())).thenReturn(List.of(mockOrder));
+
+        mockMvc.perform(get("/api/customer/orders")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].reference", is("ORD-001")));
+    }
+
+    @Test
+    void whenGetOrderById_withValidCustomer_thenReturnOrder() throws Exception {
+        when(orderService.getById(1L)).thenReturn(mockOrder);
+
+        mockMvc.perform(get("/api/customer/orders/1")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.reference", is("ORD-001")));
+    }
+
+    @Test
+    void whenGetOrderByTracking_withValidCustomer_thenReturnOrder() throws Exception {
+        when(orderService.getByTrackingNumber("TRK-001")).thenReturn(mockOrder);
+
+        mockMvc.perform(get("/api/customer/orders/tracking/TRK-001")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trackingNumber", is("TRK-001")));
+    }
+
+    @Test
+    void whenGetOrderEvents_withValidCustomer_thenReturnEvents() throws Exception {
+        OrderEventResponse event = OrderEventResponse.builder()
+                .id(1L)
+                .orderId(1L)
+                .eventType(OrderStatus.CREATED)
+                .notes("Order created")
+                .build();
+
+        when(orderService.getById(1L)).thenReturn(mockOrder);
+        when(orderEventService.getEventsForOrder(1L)).thenReturn(List.of(event));
+
+        mockMvc.perform(get("/api/customer/orders/1/events")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].orderId", is(1)))
+                .andExpect(jsonPath("$[0].eventType", is("CREATED")));
+    }
+
+    @Test
+    void whenCreateOrder_thenReturnCreatedOrder() throws Exception {
+        OrderRequest request = OrderRequest.builder()
+                .reference("ORD-002")
+                .description("New order")
+                .shippingAddress("New Address")
+                .warehouseId(1L)
+                .build();
+
+        OrderResponse createdOrder = OrderResponse.builder()
+                .id(2L)
+                .reference("ORD-002")
+                .description("New order")
+                .status(OrderStatus.CREATED)
+                .shippingAddress("New Address")
+                .warehouseId(1L)
+                .customerId(customerId)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+
+        when(orderService.create(any(OrderRequest.class))).thenReturn(createdOrder);
+
+        mockMvc.perform(post("/api/customer/orders")
+                        .with(createJwtWithCustomerRole(customerId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", is(2)))
+                .andExpect(jsonPath("$.reference", is("ORD-002")));
+    }
+
 }

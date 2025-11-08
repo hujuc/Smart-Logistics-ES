@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,11 +26,7 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadOrderData()
-  }, [trackingNumber])
-
-  const loadOrderData = async () => {
+  const loadOrderData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -55,7 +51,11 @@ export default function OrderTrackingPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [trackingNumber])
+
+  useEffect(() => {
+    loadOrderData()
+  }, [loadOrderData])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
