@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main , 182-304-integrate-terraform-with-cicd-pipeline ]
 
 jobs:
   deploy:
