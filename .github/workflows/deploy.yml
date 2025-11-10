@@ -67,11 +67,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.5.7'
-
       - name: Write .env for Compose
         working-directory: infra
         shell: bash
