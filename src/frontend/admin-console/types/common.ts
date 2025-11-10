@@ -123,8 +123,8 @@ export interface Address {
 }
 
 export interface StatCard {
-    value: number;
-    trend?: number;
+    value: number | string;
+    trend?: number | null;
     label?: string;
     alert?: string;
     hasWarning?: boolean;

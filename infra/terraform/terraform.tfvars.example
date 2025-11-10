@@ -1,0 +1,7 @@
+# Terraform now derives defaults from ../.env (or the path you set in `env_file`).
+# Copy this example to terraform.tfvars only if you need to override specific values.
+#
+# Example overrides:
+# env_file = "../.env"
+# postgres_host_port = 15432
+# docker_network_name = "slms-network"
