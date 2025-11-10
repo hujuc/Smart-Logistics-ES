@@ -38,10 +38,10 @@ echo ""
 if grep -q "^MAX_BACKUPS=" infra/.env; then
     echo "✓ MAX_BACKUPS already configured in .env"
 else
-    echo "Adding MAX_BACKUPS=3 to .env..."
+    echo "Adding MAX_BACKUPS=4 to .env..."
     echo "" >> infra/.env
     echo "# Backup Configuration" >> infra/.env
-    echo "MAX_BACKUPS=3" >> infra/.env
+    echo "MAX_BACKUPS=4" >> infra/.env
     echo "✓ MAX_BACKUPS added to .env"
 fi
 echo ""
@@ -122,7 +122,7 @@ echo "║                    Setup Complete!                             ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 echo "📅 Automatic backups will run daily at 2:00 AM"
-echo "💾 Only the last 3 backups will be kept"
+echo "💾 Only the last 4 backups will be kept"
 echo ""
 echo "Useful commands:"
 echo "  • List backups:"

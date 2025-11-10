@@ -11,7 +11,7 @@ POSTGRES_PORT=${POSTGRES_PORT:-5432}
 POSTGRES_DB=${POSTGRES_DB:-slms}
 POSTGRES_USER=${POSTGRES_USER:-postgres}
 BACKUP_DIR=${BACKUP_DIR:-/backups}
-MAX_BACKUPS=${MAX_BACKUPS:-3}
+MAX_BACKUPS=${MAX_BACKUPS:-4}
 
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
