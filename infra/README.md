@@ -62,11 +62,10 @@ The system includes automatic database backups to protect against data loss.
 
 ### Features
 
-- ✅ **Automatic daily backups** at 2:00 AM using cron
-- ✅ **Automatic cleanup** - keeps only the last 3 backups
-- ✅ **Compressed backups** (gzip)
-- ✅ **Persistent storage** in Docker volume
-- ✅ **Independent of CI/CD** - keeps running during deployments
+- ✅ **Backups automáticos** em cada push para `main` (pré e pós deploy)
+- ✅ **Limpeza automática** – mantém apenas os últimos 4 ficheiros
+- ✅ **Comprimido** (gzip) e com labels por deploy
+- ✅ **Podem ser disparados manualmente** via `docker compose exec backup ...`
 
 ### View Backups
 
@@ -74,8 +73,8 @@ The system includes automatic database backups to protect against data loss.
 # List available backups
 docker compose -f infra/docker-compose.yaml exec backup ls -lh /backups
 
-# Check backup logs
-docker compose -f infra/docker-compose.yaml exec backup cat /var/log/backup.log
+# Copy the latest pre/post backups produced pelo workflow
+ls -lh backups/
 ```
 
 ### Download Backup
@@ -88,13 +87,11 @@ docker cp slms-backup:/backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz ./
 ### Documentation
 
 - **Basic usage**: [docker/backup/README.md](docker/backup/README.md)
-- **CI/CD integration**: [BACKUP_CICD.md](BACKUP_CICD.md)
-- **VM setup guide**: [VM_SETUP.md](VM_SETUP.md)
 
 ## Services
 
 - **PostgreSQL** (port 5433): Database
-- **Backup**: Automated database backup service
+- **Backup**: Serviço que corre `backup.sh` quando o workflow/manual o invoca
 - **Backend** (port 8080): Spring Boot API
 - **Frontend Apps** (port 3000 each): Next.js applications
 - **Nginx** (port 80): Reverse proxy

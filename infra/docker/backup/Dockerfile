@@ -1,11 +1,10 @@
 FROM postgres:16-alpine
 
-# Install required tools including crond
+# Install required tools for manual backups triggered by CI/CD
 RUN apk add --no-cache \
     bash \
     gzip \
     postgresql-client \
-    dcron \
     && rm -rf /var/cache/apk/*
 
 # Copy backup script
@@ -15,13 +14,7 @@ RUN chmod +x /usr/local/bin/backup.sh
 # Create backup directory with proper permissions
 RUN mkdir -p /backups && chmod 755 /backups
 
-# Create crontab for automatic backups (daily at 2:00 AM)
-RUN echo "0 2 * * * /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1" > /etc/crontabs/root
-
-# Create log file
-RUN touch /var/log/backup.log && chmod 644 /var/log/backup.log
-
 WORKDIR /backups
 
-# Start cron daemon in foreground
-CMD ["crond", "-f", "-l", "2"]
+# Keep container alive so workflow/manual execs can run the script on demand
+CMD ["sleep", "infinity"]

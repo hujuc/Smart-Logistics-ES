@@ -85,15 +85,6 @@ else
 fi
 echo ""
 
-# Check if cron is running
-echo "Checking cron scheduler..."
-if docker compose -f infra/docker-compose.yaml exec -T backup ps aux 2>/dev/null | grep -q "[c]rond"; then
-    echo "✓ Cron scheduler is running"
-else
-    echo "⚠️  Warning: Cron may not be running"
-fi
-echo ""
-
 # Test manual backup
 echo "════════════════════════════════════════════════════════════════"
 echo "Testing manual backup..."
@@ -121,7 +112,7 @@ echo "╔═══════════════════════�
 echo "║                    Setup Complete!                             ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "📅 Automatic backups will run daily at 2:00 AM"
+echo "📅 Push para main → workflow corre backups pré/pós deploy"
 echo "💾 Only the last 4 backups will be kept"
 echo ""
 echo "Useful commands:"

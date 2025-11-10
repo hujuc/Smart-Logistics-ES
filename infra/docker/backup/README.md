@@ -1,13 +1,13 @@
 # Database Backup System
 
-Automatic PostgreSQL backup system for SLMS database.
+Automatic PostgreSQL backup system for the SLMS database.
 
 ## Features
 
-- ✅ **Automatic daily backups** at 2:00 AM
-- ✅ **Automatic cleanup** - keeps only the last 3 backups
+- ✅ **Automatic backups** on every push to `main` (pre- and post-deploy)
+- ✅ **Automatic cleanup** – only the last 4 dumps are kept
 - ✅ **Compressed backups** (gzip) to save space
-- ✅ **Persistent storage** in Docker volume
+- ✅ **Persistent storage** in a Docker volume
 
 ## Configuration
 
@@ -15,20 +15,18 @@ The backup system is configured via environment variables in `infra/.env`:
 
 ```bash
 # Maximum number of backups to keep
-MAX_BACKUPS=3
+MAX_BACKUPS=4
 
-# Optional: Set timezone for correct backup scheduling
-# TZ=Europe/Lisbon
+# Run manual backups the same way the CI does
 ```
 
 ## How It Works
 
-1. **Backup Service**: A Docker container (`slms-backup`) runs continuously as a daemon
-2. **Cron Scheduler**: Uses cron to run backups at 2:00 AM daily (more reliable than while loops)
-3. **Storage**: Backups are stored in a Docker volume (`backup-data`) that persists across deployments
-4. **Cleanup**: After each backup, old backups are automatically deleted, keeping only the last 3
-5. **Naming**: Backups are named `backup_slms_YYYYMMDD_HHMMSS.sql.gz`
-
+1. **Backup Service**: the `slms-backup` container runs idle (a `sleep` process).
+2. **Workflow**: when there is a push to `main`, the `Deploy project` job runs the script twice (pre- and post-deploy) using `docker compose exec backup /usr/local/bin/backup.sh`.
+3. **Storage**: Backups are stored in the `backup-data` volume and are additionally copied to `./backups` on the runner.
+4. **Cleanup**: After each run only the last 4 files are retained.
+5. **Naming**: `backup_<db>_<timestamp>[_pre|post-<sha>].sql.gz`.
 
 ## Viewing Backups
 
@@ -71,17 +69,6 @@ To download a backup to your local machine:
 # Copy backup from container to local machine
 docker cp slms-backup:/backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz ./
 ```
-
-## Disaster Recovery
-
-If the VM is lost:
-
-1. Set up a new VM with Docker
-2. Clone the repository
-3. Copy your backup file to the new VM
-4. Start the infrastructure: `docker compose -f infra/docker-compose.yaml up -d`
-5. Copy backup to container: `docker cp backup_slms_YYYYMMDD_HHMMSS.sql.gz slms-backup:/backups/`
-6. Restore using the commands above
 
 ## Monitoring
 
@@ -126,10 +113,3 @@ docker compose -f infra/docker-compose.yaml exec backup \
   gunzip -t /backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz
 ```
 
-## Important Notes
-
-- Backups are stored in a Docker volume and persist even if containers are removed
-- Only the last 3 backups are kept to save disk space
-- For production, consider also storing backups externally (cloud storage, external drive, etc.)
-- The backup process does not lock the database - the application continues to run
-- Backups include the complete database schema and data
