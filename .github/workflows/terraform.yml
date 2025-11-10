@@ -107,24 +107,3 @@ jobs:
           TF_VAR_keycloak_client_secret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
           TF_VAR_shippo_api_key: ${{ secrets.SHIPPO_API_KEY }}
           TF_VAR_shipengine_api_key: ${{ secrets.SHIPENGINE_API_KEY }}
-
-  security-scan:
-    name: 'Security Scan'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'config'
-          scan-ref: './infra/terraform'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
