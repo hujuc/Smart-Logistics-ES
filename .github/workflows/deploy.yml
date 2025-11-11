@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, slms]
+    runs-on: [self-hosted, aws-runner]
     env:
       COMPOSE_PROJECT_NAME: slms-prod
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
