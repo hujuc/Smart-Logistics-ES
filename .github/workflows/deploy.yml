@@ -53,11 +53,11 @@ jobs:
       KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
       KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
     steps:
-      - name: Fix permissions before build
-        shell: bash
-        run: |
-          sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
-          sudo chmod -R 777 /home/sousahugo/actions-runner/_work
+      # - name: Fix permissions before build
+      #   shell: bash
+      #   run: |
+      #     sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
+      #     sudo chmod -R 777 /home/sousahugo/actions-runner/_work
 
       - name: Allow current user to access Docker daemon
         shell: bash
