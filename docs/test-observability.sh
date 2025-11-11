@@ -42,9 +42,9 @@ echo "  - Making 50 requests to various endpoints..."
 
 for i in {1..50}; do
     # Mix of different endpoints to create variety
-    curl -s -o /dev/null "$BACKEND_URL/api/v1/health" &
     curl -s -o /dev/null "$BACKEND_URL/actuator/health" &
-    curl -s -o /dev/null "$BACKEND_URL/api/v1/shipments" &
+    curl -s -o /dev/null "$BACKEND_URL/actuator/metrics" &
+    curl -s -o /dev/null "$BACKEND_URL/actuator/prometheus" &
 
     # Show progress every 10 requests
     if [ $((i % 10)) -eq 0 ]; then
