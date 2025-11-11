@@ -161,7 +161,11 @@ resource "docker_image" "admin_console" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-admin-console:latest"]
     build_args = {
-      FRONTEND_PATH = "src/frontend/admin-console"
+      FRONTEND_PATH                     = "src/frontend/admin-console"
+      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api"
+      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
+      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-admin-console"
     }
   }
 }
@@ -198,7 +202,13 @@ resource "docker_image" "customer_portal" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
-      FRONTEND_PATH = "src/frontend/customer-portal"
+      FRONTEND_PATH                     = "src/frontend/customer-portal"
+      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api"
+      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
+      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-customer-portal"
+      KEYCLOAK_BASE_URL                 = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
+      NEXTAUTH_URL                      = "http://${var.public_host != "" ? var.public_host : "localhost"}:3002"
     }
   }
 }
@@ -235,7 +245,11 @@ resource "docker_image" "driver_pwa" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
-      FRONTEND_PATH = "src/frontend/driver-pwa"
+      FRONTEND_PATH                     = "src/frontend/driver-pwa"
+      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api/driver"
+      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
+      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-driver-pwa"
     }
   }
 }
@@ -264,7 +278,6 @@ resource "docker_container" "driver_pwa" {
 }
 
 # Landing Page Frontend
-# Landing Page Frontend
 resource "docker_image" "landing_page" {
   name         = "slms-landing-page:latest"
   keep_locally = true
@@ -273,7 +286,8 @@ resource "docker_image" "landing_page" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-landing-page:latest"]
     build_args = {
-      FRONTEND_PATH = "src/frontend/landing-page"
+      FRONTEND_PATH       = "src/frontend/landing-page"
+      NEXT_PUBLIC_API_URL = "http://${var.public_host != "" ? var.public_host : "localhost"}/api/landing-page"
     }
   }
 }

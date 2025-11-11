@@ -5,30 +5,34 @@ output "postgres_host" {
 
 output "backend_url" {
   description = "Backend service URL"
-  value       = "http://localhost:8080"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}:8080"
 }
 
 output "admin_console_url" {
   description = "Admin Console URL"
-  value       = "http://localhost:3001"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}:3001"
 }
 
 output "customer_portal_url" {
   description = "Customer Portal URL"
-  value       = "http://localhost:3002"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}:3002"
 }
 
 output "driver_pwa_url" {
   description = "Driver PWA URL"
-  value       = "http://localhost:3003"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}:3003"
 }
 
 output "landing_page_url" {
   description = "Landing Page URL"
-  value       = "http://localhost:3004"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}:3004"
+}
+
+output "nginx_url" {
+  description = "Nginx reverse proxy URL"
+  value       = "http://${var.public_host != "" ? var.public_host : "localhost"}"
 }
 
 output "network_name" {
   description = "Docker network name"
   value       = data.docker_network.slms_network.name
-}

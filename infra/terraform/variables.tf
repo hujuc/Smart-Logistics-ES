@@ -104,3 +104,10 @@ variable "docker_network_name" {
   type        = string
   default     = null
 }
+
+# Public Host Configuration
+variable "public_host" {
+  description = "Public hostname or IP for external access (e.g., AWS EC2 public IP). Defaults to localhost for local development."
+  type        = string
+  default     = ""
+}
