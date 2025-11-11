@@ -124,11 +124,6 @@ jobs:
         shell: bash
         run: docker compose down --remove-orphans || true
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.5.7'
-
       - name: Ensure deploy script is executable
         shell: bash
         run: chmod +x infra/deploy.sh
