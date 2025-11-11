@@ -124,6 +124,13 @@ jobs:
         shell: bash
         run: docker compose down --remove-orphans || true
 
+      - name: Remove existing Terraform-managed containers
+        shell: bash
+        run: |
+          # Stop and remove containers that might conflict with Terraform
+          docker stop slms-postgres slms-backend-dev slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+          docker rm -f slms-postgres slms-backend-dev slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+
       - name: Ensure deploy script is executable
         shell: bash
         run: chmod +x infra/deploy.sh
