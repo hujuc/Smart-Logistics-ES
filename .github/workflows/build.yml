@@ -142,6 +142,10 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
     defaults:
       run:
         working-directory: src/frontend/${{ matrix.app }}
@@ -201,6 +205,68 @@ jobs:
       - name: Install Playwright browsers
         working-directory: src/frontend/landing-page
         run: npx playwright install --with-deps
+
+      - name: Generate Docker env file from secrets
+        run: |
+          cat <<EOF > infra/.env
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          DB_NAME=${DB_NAME}
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+          MINIO_HOST=${MINIO_HOST}
+          MINIO_PORT=${MINIO_PORT}
+          MINIO_ROOT_USER=${MINIO_ROOT_USER}
+          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+          MINIO_BUCKET=${MINIO_BUCKET}
+
+          KEYCLOAK_HOST=${KEYCLOAK_HOST}
+          KEYCLOAK_PORT=${KEYCLOAK_PORT}
+          KEYCLOAK_REALM=slms
+          KEYCLOAK_ADMIN_CLIENT_ID=slms-backend
+          KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          JWT_ISSUER_URI=${JWT_ISSUER_URI}
+
+          KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+
+          KC_DB=postgres
+          KC_DB_URL=jdbc:postgresql://postgres:5432/slms
+          KC_DB_USERNAME=${POSTGRES_USER}
+          KC_DB_PASSWORD=${POSTGRES_PASSWORD}
+          KC_HOSTNAME_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_ADMIN_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_STRICT=false
+          KC_HOSTNAME_STRICT_BACKCHANNEL=false
+          KC_HOSTNAME=${KEYCLOAK_HOST:-keycloak}
+          KC_HOSTNAME_PORT=${KEYCLOAK_PORT:-8080}
+          KC_HTTP_ENABLED=true
+          KC_PROXY_HEADERS=xforwarded
+          KC_PROXY=edge
+
+          ADMIN_KEYCLOAK_CLIENT_ID=slms-backend
+          ADMIN_KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+          ADMIN_KEYCLOAK_ISSUER=${JWT_ISSUER_URI}
+
+          NEXTAUTH_URL=http://localhost/admin
+          NEXTAUTH_URL_INTERNAL=http://admin-console:3000/admin
+          NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+          AUTH_TRUST_HOST=true
+
+          KEYCLOAK_CLIENT_ID=slms-backend
+          KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          BACKEND_PORT=8080
+
+          NODE_ENV=production
+          NEXT_TELEMETRY_DISABLED=1
+          SPRING_DEVTOOLS_RESTART_ENABLED=false
+          EOF
 
       - name: Start SLMS stack for E2E
         run: |
