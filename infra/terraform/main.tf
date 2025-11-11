@@ -1,0 +1,302 @@
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "docker" {
+  host = "unix:///var/run/docker.sock"
+}
+
+locals {
+  repo_root           = abspath("${path.module}/../..")
+  backend_dir         = "${local.repo_root}/src/backend"
+  admin_console_dir   = "${local.repo_root}/src/frontend/admin-console"
+  customer_portal_dir = "${local.repo_root}/src/frontend/customer-portal"
+  driver_pwa_dir      = "${local.repo_root}/src/frontend/driver-pwa"
+  landing_page_dir    = "${local.repo_root}/src/frontend/landing-page"
+
+  # Use variables directly (from terraform.tfvars or CLI)
+  # Provide sensible defaults where variables are null
+  config_postgres_user      = var.postgres_user != null ? var.postgres_user : "slms"
+  config_postgres_password  = var.postgres_password != null ? var.postgres_password : "slms"
+  config_postgres_db        = var.postgres_db != null ? var.postgres_db : "slms"
+  config_postgres_host_port = var.postgres_host_port != null ? var.postgres_host_port : 5432
+
+  config_keycloak_realm         = var.keycloak_realm != null ? var.keycloak_realm : "slms"
+  config_keycloak_client_id     = var.keycloak_client_id != null ? var.keycloak_client_id : "slms-backend"
+  config_keycloak_client_secret = var.keycloak_client_secret != null ? var.keycloak_client_secret : ""
+
+  config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://minio:9000"
+  config_minio_access_key  = var.minio_access_key != null ? var.minio_access_key : "minioadmin"
+  config_minio_secret_key  = var.minio_secret_key != null ? var.minio_secret_key : "minioadmin"
+  config_minio_bucket_name = var.minio_bucket_name != null ? var.minio_bucket_name : "slms-documents"
+
+  config_shippo_api_key  = var.shippo_api_key != null ? var.shippo_api_key : ""
+  config_shippo_base_url = var.shippo_base_url != null ? var.shippo_base_url : "https://api.goshippo.com"
+
+  config_shipengine_api_key  = var.shipengine_api_key != null ? var.shipengine_api_key : ""
+  config_shipengine_base_url = var.shipengine_base_url != null ? var.shipengine_base_url : "https://api.shipengine.com/v1"
+
+  config_docker_network = var.docker_network_name != null ? var.docker_network_name : "slms-network"
+}
+
+# Network - usar a mesma rede que o docker-compose (deve existir previamente)
+data "docker_network" "slms_network" {
+  name = local.config_docker_network
+}
+
+# PostgreSQL Database
+resource "docker_image" "postgres" {
+  name         = "postgres:16-alpine"
+  keep_locally = true  # Keep image locally to avoid re-pulling on every apply
+}
+
+resource "docker_container" "postgres" {
+  name  = "slms-postgres"
+  image = docker_image.postgres.image_id
+
+  env = [
+    "POSTGRES_USER=${local.config_postgres_user}",
+    "POSTGRES_PASSWORD=${local.config_postgres_password}",
+    "POSTGRES_DB=${local.config_postgres_db}",
+    "POSTGRES_HOST_AUTH_METHOD=scram-sha-256",
+    "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256"
+  ]
+
+  # No port exposure needed - PostgreSQL only needs to be accessible within the Docker network
+  # Other containers can connect using the container name 'slms-postgres'
+
+  volumes {
+    volume_name    = docker_volume.postgres_data.name
+    container_path = "/var/lib/postgresql/data"
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "pg_isready -U ${local.config_postgres_user} -d ${local.config_postgres_db}"]
+    interval = "10s"
+    timeout  = "5s"
+    retries  = 5
+  }
+}
+
+resource "docker_volume" "postgres_data" {
+  name = "slms-postgres-data"
+}
+
+# Backend Service
+resource "docker_image" "backend" {
+  name         = "slms-backend:latest"
+  keep_locally = true  # Keep image locally for faster rebuilds
+  build {
+    context    = local.backend_dir
+    dockerfile = "Dockerfile"
+    tag        = ["slms-backend:latest"]
+    build_args = {
+      BUILDKIT_INLINE_CACHE = "1"
+    }
+  }
+}
+
+resource "docker_container" "backend" {
+  name  = "slms-backend-dev"
+  image = docker_image.backend.image_id
+
+  env = [
+    "SPRING_DATASOURCE_URL=jdbc:postgresql://${docker_container.postgres.name}:5432/${local.config_postgres_db}",
+    "SPRING_DATASOURCE_USERNAME=${local.config_postgres_user}",
+    "SPRING_DATASOURCE_PASSWORD=${local.config_postgres_password}",
+    "SPRING_JPA_HIBERNATE_DDL_AUTO=update",
+    "KEYCLOAK_HOST=slms-keycloak-dev",
+    "KEYCLOAK_PORT=8080",
+    "KEYCLOAK_REALM=${local.config_keycloak_realm}",
+    "KEYCLOAK_CLIENT_ID=${local.config_keycloak_client_id}",
+    "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "KEYCLOAK_ADMIN_CLIENT_ID=${local.config_keycloak_client_id}",
+    "KEYCLOAK_ADMIN_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "MINIO_HOST=minio",
+    "MINIO_PORT=9000",
+    "MINIO_ROOT_USER=${local.config_minio_access_key}",
+    "MINIO_ROOT_PASSWORD=${local.config_minio_secret_key}",
+    "MINIO_BUCKET=${local.config_minio_bucket_name}",
+    "MINIO_ENDPOINT=${local.config_minio_endpoint}",
+    "MINIO_ACCESS_KEY=${local.config_minio_access_key}",
+    "MINIO_SECRET_KEY=${local.config_minio_secret_key}",
+    "MINIO_BUCKET_NAME=${local.config_minio_bucket_name}",
+    "SHIPPO_API_KEY=${local.config_shippo_api_key}",
+    "SHIPPO_BASE_URL=${local.config_shippo_base_url}",
+    "SHIPENGINE_API_KEY=${local.config_shipengine_api_key}",
+    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}"
+  ]
+
+  ports {
+    internal = 8080
+    external = 8080
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+
+  depends_on = [docker_container.postgres]
+}
+
+# Admin Console Frontend
+resource "docker_image" "admin_console" {
+  name         = "slms-admin-console:latest"
+  keep_locally = true
+  build {
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    tag        = ["slms-admin-console:latest"]
+    build_args = {
+      FRONTEND_PATH = "src/frontend/admin-console"
+    }
+  }
+}
+
+resource "docker_container" "admin_console" {
+  name  = "slms-admin-console-prod"
+  image = docker_image.admin_console.image_id
+
+  env = [
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
+  ]
+
+  working_dir = "/app"
+
+  ports {
+    internal = 3000
+    external = 3001
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+}
+
+# Customer Portal Frontend
+resource "docker_image" "customer_portal" {
+  name         = "slms-customer-portal:latest"
+  keep_locally = true
+  build {
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    tag        = ["slms-customer-portal:latest"]
+    build_args = {
+      FRONTEND_PATH = "src/frontend/customer-portal"
+    }
+  }
+}
+
+resource "docker_container" "customer_portal" {
+  name  = "slms-customer-portal-prod"
+  image = docker_image.customer_portal.image_id
+
+  env = [
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
+  ]
+
+  working_dir = "/app"
+
+  ports {
+    internal = 3000
+    external = 3002
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+}
+
+# Driver PWA Frontend
+resource "docker_image" "driver_pwa" {
+  name         = "slms-driver-pwa:latest"
+  keep_locally = true
+  build {
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    tag        = ["slms-driver-pwa:latest"]
+    build_args = {
+      FRONTEND_PATH = "src/frontend/driver-pwa"
+    }
+  }
+}
+
+resource "docker_container" "driver_pwa" {
+  name  = "slms-driver-pwa-prod"
+  image = docker_image.driver_pwa.image_id
+
+  env = [
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
+  ]
+
+  working_dir = "/app"
+
+  ports {
+    internal = 3000
+    external = 3003
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+}
+
+# Landing Page Frontend
+# Landing Page Frontend
+resource "docker_image" "landing_page" {
+  name         = "slms-landing-page:latest"
+  keep_locally = true
+  build {
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    tag        = ["slms-landing-page:latest"]
+    build_args = {
+      FRONTEND_PATH = "src/frontend/landing-page"
+    }
+  }
+}
+
+resource "docker_container" "landing_page" {
+  name  = "slms-landing-page-prod"
+  image = docker_image.landing_page.image_id
+
+  env = [
+    "NODE_ENV=production",
+    "NEXT_TELEMETRY_DISABLED=1"
+  ]
+
+  working_dir = "/app"
+
+  ports {
+    internal = 3000
+    external = 3004
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+}

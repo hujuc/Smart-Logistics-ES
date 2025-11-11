@@ -61,6 +61,34 @@ Each frontend has its own **BFF (Backend-for-Frontend)** layer.
 - Java 21
 - Node.js 20+
 - Docker & Docker Compose
+- Terraform 1.5+
+
+### Local infrastructure (Terraform + Docker)
+
+1. Copy `infra/.env.example` to `infra/.env` and fill the Keycloak/MinIO values used by Docker Compose.
+2. Copy `infra/terraform/terraform.tfvars.example` to `infra/terraform/terraform.tfvars` and fill real secrets.  
+   - Use `postgres_host_port` if port `5432` is taken (example: `15432`).
+3. Make sure the shared Docker network exists:
+   ```bash
+   docker network create slms-network  # no-op if it already exists
+   ```
+4. From the repository root run:
+   ```bash
+   ./infra/deploy.sh deploy
+   ```
+   This command:
+   - Runs `terraform init/apply` to build Postgres, backend and all frontends.
+   - Starts Keycloak, MinIO and Nginx with Docker Compose.
+5. To stop everything:
+   ```bash
+   ./infra/deploy.sh down
+   ```
+6. To inspect running services:
+   ```bash
+   ./infra/deploy.sh status
+   ```
+
+> Tip: do not run `docker compose up` right after `deploy.sh deploy`, the containers are already running and Docker will report name conflicts.
 
 ## Project Structure
 

@@ -3,8 +3,6 @@ name: Deploy project
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   deploy:
@@ -61,8 +59,18 @@ jobs:
           sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
           sudo chmod -R 777 /home/sousahugo/actions-runner/_work
 
+      - name: Allow current user to access Docker daemon
+        shell: bash
+        run: |
+          sudo setfacl -m "user:${USER}:rw" /var/run/docker.sock
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.5.7'
 
       - name: Write .env for Compose
         working-directory: infra
@@ -111,15 +119,61 @@ jobs:
           "MINIO_ROOT_USER=${MINIO_ROOT_USER}" \
           "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
           "MINIO_BUCKET=${MINIO_BUCKET}" \
+          "MINIO_BUCKET_NAME=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
+          "MAX_BACKUPS=4" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
-      - name: Deploy with Docker Compose
+      - name: Backup database before deployment
+        if: github.event_name == 'push'
         working-directory: infra
         shell: bash
         run: |
           set -euo pipefail
-          sudo docker compose --env-file ./.env down --remove-orphans
-          sudo docker compose --env-file ./.env up --build -d
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="pre-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env up --build -d backup
+          sudo docker compose --env-file ./.env exec -T \
+            -e BACKUP_LABEL="$BACKUP_LABEL" \
+            -e MAX_BACKUPS=4 \
+            backup /usr/local/bin/backup.sh
+          PRE_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp "backup:/backups/${PRE_BACKUP_FILE}" "../backups/${PRE_BACKUP_FILE}"
+          echo "PRE_BACKUP_FILE=${PRE_BACKUP_FILE}" >> "$GITHUB_ENV"
+
+      - name: Shutdown existing Docker Compose services
+        working-directory: infra
+        shell: bash
+        run: sudo docker compose down --remove-orphans || true
+
+      - name: Ensure deploy script is executable
+        shell: bash
+        run: chmod +x infra/deploy.sh
+
+      - name: Deploy infrastructure with Terraform and Docker Compose
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./deploy.sh deploy
+
+      - name: Backup database after deployment
+        if: github.event_name == 'push'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="post-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env up --build -d backup
+          sudo docker compose --env-file ./.env exec -T \
+            -e BACKUP_LABEL="$BACKUP_LABEL" \
+            -e MAX_BACKUPS=4 \
+            backup /usr/local/bin/backup.sh
+          POST_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp "backup:/backups/${POST_BACKUP_FILE}" "../backups/${POST_BACKUP_FILE}"
+          echo "POST_BACKUP_FILE=${POST_BACKUP_FILE}" >> "$GITHUB_ENV"
