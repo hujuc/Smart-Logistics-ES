@@ -36,3 +36,4 @@ output "nginx_url" {
 output "network_name" {
   description = "Docker network name"
   value       = data.docker_network.slms_network.name
+}
