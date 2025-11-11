@@ -59,10 +59,10 @@ jobs:
       #     sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
       #     sudo chmod -R 777 /home/sousahugo/actions-runner/_work
 
-      # - name: Allow current user to access Docker daemon
-      #   shell: bash
-      #   run: |
-      #     sudo setfacl -m "user:${USER}:rw" /var/run/docker.sock
+      - name: Allow current user to access Docker daemon
+        shell: bash
+        run: |
+          sudo setfacl -m "user:${USER}:rw" /var/run/docker.sock
 
       - name: Checkout repository
         uses: actions/checkout@v4
