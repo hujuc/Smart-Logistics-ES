@@ -199,9 +199,9 @@ jobs:
       - name: Remove existing Terraform-managed containers
         shell: bash
         run: |
-          # Stop and remove containers that might conflict with Terraform
-          docker stop slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
-          docker rm -f slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+          # Stop and remove all replica containers that might conflict with Terraform
+          docker ps -a --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' | xargs -r docker stop || true
+          docker ps -a --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' | xargs -r docker rm -f || true
 
       - name: Ensure deploy script is executable
         shell: bash
