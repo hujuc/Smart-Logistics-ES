@@ -74,8 +74,8 @@ terraform_smart_deploy() {
 }
 
 compose_up() {
-  log "Starting auxiliary services (Keycloak, MinIO, Backup, Nginx)"
-  docker compose up -d keycloak minio minio-create-bucket backup nginx
+  log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
+  docker compose up -d keycloak minio minio-create-bucket nginx
 }
 
 compose_down() {
@@ -165,7 +165,6 @@ case "${1:-}" in
       keycloak) docker logs -f slms-keycloak-prod ;;
       nginx) docker logs -f slms-nginx-prod ;;
       minio) docker logs -f slms-minio-prod ;;
-      backup) docker logs -f slms-backup-prod ;;
       *) log "Unknown service: ${service}"; exit 1 ;;
     esac
     ;;
@@ -202,7 +201,7 @@ case "${1:-}" in
   echo "  restart         - Restart all containers"
   echo "  status          - Show status of all services"
   echo "  rebuild         - Force rebuild of all Docker images"
-  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio|backup)"
+  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
   exit 1
   ;;
 esac

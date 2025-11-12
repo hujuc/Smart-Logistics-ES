@@ -122,7 +122,6 @@ jobs:
           "MINIO_BUCKET_NAME=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
-          "MAX_BACKUPS=4" \
           "KC_HOSTNAME_URL=${KC_HOSTNAME_URL}" \
           "NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}" \
           "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}" \
@@ -132,39 +131,6 @@ jobs:
           "SHIPPO_BASE_URL=https://api.goshippo.com" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
-
-      - name: Backup database before deployment
-        if: github.event_name == 'push'
-        working-directory: infra
-        shell: bash
-        run: |
-          # Check if postgres container exists and is running
-          if docker ps --format '{{.Names}}' | grep -q '^slms-postgres-prod$'; then
-            echo "PostgreSQL container found. Checking health..."
-
-            # Check if postgres is healthy
-            if docker exec slms-postgres-prod pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} > /dev/null 2>&1; then
-              echo "PostgreSQL is healthy. Proceeding with backup..."
-              SHORT_SHA="${GITHUB_SHA:0:7}"
-              BACKUP_LABEL="pre-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
-
-              sudo docker compose --env-file ./.env up --build -d backup
-              sudo docker compose --env-file ./.env exec -T \
-                -e BACKUP_LABEL="$BACKUP_LABEL" \
-                -e MAX_BACKUPS=4 \
-                backup /usr/local/bin/backup.sh
-
-              PRE_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
-              mkdir -p ../backups
-              sudo docker compose --env-file ./.env cp "backup:/backups/${PRE_BACKUP_FILE}" "../backups/${PRE_BACKUP_FILE}"
-              echo "PRE_BACKUP_FILE=${PRE_BACKUP_FILE}" >> "$GITHUB_ENV"
-              echo "✅ Pre-deployment backup completed: ${PRE_BACKUP_FILE}"
-            else
-              echo "⚠️  PostgreSQL is not ready. Skipping pre-deployment backup."
-            fi
-          else
-            echo "ℹ️  PostgreSQL container not found. This might be a first deployment - skipping pre-deployment backup."
-          fi
 
       - name: Shutdown existing Docker Compose services
         working-directory: infra
@@ -179,9 +145,9 @@ jobs:
       - name: Remove existing Terraform-managed containers
         shell: bash
         run: |
-          # Stop and remove containers that might conflict with Terraform or docker-compose
-          docker stop slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod slms-backup-prod 2>/dev/null || true
-          docker rm -f slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod slms-backup-prod 2>/dev/null || true
+          # Stop and remove containers that might conflict with Terraform
+          docker stop slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+          docker rm -f slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
 
       - name: Ensure deploy script is executable
         shell: bash
@@ -195,26 +161,6 @@ jobs:
           # Smart deploy: reuses existing containers when possible
           # Rebuild images to include basePath configuration
           ./deploy.sh deploy
-
-      - name: Backup database after deployment
-        if: github.event_name == 'push'
-        working-directory: infra
-        shell: bash
-        run: |
-          set -euo pipefail
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          BACKUP_LABEL="post-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
-          sudo docker compose --env-file ./.env up --build -d backup
-          sudo docker compose --env-file ./.env exec -T \
-            -e BACKUP_LABEL="$BACKUP_LABEL" \
-            -e MAX_BACKUPS=4 \
-            backup /usr/local/bin/backup.sh
-          POST_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
-          mkdir -p ../backups
-          sudo docker compose --env-file ./.env cp "backup:/backups/${POST_BACKUP_FILE}" "../backups/${POST_BACKUP_FILE}"
-          echo "POST_BACKUP_FILE=${POST_BACKUP_FILE}" >> "$GITHUB_ENV"
-        env:
-          TF_VAR_public_host: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
 
       - name: Restart Nginx to refresh container DNS
         shell: bash
