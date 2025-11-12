@@ -18,6 +18,7 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
       KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       KC_DB: ${{ secrets.KC_DB }}
@@ -88,6 +89,7 @@ jobs:
           "DB_NAME=${DB_NAME}" \
           "DB_USERNAME=${DB_USERNAME}" \
           "DB_PASSWORD=${DB_PASSWORD}" \
+          "JWT_ISSUER_URI=${JWT_ISSUER_URI}" \
           "KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}" \
           "KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}" \
           "KC_DB=${KC_DB}" \
@@ -151,6 +153,9 @@ jobs:
           keycloak_hostname_url        = "${KC_HOSTNAME_URL}"
           keycloak_admin               = "${KEYCLOAK_ADMIN}"
           keycloak_admin_password      = "${KEYCLOAK_ADMIN_PASSWORD}"
+          
+          # JWT Configuration
+          jwt_issuer_uri      = "${JWT_ISSUER_URI}"
 
           # MinIO Configuration
           minio_endpoint    = "http://slms-minio-prod:9000"
