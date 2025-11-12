@@ -123,6 +123,13 @@ variable "shipengine_base_url" {
   default     = null
 }
 
+# QR Code Configuration
+variable "qr_confirmation_base_url" {
+  description = "Base URL for QR code confirmation endpoints (e.g., http://yourdomain.com/api/driver)"
+  type        = string
+  default     = null
+}
+
 # Docker Network
 variable "docker_network_name" {
   description = "Existing Docker network that connects Terraform and Docker Compose services"

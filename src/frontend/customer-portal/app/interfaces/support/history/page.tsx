@@ -15,6 +15,7 @@ import {
 import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle, Plus } from "lucide-react"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
 import type { Order, ShipmentOrderStatus } from "@/types/common"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 export default function OrderHistoryPage() {
   const router = useRouter()
@@ -263,7 +264,7 @@ export default function OrderHistoryPage() {
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <MapPin className="h-3 w-3" />
-                        {order.shippingAddress}
+                        {formatOrderShippingAddress(order)}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">

@@ -14,6 +14,14 @@ export interface CreateOrderRequest {
   reference: string;
   description?: string;
   shippingAddress: string;
+  shippingAddressLine1?: string;
+  shippingAddressLine2?: string;
+  shippingCity?: string;
+  shippingStateOrProvince?: string;
+  shippingPostalCode?: string;
+  shippingCountry?: string;
+  shippingPhone?: string;
+  shippingEmail?: string;
   estimatedDeliveryDate?: string; // ISO date string
   warehouseId: number;
   trackingNumber?: string;

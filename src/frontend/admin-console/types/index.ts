@@ -12,6 +12,7 @@ export type {
   Order,
   OrderEvent,
   OrderDocument,
+  ShipmentDocument,
   ContactInfo,
   Address,
   StatCard,
