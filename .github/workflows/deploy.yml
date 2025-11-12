@@ -116,6 +116,8 @@ jobs:
           "MINIO_BUCKET=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
+          "PUBLIC_HOST=${PUBLIC_HOST}" \
+          ""
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
