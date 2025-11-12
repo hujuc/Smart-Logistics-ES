@@ -216,7 +216,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         shippingEmail: order.shippingEmail,
         warehouseId: order.warehouseId,
         trackingNumber: order.trackingNumber,
-        estimatedDeliveryDate: order.estimatedDeliveryDate,
+        estimatedDeliveryDate: order.estimatedDeliveryDate instanceof Date ? order.estimatedDeliveryDate.toISOString() : order.estimatedDeliveryDate as string,
         carrierId: order.carrierId,
       })
       setIsEditing(false)
