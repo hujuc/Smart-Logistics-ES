@@ -143,4 +143,4 @@ jobs:
           # Smart deploy: reuses existing containers when possible
           ./deploy.sh deploy
         env:
-          TF_VAR_public_host: ${{ secrets.PUBLIC_HOST || '' }}
+          TF_VAR_public_host: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
