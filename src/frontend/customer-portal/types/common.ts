@@ -62,6 +62,14 @@ export interface Order {
     description: string;
     status: ShipmentOrderStatus;
     shippingAddress: string;
+    shippingAddressLine1?: string;
+    shippingAddressLine2?: string;
+    shippingCity?: string;
+    shippingStateOrProvince?: string;
+    shippingPostalCode?: string;
+    shippingCountry?: string;
+    shippingPhone?: string;
+    shippingEmail?: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
     shippoShipmentId: string;

@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
 import type { Order, OrderEvent } from "@/types/common"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 export default function OrderTrackingPage() {
   const params = useParams()
@@ -162,7 +163,7 @@ export default function OrderTrackingPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Shipping Address</p>
-                <p className="font-medium">{order.shippingAddress}</p>
+                <p className="font-medium">{formatOrderShippingAddress(order)}</p>
               </div>
               {order.estimatedDeliveryDate && (
                 <div>

@@ -43,6 +43,26 @@
 hs_err_pid*
 replay_pid*
 
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Surefire reports
+**/surefire-reports/
+**/failsafe-reports/
+
+# JaCoCo coverage reports
+jacoco.exec
+**/jacoco/
+*.exec
+
+# Allure reports
+allure-results/
+allure-report/
+.allure/
+
 ### NextJS ###
 # dependencies
 /node_modules
