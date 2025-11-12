@@ -123,6 +123,7 @@ resource "docker_container" "backend" {
     "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
     "KEYCLOAK_ADMIN_CLIENT_ID=${local.config_keycloak_client_id}",
     "KEYCLOAK_ADMIN_CLIENT_SECRET=${local.config_keycloak_client_secret}",
+    "JWT_ISSUER_URI=http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8180/realms/${local.config_keycloak_realm}",
     "MINIO_HOST=minio",
     "MINIO_PORT=9000",
     "MINIO_ROOT_USER=${local.config_minio_access_key}",
