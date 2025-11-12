@@ -7,9 +7,11 @@ import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,6 +38,7 @@ public class CustomerServiceBffController {
     private final DeliveryExceptionService exceptionService;
     private final OrderService orderService;
     private final OrderEventService shipmentOrderEventService;
+    private final KeycloakUserService userService;
 
     /**
      * Health check endpoint
@@ -442,6 +445,36 @@ public class CustomerServiceBffController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Failed to fetch order {} with events: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // User Management Endpoints
+    // ========================================
+
+    /**
+     * Get all customer service representatives
+     * GET /api/customer-service/users/customer-service-reps
+     */
+    @GetMapping("/users/customer-service-reps")
+    public ResponseEntity<List<UserRepresentation>> getCustomerServiceReps() {
+        try {
+            log.info("Customer Service BFF: Fetching all customer service representatives");
+            
+            // Try both possible role names
+            List<UserRepresentation> csrUsers = userService.getUsersByRole("CUSTOMER_SERVICE_REP");
+            
+            // If nothing found with CUSTOMER_SERVICE_REP, try alternative name
+            if (csrUsers.isEmpty()) {
+                log.info("No users found with role CUSTOMER_SERVICE_REP, trying customer_service_representative");
+                csrUsers = userService.getUsersByRole("customer_service_representative");
+            }
+            
+            log.info("Found {} customer service representatives", csrUsers.size());
+            return ResponseEntity.ok(csrUsers);
+        } catch (Exception e) {
+            log.error("Failed to fetch customer service representatives: {}", e.getMessage(), e);
             throw e;
         }
     }

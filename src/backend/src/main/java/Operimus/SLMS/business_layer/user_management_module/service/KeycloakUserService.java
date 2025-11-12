@@ -197,6 +197,49 @@ public class KeycloakUserService {
         }
     }
 
+    /**
+     * Get users by role name.
+     * Fetches all users and filters by checking their realm-level role mappings.
+     */
+    public List<UserRepresentation> getUsersByRole(String roleName) {
+        try {
+            log.info("Fetching users with role: {}", roleName);
+            RealmResource realmResource = keycloak.realm(realm);
+            List<UserRepresentation> users = realmResource.users().list();
+            
+            List<UserRepresentation> usersWithRole = users.stream()
+                    .filter(user -> {
+                        try {
+                            // Get realm-level roles for this user
+                            List<RoleRepresentation> userRoles = realmResource.users()
+                                    .get(user.getId())
+                                    .roles()
+                                    .realmLevel()
+                                    .listEffective(); // listEffective includes inherited roles from groups
+                            
+                            boolean hasRole = userRoles.stream()
+                                    .anyMatch(role -> role.getName().equalsIgnoreCase(roleName));
+                            
+                            if (hasRole) {
+                                log.debug("User {} has role {}", user.getUsername(), roleName);
+                            }
+                            
+                            return hasRole;
+                        } catch (Exception e) {
+                            log.warn("Failed to check roles for user {}: {}", user.getId(), e.getMessage());
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+            
+            log.info("Found {} users with role {}", usersWithRole.size(), roleName);
+            return usersWithRole;
+        } catch (Exception e) {
+            log.error("Error fetching users by role {}: {}", roleName, e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch users by role: " + e.getMessage(), e);
+        }
+    }
+
     public List<UserRepresentation> searchUsers(String search) {
         try {
             List<UserRepresentation> users = keycloak.realm(realm).users().search(search);
