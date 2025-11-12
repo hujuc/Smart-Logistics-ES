@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Loader2, Settings } from "lucide-react"
+import { Search, MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Loader2 } from "lucide-react"
 import { exceptionService } from "@/lib/services/exception.service"
 import { featureFlagManager, isSupportTicketsEnabled, getTicketListView } from "@/lib/flagsmith"
 import type { DeliveryExceptionResponse } from "@/types/exception"
@@ -38,7 +38,6 @@ export default function CustomerTicketsPage() {
   // Feature flags
   const [featureEnabled, setFeatureEnabled] = useState(true)
   const [listView, setListView] = useState<'table' | 'cards'>('table')
-  const [showFeatureToggle, setShowFeatureToggle] = useState(false)
 
   // Initialize feature flags and load tickets
   useEffect(() => {
@@ -62,11 +61,6 @@ export default function CustomerTicketsPage() {
           view,
           userId,
         })
-        
-        // Show toggle in development
-        if (process.env.NODE_ENV === 'development') {
-          setShowFeatureToggle(true)
-        }
         
         // Load tickets if feature is enabled
         if (enabled) {
@@ -108,22 +102,6 @@ export default function CustomerTicketsPage() {
 
   const handleNewTicket = () => {
     router.push("/interfaces/support/tickets/new")
-  }
-
-  const handleToggleFeature = () => {
-    const newValue = !featureEnabled
-    featureFlagManager.setFlag('support-tickets-enabled', newValue)
-    setFeatureEnabled(newValue)
-    
-    if (newValue) {
-      loadTickets()
-    }
-  }
-
-  const handleToggleView = () => {
-    const newView = listView === 'table' ? 'cards' : 'table'
-    featureFlagManager.setFlag('ticket-list-view', newView)
-    setListView(newView)
   }
 
   // Filter tickets
@@ -173,26 +151,6 @@ export default function CustomerTicketsPage() {
   if (!featureEnabled) {
     return (
       <div className="space-y-6">
-        {/* Development toggle */}
-        {showFeatureToggle && (
-          <div className="fixed bottom-4 right-4 z-50">
-            <div className="bg-white border-2 border-orange-300 rounded-lg shadow-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Settings className="w-4 h-4 text-orange-600" />
-                <span className="text-xs font-semibold text-gray-700">Feature Toggle (Dev Only)</span>
-              </div>
-              <Button
-                size="sm"
-                variant={featureEnabled ? 'default' : 'outline'}
-                onClick={handleToggleFeature}
-                className="w-full text-xs"
-              >
-                {featureEnabled ? '✓ Feature ON' : '✗ Feature OFF'}
-              </Button>
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8 max-w-md">
             <MessageSquare className="w-16 h-16 text-blue-600 mx-auto mb-4" />
@@ -239,34 +197,6 @@ export default function CustomerTicketsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Development Feature Toggles */}
-      {showFeatureToggle && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div className="bg-white border-2 border-gray-300 rounded-lg shadow-lg p-3 space-y-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Settings className="w-4 h-4 text-gray-600" />
-              <span className="text-xs font-semibold text-gray-700">Dev Controls</span>
-            </div>
-            <Button
-              size="sm"
-              variant={featureEnabled ? 'default' : 'outline'}
-              onClick={handleToggleFeature}
-              className="w-full text-xs"
-            >
-              {featureEnabled ? '✓ Feature ON' : '✗ Feature OFF'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleToggleView}
-              className="w-full text-xs"
-            >
-              View: {listView === 'table' ? 'Table' : 'Cards'}
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

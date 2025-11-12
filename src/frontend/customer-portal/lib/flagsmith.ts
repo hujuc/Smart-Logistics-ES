@@ -8,6 +8,15 @@
  * - A/B test different implementations (Multivariate Toggles)
  */
 
+import flagsmith from 'flagsmith';
+
+// Flagsmith Environment Key
+// Get this from: Flagsmith Dashboard -> Environments -> Client-side Environment Key
+const FLAGSMITH_ENV_KEY = process.env.NEXT_PUBLIC_FLAGSMITH_ENV_KEY || '';
+
+// Use Flagsmith API in production, fallback to in-memory for development
+const USE_FLAGSMITH_API = FLAGSMITH_ENV_KEY.length > 0;
+
 // For demo purposes, we'll use a simple in-memory feature flag system
 // In production, you would integrate with Flagsmith API: https://flagsmith.com/
 interface FeatureFlags {
@@ -126,28 +135,52 @@ class FeatureFlagManager {
     
     console.log(`[Flagsmith] Initializing flags for user: ${userId}`);
     
-    // For demo: Assign flags based on user ID hash
-    // In production, Flagsmith API would handle this based on:
-    // - User segments (e.g., "beta_testers", "premium_users")
-    // - Rollout percentage
-    // - User traits (location, subscription level, etc.)
-    const hash = this.hashUserId(userId);
-    
-    // Determine rollout percentage for this user
-    const rolloutPercentage = this.flags['tickets-rollout-percentage'];
-    const userBucket = hash % 100; // User falls into bucket 0-99
-    const isInRollout = userBucket < rolloutPercentage;
-    
-    if (!isInRollout) {
-      // User is not in rollout - disable feature
-      this.flags['support-tickets-enabled'] = false;
-      console.log(`[Flagsmith] User ${userId} not in rollout (bucket: ${userBucket}, rollout: ${rolloutPercentage}%)`);
+    if (USE_FLAGSMITH_API) {
+      // Use real Flagsmith API
+      try {
+        console.log('[Flagsmith] Using Flagsmith API');
+        
+        await flagsmith.init({
+          environmentID: FLAGSMITH_ENV_KEY,
+          identity: userId,
+          traits: userTraits,
+          onChange: (oldFlags, params) => {
+            console.log('[Flagsmith] Flags updated from API:', params.flagsChanged);
+            this.syncFromFlagsmith();
+          },
+        });
+        
+        // Sync flags from Flagsmith to our local state
+        this.syncFromFlagsmith();
+        
+        console.log('[Flagsmith] Successfully initialized with API');
+      } catch (error) {
+        console.error('[Flagsmith] API initialization failed, falling back to defaults:', error);
+        // Continue with default flags on error
+      }
     } else {
-      console.log(`[Flagsmith] User ${userId} IN rollout (bucket: ${userBucket}, rollout: ${rolloutPercentage}%)`);
+      // Use in-memory fallback (development mode)
+      console.log('[Flagsmith] Using in-memory flags (no API key configured)');
       
-      // Assign A/B test variants based on user hash
-      this.flags['ticket-creation-version'] = hash % 2 === 0 ? 'basic' : 'advanced';
-      this.flags['ticket-list-view'] = hash % 3 === 0 ? 'cards' : 'table';
+      // For demo: Assign flags based on user ID hash
+      const hash = this.hashUserId(userId);
+      
+      // Determine rollout percentage for this user
+      const rolloutPercentage = this.flags['tickets-rollout-percentage'];
+      const userBucket = hash % 100; // User falls into bucket 0-99
+      const isInRollout = userBucket < rolloutPercentage;
+      
+      if (!isInRollout) {
+        // User is not in rollout - disable feature
+        this.flags['support-tickets-enabled'] = false;
+        console.log(`[Flagsmith] User ${userId} not in rollout (bucket: ${userBucket}, rollout: ${rolloutPercentage}%)`);
+      } else {
+        console.log(`[Flagsmith] User ${userId} IN rollout (bucket: ${userBucket}, rollout: ${rolloutPercentage}%)`);
+        
+        // Assign A/B test variants based on user hash
+        this.flags['ticket-creation-version'] = hash % 2 === 0 ? 'basic' : 'advanced';
+        this.flags['ticket-list-view'] = hash % 3 === 0 ? 'cards' : 'table';
+      }
     }
     
     // Store in localStorage for consistency
@@ -158,11 +191,56 @@ class FeatureFlagManager {
     // Log assigned flags
     console.log('[Flagsmith] Flags assigned:', {
       ticketsEnabled: this.flags['support-tickets-enabled'],
+      rolloutPercentage: this.flags['tickets-rollout-percentage'],
       creationVersion: this.flags['ticket-creation-version'],
       listView: this.flags['ticket-list-view'],
       fileUpload: this.flags['ticket-file-upload-enabled'],
       autoAssign: this.flags['ticket-auto-assign-enabled'],
     });
+  }
+
+  /**
+   * Sync flags from Flagsmith API to local state
+   * Called after Flagsmith initialization and on flag changes
+   */
+  private syncFromFlagsmith(): void {
+    if (!USE_FLAGSMITH_API) return;
+    
+    console.log('[Flagsmith] Syncing flags from API...');
+    
+    // Sync boolean flags - use getValue() and check if it's enabled AND true
+    this.flags['support-tickets-enabled'] = 
+      flagsmith.hasFeature('support-tickets-enabled') && 
+      flagsmith.getValue('support-tickets-enabled') === true;
+    
+    this.flags['ticket-file-upload-enabled'] = 
+      flagsmith.hasFeature('ticket-file-upload-enabled') && 
+      flagsmith.getValue('ticket-file-upload-enabled') === true;
+    
+    this.flags['ticket-auto-assign-enabled'] = 
+      flagsmith.hasFeature('ticket-auto-assign-enabled') && 
+      flagsmith.getValue('ticket-auto-assign-enabled') === true;
+    
+    // Sync numeric flag (rollout percentage)
+    const rolloutValue = flagsmith.getValue('tickets-rollout-percentage');
+    this.flags['tickets-rollout-percentage'] = rolloutValue 
+      ? parseInt(rolloutValue as string, 10) 
+      : 100;
+    
+    // Sync multivariate flags
+    const creationVersion = flagsmith.getValue('ticket-creation-version');
+    this.flags['ticket-creation-version'] = 
+      (creationVersion === 'basic' || creationVersion === 'advanced') 
+        ? creationVersion 
+        : 'basic';
+    
+    const listView = flagsmith.getValue('ticket-list-view');
+    this.flags['ticket-list-view'] = 
+      (listView === 'table' || listView === 'cards') 
+        ? listView 
+        : 'table';
+    
+    console.log('[Flagsmith] Synced flags:', this.flags);
   }
 
   /**
