@@ -136,6 +136,7 @@ resource "docker_container" "backend" {
     "MINIO_PORT=9000",
     "MINIO_ROOT_USER=${local.config_minio_access_key}",
     "MINIO_ROOT_PASSWORD=${local.config_minio_secret_key}",
+    "MINIO_BUCKET=${local.config_minio_bucket_name}",
     "MINIO_BUCKET_NAME=${local.config_minio_bucket_name}",
     "MINIO_ENDPOINT=${local.config_minio_endpoint}",
     "MINIO_ACCESS_KEY=${local.config_minio_access_key}",
