@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { featureFlagManager } from "@/lib/flagsmith"
 import OrderLookupVersionA from "./version-a"
 import OrderLookupVersionB from "./version-b"
@@ -14,6 +15,9 @@ import { Settings } from "lucide-react"
  * for A/B testing purposes. Users are automatically assigned to version A or B.
  */
 export default function OrderLookupPage() {
+  const searchParams = useSearchParams()
+  const orderIdFromUrl = searchParams.get('orderId')
+  
   const [version, setVersion] = useState<'A' | 'B'>('A')
   const [showVersionToggle, setShowVersionToggle] = useState(false)
 
@@ -76,7 +80,11 @@ export default function OrderLookupPage() {
       )}
 
       {/* Render the appropriate version */}
-      {version === 'A' ? <OrderLookupVersionA /> : <OrderLookupVersionB />}
+      {version === 'A' ? (
+        <OrderLookupVersionA initialOrderId={orderIdFromUrl ? Number(orderIdFromUrl) : undefined} />
+      ) : (
+        <OrderLookupVersionB initialOrderId={orderIdFromUrl ? Number(orderIdFromUrl) : undefined} />
+      )}
     </div>
   )
 }

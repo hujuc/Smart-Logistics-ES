@@ -188,6 +188,15 @@ export default function TicketDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {ticket.orderId && (
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/interfaces/customer-service/order-lookup?orderId=${ticket.orderId}`)}
+            >
+              <Package className="mr-2 h-4 w-4" />
+              View Order Details
+            </Button>
+          )}
           <span
             className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
               ticket.status === "Open"

@@ -361,6 +361,7 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
     category: exception.category, // Use the category field directly from backend
     assignedTo: assigneeName,  // Display name
     assignedToId: exception.assignedTo,  // Keep the UUID for form selection
+    orderId: exception.orderId,  // Order ID for navigation
     messages: 0,
     createdAt: exception.createdAt ? new Date(exception.createdAt) : new Date(),
     updatedAt: exception.updatedAt ? new Date(exception.updatedAt) : new Date(),

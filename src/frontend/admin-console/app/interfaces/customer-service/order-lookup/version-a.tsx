@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,11 +29,15 @@ const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: stri
   CANCELLED: { icon: AlertTriangle, color: "text-red-500", label: "Cancelled" },
 }
 
+interface OrderLookupVersionAProps {
+  initialOrderId?: number;
+}
+
 /**
  * Version A: Card-based layout with vertical timeline
  * Original design with emphasis on visual presentation
  */
-export default function OrderLookupVersionA() {
+export default function OrderLookupVersionA({ initialOrderId }: OrderLookupVersionAProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Order[]>([])
@@ -41,6 +45,27 @@ export default function OrderLookupVersionA() {
   const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Auto-load order if initialOrderId is provided
+  useEffect(() => {
+    if (initialOrderId) {
+      const loadInitialOrder = async () => {
+        setIsLoadingEvents(true)
+        try {
+          const order = await customerServiceOrderApi.getOrderById(initialOrderId)
+          setSelectedOrder(order)
+          const events = await customerServiceOrderApi.getOrderEvents(initialOrderId)
+          setOrderEvents(events)
+        } catch (err) {
+          console.error('Failed to load order:', err)
+          setError(`Failed to load order #${initialOrderId}`)
+        } finally {
+          setIsLoadingEvents(false)
+        }
+      }
+      loadInitialOrder()
+    }
+  }, [initialOrderId])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
