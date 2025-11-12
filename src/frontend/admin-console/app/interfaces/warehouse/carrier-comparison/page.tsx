@@ -10,7 +10,6 @@ import { warehouseService } from "@/lib/services/warehouse.service"
 import { carrierService, type CarrierResponse } from "@/lib/services/carrier.service"
 import { shipmentService } from "@/lib/services/shipment.service"
 import { calculateShippingRates } from "@/lib/carrier-api"
-import { featureFlagManager } from "@/lib/flagsmith"
 import { API_ENDPOINTS, apiFetch } from "@/lib/api"
 import { formatOrderShippingAddress, hasStructuredAddress } from "@/lib/address"
 
@@ -95,8 +94,8 @@ export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
   const [searchTerm, setSearchTerm] = useState("")
-  const [carrierViewMode, setCarrierViewMode] = useState<"table" | "cards">("table") // Toggle between views in Step 2
-  const [showViewToggle, setShowViewToggle] = useState(false) // Show toggle control in development
+  // Carrier view mode is now fixed to "table" (accepted version)
+  const carrierViewMode = "table"
 
   // Real data states
   const [orders, setOrders] = useState<Order[]>([])
@@ -564,11 +563,6 @@ export default function CarrierComparisonPage() {
     if (flowStep > 1) setFlowStep((flowStep - 1) as 1 | 2 | 3 | 4)
   }
 
-  const handleToggleViewMode = (mode: "table" | "cards") => {
-    featureFlagManager.setFlag('carrier-view-mode', mode)
-    setCarrierViewMode(mode)
-  }
-
   const handleConfirm = async () => {
     if (!selectedCarrier || !selectedDriver || selectedShipments.length === 0) {
       setError("Please select shipments, a carrier, and a driver")
@@ -652,40 +646,6 @@ export default function CarrierComparisonPage() {
 
   return (
     <div className="relative space-y-4 md:space-y-6">
-      {/* Development-only view toggle control */}
-      {showViewToggle && flowStep === 2 && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div className="bg-white border-2 border-purple-300 rounded-lg shadow-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Settings className="w-4 h-4 text-purple-600" />
-              <span className="text-xs font-semibold text-gray-700">A/B Test Control - Carrier View</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600">View Mode:</span>
-              <Button
-                size="sm"
-                variant={carrierViewMode === 'table' ? 'default' : 'outline'}
-                onClick={() => handleToggleViewMode('table')}
-                className={`h-7 text-xs ${carrierViewMode === 'table' ? 'bg-brand-purple hover:bg-brand-purple-hover' : ''}`}
-              >
-                {carrierViewMode === 'table' ? '✓ Table' : 'Table'}
-              </Button>
-              <Button
-                size="sm"
-                variant={carrierViewMode === 'cards' ? 'default' : 'outline'}
-                onClick={() => handleToggleViewMode('cards')}
-                className={`h-7 text-xs ${carrierViewMode === 'cards' ? 'bg-brand-purple hover:bg-brand-purple-hover' : ''}`}
-              >
-                {carrierViewMode === 'cards' ? '✓ Cards' : 'Cards'}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Testing mode: <span className="font-mono font-semibold">{carrierViewMode}</span>
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-black">Carrier Comparison</h1>
@@ -844,158 +804,17 @@ export default function CarrierComparisonPage() {
                         <h3 className="text-sm font-semibold text-black">Carrier View</h3>
                         <p className="text-xs text-gray-600">Choose your preferred display mode</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant={carrierViewMode === "table" ? "default" : "outline"}
-                          onClick={() => handleToggleViewMode("table")}
-                          className={carrierViewMode === "table" ? "bg-brand-purple hover:bg-brand-purple-hover" : ""}
-                        >
-                          <Package className="h-4 w-4 mr-2" />
-                          Table View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={carrierViewMode === "cards" ? "default" : "outline"}
-                          onClick={() => handleToggleViewMode("cards")}
-                          className={carrierViewMode === "cards" ? "bg-brand-purple hover:bg-brand-purple-hover" : ""}
-                        >
-                          <Truck className="h-4 w-4 mr-2" />
-                          Detailed View
-                        </Button>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Table View */}
-                  {carrierViewMode === "table" && (
-                <CarrierCompare
-                  carriers={carriers}
-                  selectedCarrier={selectedCarrier}
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  handleSelectCarrier={handleSelectCarrier}
-                />
-                  )}
-
-                  {/* Detailed Cards View */}
-                  {carrierViewMode === "cards" && (
-                    <div className="bg-white border rounded-lg p-6 shadow-sm">
-                      <div className="space-y-6">
-                        <div>
-                          <h3 className="text-xl font-bold text-black mb-2">Available Carriers</h3>
-                          <p className="text-sm text-gray-600">Compare carrier rates and transit times in detail</p>
-                        </div>
-
-                        {/* Carrier Statistics */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                            <p className="text-sm text-purple-600 font-medium mb-1">Total Carriers</p>
-                            <p className="text-3xl font-bold text-purple-900">{carriers.length}</p>
-                          </div>
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <p className="text-sm text-blue-600 font-medium mb-1">Avg Cost</p>
-                            <p className="text-3xl font-bold text-blue-900">
-                              ${(carriers.reduce((sum, c) => sum + (c.cost || 0), 0) / carriers.length).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <p className="text-sm text-green-600 font-medium mb-1">Lowest Cost</p>
-                            <p className="text-3xl font-bold text-green-900">
-                              ${Math.min(...carriers.map(c => c.cost || Infinity)).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                            <p className="text-sm text-orange-600 font-medium mb-1">Fastest</p>
-                            <p className="text-3xl font-bold text-orange-900">
-                              {(() => {
-                                const times = carriers
-                                  .map(c => c.transitTime?.match(/(\d+)/)?.[0])
-                                  .filter(Boolean)
-                                  .map(Number)
-                                return times.length > 0 ? `${Math.min(...times)}d` : 'N/A'
-                              })()}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Detailed Carrier Cards */}
-                        <div>
-                          <h4 className="text-lg font-semibold text-black mb-4">Select a Carrier</h4>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {carriers.map((carrier) => (
-                              <div 
-                                key={carrier.id} 
-                                className={`border-2 rounded-lg p-5 cursor-pointer transition-all ${
-                                  selectedCarrier?.id === carrier.id 
-                                    ? 'border-purple-500 bg-purple-50 shadow-lg' 
-                                    : 'border-gray-200 hover:shadow-lg hover:border-purple-300'
-                                }`}
-                                onClick={() => handleSelectCarrier(carrier)}
-                              >
-                                <div className="flex items-start justify-between mb-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-4xl">{carrier.logo}</div>
-                                    <div>
-                                      <h5 className="text-lg font-bold text-black">{carrier.name}</h5>
-                                      <p className="text-sm text-gray-600">{carrier.service}</p>
-                                    </div>
-                                  </div>
-                                  {selectedCarrier?.id === carrier.id && (
-                                    <div className="bg-purple-600 text-white p-2 rounded-full">
-                                      <CheckCircle className="h-5 w-5" />
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="space-y-3">
-                                  {/* Pricing Information */}
-                                  <div className="border-purple-200 rounded-lg p-3">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-xs text-purple-700 font-medium mb-1">Shipping Cost</p>
-                                        <p className="text-2xl font-bold text-purple-900">${carrier.cost}</p>
-                                      </div>
-                                      {carrier.cost === Math.min(...carriers.map(c => c.cost || Infinity)) && (
-                                        <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                                          BEST PRICE
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Transit Time */}
-                                  <div className="border border-purple-200 rounded-lg p-3">
-                                    <p className="text-xs text-purple-700 font-medium mb-1">Estimated Transit Time</p>
-                                    <p className="text-lg font-bold text-purple-900">{carrier.transitTime || 'N/A'}</p>
-                                  </div>
-
-                                  {/* Service Information */}
-                                  <div className="border-t pt-3">
-                                    <p className="text-xs text-gray-500 font-medium mb-2">SERVICE DETAILS</p>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Provider:</span>
-                                        <span className="font-semibold text-black">{carrier.name}</span>
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Service Level:</span>
-                                        <span className="font-semibold text-black">{carrier.service}</span>
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">API Source:</span>
-                                        <span className="font-semibold text-black">Shippo</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Carrier Comparison Table */}
+                  <CarrierCompare
+                    carriers={carriers}
+                    selectedCarrier={selectedCarrier}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    handleSelectCarrier={handleSelectCarrier}
+                  />
                 </>
               )}
               <div className="flex justify-between items-center bg-white border rounded-lg p-4 shadow-sm">

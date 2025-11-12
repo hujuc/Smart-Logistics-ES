@@ -8,140 +8,51 @@ import {
   Calendar,
   AlertTriangle,
   Package,
-  MapPin,
-  Truck,
   CheckCircle2,
   Clock,
+  User,
+  FileText,
 } from "lucide-react"
-
-// Mock data - in real app, this would come from API
-const mockTickets = [
-  {
-    id: "TKT001",
-    ticketNumber: "TKT-2025-001",
-    subject: "Package not delivered",
-    category: "Delivery Issue",
-    priority: "High",
-    status: "Open",
-    createdAt: "2025-10-06T09:30:00",
-    updatedAt: "2025-10-06T10:15:00",
-    description: "I ordered a package that was supposed to arrive yesterday, but I haven't received it yet. The tracking shows it was delivered, but there's nothing at my door. This is urgent as it contains important documents for work.",
-    exceptionDetails: {
-      type: "Delivery Failed",
-      carrier: "FastShip Express",
-      lastLocation: "Local Distribution Center, Aveiro",
-      expectedDelivery: "2025-10-07",
-      reason: "Recipient not available at delivery address"
-    },
-    resolutionHistory: [
-      {
-        id: "RES001",
-        note: "Contacted carrier for investigation. They will check with the delivery driver.",
-        createdBy: "Support Agent Smith",
-        createdAt: "2025-10-06T10:15:00"
-      }
-    ]
-  },
-  {
-    id: "TKT002",
-    ticketNumber: "TKT-2025-002",
-    subject: "Unable to track package",
-    category: "Tracking",
-    priority: "Medium",
-    status: "In Progress",
-    createdAt: "2025-10-05T14:20:00",
-    updatedAt: "2025-10-06T08:45:00",
-    description: "The tracking number provided doesn't work on any tracking website. Can you help me locate my package?",
-    messages: 5,
-    resolutionHistory: [
-      {
-        id: "RES002",
-        note: "Verified tracking number with carrier. Package is in transit, tracking will be updated within 24 hours.",
-        createdBy: "Support Agent Jones",
-        createdAt: "2025-10-05T16:00:00"
-      },
-      {
-        id: "RES003",
-        note: "Tracking system now shows package details. Customer notified via email.",
-        createdBy: "Support Agent Jones",
-        createdAt: "2025-10-06T08:45:00"
-      }
-    ]
-  },
-  {
-    id: "TKT003",
-    ticketNumber: "TKT-2025-003",
-    subject: "Request refund for damaged item",
-    category: "Refund",
-    priority: "High",
-    status: "Escalated",
-    createdAt: "2025-10-04T11:00:00",
-    updatedAt: "2025-10-05T16:30:00",
-    description: "The item I received was damaged during shipping. The box was clearly mishandled. I would like a full refund or replacement.",
-    exceptionDetails: {
-      type: "Package Damaged",
-      carrier: "QuickDeliver Co.",
-      lastLocation: "Delivered to customer",
-      expectedDelivery: "2025-10-03",
-      reason: "Package mishandled during transit"
-    },
-    resolutionHistory: [
-      {
-        id: "RES004",
-        note: "Photos of damaged item received. Escalating to refund team for processing.",
-        createdBy: "Support Agent Davis",
-        createdAt: "2025-10-04T14:30:00"
-      },
-      {
-        id: "RES005",
-        note: "Refund approved. Processing will take 5-7 business days.",
-        createdBy: "Manager Brown",
-        createdAt: "2025-10-05T16:30:00"
-      }
-    ]
-  },
-  {
-    id: "TKT004",
-    ticketNumber: "TKT-2025-004",
-    subject: "Question about shipping rates",
-    category: "General Inquiry",
-    priority: "Low",
-    status: "Resolved",
-    createdAt: "2025-10-03T10:15:00",
-    updatedAt: "2025-10-04T09:00:00",
-    description: "I'm planning to send multiple packages this month. Do you offer any bulk shipping discounts?",
-    resolutionHistory: [
-      {
-        id: "RES006",
-        note: "Provided information about our Business Shipping Program with volume discounts. Sent registration link to customer.",
-        createdBy: "Support Agent Davis",
-        createdAt: "2025-10-03T11:30:00"
-      },
-      {
-        id: "RES007",
-        note: "Customer confirmed they received the information and registered for the program. Closing ticket.",
-        createdBy: "Support Agent Davis",
-        createdAt: "2025-10-04T09:00:00"
-      }
-    ]
-  },
-]
+import { exceptionService } from "@/lib/services/exception.service"
+import { 
+  DeliveryExceptionResponse, 
+  EXCEPTION_TYPE_LABELS, 
+  STATUS_LABELS,
+  ExceptionStatus,
+  Priority,
+  PRIORITY_LABELS,
+  SEVERITY_LABELS
+} from "@/types/exception"
 
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const ticketId = params.id as string
 
-  const [ticket, setTicket] = useState<typeof mockTickets[0] | null>(null)
+  const [ticket, setTicket] = useState<DeliveryExceptionResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const foundTicket = mockTickets.find(t => t.id === ticketId)
-      setTicket(foundTicket || null)
-      setLoading(false)
-    }, 500)
+    const loadTicket = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await exceptionService.getById(ticketId)
+        setTicket(data)
+      } catch (err: unknown) {
+        console.error('Failed to load ticket:', err)
+        if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('Failed to load ticket details')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTicket()
   }, [ticketId])
 
   if (loading) {
@@ -155,7 +66,7 @@ export default function TicketDetailPage() {
     )
   }
 
-  if (!ticket) {
+  if (error || !ticket) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => router.back()}>
@@ -164,51 +75,73 @@ export default function TicketDetailPage() {
         </Button>
         <div className="bg-white border rounded-lg p-8 shadow-sm text-center">
           <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-black mb-2">Ticket Not Found</h2>
-          <p className="text-gray-600">The ticket you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
+          <h2 className="text-xl font-semibold text-black mb-2">
+            {error ? 'Error Loading Ticket' : 'Ticket Not Found'}
+          </h2>
+          <p className="text-gray-600">
+            {error || "The ticket you're looking for doesn't exist or you don't have access to it."}
+          </p>
         </div>
       </div>
     )
   }
 
+  // Helper function to get status badge color
+  const getStatusColor = (status: ExceptionStatus) => {
+    switch (status) {
+      case ExceptionStatus.OPEN:
+        return "bg-blue-100 text-blue-700"
+      case ExceptionStatus.ASSIGNED:
+        return "bg-purple-100 text-purple-700"
+      case ExceptionStatus.IN_PROGRESS:
+        return "bg-yellow-100 text-yellow-700"
+      case ExceptionStatus.RESOLVED:
+        return "bg-green-100 text-green-700"
+      case ExceptionStatus.CLOSED:
+        return "bg-gray-100 text-gray-700"
+      case ExceptionStatus.ESCALATED:
+        return "bg-red-100 text-red-700"
+      default:
+        return "bg-gray-100 text-gray-700"
+    }
+  }
+
+  // Helper function to get priority badge color
+  const getPriorityColor = (priority: Priority) => {
+    switch (priority) {
+      case Priority.CRITICAL:
+        return "bg-red-100 text-red-700"
+      case Priority.HIGH:
+        return "bg-orange-100 text-orange-700"
+      case Priority.MEDIUM:
+        return "bg-yellow-100 text-yellow-700"
+      case Priority.LOW:
+        return "bg-blue-100 text-blue-700"
+      default:
+        return "bg-gray-100 text-gray-700"
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Tickets
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-black">{ticket.ticketNumber}</h1>
-            <p className="text-gray-600 mt-1">{ticket.subject}</p>
+            <h1 className="text-3xl font-bold text-black">Ticket #{ticket.id.slice(0, 8)}</h1>
+            <p className="text-gray-600 mt-1">{ticket.category}</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-              ticket.status === "Open"
-                ? "bg-blue-100 text-blue-700"
-                : ticket.status === "In Progress"
-                ? "bg-yellow-100 text-yellow-700"
-                : ticket.status === "Resolved"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {ticket.status}
+        <div className="flex gap-2 flex-wrap">
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(ticket.status)}`}>
+            {STATUS_LABELS[ticket.status]}
           </span>
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-              ticket.priority === "High"
-                ? "bg-red-100 text-red-700"
-                : ticket.priority === "Medium"
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-blue-100 text-blue-700"
-            }`}
-          >
-            {ticket.priority} Priority
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
+            {PRIORITY_LABELS[ticket.priority]} Priority
           </span>
         </div>
       </div>
@@ -225,7 +158,9 @@ export default function TicketDetailPage() {
                 <div>
                   <p className="text-sm text-gray-600">Created</p>
                   <p className="font-medium text-black">
-                    {new Date(ticket.createdAt).toLocaleString()}
+                    {ticket.reportedAt 
+                      ? new Date(ticket.reportedAt).toLocaleString()
+                      : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -234,87 +169,69 @@ export default function TicketDetailPage() {
                 <div>
                   <p className="text-sm text-gray-600">Last Updated</p>
                   <p className="font-medium text-black">
-                    {new Date(ticket.updatedAt).toLocaleString()}
+                    {ticket.updatedAt 
+                      ? new Date(ticket.updatedAt).toLocaleString()
+                      : 'N/A'}
                   </p>
                 </div>
               </div>
-             
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-600">Type</p>
+                  <p className="font-medium text-black">
+                    {EXCEPTION_TYPE_LABELS[ticket.type]}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-600">Severity</p>
+                  <p className="font-medium text-black">
+                    {SEVERITY_LABELS[ticket.severity]}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Issue Description */}
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-black mb-4">Your Message</h2>
-            <p className="text-gray-700">{ticket.description}</p>
+            <div className="mb-4 pb-4 border-b">
+              <p className="text-sm text-gray-600 mb-1">Category</p>
+              <p className="font-medium text-black">{ticket.category}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Description</p>
+              <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+            </div>
           </div>
 
-          {/* Exception Details */}
-          {ticket.exceptionDetails && (
-            <div className="bg-white border border-orange-200 rounded-lg p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
-                <h2 className="text-xl font-semibold text-black">Delivery Exception Details</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <Package className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-gray-600">Exception Type</p>
-                    <p className="font-medium text-black">{ticket.exceptionDetails.type}</p>
-                  </div>
-                </div>
-                {ticket.exceptionDetails.carrier && (
-                  <div className="flex items-start gap-3">
-                    <Truck className="h-5 w-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-600">Carrier</p>
-                      <p className="font-medium text-black">{ticket.exceptionDetails.carrier}</p>
-                    </div>
-                  </div>
-                )}
-                {ticket.exceptionDetails.lastLocation && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-600">Last Known Location</p>
-                      <p className="font-medium text-black">{ticket.exceptionDetails.lastLocation}</p>
-                    </div>
-                  </div>
-                )}
-                {ticket.exceptionDetails.expectedDelivery && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-600">Expected Delivery</p>
-                      <p className="font-medium text-black">{ticket.exceptionDetails.expectedDelivery}</p>
-                    </div>
-                  </div>
-                )}
-                {ticket.exceptionDetails.reason && (
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-gray-600 mb-1">Reason</p>
-                    <p className="text-black">{ticket.exceptionDetails.reason}</p>
-                  </div>
-                )}
+          {/* Order Information */}
+          <div className="bg-white border rounded-lg p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-black mb-4">Related Order</h2>
+            <div className="flex items-center gap-3">
+              <Package className="h-5 w-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-600">Order ID</p>
+                <p className="font-medium text-black">#{ticket.orderId}</p>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Resolution History */}
-          {ticket.resolutionHistory && ticket.resolutionHistory.length > 0 && (
+          {/* Resolution Notes */}
+          {ticket.resolutionNotes && (
             <div className="bg-white border rounded-lg p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-black mb-4">Support Updates</h2>
-              <div className="space-y-4">
-                {ticket.resolutionHistory.map((note) => (
-                  <div key={note.id} className="border-l-4 border-blue-500 pl-4 py-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                      <span className="font-medium text-black">{note.createdBy}</span>
-                      <span>•</span>
-                      <span>{new Date(note.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="text-gray-700">{note.note}</p>
-                  </div>
-                ))}
+              <h2 className="text-xl font-semibold text-black mb-4">Resolution Notes</h2>
+              <div className="border-l-4 border-green-500 pl-4 py-2">
+                <p className="text-gray-700 whitespace-pre-wrap">{ticket.resolutionNotes}</p>
+                {ticket.resolvedAt && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Resolved on {new Date(ticket.resolvedAt).toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -324,13 +241,23 @@ export default function TicketDetailPage() {
         <div className="space-y-6">
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-black mb-4">Status</h2>
-            {ticket.status === "Resolved" ? (
+            {ticket.status === ExceptionStatus.RESOLVED || ticket.status === ExceptionStatus.CLOSED ? (
               <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-green-900">Ticket Resolved</p>
+                  <p className="font-medium text-green-900">Ticket {STATUS_LABELS[ticket.status]}</p>
                   <p className="text-sm text-green-700 mt-1">
                     Your issue has been resolved. If you need further assistance, please create a new ticket.
+                  </p>
+                </div>
+              </div>
+            ) : ticket.status === ExceptionStatus.ESCALATED ? (
+              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-900">Escalated</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    This ticket has been escalated to a senior support team member for urgent attention.
                   </p>
                 </div>
               </div>
@@ -338,14 +265,32 @@ export default function TicketDetailPage() {
               <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <Clock className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-blue-900">In Progress</p>
+                  <p className="font-medium text-blue-900">{STATUS_LABELS[ticket.status]}</p>
                   <p className="text-sm text-blue-700 mt-1">
-                    Our support team is working on your request. We&apos;ll update you soon.
+                    {ticket.status === ExceptionStatus.ASSIGNED 
+                      ? "A support agent has been assigned to your ticket."
+                      : ticket.status === ExceptionStatus.IN_PROGRESS
+                      ? "Our support team is working on your request. We'll update you soon."
+                      : "Your ticket has been received and will be reviewed shortly."}
                   </p>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Assigned To */}
+          {ticket.assignedTo && (
+            <div className="bg-white border rounded-lg p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-black mb-4">Assigned Agent</h2>
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-600">Support Agent</p>
+                  <p className="font-medium text-black">{ticket.assignedTo}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
