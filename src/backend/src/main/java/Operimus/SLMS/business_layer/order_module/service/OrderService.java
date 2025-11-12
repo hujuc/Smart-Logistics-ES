@@ -12,10 +12,12 @@ import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.google.zxing.BarcodeFormat;
@@ -48,6 +50,14 @@ public class OrderService {
                 .description(request.getDescription())
                 .status(resolveStatus(request.getStatus()))
                 .shippingAddress(request.getShippingAddress())
+                .shippingAddressLine1(request.getShippingAddressLine1())
+                .shippingAddressLine2(request.getShippingAddressLine2())
+                .shippingCity(request.getShippingCity())
+                .shippingStateOrProvince(request.getShippingStateOrProvince())
+                .shippingPostalCode(request.getShippingPostalCode())
+                .shippingCountry(request.getShippingCountry())
+                .shippingPhone(request.getShippingPhone())
+                .shippingEmail(request.getShippingEmail())
                 .estimatedDeliveryDate(request.getEstimatedDeliveryDate())
                 .warehouse(warehouse)
                 .customerId(request.getCustomerId())
@@ -61,6 +71,7 @@ public class OrderService {
                 .build();
 
         // Save the order in the database (generates orderId)
+        normalizeShippingAddress(order);
         Order saved = orderRepository.save(order);
         orderEventService.recordStatusChange(saved, null, saved.getStatus());
 
@@ -98,6 +109,14 @@ public class OrderService {
         order.setDescription(request.getDescription());
         order.setStatus(newStatus);
         order.setShippingAddress(request.getShippingAddress());
+        order.setShippingAddressLine1(request.getShippingAddressLine1());
+        order.setShippingAddressLine2(request.getShippingAddressLine2());
+        order.setShippingCity(request.getShippingCity());
+        order.setShippingStateOrProvince(request.getShippingStateOrProvince());
+        order.setShippingPostalCode(request.getShippingPostalCode());
+        order.setShippingCountry(request.getShippingCountry());
+        order.setShippingPhone(request.getShippingPhone());
+        order.setShippingEmail(request.getShippingEmail());
         order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
         order.setWarehouse(warehouse);
         // Only update customerId if provided in request (preserve existing if null)
@@ -111,6 +130,8 @@ public class OrderService {
         order.setWidth(request.getWidth());
         order.setHeight(request.getHeight());
         order.setDistanceUnit(request.getDistanceUnit());
+
+        normalizeShippingAddress(order);
 
         if (statusChanged) {
             orderEventService.recordStatusChange(order, previousStatus, newStatus);
@@ -192,6 +213,14 @@ public class OrderService {
                 .description(order.getDescription())
                 .status(order.getStatus())
                 .shippingAddress(order.getShippingAddress())
+                .shippingAddressLine1(order.getShippingAddressLine1())
+                .shippingAddressLine2(order.getShippingAddressLine2())
+                .shippingCity(order.getShippingCity())
+                .shippingStateOrProvince(order.getShippingStateOrProvince())
+                .shippingPostalCode(order.getShippingPostalCode())
+                .shippingCountry(order.getShippingCountry())
+                .shippingPhone(order.getShippingPhone())
+                .shippingEmail(order.getShippingEmail())
                 .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                 .warehouseId(order.getWarehouse().getId())
                 .shipmentId(order.getShipmentId())
@@ -225,5 +254,81 @@ public class OrderService {
             throw new RuntimeException("Error generating QR code", e);
         }
         return pngOutputStream.toByteArray();
+    }
+
+    private void normalizeShippingAddress(Order order) {
+        if (order == null) {
+            return;
+        }
+
+        AddressComponents components = parseAddress(order.getShippingAddress());
+
+        if (!hasText(order.getShippingAddressLine1()) && hasText(components.line1())) {
+            order.setShippingAddressLine1(components.line1());
+        }
+        if (!hasText(order.getShippingCity()) && hasText(components.city())) {
+            order.setShippingCity(components.city());
+        }
+        if (!hasText(order.getShippingStateOrProvince()) && hasText(components.state())) {
+            order.setShippingStateOrProvince(components.state());
+        }
+        if (!hasText(order.getShippingPostalCode()) && hasText(components.postalCode())) {
+            order.setShippingPostalCode(components.postalCode());
+        }
+        if (!hasText(order.getShippingCountry()) && hasText(components.country())) {
+            order.setShippingCountry(components.country());
+        }
+
+        if (!hasText(order.getShippingAddressLine1()) && hasText(order.getShippingAddress())) {
+            order.setShippingAddressLine1(order.getShippingAddress());
+        }
+        if (!hasText(order.getShippingCountry())) {
+            order.setShippingCountry("US");
+        }
+    }
+
+    private AddressComponents parseAddress(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return AddressComponents.empty();
+        }
+        String normalized = raw.replace("\n", ",");
+        String[] tokens = Arrays.stream(normalized.split(","))
+                .map(String::trim)
+                .filter(token -> !token.isEmpty())
+                .toArray(String[]::new);
+
+        String line1 = tokens.length > 0 ? tokens[0] : null;
+        String city = tokens.length > 1 ? tokens[1] : null;
+        String country = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+        String state = null;
+        String postal = null;
+
+        if (tokens.length > 2) {
+            String statePostal = tokens[tokens.length - 2];
+            String[] pieces = statePostal.trim().split("\\s+");
+            if (pieces.length >= 2) {
+                state = pieces[0];
+                postal = pieces[pieces.length - 1];
+            } else {
+                state = statePostal;
+            }
+
+            if (tokens.length > 3) {
+                city = tokens[1];
+            }
+        }
+
+        return new AddressComponents(line1, city, state, postal, country);
+    }
+
+    private boolean hasText(String value) {
+        return StringUtils.hasText(value);
+    }
+
+    private record AddressComponents(
+            String line1, String city, String state, String postalCode, String country) {
+        static AddressComponents empty() {
+            return new AddressComponents(null, null, null, null, null);
+        }
     }
 }

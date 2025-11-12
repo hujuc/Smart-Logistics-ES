@@ -7,11 +7,12 @@ import { Carrier, ShipmentCard, Order, User } from "@/types"
 import { ShipmentCards } from "@/components/logistics/shipment-cards"
 import { CarrierCompare } from "@/components/logistics/carrier-compare"
 import { warehouseService } from "@/lib/services/warehouse.service"
-import { carrierService } from "@/lib/services/carrier.service"
+import { carrierService, type CarrierResponse } from "@/lib/services/carrier.service"
 import { shipmentService } from "@/lib/services/shipment.service"
 import { calculateShippingRates } from "@/lib/carrier-api"
 import { featureFlagManager } from "@/lib/flagsmith"
 import { API_ENDPOINTS, apiFetch } from "@/lib/api"
+import { formatOrderShippingAddress, hasStructuredAddress } from "@/lib/address"
 
 // Shipment entity type from backend
 interface Shipment {
@@ -31,6 +32,65 @@ interface Shipment {
   shipstationOrderId?: string
 }
 
+type AddressComponents = {
+  line1?: string
+  line2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+}
+
+function resolveAddressComponents(order: Order): AddressComponents {
+  if (hasStructuredAddress(order)) {
+    return {
+      line1: order.shippingAddressLine1 || order.shippingAddress,
+      line2: order.shippingAddressLine2,
+      city: order.shippingCity,
+      state: order.shippingStateOrProvince,
+      postalCode: order.shippingPostalCode,
+      country: order.shippingCountry,
+    }
+  }
+
+  return parseAddressString(order.shippingAddress)
+}
+
+function parseAddressString(value?: string | null): AddressComponents {
+  if (!value) {
+    return {}
+  }
+
+  const tokens = value
+    .replace(/\n/g, ",")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean)
+
+  const result: AddressComponents = {}
+  if (tokens.length > 0) {
+    result.line1 = tokens[0]
+  }
+  if (tokens.length > 1) {
+    result.city = tokens[1]
+  }
+  if (tokens.length > 2) {
+    const statePostal = tokens[tokens.length - 2]
+    const parts = statePostal.split(/\s+/)
+    if (parts.length >= 2) {
+      result.state = parts[0]
+      result.postalCode = parts[parts.length - 1]
+    } else {
+      result.state = statePostal
+    }
+  }
+  if (tokens.length > 3) {
+    result.country = tokens[tokens.length - 1]
+  }
+
+  return result
+}
+
 export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
@@ -44,6 +104,7 @@ export default function CarrierComparisonPage() {
   const [shipments, setShipments] = useState<ShipmentCard[]>([])
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [allCarriers, setAllCarriers] = useState<Carrier[]>([])
+  const [carrierRecords, setCarrierRecords] = useState<CarrierResponse[]>([])
   const [drivers, setDrivers] = useState<User[]>([])
   const [allShipments, setAllShipments] = useState<Shipment[]>([]) // Real shipment entities from backend
 
@@ -58,6 +119,18 @@ export default function CarrierComparisonPage() {
   const [selectedShipments, setSelectedShipments] = useState<string[]>([])
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null)
   const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
+
+  const getCarrierLogo = (provider: string): string => {
+    const logos: Record<string, string> = {
+      'fedex': '🚚',
+      'ups': '📦',
+      'dhl': '✈️',
+      'usps': '📮',
+      'amazon': '📦',
+    }
+    const key = provider?.toLowerCase() || ''
+    return logos[key] || '📦'
+  }
 
   // Initialize Flagsmith feature flags
   useEffect(() => {
@@ -78,6 +151,28 @@ export default function CarrierComparisonPage() {
     initializeFlags()
   }, [])
 
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      try {
+        const data = await carrierService.getAllCarriers()
+        const shippoEnabled = data.filter((carrier) => carrier.shippoCarrierId || carrier.shippoAccountId)
+        setCarrierRecords(shippoEnabled)
+        const mapped = shippoEnabled.map((carrier) => ({
+          id: carrier.id.toString(),
+          name: carrier.name,
+          service: carrier.serviceLevelsSummary || carrier.code,
+          logo: getCarrierLogo(carrier.name),
+          features: [],
+        }))
+        setAllCarriers(mapped)
+      } catch (err) {
+        console.error('Failed to load carriers:', err)
+      }
+    }
+
+    fetchCarriers()
+  }, [])
+
   // Fetch orders on mount - only CREATED (orders without carrier assigned)
   useEffect(() => {
     const fetchOrders = async () => {
@@ -91,7 +186,7 @@ export default function CarrierComparisonPage() {
         const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
           id: order.id.toString(),
           weight: "N/A", // TODO: Add weight field to Order type
-          destination: order.shippingAddress,
+          destination: formatOrderShippingAddress(order),
           priority: order.priority || "Medium",
           date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"
         }))
@@ -207,6 +302,7 @@ export default function CarrierComparisonPage() {
       // Build rate request from order data
       // TODO: Warehouse address should come from warehouse configuration
       // Using US addresses for demo as Shippo test account only supports US carriers
+      const destination = resolveAddressComponents(selectedOrder)
       const rateRequest = {
         fromAddress: {
           name: "Warehouse",
@@ -217,12 +313,13 @@ export default function CarrierComparisonPage() {
           country: "US",
         },
         toAddress: {
-          name: "Customer",
-          addressLine1: "1092 Indian Summer Ct",
-          city: "San Jose",
-          state: "CA",
-          postalCode: "95122",
-          country: "US",
+          name: selectedOrder.customerId || selectedOrder.reference || "Customer",
+          addressLine1: destination.line1 || "Customer Address",
+          addressLine2: destination.line2 || undefined,
+          city: destination.city || "San Jose",
+          state: destination.state || "CA",
+          postalCode: destination.postalCode || "95122",
+          country: destination.country || "US",
         },
         parcels: [{
           weight: selectedOrder.weight || 2.5, // Default to 2.5kg if not set
@@ -232,6 +329,11 @@ export default function CarrierComparisonPage() {
           height: selectedOrder.height || 15,
           distanceUnit: selectedOrder.distanceUnit || "cm",
         }]
+      }
+
+      if (carrierRecords.length === 0) {
+        setError("No carriers with Shippo integration are available.")
+        return
       }
 
       const rateResponse = await calculateShippingRates(rateRequest)
@@ -245,21 +347,43 @@ export default function CarrierComparisonPage() {
       }
 
       // Convert rate quotes to carrier format for display
-      const carriersFromRates: Carrier[] = rateResponse.rates.map((rate, index) => ({
-        id: `RATE_${index}`,
-        name: rate.provider, // Use provider instead of carrierCode (which is null)
-        service: rate.serviceLevel,
-        logo: getCarrierLogo(rate.provider),
-        cost: Number(rate.amount),
-        transitTime: rate.estimatedDays ? `${rate.estimatedDays} days` : "N/A",
-        features: [],
-      }))
+      const carriersFromRates: Carrier[] = rateResponse.rates
+        .map((rate) => {
+          const backendCarrier = carrierRecords.find((carrier) => {
+            const provider = rate.provider?.toLowerCase()
+            const serviceCode = rate.carrierCode?.toLowerCase()
+            return (
+              carrier.name.toLowerCase() === provider ||
+              carrier.code.toLowerCase() === provider ||
+              carrier.code.toLowerCase() === serviceCode ||
+              (!!rate.carrierAccount && carrier.shippoAccountId?.toLowerCase() === rate.carrierAccount.toLowerCase())
+            )
+          })
 
-      setCarriers(carriersFromRates)
-      
-      // Update allCarriers if not already set
-      if (allCarriers.length === 0) {
-        setAllCarriers(carriersFromRates)
+          if (!backendCarrier) {
+            return null
+          }
+
+          return {
+            id: backendCarrier.id.toString(),
+            name: backendCarrier.name,
+            service: rate.serviceLevel || backendCarrier.serviceLevelsSummary || backendCarrier.code,
+            logo: getCarrierLogo(backendCarrier.name),
+            cost: rate.amount ? Number(rate.amount) : undefined,
+            transitTime: rate.estimatedDays ? `${rate.estimatedDays} days` : "N/A",
+            features: [],
+          }
+        })
+        .filter((carrier): carrier is Carrier => Boolean(carrier))
+
+      const uniqueCarriers = carriersFromRates.filter((carrier, index, self) =>
+        self.findIndex((c) => c.id === carrier.id) === index
+      )
+
+      setCarriers(uniqueCarriers)
+
+      if (uniqueCarriers.length === 0) {
+        setError("No matching carriers available for the returned rates.")
       }
     } catch (err) {
       console.error("Failed to calculate shipping rates:", err)
@@ -267,19 +391,6 @@ export default function CarrierComparisonPage() {
     } finally {
       setLoadingRates(false)
     }
-  }
-
-  // Helper to get carrier logo based on provider name
-  const getCarrierLogo = (provider: string): string => {
-    const logos: Record<string, string> = {
-      'fedex': '🚚',
-      'ups': '📦',
-      'dhl': '✈️',
-      'usps': '📮',
-      'amazon': '📦',
-    }
-    const key = provider?.toLowerCase() || ''
-    return logos[key] || '📦'
   }
 
   const handlePreviousStep = () => {
@@ -302,20 +413,19 @@ export default function CarrierComparisonPage() {
       setError(null)
 
       // Step 1: Resolve carrier ID (get from DB or create on-the-fly)
-      let carrier = await carrierService.findCarrierByName(selectedCarrier.name)
+      const carrierRecord = carrierRecords.find((carrier) => carrier.id.toString() === selectedCarrier.id)
 
-      if (!carrier) {
-        console.log(`Carrier ${selectedCarrier.name} not found in DB, creating...`)
-        carrier = await carrierService.getOrCreateCarrierByName(selectedCarrier.name)
+      if (!carrierRecord) {
+        setError("Selected carrier is no longer available.")
+        return
       }
 
-      // Step 2: Create the shipment
       const shipmentCode = `SHIP-${Date.now()}`
       const orderIds = selectedShipments.map(id => parseInt(id))
 
       const newShipment = await shipmentService.createShipment({
         shipmentCode,
-        carrierId: carrier.id,
+        carrierId: carrierRecord.id,
         driverId: selectedDriver.id,
         orderIds,
         totalOrders: orderIds.length,
@@ -341,7 +451,7 @@ export default function CarrierComparisonPage() {
       const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
         id: order.id.toString(),
         weight: "N/A",
-        destination: order.shippingAddress,
+        destination: formatOrderShippingAddress(order),
         priority: order.priority || "Medium",
         date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"
       }))
@@ -1069,4 +1179,3 @@ export default function CarrierComparisonPage() {
     </div>
   )
 }
-

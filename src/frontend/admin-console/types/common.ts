@@ -63,8 +63,18 @@ export interface Order {
     description: string;
     status: ShipmentOrderStatus;
     shippingAddress: string;
+    shippingAddressLine1?: string;
+    shippingAddressLine2?: string;
+    shippingCity?: string;
+    shippingStateOrProvince?: string;
+    shippingPostalCode?: string;
+    shippingCountry?: string;
+    shippingPhone?: string;
+    shippingEmail?: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
+    shipmentId?: number;
+    shipmentCode?: string;
     carrierId?: number;
     carrierCode?: string;
     carrierName?: string;
@@ -107,6 +117,19 @@ export interface OrderDocument {
     contentType: string;
     size: number;
     url: string;
+}
+
+export interface ShipmentDocument {
+    shipmentId: number;
+    orderId?: number;
+    documentId: string;
+    objectKey?: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    url: string;
+    carrierCode?: string;
+    serviceLevel?: string;
 }
 
 export interface ContactInfo {

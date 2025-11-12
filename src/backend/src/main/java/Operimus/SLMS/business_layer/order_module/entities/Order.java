@@ -49,6 +49,30 @@ public class Order {
     @Column(nullable = false)
     private String shippingAddress;
 
+    @Column(name = "shipping_address_line1")
+    private String shippingAddressLine1;
+
+    @Column(name = "shipping_address_line2")
+    private String shippingAddressLine2;
+
+    @Column(name = "shipping_city")
+    private String shippingCity;
+
+    @Column(name = "shipping_state")
+    private String shippingStateOrProvince;
+
+    @Column(name = "shipping_postal_code")
+    private String shippingPostalCode;
+
+    @Column(name = "shipping_country")
+    private String shippingCountry;
+
+    @Column(name = "shipping_phone")
+    private String shippingPhone;
+
+    @Column(name = "shipping_email")
+    private String shippingEmail;
+
     private LocalDate estimatedDeliveryDate;
 
     // Relationship to warehouse

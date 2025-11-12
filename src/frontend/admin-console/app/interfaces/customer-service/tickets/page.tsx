@@ -16,6 +16,7 @@ import {
 import { Search, FileText, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter } from "lucide-react"
 import { customerServiceService } from "@/lib/services/customer-service.service"
 import type { Order } from "@/types"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 // Mock data for support tickets
 const mockTickets = [
@@ -382,7 +383,9 @@ export default function TicketsPage() {
                     )}
                     <div className="md:col-span-2">
                       <span className="text-gray-600">Destination:</span>
-                      <span className="ml-2 font-medium text-black">{orderResult.shippingAddress}</span>
+                      <span className="ml-2 font-medium text-black">
+                        {formatOrderShippingAddress(orderResult)}
+                      </span>
                     </div>
                     {orderResult.description && (
                       <div className="md:col-span-2">

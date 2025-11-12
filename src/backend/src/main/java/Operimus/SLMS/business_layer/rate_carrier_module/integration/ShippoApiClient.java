@@ -3,6 +3,7 @@ package Operimus.SLMS.business_layer.rate_carrier_module.integration;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationRequest;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationResponse;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierAddressView;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippoLabelResponse;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateRequest;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateResponse;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
@@ -156,6 +157,72 @@ public class ShippoApiClient {
                 .rates(rates)
                 .messages(messages)
                 .build();
+    }
+
+    public ShippoLabelResponse purchaseLabel(String rateId, String labelFileType) {
+        if (!StringUtils.hasText(apiKey)) {
+            throw new ExternalServiceException("Shippo API key is not configured");
+        }
+        if (!StringUtils.hasText(rateId)) {
+            throw new IllegalArgumentException("Rate identifier is required to purchase a label");
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("rate", rateId);
+        payload.put("label_file_type", StringUtils.hasText(labelFileType) ? labelFileType : "PDF");
+        payload.put("async", Boolean.FALSE);
+
+        JsonNode response = execute(HttpMethod.POST, "/transactions", payload);
+        if (response == null) {
+            throw new ExternalServiceException("Shippo API returned an empty transaction response");
+        }
+
+        return mapTransaction(response);
+    }
+
+    public ShippoLabelResponse getTransaction(String transactionId) {
+        if (!StringUtils.hasText(apiKey)) {
+            throw new ExternalServiceException("Shippo API key is not configured");
+        }
+        if (!StringUtils.hasText(transactionId)) {
+            throw new IllegalArgumentException("Shippo transaction identifier is required");
+        }
+
+        JsonNode response = execute(HttpMethod.GET, "/transactions/" + transactionId, null);
+        if (response == null) {
+            throw new ExternalServiceException("Shippo API returned an empty transaction response");
+        }
+
+        return mapTransaction(response);
+    }
+
+    public byte[] downloadLabel(String labelUrl) {
+        if (!StringUtils.hasText(labelUrl)) {
+            throw new ExternalServiceException("Shippo label URL is empty");
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_PDF));
+            if (StringUtils.hasText(apiKey)) {
+                headers.set(HttpHeaders.AUTHORIZATION, "ShippoToken " + apiKey.trim());
+            }
+            RequestEntity<Void> request = new RequestEntity<>(headers, HttpMethod.GET, URI.create(labelUrl));
+            ResponseEntity<byte[]> response = restTemplate.exchange(request, byte[].class);
+            byte[] body = response.getBody();
+            if (body == null || body.length == 0) {
+                throw new ExternalServiceException("Shippo returned an empty label payload");
+            }
+            return body;
+        } catch (RestClientResponseException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getRawStatusCode());
+            String message = status != null
+                    ? "Shippo label download failed with %s (%d)".formatted(status.getReasonPhrase(), status.value())
+                    : "Shippo label download failed with HTTP %d".formatted(ex.getRawStatusCode());
+            throw new ExternalServiceException(message, ex);
+        } catch (RestClientException ex) {
+            throw new ExternalServiceException("Unable to download Shippo label", ex);
+        }
     }
 
     private JsonNode execute(HttpMethod method, String uri, Object body) {
@@ -320,6 +387,7 @@ public class ShippoApiClient {
         }
 
         return ShippingRateResponse.RateQuote.builder()
+                .rateId(node.path("object_id").asText(null))
                 .provider(node.path("provider").asText(null))
                 .carrierAccount(node.path("carrier_account").asText(null))
                 .carrierCode(node.path("carrier").asText(null))
@@ -329,6 +397,51 @@ public class ShippoApiClient {
                 .estimatedDays(estimatedDays)
                 .deliveryDate(deliveryDate)
                 .build();
+    }
+
+    private ShippoLabelResponse mapTransaction(JsonNode node) {
+        if (node == null || node.isMissingNode()) {
+            return ShippoLabelResponse.builder().build();
+        }
+
+        BigDecimal amount = parseDecimal(node.path("amount").asText(null));
+        List<String> messages = new ArrayList<>();
+        JsonNode messagesNode = node.path("messages");
+        if (messagesNode.isArray()) {
+            messagesNode.forEach(messageNode -> appendMessage(messages, messageNode));
+        }
+
+        JsonNode serviceLevelNode = node.path("servicelevel");
+        String serviceLevel = firstText(serviceLevelNode.path("name"), serviceLevelNode.path("token"));
+
+        return ShippoLabelResponse.builder()
+                .transactionId(node.path("object_id").asText(null))
+                .status(node.path("status").asText(null))
+                .labelUrl(node.path("label_url").asText(null))
+                .labelFileType(node.path("label_file_type").asText(null))
+                .trackingNumber(node.path("tracking_number").asText(null))
+                .trackingUrl(firstText(node.path("tracking_url_provider"), node.path("tracking_url")))
+                .carrier(node.path("carrier" ).asText(null))
+                .carrierAccount(node.path("carrier_account").asText(null))
+                .serviceLevel(serviceLevel)
+                .shipmentId(node.path("shipment").asText(null))
+                .rateId(node.path("rate").asText(null))
+                .amount(amount)
+                .currency(node.path("currency").asText(null))
+                .messages(messages)
+                .build();
+    }
+
+    private BigDecimal parseDecimal(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ex) {
+            log.debug("Unable to parse decimal value '{}'", value, ex);
+            return null;
+        }
     }
 
     private OffsetDateTime parseOffsetDateTime(String value) {
@@ -350,15 +463,21 @@ public class ShippoApiClient {
 
         String carrierCode = node.path("carrier").asText(null);
         String objectId = node.path("object_id").asText(null);
-        String accountId = node.path("account_id").asText(null);
+        String rawAccountId = node.path("account_id").asText(null);
+        String accountId = rawAccountId;
         boolean active = node.path("active").asBoolean(true);
 
         JsonNode parameters = node.path("parameters");
-        if (parameters != null && !parameters.isMissingNode()) {
-            if (!StringUtils.hasText(accountId)) {
-                accountId = parameters.path("account_id").asText(accountId);
-            }
+        if (!StringUtils.hasText(accountId) && parameters != null && !parameters.isMissingNode()) {
+            accountId = parameters.path("account_id").asText(null);
         }
+        String parametersAccountId = accountId;
+        if (!StringUtils.hasText(accountId)) {
+            accountId = objectId;
+        }
+
+        log.debug("Shippo carrier payload: code={}, objectId={}, rawAccountId={}, parametersAccountId={}, resolvedAccountId={}",
+                carrierCode, objectId, rawAccountId, parametersAccountId, accountId);
 
         String displayName = null;
         String supportEmail = null;
