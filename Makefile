@@ -1,9 +1,10 @@
-.PHONY: help up down restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
+.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
 	@echo "  make up            - Start/update production environment (smart deploy - reuses containers)"
-	@echo "  make down          - Stop all services and destroy infrastructure"
+	@echo "  make down          - Stop all services (non-destructive, keeps infrastructure)"
+	@echo "  make destroy       - Stop and destroy all infrastructure (destructive)"
 	@echo "  make restart       - Restart all running services"
 	@echo "  make logs          - View all logs"
 	@echo "  make status        - Show running containers"
@@ -45,8 +46,13 @@ up:
 
 down:
 	@echo "🛑 Stopping all services..."
+	@cd infra && ./deploy.sh stop
+	@echo "✅ All services stopped (infrastructure preserved)"
+
+destroy:
+	@echo "💣 Destroying all infrastructure..."
 	@cd infra && ./deploy.sh down
-	@echo "✅ All services stopped"
+	@echo "✅ All infrastructure destroyed"
 
 clean:
 	@echo "🧹 Cleaning up stopped containers..."

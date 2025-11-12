@@ -40,7 +40,7 @@ We will implement a **centralized authentication architecture** using:
 ### Architecture Components
 
 **1. Landing Page (New Frontend #4)**
-- Public-facing welcome page at `http://localhost:3003`
+- Public-facing welcome page at `http://localhost/`
 - Handles login/signup flow via Keycloak
 - Routes authenticated users to appropriate frontend based on roles
 - Provides public order tracking capability

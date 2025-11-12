@@ -1,20 +1,30 @@
 package Operimus.SLMS.business_layer.order_module.service;
 
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_module.dto.InMemoryMultipartFile;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderScanResult;
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.entities.Warehouse;
 import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
+import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
+import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,6 +45,11 @@ public class OrderService {
     private final WarehouseService warehouseService;
     private final OrderDocumentService orderDocumentService;
     private final OrderEventService orderEventService;
+    private final ShipmentRepository shipmentRepository;
+    private final KeycloakUserService keycloakUserService;
+
+    @Value("${slms.qr.confirmation-base-url:http://localhost:8080/api/driver}")
+    private String qrConfirmationBaseUrl;
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
@@ -75,14 +90,21 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         orderEventService.recordStatusChange(saved, null, saved.getStatus());
 
-        // Generate the QR code for the order
-        byte[] qrImage = generateQrCode(saved.getId().toString(), 300);
+        String confirmationUrl = buildConfirmationUrl(saved.getId());
+
+        // Generate the QR code for the order using the confirmation callback URL
+        byte[] qrImage = generateQrCode(confirmationUrl, 300);
 
         // Create the MultipartFile from the byte[] of the QR code
         MultipartFile qrFile = new InMemoryMultipartFile("qr-" + saved.getId() + ".png", qrImage);
 
         // Upload the QR code to MinIO
-        orderDocumentService.uploadDocument(saved.getId(), qrFile);
+        DocumentUploadResponse uploadResponse = orderDocumentService.uploadDocument(saved.getId(), qrFile);
+
+        saved.setQrCodeUrl(uploadResponse.getUrl());
+        saved.setQrConfirmationUrl(confirmationUrl);
+        saved.setQrConfirmedAt(null);
+        saved.setQrConfirmedBy(null);
 
         return mapToResponse(saved);
     }
@@ -202,6 +224,64 @@ public class OrderService {
         return mapToResponse(order);
     }
 
+    @Transactional
+    public OrderScanResult confirmOrderScan(Long orderId, String driverId) {
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(orderId)));
+
+        if (order.getShipmentId() == null) {
+            throw new ResourceConflictException("Order %d is not yet assigned to a shipment".formatted(orderId));
+        }
+
+        Shipment shipment = shipmentRepository
+                .findById(order.getShipmentId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Shipment %d not found".formatted(order.getShipmentId())));
+
+        String resolvedDriverId = normalizeDriverIdentifier(driverId);
+        if (!StringUtils.hasText(resolvedDriverId)) {
+            throw new IllegalArgumentException("Driver ID is required to confirm the scan");
+        }
+
+        if (!resolvedDriverId.equals(shipment.getDriverId())) {
+            throw new AccessDeniedException("Driver is not assigned to this shipment");
+        }
+
+        boolean alreadyConfirmed = order.getStatus() == OrderStatus.IN_TRANSIT
+                || order.getStatus() == OrderStatus.DELIVERED;
+
+        OffsetDateTime confirmationTime = OffsetDateTime.now(ZoneOffset.UTC);
+        OrderStatus previousStatus = order.getStatus();
+
+        if (!alreadyConfirmed) {
+            order.setStatus(OrderStatus.IN_TRANSIT);
+            orderEventService.recordStatusChange(order, previousStatus, OrderStatus.IN_TRANSIT);
+        }
+
+        order.setQrConfirmedAt(confirmationTime);
+        order.setQrConfirmedBy(resolvedDriverId);
+
+        List<Order> shipmentOrders = orderRepository.findByShipmentId(order.getShipmentId());
+        long ordersStillPending = shipmentOrders.stream()
+                .filter(o -> requiresScan(o.getStatus()))
+                .count();
+
+        boolean allOrdersConfirmed = ordersStillPending == 0;
+
+        return OrderScanResult.builder()
+                .orderId(order.getId())
+                .orderReference(order.getReference())
+                .shipmentId(shipment.getId())
+                .shipmentCode(shipment.getShipmentCode())
+                .orderStatus(order.getStatus())
+                .confirmedAt(order.getQrConfirmedAt())
+                .alreadyConfirmed(alreadyConfirmed)
+                .allOrdersConfirmed(allOrdersConfirmed)
+                .remainingOrdersToScan(allOrdersConfirmed ? 0 : ordersStillPending)
+                .build();
+    }
+
     private OrderStatus resolveStatus(OrderStatus status) {
         return status == null ? OrderStatus.CREATED : status;
     }
@@ -228,6 +308,9 @@ public class OrderService {
                 .trackingNumber(order.getTrackingNumber())
                 .customerId(order.getCustomerId())
                 .qrCodeUrl(order.getQrCodeUrl())
+                .qrConfirmationUrl(order.getQrConfirmationUrl())
+                .qrConfirmedAt(order.getQrConfirmedAt())
+                .qrConfirmedBy(order.getQrConfirmedBy())
                 .weight(order.getWeight())
                 .weightUnit(order.getWeightUnit())
                 .length(order.getLength())
@@ -239,11 +322,59 @@ public class OrderService {
                 .build();
     }
 
-    private byte[] generateQrCode(String orderId, int size) {
+    private String normalizeDriverIdentifier(String driverIdentifier) {
+        if (!StringUtils.hasText(driverIdentifier)) {
+            return driverIdentifier;
+        }
+        if (looksLikeUuid(driverIdentifier)) {
+            return driverIdentifier;
+        }
+        try {
+            return keycloakUserService.searchUsers(driverIdentifier).stream()
+                    .filter(user -> matchesIdentifier(driverIdentifier, user))
+                    .map(UserRepresentation::getId)
+                    .findFirst()
+                    .orElse(driverIdentifier);
+        } catch (Exception ex) {
+            return driverIdentifier;
+        }
+    }
+
+    private boolean matchesIdentifier(String identifier, UserRepresentation user) {
+        if (user == null) {
+            return false;
+        }
+        return identifier.equalsIgnoreCase(user.getUsername())
+                || identifier.equalsIgnoreCase(user.getEmail());
+    }
+
+    private boolean looksLikeUuid(String value) {
+        return value.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    }
+
+    private String buildConfirmationUrl(Long orderId) {
+        String baseUrl = qrConfirmationBaseUrl == null ? "" : qrConfirmationBaseUrl.trim();
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return "%s/orders/%d/confirm".formatted(baseUrl, orderId);
+    }
+
+    private boolean requiresScan(OrderStatus status) {
+        if (status == null) {
+            return true;
+        }
+        return status == OrderStatus.CREATED
+                || status == OrderStatus.READY_FOR_PICKUP
+                || status == OrderStatus.COLLECTED
+                || status == OrderStatus.ASSIGNED_TO_SHIPMENT;
+    }
+
+    private byte[] generateQrCode(String payload, int size) {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         BitMatrix bitMatrix = null;
         try {
-            bitMatrix = qrCodeWriter.encode(orderId, BarcodeFormat.QR_CODE, size, size);
+            bitMatrix = qrCodeWriter.encode(payload, BarcodeFormat.QR_CODE, size, size);
         } catch (WriterException e) {
             throw new RuntimeException("Error generating QR code", e);
         }

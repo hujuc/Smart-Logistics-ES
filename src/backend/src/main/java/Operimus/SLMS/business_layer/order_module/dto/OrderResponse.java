@@ -37,7 +37,10 @@ public class OrderResponse {
 
     private String customerId;
     private String qrCodeUrl;
+    private String qrConfirmationUrl;
     private String trackingNumber;
+    private OffsetDateTime qrConfirmedAt;
+    private String qrConfirmedBy;
 
     // Parcel dimensions for shipping rate calculation
     private Double weight;

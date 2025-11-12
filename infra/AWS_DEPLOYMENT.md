@@ -78,7 +78,7 @@ cd ..
 - `NEXT_PUBLIC_KEYCLOAK_REALM`: `slms`
 - `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`: `slms-customer-portal`
 - `KEYCLOAK_BASE_URL`: `http://<public_host>:8180`
-- `NEXTAUTH_URL`: `http://<public_host>:3002`
+- `NEXTAUTH_URL`: `http://<public_host>/customer`
 
 ### Driver PWA
 - `NEXT_PUBLIC_API_URL`: `http://<public_host>/api/driver`
@@ -104,7 +104,7 @@ cd infra
 ### Frontend still uses localhost
 - Check `terraform.tfvars` has correct `public_host`
 - Rebuild: `./deploy.sh down && ./deploy.sh deploy`
-- Check build logs: `docker logs slms-admin-console-prod`
+- Check build logs: `./deploy.sh logs admin 1`
 
 ### Images not rebuilding
 Terraform caches images. Force rebuild:

@@ -27,22 +27,16 @@ ensure_network() {
 
 cleanup_containers() {
   log "Checking for outdated containers..."
-  local containers=(
-    slms-postgres-prod
-    slms-backend-prod
-    slms-admin-console-prod
-    slms-customer-portal-prod
-    slms-driver-pwa-prod
-    slms-landing-page-prod
-  )
-
-  # Only remove stopped containers, keep running ones
-  for name in "${containers[@]}"; do
-    if docker ps -a --filter "status=exited" --format '{{.Names}}' | grep -qx "${name}"; then
-      log "Removing stopped container ${name}"
-      docker rm -f "${name}" >/dev/null
-    fi
-  done
+  
+  # Remove all stopped replica containers managed by Terraform
+  local stopped_containers=$(docker ps -a --filter "status=exited" --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod')
+  
+  if [ -n "$stopped_containers" ]; then
+    echo "$stopped_containers" | xargs docker rm -f >/dev/null
+    log "Removed stopped containers"
+  else
+    log "No stopped containers to clean up"
+  fi
 }
 
 terraform_init() {
@@ -85,44 +79,51 @@ compose_down() {
 
 terraform_stop() {
   log "Stopping Terraform-managed containers"
-  local containers=(
-    slms-postgres-prod
-    slms-backend-prod
-    slms-admin-console-prod
-    slms-customer-portal-prod
-    slms-driver-pwa-prod
-    slms-landing-page-prod
-  )
-  for name in "${containers[@]}"; do
-    if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
-      log "Stopping container ${name}"
-      docker stop "${name}" >/dev/null
-    fi
-  done
+  
+  # Stop all running replica containers managed by Terraform
+  local running_containers=$(docker ps --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' || true)
+  
+  if [ -n "$running_containers" ]; then
+    echo "$running_containers" | xargs docker stop >/dev/null
+    log "Stopped all Terraform-managed containers"
+  else
+    log "No running containers to stop"
+  fi
+}
+
+remove_conflicting_containers() {
+  log "Removing conflicting containers before Terraform apply..."
+  
+  # Remove ALL containers (running or stopped) that match Terraform naming pattern
+  local all_containers=$(docker ps -a --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' || true)
+  
+  if [ -n "$all_containers" ]; then
+    echo "$all_containers" | xargs docker rm -f >/dev/null 2>&1 || true
+    log "Removed existing containers to avoid conflicts"
+  else
+    log "No conflicting containers found"
+  fi
 }
 
 terraform_restart() {
   log "Restarting Terraform-managed containers"
-  local containers=(
-    slms-postgres-prod
-    slms-backend-prod
-    slms-admin-console-prod
-    slms-customer-portal-prod
-    slms-driver-pwa-prod
-    slms-landing-page-prod
-  )
-  for name in "${containers[@]}"; do
-    if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
-      log "Restarting container ${name}"
-      docker restart "${name}" >/dev/null
-    fi
-  done
+  
+  # Restart all running replica containers
+  local running_containers=$(docker ps --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' || true)
+  
+  if [ -n "$running_containers" ]; then
+    echo "$running_containers" | xargs docker restart >/dev/null
+    log "Restarted all Terraform-managed containers"
+  else
+    log "No running containers to restart"
+  fi
 }
 
 case "${1:-}" in
   up|deploy)
     ensure_tools
     ensure_network
+    remove_conflicting_containers  # Remove ALL existing containers to avoid conflicts
     cleanup_containers
     terraform_init
     terraform_smart_deploy  # Use smart deploy instead of always destroying
