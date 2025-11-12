@@ -4,8 +4,9 @@
  * This file configures API endpoints for the customer portal.
  */
 
-// Get the base API URL from environment or default to /api/customer
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/customer';
+// Get the base API URL from environment or default to localhost
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const API_BASE_URL = `${BASE_URL}/api/customer`;
 
 /**
  * Customer BFF API endpoints
