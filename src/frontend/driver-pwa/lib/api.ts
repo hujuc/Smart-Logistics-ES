@@ -5,7 +5,8 @@
  */
 
 // Get the base API URL from environment or default to localhost
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/driver';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const API_BASE_URL = `${BASE_URL}/api/driver`;
 
 /**
  * Driver BFF API endpoints
