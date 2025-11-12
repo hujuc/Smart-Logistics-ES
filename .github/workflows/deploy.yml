@@ -114,15 +114,40 @@ jobs:
           "MINIO_ROOT_USER=${MINIO_ROOT_USER}" \
           "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
           "MINIO_BUCKET=${MINIO_BUCKET}" \
+          "MINIO_BUCKET_NAME=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
+          "MAX_BACKUPS=4" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
+
+      - name: Backup database before deployment
+        if: github.event_name == 'push'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="pre-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env up --build -d backup
+          sudo docker compose --env-file ./.env exec -T \
+            -e BACKUP_LABEL="$BACKUP_LABEL" \
+            -e MAX_BACKUPS=4 \
+            backup /usr/local/bin/backup.sh
+          PRE_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp "backup:/backups/${PRE_BACKUP_FILE}" "../backups/${PRE_BACKUP_FILE}"
+          echo "PRE_BACKUP_FILE=${PRE_BACKUP_FILE}" >> "$GITHUB_ENV"
 
       - name: Shutdown existing Docker Compose services
         working-directory: infra
         shell: bash
-        run: docker compose down --remove-orphans || true
+        run: sudo docker compose down --remove-orphans || true
+
+      - name: Remove existing Terraform-managed containers
+        shell: bash
+        run: sudo docker compose down --remove-orphans || true
+          
 
       - name: Remove existing Terraform-managed containers
         shell: bash
@@ -143,6 +168,24 @@ jobs:
           # Smart deploy: reuses existing containers when possible
           # Rebuild images to include basePath configuration
           ./deploy.sh deploy
+
+      - name: Backup database after deployment
+        if: github.event_name == 'push'
+        working-directory: infra
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BACKUP_LABEL="post-${SHORT_SHA}-run${GITHUB_RUN_NUMBER}"
+          sudo docker compose --env-file ./.env up --build -d backup
+          sudo docker compose --env-file ./.env exec -T \
+            -e BACKUP_LABEL="$BACKUP_LABEL" \
+            -e MAX_BACKUPS=4 \
+            backup /usr/local/bin/backup.sh
+          POST_BACKUP_FILE=$(sudo docker compose --env-file ./.env exec -T backup sh -c 'ls -t /backups | head -1' | tr -d '\r')
+          mkdir -p ../backups
+          sudo docker compose --env-file ./.env cp "backup:/backups/${POST_BACKUP_FILE}" "../backups/${POST_BACKUP_FILE}"
+          echo "POST_BACKUP_FILE=${POST_BACKUP_FILE}" >> "$GITHUB_ENV"
         env:
           TF_VAR_public_host: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
 

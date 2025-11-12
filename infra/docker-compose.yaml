@@ -66,6 +66,24 @@ services:
     networks:
       - slms-network
 
+  backup:
+    build:
+      context: ..
+      dockerfile: infra/docker/backup/Dockerfile
+    container_name: slms-backup
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: slms-postgres
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      BACKUP_DIR: /backups
+      MAX_BACKUPS: ${MAX_BACKUPS:-4}
+    volumes:
+      - backup-data:/backups
+    restart: unless-stopped
+    networks:
+      - slms-network
+
   # Nginx - Reverse proxy
   nginx:
     image: nginx:1.27-alpine
@@ -81,6 +99,7 @@ services:
 volumes:
   keycloak-data:
   minio-data:
+  backup-data:
 
 networks:
   slms-network:
