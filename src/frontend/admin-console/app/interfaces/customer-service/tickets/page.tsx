@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,71 +13,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, FileText, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter } from "lucide-react"
+import { Search, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter, Settings } from "lucide-react"
 import { customerServiceService } from "@/lib/services/customer-service.service"
+import { featureFlagManager } from "@/lib/flagsmith"
+import { getUserData } from "@/shared/lib/auth"
 import type { Order } from "@/types"
-
-// Mock data for support tickets
-const mockTickets = [
-  {
-    id: "TKT001",
-    ticketNumber: "TKT-2025-001",
-    customer: "John Doe",
-    category: "Delivery Issue",
-    subject: "Package not delivered",
-    priority: "High",
-    status: "Open",
-    assignedTo: "Agent Smith",
-    createdAt: "2025-10-06 09:30",
-    lastUpdate: "2025-10-06 10:15",
-    messages: 3,
-  },
-  {
-    id: "TKT002",
-    ticketNumber: "TKT-2025-002",
-    customer: "Jane Smith",
-    category: "Tracking",
-    subject: "Unable to track package",
-    priority: "Medium",
-    status: "In Progress",
-    assignedTo: "Agent Jones",
-    createdAt: "2025-10-05 14:20",
-    lastUpdate: "2025-10-06 08:45",
-    messages: 5,
-  },
-  {
-    id: "TKT003",
-    ticketNumber: "TKT-2025-003",
-    customer: "Bob Williams",
-    category: "Refund",
-    subject: "Request refund for damaged item",
-    priority: "High",
-    status: "Escalated",
-    assignedTo: "Manager Brown",
-    createdAt: "2025-10-04 11:00",
-    lastUpdate: "2025-10-05 16:30",
-    messages: 8,
-  },
-  {
-    id: "TKT004",
-    ticketNumber: "TKT-2025-004",
-    customer: "Alice Johnson",
-    category: "General Inquiry",
-    subject: "Question about shipping rates",
-    priority: "Low",
-    status: "Resolved",
-    assignedTo: "Agent Davis",
-    createdAt: "2025-10-03 10:15",
-    lastUpdate: "2025-10-04 09:00",
-    messages: 2,
-  },
-]
+import type { TicketWithDetails } from "@/types/customer-service"
 
 export default function TicketsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
-  const [tickets] = useState(mockTickets)
+  const [tickets, setTickets] = useState<TicketWithDetails[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState("All")
+
+  // Feature flag for ticket visibility
+  const [ticketVisibilityMode, setTicketVisibilityMode] = useState<'all' | 'assigned'>('all')
+  const [showModeToggle, setShowModeToggle] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState<string>("")
 
   // Additional filters and sorting
   const [filterPriority, setFilterPriority] = useState("All")
@@ -91,19 +45,71 @@ export default function TicketsPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
 
+  // Initialize feature flags and get current user
+  useEffect(() => {
+    const userData = getUserData()
+    if (userData) {
+      const fullName = userData.firstName && userData.lastName
+        ? `${userData.firstName} ${userData.lastName}`
+        : userData.username || ''
+      setCurrentUserName(fullName)
+    }
+
+    // Initialize feature flags
+    const userId = userData?.username || 'customer_service'
+    featureFlagManager.initialize(userId).then(() => {
+      const mode = featureFlagManager.getFlag('ticket-visibility-mode')
+      setTicketVisibilityMode(mode)
+    })
+
+    // Show mode toggle in development
+    if (process.env.NODE_ENV === 'development') {
+      setShowModeToggle(true)
+    }
+  }, [])
+
+  // Load tickets from API
+  const loadTickets = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await customerServiceService.getAllTickets({
+        status: filterStatus !== "All" ? filterStatus : undefined,
+        priority: filterPriority !== "All" ? filterPriority : undefined,
+      })
+      setTickets(data)
+    } catch (err) {
+      console.error("Failed to load tickets:", err)
+      setError("Failed to load tickets. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTickets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStatus, filterPriority])
+
   const filteredAndSortedTickets = tickets
     .filter((ticket) => {
       const matchesSearch =
         ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (ticket.customerName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         ticket.subject.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = filterStatus === "All" || ticket.status === filterStatus
-      const matchesPriority = filterPriority === "All" || ticket.priority === filterPriority
       const matchesCategory = filterCategory === "All" || ticket.category === filterCategory
       const matchesAssignedTo = filterAssignedTo === "All" || ticket.assignedTo === filterAssignedTo
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesAssignedTo
+      // Feature flag: ticket visibility mode
+      let matchesVisibility = true
+      if (ticketVisibilityMode === 'assigned') {
+        // Mode B: Only show tickets assigned to current user or unassigned
+        matchesVisibility = !ticket.assignedTo || ticket.assignedTo === currentUserName
+      }
+      // Mode A: Show all tickets (default)
+
+      return matchesSearch && matchesCategory && matchesAssignedTo && matchesVisibility
     })
     .sort((a, b) => {
       let comparison = 0
@@ -117,17 +123,17 @@ export default function TicketsPage() {
           comparison = priorityOrder[b.priority as keyof typeof priorityOrder] - priorityOrder[a.priority as keyof typeof priorityOrder]
           break
         case "status":
-          const statusOrder = { Open: 4, Escalated: 3, "In Progress": 2, Resolved: 1 }
+          const statusOrder = { Open: 4, Escalated: 3, "In Progress": 2, Resolved: 1, Closed: 0 }
           comparison = statusOrder[b.status as keyof typeof statusOrder] - statusOrder[a.status as keyof typeof statusOrder]
           break
         case "customer":
-          comparison = a.customer.localeCompare(b.customer)
+          comparison = (a.customerName || '').localeCompare(b.customerName || '')
           break
         case "category":
-          comparison = a.category.localeCompare(b.category)
+          comparison = (a.category || '').localeCompare(b.category || '')
           break
         case "assignedTo":
-          comparison = a.assignedTo.localeCompare(b.assignedTo)
+          comparison = (a.assignedTo || '').localeCompare(b.assignedTo || '')
           break
       }
 
@@ -135,9 +141,9 @@ export default function TicketsPage() {
     })
 
   // Get unique values for filters
-  const categories = Array.from(new Set(tickets.map((t) => t.category)))
+  const categories = Array.from(new Set(tickets.map((t) => t.category).filter(Boolean)))
   const priorities = ["High", "Medium", "Low"]
-  const assignees = Array.from(new Set(tickets.map((t) => t.assignedTo)))
+  const assignees = Array.from(new Set(tickets.map((t) => t.assignedTo).filter(Boolean)))
 
   // Handle column sorting
   const handleSort = (column: typeof sortBy) => {
@@ -215,22 +221,100 @@ export default function TicketsPage() {
     router.push(`/interfaces/customer-service/tickets/${ticketId}`)
   }
 
+  const handleToggleVisibilityMode = () => {
+    const newMode = ticketVisibilityMode === 'all' ? 'assigned' : 'all'
+    featureFlagManager.setFlag('ticket-visibility-mode', newMode)
+    setTicketVisibilityMode(newMode)
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Feature Flag Toggle (Development Only) */}
+      {showModeToggle && (
+        <div className={`border-l-4 p-4 ${featureFlagManager.isUsingAPI() ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'}`}>
+          <div className="flex items-start">
+            <Settings className={`h-5 w-5 mt-0.5 ${featureFlagManager.isUsingAPI() ? 'text-green-400' : 'text-yellow-400'}`} />
+            <div className="ml-3 flex-1">
+              <h3 className={`text-sm font-medium ${featureFlagManager.isUsingAPI() ? 'text-green-800' : 'text-yellow-800'}`}>
+                Feature Flag: Ticket Visibility Mode {featureFlagManager.isUsingAPI() ? '(Flagsmith API)' : '(Demo Mode)'}
+              </h3>
+              {!featureFlagManager.isUsingAPI() && (
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={ticketVisibilityMode === 'all' ? 'default' : 'outline'}
+                    onClick={handleToggleVisibilityMode}
+                    className="h-7 text-xs"
+                  >
+                    {ticketVisibilityMode === 'all' ? '✓ Mode A (All Tickets)' : 'Mode A (All Tickets)'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={ticketVisibilityMode === 'assigned' ? 'default' : 'outline'}
+                    onClick={handleToggleVisibilityMode}
+                    className="h-7 text-xs"
+                  >
+                    {ticketVisibilityMode === 'assigned' ? '✓ Mode B (My Tickets)' : 'Mode B (My Tickets)'}
+                  </Button>
+                </div>
+              )}
+              <p className={`text-xs mt-2 ${featureFlagManager.isUsingAPI() ? 'text-green-700' : 'text-yellow-700'}`}>
+                {featureFlagManager.isUsingAPI() ? (
+                  <>
+                    <strong>✓ Connected to Flagsmith API</strong>
+                    <br />
+                    Current mode: <span className="font-mono font-semibold">{ticketVisibilityMode === 'all' ? 'A (All Tickets)' : 'B (Assigned to Me + Unassigned)'}</span>
+                    <br />
+                    <em>Changes are controlled from Flagsmith Dashboard</em>
+                  </>
+                ) : (
+                  <>
+                    Current mode: <span className="font-mono font-semibold">{ticketVisibilityMode === 'all' ? 'A (All Tickets)' : 'B (Assigned to Me + Unassigned)'}</span> 
+                    <br />
+                    <em>Set NEXT_PUBLIC_FLAGSMITH_ENV_KEY to use Flagsmith API</em>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <h1 className="text-2xl md:text-3xl font-bold text-black">Support Tickets</h1>
-        <Button className="w-full sm:w-auto">
-          <FileText className="mr-2 h-4 w-4" />
-          Create New Ticket
-        </Button>
       </div>
 
-      {/* Status Filter Tabs */}
-      <div className="bg-white border rounded-lg shadow-sm">
-        <div className="flex overflow-x-auto">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <button
-              key={status}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading tickets...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-red-700">{error}</p>
+          </div>
+          <Button onClick={loadTickets} variant="outline" size="sm" className="mt-3">
+            Try Again
+          </Button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {/* Status Filter Tabs */}
+          <div className="bg-white border rounded-lg shadow-sm">
+            <div className="flex overflow-x-auto">
+              {Object.entries(statusCounts).map(([status, count]) => (
+                <button
+                  key={status}
               onClick={() => setFilterStatus(status)}
               className={`flex-1 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 filterStatus === status
@@ -247,30 +331,26 @@ export default function TicketsPage() {
       {/* Search Bar with Order Lookup - US 7 */}
       <div className="bg-white border rounded-lg p-4 md:p-6 shadow-sm">
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Search Orders or Tickets</Label>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="search"
-                  type="text"
-                  placeholder="Enter order reference (ORD-2024-123), tracking number, ticket #, or customer name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className="pl-10"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tip: Enter ORD- or TRK to search orders, or search tickets by name/subject
-              </p>
-            </div>
-            <div className="flex sm:items-end w-full sm:w-auto">
+          <div>
+            <Label htmlFor="search">Search Orders or Tickets</Label>
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Input
+                id="search"
+                type="text"
+                placeholder="Enter order reference (ORD-2024-123), tracking number, ticket #, or customer name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                className="flex-1"
+              />
               <Button onClick={handleSearch} disabled={isSearching} className="w-full sm:w-auto">
+                <Search className="w-4 h-4 mr-2" />
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Tip: Enter ORD- or TRK to search orders, or search tickets by name/subject
+            </p>
           </div>
 
           {/* Filters and Sort */}
@@ -442,7 +522,7 @@ export default function TicketsPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-gray-400" />
-                      {ticket.customer}
+                      {ticket.customerName || 'Unknown'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -450,7 +530,7 @@ export default function TicketsPage() {
                       <p className="font-medium text-black">{ticket.subject}</p>
                       <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                         <MessageSquare className="h-3 w-3" />
-                        {ticket.messages} messages
+                        {ticket.messages || 0} messages
                       </div>
                     </div>
                   </TableCell>
@@ -487,7 +567,7 @@ export default function TicketsPage() {
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Clock className="h-3 w-3" />
-                      {ticket.lastUpdate}
+                      {new Date(ticket.updatedAt).toLocaleString()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -508,6 +588,8 @@ export default function TicketsPage() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

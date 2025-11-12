@@ -32,22 +32,22 @@ infra/
 
 ## Final Architecture
 
-| Managed by Terraform (local Docker provider) | Ports |
-|----------------------------------------------|-------|
-| PostgreSQL                                   | host port from `postgres_host_port` (default 15432) |
-| Spring Boot backend                          | 8080 |
-| Admin Console (Next.js)                      | 3001 |
-| Customer Portal (Next.js)                    | 3002 |
-| Driver PWA (Next.js)                         | 3003 |
-| Landing Page (Next.js)                       | 3004 |
+/| Managed by Terraform (local Docker provider) | Access |
+|----------------------------------------------|--------|
+| PostgreSQL                                   | Internal only (`slms-postgres-prod` on `slms-network`) |
+| Spring Boot backend                          | 2 replicas on port 8080, exposed via Nginx at `/api` |
+| Admin Console (Next.js)                      | 2 replicas on port 3000, exposed via Nginx at `/admin` |
+| Customer Portal (Next.js)                    | 2 replicas on port 3000, exposed via Nginx at `/customer` |
+| Driver PWA (Next.js)                         | 2 replicas on port 3000, exposed via Nginx at `/driver` |
+| Landing Page (Next.js)                       | 2 replicas on port 3000, exposed via Nginx at `/` |
 
 All Terraform-managed containers join the shared Docker network `slms-network`.
 
-| Managed by Docker Compose | Ports |
-|---------------------------|-------|
+| Managed by Docker Compose | Ports / Notes |
+|---------------------------|----------------|
 | Keycloak                  | 8180 |
 | MinIO                     | 9000 (API), 9001 (console) |
-| Nginx reverse proxy       | 80 |
+| Nginx reverse proxy       | 80 (load-balances backend/frontends) |
 
 Compose services also connect to `slms-network` so they can talk to Terraform resources by container name.
 
@@ -85,11 +85,16 @@ The script runs `terraform init`, `terraform apply`, removes conflicting contain
 ./infra/deploy.sh status
 ```
 
-For service logs use regular Docker commands, for example:
+For service logs, use the wrapper (replica parameter optional) or Compose:
 
 ```bash
-docker logs -f slms-backend-dev
+cd infra
+./deploy.sh logs backend 1
+./deploy.sh logs backend 2
+./deploy.sh logs admin 1
+
 docker compose logs -f keycloak
+docker compose logs -f nginx
 ```
 
 ## Required Variables (terraform.tfvars)
@@ -125,7 +130,7 @@ Values in `terraform.tfvars` override defaults declared in `variables.tf`. Do no
 * **Infrastructure as Code** – Every container definition lives in Git. Changes are reviewable and repeatable.
 * **Split responsibilities** – Terraform handles core services. Docker Compose keeps third-party tools that are easier to manage with plain compose (Keycloak, MinIO, Nginx).
 * **Automation friendly** – `deploy.sh` wraps daily tasks. The GitHub workflow runs `terraform fmt`, `terraform plan`, and `terraform apply` on pull requests and merges.
-* **Shared network** – All services use the same Docker bridge network, so they can communicate using container names (for example backend connects to `slms-postgres:5432`).
+* **Shared network** – All services use the same Docker bridge network, so they can communicate using container names (for example backend connects to `slms-postgres-prod:5432`).
 
 ## Development Workflow (local machine or VM)
 

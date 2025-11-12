@@ -13,4 +13,5 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     boolean existsByReferenceIgnoreCase(String reference);
     List<Order> findByWarehouse(Warehouse warehouse);
     List<Order> findByWarehouseAndStatus(Warehouse warehouse, OrderStatus status);
+    List<Order> findByShipmentId(Long shipmentId);
 }

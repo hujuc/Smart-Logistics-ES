@@ -5,6 +5,11 @@ import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.Delive
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.entities.Order;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +29,8 @@ import java.util.UUID;
 public class DeliveryExceptionService {
 
     private final DeliveryExceptionRepository exceptionRepository;
+    private final OrderRepository orderRepository;
+    private final OrderEventService orderEventService;
 
     /**
      * Create a new delivery exception
@@ -161,6 +168,27 @@ public class DeliveryExceptionService {
             exception.setSlaBreached(true);
         }
 
+        // Reset order status to READY_FOR_PICKUP to restart shipping process
+        try {
+            Order order = orderRepository.findById(exception.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + exception.getOrderId()));
+            
+            OrderStatus previousStatus = order.getStatus();
+            log.info("Resetting order {} status from {} to READY_FOR_PICKUP", 
+                order.getId(), previousStatus);
+            
+            order.setStatus(OrderStatus.READY_FOR_PICKUP);
+            orderRepository.save(order);
+            
+            // Record the status change event for shipping timeline
+            orderEventService.recordStatusChange(order, previousStatus, OrderStatus.READY_FOR_PICKUP);
+            
+            log.info("Order {} status reset successfully and event recorded", order.getId());
+        } catch (Exception e) {
+            log.error("Failed to reset order status for exception {}: {}", id, e.getMessage());
+            // Don't fail the exception closure if order update fails
+        }
+
         DeliveryException closed = exceptionRepository.save(exception);
         log.info("Closed delivery exception: {}", id);
 
@@ -241,6 +269,19 @@ public class DeliveryExceptionService {
     }
 
     /**
+     * Get exceptions by customer ID
+     */
+    @Transactional(readOnly = true)
+    public List<DeliveryExceptionResponse> getByCustomerId(UUID customerId) {
+        log.info("Fetching exceptions for customer: {}", customerId);
+        
+        List<DeliveryException> exceptions = exceptionRepository.findByCustomerId(customerId);
+        return exceptions.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    /**
      * Submit customer feedback
      */
     public DeliveryExceptionResponse submitFeedback(UUID id, Integer rating, String comment) {
@@ -288,6 +329,7 @@ public class DeliveryExceptionService {
                 .slaBreached(exception.getSlaBreached())
                 .customerFeedback(exception.getCustomerFeedback())
                 .feedbackComment(exception.getFeedbackComment())
+                .createdAt(exception.getReportedAt())  // Map reportedAt to createdAt for frontend
                 .updatedAt(exception.getUpdatedAt())
                 .history(exception.getHistory())
                 .build();

@@ -56,9 +56,44 @@ make prod-restart  # Restart production services
 make clean         # Remove containers and volumes
 ```
 
+## Database Backup System
+
+The system includes automatic database backups to protect against data loss.
+
+### Features
+
+- ✅ **Backups automáticos** em cada push para `main` (pré e pós deploy)
+- ✅ **Limpeza automática** – mantém apenas os últimos 4 ficheiros
+- ✅ **Comprimido** (gzip) e com labels por deploy
+- ✅ **Podem ser disparados manualmente** via `docker compose exec backup ...`
+
+### View Backups
+
+```bash
+# List available backups
+docker compose -f infra/docker-compose.yaml exec backup ls -lh /backups
+
+# Copy the latest pre/post backups produced pelo workflow
+ls -lh backups/
+```
+
+### Download Backup
+
+```bash
+# Download a backup to your local machine
+docker cp slms-backup:/backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz ./
+```
+
+### Documentation
+
+- **Basic usage**: [docker/backup/README.md](docker/backup/README.md)
+
 ## Services
 
 - **PostgreSQL** (port 5433): Database
+- **Backup**: Serviço que corre `backup.sh` quando o workflow/manual o invoca
 - **Backend** (port 8080): Spring Boot API
 - **Frontend Apps** (port 3000 each): Next.js applications
 - **Nginx** (port 80): Reverse proxy
+- **Keycloak**: Authentication and authorization
+- **MinIO**: Object storage

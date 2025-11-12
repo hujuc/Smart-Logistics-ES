@@ -8,6 +8,7 @@ import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +53,9 @@ class CustomerBffControllerTest {
 
     @MockBean
     private WarehouseService warehouseService;
+
+    @MockBean
+    private DeliveryExceptionService exceptionService;
 
     @MockBean
     private JwtDecoder jwtDecoder;

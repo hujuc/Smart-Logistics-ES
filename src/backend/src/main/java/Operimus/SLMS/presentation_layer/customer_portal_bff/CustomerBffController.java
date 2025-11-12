@@ -7,6 +7,9 @@ import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionRequest;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionResponse;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,7 @@ public class CustomerBffController {
     private final OrderService orderService;
     private final OrderEventService orderEventService;
     private final WarehouseService warehouseService;
+    private final DeliveryExceptionService exceptionService;
 
     /**
      * Health check endpoint
@@ -245,6 +249,152 @@ public class CustomerBffController {
 
         } catch (Exception e) {
             log.error("Customer BFF: Failed to create order: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    // ========================================
+    // Delivery Exception (Support Tickets) Endpoints
+    // ========================================
+
+    /**
+     * Get all delivery exceptions for the authenticated customer
+     * GET /api/customer/delivery-exceptions
+     *
+     * @param jwt JWT token with customer information
+     * @return List of delivery exceptions for this customer
+     */
+    @GetMapping("/delivery-exceptions")
+    public ResponseEntity<List<DeliveryExceptionResponse>> getCustomerExceptions(@AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Fetching delivery exceptions for customer {}", customerId);
+            
+            if (customerId == null) {
+                log.error("Customer BFF: customerId is null - JWT had no sub claim");
+                return ResponseEntity.ok(java.util.Collections.emptyList());
+            }
+            
+            // Convert String UUID to java.util.UUID
+            java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
+            List<DeliveryExceptionResponse> exceptions = exceptionService.getByCustomerId(customerUuid);
+            
+            log.info("Customer BFF: Successfully fetched {} exceptions for customer {}", exceptions.size(), customerId);
+            return ResponseEntity.ok(exceptions);
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to fetch delivery exceptions: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Get delivery exception by ID
+     * GET /api/customer/delivery-exceptions/{id}
+     *
+     * @param id Exception ID (UUID)
+     * @param jwt JWT token with customer information
+     * @return Exception details (only if it belongs to the authenticated customer)
+     */
+    @GetMapping("/delivery-exceptions/{id}")
+    public ResponseEntity<DeliveryExceptionResponse> getExceptionById(
+            @PathVariable java.util.UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Fetching exception {} for customer {}", id, customerId);
+            
+            DeliveryExceptionResponse exception = exceptionService.getById(id);
+            
+            // Security check: verify that the exception belongs to this customer
+            if (exception.getCustomerId() == null || !customerId.equals(exception.getCustomerId().toString())) {
+                log.warn("Customer {} attempted to access exception {} (exception customerId: {})", 
+                        customerId, id, exception.getCustomerId());
+                throw new RuntimeException("Access denied: Exception does not belong to this customer");
+            }
+            
+            log.info("Customer BFF: Successfully fetched exception {}", id);
+            return ResponseEntity.ok(exception);
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to fetch exception {}: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Create a new delivery exception (support ticket)
+     * POST /api/customer/delivery-exceptions
+     *
+     * @param request Exception creation request
+     * @param jwt JWT token with customer information
+     * @return Created exception
+     */
+    @PostMapping("/delivery-exceptions")
+    public ResponseEntity<DeliveryExceptionResponse> createException(
+            @Valid @RequestBody DeliveryExceptionRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Customer {} creating new delivery exception for order {}", 
+                    customerId, request.getOrderId());
+            
+            // Security: Verify that the order belongs to this customer before creating exception
+            OrderResponse order = orderService.getById(request.getOrderId());
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to create exception for order {} (order customerId: {})", 
+                        customerId, request.getOrderId(), order.getCustomerId());
+                throw new RuntimeException("Access denied: Cannot create exception for orders that don't belong to you");
+            }
+            
+            // Set customer-specific fields (security: prevent customers from impersonating)
+            request.setCustomerId(java.util.UUID.fromString(customerId));
+            request.setReportedBy(java.util.UUID.fromString(customerId));
+            request.setCustomerReported(true);
+            request.setSource(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source.CUSTOMER);
+            
+            // Create the exception via business layer
+            DeliveryExceptionResponse response = exceptionService.create(request);
+            
+            log.info("Customer BFF: Successfully created exception {} for customer {}", 
+                    response.getId(), customerId);
+            
+            return ResponseEntity
+                    .created(URI.create("/api/customer/delivery-exceptions/" + response.getId()))
+                    .body(response);
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to create delivery exception: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Get delivery exceptions for a specific order
+     * GET /api/customer/orders/{orderId}/exceptions
+     *
+     * @param orderId Order ID
+     * @param jwt JWT token with customer information
+     * @return List of exceptions for the order (only if order belongs to customer)
+     */
+    @GetMapping("/orders/{orderId}/exceptions")
+    public ResponseEntity<List<DeliveryExceptionResponse>> getOrderExceptions(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = jwt.getSubject();
+            log.info("Customer BFF: Fetching exceptions for order {} for customer {}", orderId, customerId);
+            
+            // Security check: verify that the order belongs to this customer
+            OrderResponse order = orderService.getById(orderId);
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to access exceptions for order {} (order customerId: {})", 
+                        customerId, orderId, order.getCustomerId());
+                throw new RuntimeException("Access denied: Order does not belong to this customer");
+            }
+            
+            List<DeliveryExceptionResponse> exceptions = exceptionService.getByOrderId(orderId);
+            log.info("Customer BFF: Successfully fetched {} exceptions for order {}", exceptions.size(), orderId);
+            return ResponseEntity.ok(exceptions);
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to fetch exceptions for order {}: {}", orderId, e.getMessage());
             throw e;
         }
     }
