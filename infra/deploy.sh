@@ -34,9 +34,8 @@ cleanup_containers() {
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
-    slms-backup-prod
   )
-  
+
   # Only remove stopped containers, keep running ones
   for name in "${containers[@]}"; do
     if docker ps -a --filter "status=exited" --format '{{.Names}}' | grep -qx "${name}"; then
@@ -93,7 +92,6 @@ terraform_stop() {
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
-    slms-backup-prod
   )
   for name in "${containers[@]}"; do
     if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
@@ -112,7 +110,6 @@ terraform_restart() {
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
-    slms-backup-prod
   )
   for name in "${containers[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
