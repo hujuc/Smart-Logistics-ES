@@ -10,6 +10,7 @@ import Operimus.SLMS.business_layer.shared.exception.DocumentStorageException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import Operimus.SLMS.config.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -57,6 +59,23 @@ class OrderDocumentServiceIntegrationTest {
 
     private Order testOrder;
     private Warehouse testWarehouse;
+
+    @BeforeAll
+    static void setupBucket(@Autowired S3Client s3Client, @Value("${aws.s3.bucket}") String bucketName) {
+        // Create test bucket if it doesn't exist
+        try {
+            HeadBucketRequest headBucketRequest = HeadBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build();
+            s3Client.headBucket(headBucketRequest);
+        } catch (NoSuchBucketException e) {
+            // Bucket doesn't exist, create it
+            CreateBucketRequest createBucketRequest = CreateBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build();
+            s3Client.createBucket(createBucketRequest);
+        }
+    }
 
     @BeforeEach
     void setUp() {

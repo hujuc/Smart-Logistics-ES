@@ -157,3 +157,10 @@ variable "mapbox_access_token" {
   sensitive   = true
   default     = null
 }
+
+# Service scaling
+variable "service_replica_count" {
+  description = "Number of replicas provisioned for each stateless service (backend and frontends)"
+  type        = number
+  default     = 2
+}
