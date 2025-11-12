@@ -13,8 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, FileText, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter } from "lucide-react"
+import { Search, FileText, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter, Settings } from "lucide-react"
 import { customerServiceService } from "@/lib/services/customer-service.service"
+import { featureFlagManager } from "@/lib/flagsmith"
+import { getUserData } from "@/shared/lib/auth"
 import type { Order } from "@/types"
 import type { TicketWithDetails } from "@/types/customer-service"
 
@@ -25,6 +27,11 @@ export default function TicketsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState("All")
+
+  // Feature flag for ticket visibility
+  const [ticketVisibilityMode, setTicketVisibilityMode] = useState<'all' | 'assigned'>('all')
+  const [showModeToggle, setShowModeToggle] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState<string>("")
 
   // Additional filters and sorting
   const [filterPriority, setFilterPriority] = useState("All")
@@ -37,6 +44,29 @@ export default function TicketsPage() {
   const [orderResult, setOrderResult] = useState<Order | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+
+  // Initialize feature flags and get current user
+  useEffect(() => {
+    const userData = getUserData()
+    if (userData) {
+      const fullName = userData.firstName && userData.lastName
+        ? `${userData.firstName} ${userData.lastName}`
+        : userData.username || ''
+      setCurrentUserName(fullName)
+    }
+
+    // Initialize feature flags
+    const userId = userData?.username || 'customer_service'
+    featureFlagManager.initialize(userId).then(() => {
+      const mode = featureFlagManager.getFlag('ticket-visibility-mode')
+      setTicketVisibilityMode(mode)
+    })
+
+    // Show mode toggle in development
+    if (process.env.NODE_ENV === 'development') {
+      setShowModeToggle(true)
+    }
+  }, [])
 
   // Load tickets from API
   const loadTickets = async () => {
@@ -71,7 +101,15 @@ export default function TicketsPage() {
       const matchesCategory = filterCategory === "All" || ticket.category === filterCategory
       const matchesAssignedTo = filterAssignedTo === "All" || ticket.assignedTo === filterAssignedTo
 
-      return matchesSearch && matchesCategory && matchesAssignedTo
+      // Feature flag: ticket visibility mode
+      let matchesVisibility = true
+      if (ticketVisibilityMode === 'assigned') {
+        // Mode B: Only show tickets assigned to current user or unassigned
+        matchesVisibility = !ticket.assignedTo || ticket.assignedTo === currentUserName
+      }
+      // Mode A: Show all tickets (default)
+
+      return matchesSearch && matchesCategory && matchesAssignedTo && matchesVisibility
     })
     .sort((a, b) => {
       let comparison = 0
@@ -183,14 +221,67 @@ export default function TicketsPage() {
     router.push(`/interfaces/customer-service/tickets/${ticketId}`)
   }
 
+  const handleToggleVisibilityMode = () => {
+    const newMode = ticketVisibilityMode === 'all' ? 'assigned' : 'all'
+    featureFlagManager.setFlag('ticket-visibility-mode', newMode)
+    setTicketVisibilityMode(newMode)
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Feature Flag Toggle (Development Only) */}
+      {showModeToggle && (
+        <div className={`border-l-4 p-4 ${featureFlagManager.isUsingAPI() ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'}`}>
+          <div className="flex items-start">
+            <Settings className={`h-5 w-5 mt-0.5 ${featureFlagManager.isUsingAPI() ? 'text-green-400' : 'text-yellow-400'}`} />
+            <div className="ml-3 flex-1">
+              <h3 className={`text-sm font-medium ${featureFlagManager.isUsingAPI() ? 'text-green-800' : 'text-yellow-800'}`}>
+                Feature Flag: Ticket Visibility Mode {featureFlagManager.isUsingAPI() ? '(Flagsmith API)' : '(Demo Mode)'}
+              </h3>
+              {!featureFlagManager.isUsingAPI() && (
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={ticketVisibilityMode === 'all' ? 'default' : 'outline'}
+                    onClick={handleToggleVisibilityMode}
+                    className="h-7 text-xs"
+                  >
+                    {ticketVisibilityMode === 'all' ? '✓ Mode A (All Tickets)' : 'Mode A (All Tickets)'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={ticketVisibilityMode === 'assigned' ? 'default' : 'outline'}
+                    onClick={handleToggleVisibilityMode}
+                    className="h-7 text-xs"
+                  >
+                    {ticketVisibilityMode === 'assigned' ? '✓ Mode B (My Tickets)' : 'Mode B (My Tickets)'}
+                  </Button>
+                </div>
+              )}
+              <p className={`text-xs mt-2 ${featureFlagManager.isUsingAPI() ? 'text-green-700' : 'text-yellow-700'}`}>
+                {featureFlagManager.isUsingAPI() ? (
+                  <>
+                    <strong>✓ Connected to Flagsmith API</strong>
+                    <br />
+                    Current mode: <span className="font-mono font-semibold">{ticketVisibilityMode === 'all' ? 'A (All Tickets)' : 'B (Assigned to Me + Unassigned)'}</span>
+                    <br />
+                    <em>Changes are controlled from Flagsmith Dashboard</em>
+                  </>
+                ) : (
+                  <>
+                    Current mode: <span className="font-mono font-semibold">{ticketVisibilityMode === 'all' ? 'A (All Tickets)' : 'B (Assigned to Me + Unassigned)'}</span> 
+                    <br />
+                    <em>Set NEXT_PUBLIC_FLAGSMITH_ENV_KEY to use Flagsmith API</em>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         <h1 className="text-2xl md:text-3xl font-bold text-black">Support Tickets</h1>
-        <Button className="w-full sm:w-auto">
-          <FileText className="mr-2 h-4 w-4" />
-          Create New Ticket
-        </Button>
       </div>
 
       {/* Loading State */}
