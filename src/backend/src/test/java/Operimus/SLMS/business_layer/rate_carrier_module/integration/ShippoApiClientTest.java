@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationRequest;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.AddressValidationResponse;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.CarrierAddressView;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippoLabelResponse;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateRequest;
 import Operimus.SLMS.business_layer.rate_carrier_module.dto.ShippingRateResponse;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
@@ -116,6 +117,30 @@ class ShippoApiClientTest {
         assertThat(request.getUrl().toString()).isEqualTo("https://api.goshippo.com/carrier_accounts/");
         assertThat(request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION)).isEqualTo("ShippoToken test-key");
         assertThat(request.getHeaders().getAccept()).containsExactly(MediaType.APPLICATION_JSON);
+    }
+
+    @Test
+    void fetchCarrierAccountsShouldFallbackAccountIdToObjectIdWhenMissing() {
+        JsonNode payload = json("""
+                {
+                  "results": [
+                    {
+                      "carrier": "ups",
+                      "object_id": "object-abc",
+                      "active": true,
+                      "parameters": {}
+                    }
+                  ]
+                }
+                """);
+
+        when(restTemplate.exchange(any(RequestEntity.class), eq(JsonNode.class)))
+                .thenReturn(ResponseEntity.ok(payload));
+
+        List<ShippoCarrierAccount> result = shippoApiClient.fetchCarrierAccounts();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).accountId()).isEqualTo("object-abc");
     }
 
     @Test
@@ -273,6 +298,7 @@ class ShippoApiClientTest {
                   "object_id": "shipment-123",
                   "rates": [
                     {
+                      "object_id": "rate-123",
                       "provider": "UPS",
                       "carrier_account": "carrier-acc",
                       "carrier": "ups",
@@ -305,6 +331,7 @@ class ShippoApiClientTest {
         assertThat(response.getShipmentId()).isEqualTo("shipment-123");
         assertThat(response.getRates()).hasSize(1);
         ShippingRateResponse.RateQuote quote = response.getRates().get(0);
+        assertThat(quote.getRateId()).isEqualTo("rate-123");
         assertThat(quote.getProvider()).isEqualTo("UPS");
         assertThat(quote.getCarrierAccount()).isEqualTo("carrier-acc");
         assertThat(quote.getCarrierCode()).isEqualTo("ups");
@@ -408,6 +435,95 @@ class ShippoApiClientTest {
                 .isThrownBy(() -> shippoApiClient.calculateRates(requestPayload))
                 .withMessage("Shippo API key is not configured");
         verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    void purchaseLabelShouldReturnTransactionDetails() {
+        JsonNode payload = json("""
+                {
+                  "object_id": "txn_123",
+                  "status": "SUCCESS",
+                  "label_url": "https://labels.shippo.test/label.pdf",
+                  "label_file_type": "PDF",
+                  "tracking_number": "TRACK123",
+                  "tracking_url_provider": "https://track/123",
+                  "carrier_account": "carrier-acc",
+                  "servicelevel": {"name": "Express"},
+                  "shipment": "shippo-shipment",
+                  "rate": "rate_123",
+                  "amount": "9.99",
+                  "currency": "EUR",
+                  "messages": []
+                }
+                """);
+
+        when(restTemplate.exchange(any(RequestEntity.class), eq(JsonNode.class)))
+                .thenReturn(ResponseEntity.ok(payload));
+
+        ShippoLabelResponse response = shippoApiClient.purchaseLabel("rate_123", "PDF");
+
+        assertThat(response.getTransactionId()).isEqualTo("txn_123");
+        assertThat(response.getLabelUrl()).contains("label.pdf");
+        assertThat(response.getLabelFileType()).isEqualTo("PDF");
+        assertThat(response.getTrackingNumber()).isEqualTo("TRACK123");
+        assertThat(response.getServiceLevel()).isEqualTo("Express");
+        assertThat(response.getShipmentId()).isEqualTo("shippo-shipment");
+        assertThat(response.getRateId()).isEqualTo("rate_123");
+        assertThat(response.getAmount()).isEqualByComparingTo("9.99");
+        assertThat(response.getCurrency()).isEqualTo("EUR");
+
+        ArgumentCaptor<RequestEntity> captor = ArgumentCaptor.forClass(RequestEntity.class);
+        verify(restTemplate).exchange(captor.capture(), eq(JsonNode.class));
+        RequestEntity<?> request = captor.getValue();
+        assertThat(request.getUrl().toString()).isEqualTo("https://api.goshippo.com/transactions");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) request.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.get("rate")).isEqualTo("rate_123");
+        assertThat(body.get("label_file_type")).isEqualTo("PDF");
+        assertThat(body.get("async")).isEqualTo(Boolean.FALSE);
+    }
+
+    @Test
+    void getTransactionShouldFetchTransactionDetails() {
+        JsonNode payload = json("""
+                {
+                  "object_id": "txn_456",
+                  "status": "QUEUED",
+                  "label_url": null,
+                  "messages": ["Processing"]
+                }
+                """);
+
+        when(restTemplate.exchange(any(RequestEntity.class), eq(JsonNode.class)))
+                .thenReturn(ResponseEntity.ok(payload));
+
+        ShippoLabelResponse response = shippoApiClient.getTransaction("txn_456");
+
+        assertThat(response.getTransactionId()).isEqualTo("txn_456");
+        assertThat(response.getStatus()).isEqualTo("QUEUED");
+        assertThat(response.getLabelUrl()).isNull();
+
+        ArgumentCaptor<RequestEntity> captor = ArgumentCaptor.forClass(RequestEntity.class);
+        verify(restTemplate).exchange(captor.capture(), eq(JsonNode.class));
+        assertThat(captor.getValue().getUrl().toString()).isEqualTo("https://api.goshippo.com/transactions/txn_456");
+    }
+
+    @Test
+    void downloadLabelShouldFetchBytes() {
+        byte[] bytes = "pdf".getBytes();
+        when(restTemplate.exchange(any(RequestEntity.class), eq(byte[].class)))
+                .thenReturn(ResponseEntity.ok(bytes));
+
+        byte[] response = shippoApiClient.downloadLabel("https://labels.shippo.test/label.pdf");
+
+        assertThat(response).isEqualTo(bytes);
+
+        ArgumentCaptor<RequestEntity> captor = ArgumentCaptor.forClass(RequestEntity.class);
+        verify(restTemplate).exchange(captor.capture(), eq(byte[].class));
+        RequestEntity<?> request = captor.getValue();
+        assertThat(request.getHeaders().getAccept()).contains(MediaType.APPLICATION_PDF);
+        assertThat(request.getUrl().toString()).isEqualTo("https://labels.shippo.test/label.pdf");
     }
 
     private JsonNode json(String content) {

@@ -5,7 +5,9 @@ import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.dto.ShipmentDocumentResponse;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.ShipmentDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
@@ -42,6 +44,7 @@ public class WarehouseBffController {
 
     private final OrderService orderService;
     private final OrderDocumentService orderDocumentService;
+    private final ShipmentDocumentService shipmentDocumentService;
     private final KeycloakUserService keycloakUserService;
 
     /**
@@ -295,6 +298,42 @@ public class WarehouseBffController {
         } catch (Exception e) {
             log.error("Failed to download document {} for order {} via warehouse BFF: {}",
                     documentId, orderId, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * List all carrier shipping documents associated with the shipment that contains the order.
+     */
+    @GetMapping("/orders/{orderId}/shipment-documents")
+    public ResponseEntity<List<ShipmentDocumentResponse>> listShipmentDocuments(@PathVariable Long orderId) {
+        try {
+            log.info("Warehouse BFF: Listing shipment documents for order {}", orderId);
+            List<ShipmentDocumentResponse> documents = shipmentDocumentService.listByOrder(orderId);
+            return ResponseEntity.ok(documents);
+        } catch (Exception e) {
+            log.error("Failed to list shipment documents for order {}: {}", orderId, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Download a shipping document generated for the shipment containing the given order.
+     */
+    @GetMapping("/orders/{orderId}/shipment-documents/{documentId}/download")
+    public ResponseEntity<Resource> downloadShipmentDocument(
+            @PathVariable Long orderId,
+            @PathVariable String documentId) {
+        try {
+            log.info("Warehouse BFF: Downloading shipment document {} for order {}", documentId, orderId);
+            DocumentDownloadResponse response = shipmentDocumentService.downloadForOrder(orderId, documentId);
+            ByteArrayResource resource = new ByteArrayResource(response.getContent());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(response.getContentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + response.getFileName() + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            log.error("Failed to download shipment document {} for order {}: {}", documentId, orderId, e.getMessage());
             throw e;
         }
     }

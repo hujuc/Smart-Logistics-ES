@@ -28,6 +28,15 @@ public class OrderRequest {
     @NotBlank
     private String shippingAddress;
 
+    private String shippingAddressLine1;
+    private String shippingAddressLine2;
+    private String shippingCity;
+    private String shippingStateOrProvince;
+    private String shippingPostalCode;
+    private String shippingCountry;
+    private String shippingPhone;
+    private String shippingEmail;
+
     private LocalDate estimatedDeliveryDate;
 
     @NotNull

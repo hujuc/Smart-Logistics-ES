@@ -45,6 +45,8 @@ locals {
   config_shipengine_api_key  = var.shipengine_api_key != null ? var.shipengine_api_key : ""
   config_shipengine_base_url = var.shipengine_base_url != null ? var.shipengine_base_url : "https://api.shipengine.com/v1"
 
+  config_qr_confirmation_base_url = var.qr_confirmation_base_url != null ? var.qr_confirmation_base_url : "http://localhost:8080/api/driver"
+
   config_docker_network = var.docker_network_name != null ? var.docker_network_name : "slms-network"
 
   # Frontend configuration
@@ -177,6 +179,7 @@ resource "docker_container" "backend" {
     "LOG_LEVEL_APP=${local.config_log_level_app}",
     "LOG_LEVEL_WEB=${local.config_log_level_web}",
     "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
+    "QR_CONFIRMATION_BASE_URL=${local.config_qr_confirmation_base_url}"
   ]
 
   networks_advanced {
