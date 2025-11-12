@@ -153,7 +153,7 @@ jobs:
           keycloak_hostname_url        = "${KC_HOSTNAME_URL}"
           keycloak_admin               = "${KEYCLOAK_ADMIN}"
           keycloak_admin_password      = "${KEYCLOAK_ADMIN_PASSWORD}"
-          
+
           # JWT Configuration
           jwt_issuer_uri      = "${JWT_ISSUER_URI}"
 
