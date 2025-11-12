@@ -40,9 +40,13 @@ export default function TicketDetailPage() {
         setError(null)
         const data = await exceptionService.getById(ticketId)
         setTicket(data)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to load ticket:', err)
-        setError(err.message || 'Failed to load ticket details')
+        if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('Failed to load ticket details')
+        }
       } finally {
         setLoading(false)
       }

@@ -9,9 +9,7 @@ import {
   ArrowLeft,
   AlertCircle,
   Package,
-  HelpCircle,
   FileText,
-  CreditCard,
   MessageSquare,
   PackageX,
   MapPin,
@@ -23,6 +21,13 @@ import { ExceptionType, Severity, Priority, Source } from "@/types/exception"
 import { exceptionService } from "@/lib/services/exception.service"
 import { EXCEPTION_TYPE_LABELS } from "@/types/exception"
 import { apiFetch, API_ENDPOINTS } from "@/lib/api"
+
+// Order interface for type safety
+interface Order {
+  id: number
+  reference: string
+  [key: string]: unknown
+}
 
 const categories = [
   {
@@ -189,11 +194,11 @@ function NewTicketForm() {
     try {
       // First, we need to get the order ID from the order reference
       // We'll fetch customer orders and find the matching one
-      const orders = await apiFetch<any[]>(API_ENDPOINTS.orders, {
+      const orders = await apiFetch<Order[]>(API_ENDPOINTS.orders, {
         method: 'GET',
       });
 
-      const matchingOrder = orders.find((order: any) => 
+      const matchingOrder = orders.find((order) => 
         order.reference === formData.orderReference ||
         order.id.toString() === formData.orderReference
       );
@@ -203,7 +208,7 @@ function NewTicketForm() {
       }
 
       // Create the exception via API
-      const result = await exceptionService.create({
+      await exceptionService.create({
         orderId: matchingOrder.id,
         type: formData.type as ExceptionType,
         category: formData.category,
@@ -219,9 +224,13 @@ function NewTicketForm() {
       setTimeout(() => {
         router.push("/interfaces/support/tickets")
       }, 1500)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to create ticket:", error)
-      setSubmitError(error.message || "Failed to create ticket. Please try again.")
+      if (error instanceof Error) {
+        setSubmitError(error.message)
+      } else {
+        setSubmitError("Failed to create ticket. Please try again.")
+      }
       setIsSubmitting(false)
     }
   }

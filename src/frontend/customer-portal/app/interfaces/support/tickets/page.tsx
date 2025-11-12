@@ -156,7 +156,7 @@ export default function CustomerTicketsPage() {
             <MessageSquare className="w-16 h-16 text-blue-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Support Tickets Coming Soon!</h2>
             <p className="text-gray-600 mb-4">
-              We're working on bringing you an improved support ticket system. Check back soon!
+              We&apos;re working on bringing you an improved support ticket system. Check back soon!
             </p>
             <p className="text-sm text-gray-500">
               In the meantime, you can contact our support team directly.

@@ -130,7 +130,7 @@ class FeatureFlagManager {
    * @param userId - The unique identifier for the user
    * @param userTraits - Optional user traits for advanced targeting (e.g., plan, region)
    */
-  async initialize(userId: string, userTraits?: Record<string, any>): Promise<void> {
+  async initialize(userId: string, userTraits?: Record<string, string | number | boolean>): Promise<void> {
     this.userId = userId;
     
     console.log(`[Flagsmith] Initializing flags for user: ${userId}`);
