@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { isAuthenticated, debugToken } from "@/lib/shared-auth"
 import { QuickStats } from "@/components/warehouse/quick-stats"

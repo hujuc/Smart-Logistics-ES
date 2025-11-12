@@ -2,16 +2,17 @@ services:
   # Keycloak - External authentication service
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: slms-keycloak-dev
+    container_name: slms-keycloak-prod
     restart: unless-stopped
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://slms-postgres:5432/${POSTGRES_DB}
+      KC_DB_URL: jdbc:postgresql://slms-postgres-prod:5432/${POSTGRES_DB}
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_URL: ${KC_HOSTNAME_URL:-http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8180}
       KC_HOSTNAME_STRICT: ${KC_HOSTNAME_STRICT:-false}
       KC_HOSTNAME_STRICT_BACKCHANNEL: ${KC_HOSTNAME_STRICT_BACKCHANNEL:-false}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
@@ -29,7 +30,7 @@ services:
   # MinIO - Object storage service
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: slms-minio-prod
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -46,7 +47,7 @@ services:
   # MinIO bucket creation
   minio-create-bucket:
     image: minio/mc:latest
-    container_name: minio-create-bucket
+    container_name: slms-minio-create-bucket-prod
     depends_on:
       - minio
     environment:
@@ -55,38 +56,20 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET_NAME}
     entrypoint: >
       /bin/sh -c "
-      until mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+      until mc alias set myminio http://slms-minio-prod:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
         echo 'Aguardando o MinIO ficar disponivel...';
         sleep 2;
       done;
-      mc mb --ignore-existing myminio/${MINIO_BUCKET};
+      mc mb --ignore-existing myminio/${MINIO_BUCKET_NAME};
       "
     restart: "no"
-    networks:
-      - slms-network
-
-  backup:
-    build:
-      context: ..
-      dockerfile: infra/docker/backup/Dockerfile
-    container_name: slms-backup
-    env_file:
-      - .env
-    environment:
-      POSTGRES_HOST: slms-postgres
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      BACKUP_DIR: /backups
-      MAX_BACKUPS: ${MAX_BACKUPS:-4}
-    volumes:
-      - backup-data:/backups
-    restart: unless-stopped
     networks:
       - slms-network
 
   # Nginx - Reverse proxy
   nginx:
     image: nginx:1.27-alpine
-    container_name: slms-nginx-dev
+    container_name: slms-nginx-prod
     restart: unless-stopped
     ports:
       - "80:80"
@@ -98,7 +81,6 @@ services:
 volumes:
   keycloak-data:
   minio-data:
-  backup-data:
 
 networks:
   slms-network:

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,6 +22,8 @@ import { formatOrderShippingAddress } from "@/lib/address"
 // Status configuration for display
 const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
   CREATED: { icon: Package, color: "text-gray-700", label: "Created", bgColor: "bg-gray-100" },
+  READY_FOR_PICKUP: { icon: Package, color: "text-blue-700", label: "Ready for Pickup", bgColor: "bg-blue-100" },
+  COLLECTED: { icon: Package, color: "text-blue-700", label: "Collected", bgColor: "bg-blue-100" },
   ASSIGNED_TO_SHIPMENT: { icon: Package, color: "text-blue-700", label: "Assigned to Shipment", bgColor: "bg-blue-100" },
   IN_TRANSIT: { icon: MapPin, color: "text-orange-700", label: "In Transit", bgColor: "bg-orange-100" },
   DELIVERED: { icon: CheckCircle, color: "text-green-700", label: "Delivered", bgColor: "bg-green-100" },
@@ -30,13 +32,14 @@ const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: stri
 
 interface OrderLookupVersionBProps {
   onBack?: () => void;
+  initialOrderId?: number;
 }
 
 /**
  * Version B: Compact table-based layout with horizontal timeline
  * Focus on efficiency and information density
  */
-export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps) {
+export default function OrderLookupVersionB({ onBack, initialOrderId }: OrderLookupVersionBProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Order[]>([])
@@ -44,6 +47,26 @@ export default function OrderLookupVersionB({ onBack }: OrderLookupVersionBProps
   const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Auto-load order if initialOrderId is provided
+  useEffect(() => {
+    if (initialOrderId) {
+      const loadInitialOrder = async () => {
+        setIsLoadingEvents(true)
+        try {
+          const data = await customerServiceOrderApi.getOrderWithEvents(initialOrderId)
+          setSelectedOrder(data.order)
+          setOrderEvents(data.events)
+        } catch (err) {
+          console.error('Failed to load order:', err)
+          setError(`Failed to load order #${initialOrderId}`)
+        } finally {
+          setIsLoadingEvents(false)
+        }
+      }
+      loadInitialOrder()
+    }
+  }, [initialOrderId])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()

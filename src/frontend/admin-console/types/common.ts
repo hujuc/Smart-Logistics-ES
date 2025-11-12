@@ -9,6 +9,8 @@ export type IssueStatus = "Open" | "In Progress" | "Escalated" | "Resolved" | "C
 // Backend enum values - must match Java OrderStatus enum
 export type OrderStatus =
     | "CREATED"
+    | "READY_FOR_PICKUP"
+    | "COLLECTED"
     | "ASSIGNED_TO_SHIPMENT"
     | "IN_TRANSIT"
     | "DELIVERED"

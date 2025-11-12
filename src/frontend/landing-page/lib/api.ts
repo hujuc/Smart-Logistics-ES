@@ -1,6 +1,7 @@
 import { useUserStore } from '@shared/lib/user-store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/landing-page';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const API_URL = `${BASE_URL}/api/landing-page`;
 
 export interface LoginRequest {
   username: string;

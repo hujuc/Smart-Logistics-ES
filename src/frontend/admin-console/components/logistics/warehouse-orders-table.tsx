@@ -22,6 +22,8 @@ const STATUS_COLORS: Record<ShipmentOrderStatus, string> = {
   IN_TRANSIT: "bg-blue-100 text-blue-700",
   DELIVERED: "bg-gray-100 text-gray-700",
   CANCELLED: "bg-red-100 text-red-700",
+  READY_FOR_PICKUP: "bg-purple-100 text-purple-700",
+  COLLECTED: "bg-indigo-100 text-indigo-700",
 }
 
 const STATUS_LABELS: Record<ShipmentOrderStatus, string> = {
@@ -30,6 +32,8 @@ const STATUS_LABELS: Record<ShipmentOrderStatus, string> = {
   IN_TRANSIT: "In Transit",
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
+  READY_FOR_PICKUP: "Ready for Pickup",
+  COLLECTED: "Collected",
 }
 
 export function WarehouseOrdersTable({ orders }: WarehouseOrdersTableProps) {

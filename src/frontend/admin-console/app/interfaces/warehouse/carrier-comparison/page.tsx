@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Package, Truck, CheckCircle, Loader2, Settings, UserCheck } from "lucide-react"
+import { Package, Truck, CheckCircle, Loader2, UserCheck } from "lucide-react"
 import { Carrier, ShipmentCard, Order, User } from "@/types"
 import { ShipmentCards } from "@/components/logistics/shipment-cards"
 import { CarrierCompare } from "@/components/logistics/carrier-compare"
@@ -94,8 +94,6 @@ export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
   const [searchTerm, setSearchTerm] = useState("")
-  // Carrier view mode is now fixed to "table" (accepted version)
-  const carrierViewMode = "table"
 
   // Real data states
   const [orders, setOrders] = useState<Order[]>([])
