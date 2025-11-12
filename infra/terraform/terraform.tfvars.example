@@ -16,3 +16,7 @@
 # 
 # This is used to build frontend API URLs (NEXT_PUBLIC_API_URL) at build time
 public_host = ""
+
+# ===== Service scaling =====
+# Override only if you need a different replica count (defaults to 2)
+# service_replica_count = 2
