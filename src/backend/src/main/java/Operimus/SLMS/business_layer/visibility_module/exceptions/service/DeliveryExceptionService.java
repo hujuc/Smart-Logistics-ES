@@ -241,6 +241,19 @@ public class DeliveryExceptionService {
     }
 
     /**
+     * Get exceptions by customer ID
+     */
+    @Transactional(readOnly = true)
+    public List<DeliveryExceptionResponse> getByCustomerId(UUID customerId) {
+        log.info("Fetching exceptions for customer: {}", customerId);
+        
+        List<DeliveryException> exceptions = exceptionRepository.findByCustomerId(customerId);
+        return exceptions.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    /**
      * Submit customer feedback
      */
     public DeliveryExceptionResponse submitFeedback(UUID id, Integer rating, String comment) {
