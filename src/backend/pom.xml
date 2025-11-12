@@ -34,6 +34,7 @@
 		<allure.version>2.27.0</allure.version>
 		<allure.maven.plugin.version>2.16.1</allure.maven.plugin.version>
 	</properties>
+
         <dependencies>
                 <!-- Spring Boot Core Dependencies -->
                 <dependency>
@@ -101,6 +102,14 @@
 			<groupId>io.opentelemetry.instrumentation</groupId>
 			<artifactId>opentelemetry-spring-boot-starter</artifactId>
 			<version>2.10.0</version>
+		</dependency>
+
+		<!-- OpenTelemetry Logback MDC Instrumentation for trace correlation -->
+		<!-- This adds trace_id and span_id to MDC context -->
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-mdc-1.0</artifactId>
+			<version>2.10.0-alpha</version>
 		</dependency>
 
 		<!-- Logback JSON Encoder for Structured Logging -->

@@ -7,12 +7,16 @@
     <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <!-- Service identification -->
-            <customFields>{"service":"voyage-backend"}</customFields>
+            <customFields>{"service":"SLMS"}</customFields>
 
             <!-- Include trace context for correlation -->
+            <!-- OpenTelemetry uses these specific MDC key names -->
             <includeMdcKeyName>trace_id</includeMdcKeyName>
             <includeMdcKeyName>span_id</includeMdcKeyName>
             <includeMdcKeyName>trace_flags</includeMdcKeyName>
+            <!-- Also include traceId and spanId (alternative names) -->
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
 
             <!-- Structured fields -->
             <fieldNames>
@@ -45,24 +49,15 @@
         </encoder>
     </appender>
 
-    <!-- Spring Profile: Use JSON logging in production -->
-    <springProfile name="prod,production">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
-        </root>
-    </springProfile>
+    <!-- Use JSON logging for all environments (required for Elastic/Kibana) -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE_JSON"/>
+    </root>
 
-    <!-- Spring Profile: Use plain text logging in development -->
-    <springProfile name="dev,development,default">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-
-        <!-- Application-specific logging -->
-        <logger name="Operimus.SLMS" level="DEBUG"/>
-        <logger name="org.springframework.web" level="INFO"/>
-        <logger name="org.springframework.security" level="INFO"/>
-    </springProfile>
+    <!-- Application-specific logging levels -->
+    <logger name="Operimus.SLMS" level="DEBUG"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="INFO"/>
 
     <!-- Reduce noise from frameworks -->
     <logger name="org.hibernate.SQL" level="DEBUG"/>

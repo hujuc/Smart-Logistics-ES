@@ -1,5 +1,187 @@
 # SLMS Observability Documentation
 
+## Service Level Indicators (SLIs) and Objectives (SLOs)
+
+Following the principles from Software Engineering course (ES_08_Monitoring_Observability, pages 8-9), we define quantitative measures (SLIs) and targets (SLOs) for the SLMS system.
+
+### Core SLIs
+
+#### 1. Availability SLI
+**Definition**: Percentage of successful HTTP requests (non-5xx responses)
+
+**Measurement**:
+```
+availability = (successful_requests / total_requests) × 100%
+where successful_requests = requests with HTTP status 200-499
+```
+
+**Data Source**:
+- OpenTelemetry metrics: `http.server.requests` with status code labels
+- Elastic APM: Service transaction success rate
+
+#### 2. Latency SLI
+**Definition**: Percentage of requests served within acceptable time thresholds
+
+**Measurement**:
+```
+latency_sli = (requests_under_threshold / total_requests) × 100%
+```
+
+**Thresholds**:
+- **Fast**: < 300ms (target for 95% of requests)
+- **Acceptable**: < 1000ms (target for 99% of requests)
+- **Slow**: > 1000ms (should be < 1%)
+
+**Data Source**:
+- OpenTelemetry metrics: `http.server.requests` duration histogram
+- Elastic APM: Transaction latency percentiles (p50, p95, p99)
+
+#### 3. Error Rate SLI
+**Definition**: Percentage of failed requests and transactions
+
+**Measurement**:
+```
+error_rate = (failed_requests / total_requests) × 100%
+where failed_requests = HTTP 5xx + application exceptions
+```
+
+**Data Source**:
+- OpenTelemetry metrics: `http.server.requests{status=~"5.."}`
+- Application logs: ERROR level count
+- Elastic APM: Error transaction rate
+
+#### 4. Data Integrity SLI
+**Definition**: Percentage of successful database operations
+
+**Measurement**:
+```
+data_integrity = (successful_db_ops / total_db_ops) × 100%
+```
+
+**Data Source**:
+- JDBC connection metrics
+- PostgreSQL query success rate
+- Elastic APM: Database span success rate
+
+### Service Level Objectives (SLOs)
+
+Based on industry best practices and system requirements, we set the following SLOs:
+
+| SLI | SLO Target | Measurement Window | Error Budget |
+|-----|------------|-------------------|--------------|
+| **API Availability** | 99.9% | 30 days | 43.2 minutes/month |
+| **API Latency (p95)** | < 500ms | 5 minutes | N/A |
+| **API Latency (p99)** | < 1500ms | 5 minutes | N/A |
+| **Error Rate** | < 0.1% | 1 hour | 0.1% of requests |
+| **Data Integrity** | 99.99% | 24 hours | 8.6 seconds/day |
+
+### SLO Rationale
+
+#### Availability: 99.9% (Three Nines)
+- **Why**: Logistics operations require high availability but can tolerate brief outages
+- **Allows**: 43.2 minutes of downtime per month
+- **Error Budget**: Can be spent on deployments, incidents, or experiments
+- **User Impact**: Users experience service unavailability ~0.1% of the time
+
+#### Latency: p95 < 500ms, p99 < 1500ms
+- **Why**: User experience research shows users expect web apps to respond within 1 second
+- **p95 < 500ms**: 95% of users get fast responses (good UX)
+- **p99 < 1500ms**: Even slowest requests remain usable
+- **User Impact**: Ensures responsive interface for shipment tracking and management
+
+#### Error Rate: < 0.1%
+- **Why**: Critical business operations (shipment creation, tracking) must be reliable
+- **Allows**: 1 error per 1000 requests
+- **User Impact**: High confidence in system correctness
+
+#### Data Integrity: 99.99%
+- **Why**: Database operations must be highly reliable for business data
+- **Allows**: Very minimal data operation failures
+- **User Impact**: Trust in shipment and customer data accuracy
+
+### Error Budgets
+
+**Error Budget** = Allowable amount of downtime/errors within SLO target
+
+#### Availability Error Budget Calculation
+```
+SLO: 99.9% availability
+Error Budget: 100% - 99.9% = 0.1%
+
+Monthly Error Budget:
+30 days × 24 hours × 60 minutes × 0.001 = 43.2 minutes/month
+
+Weekly Error Budget:
+7 days × 24 hours × 60 minutes × 0.001 = 10.08 minutes/week
+```
+
+#### Error Budget Policy
+- **Budget Healthy (> 50% remaining)**:
+  - Normal deployment cadence
+  - Can experiment with new features
+  - Focus on velocity
+
+- **Budget Warning (20-50% remaining)**:
+  - Increase caution in deployments
+  - Enhanced testing before releases
+  - Begin reliability improvements
+
+- **Budget Exhausted (< 20% remaining)**:
+  - **FREEZE**: No new feature deployments
+  - Focus exclusively on reliability
+  - Mandatory incident post-mortems
+  - Implement corrective actions
+
+### User Journey SLIs
+
+Following Pattern #2 (Monitor from User Perspective, slide 17), we define SLIs for critical user journeys:
+
+#### Journey 1: Shipment Creation
+**Steps**: Login → Create Shipment → Select Carrier → Generate Label → Confirmation
+
+**SLI**: End-to-end success rate
+```
+shipment_creation_success = (successful_completions / attempts) × 100%
+Target: > 99.5%
+```
+
+#### Journey 2: Real-time Tracking
+**Steps**: Access Tracking Page → Query Shipment Status → Display Updates
+
+**SLI**: Query latency + data freshness
+```
+tracking_latency_p95 < 300ms
+data_freshness < 30 seconds
+Target: Meet both thresholds for 99% of requests
+```
+
+#### Journey 3: Driver Package Scan
+**Steps**: Scan QR Code → Update Status → Sync to Server
+
+**SLI**: Scan-to-sync latency
+```
+scan_latency_p99 < 2000ms
+Target: 99% of scans complete within 2 seconds
+```
+
+### Monitoring User-Facing Metrics (Slide 13)
+
+As emphasized in the course material (slide 13), end-users expect:
+
+1. **Availability**: Is the system online?
+   - Measured: HTTP health checks + synthetic monitoring
+   - Target: 99.9% uptime
+
+2. **Latency**: Does it take too long to access and use?
+   - Measured: Request duration percentiles
+   - Target: p95 < 500ms
+
+3. **Reliability**: Can the user rely on this application?
+   - Measured: Error rate + data integrity
+   - Target: < 0.1% errors
+
+---
+
 ## Observability Stack
 
 ### Architecture
