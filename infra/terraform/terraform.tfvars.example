@@ -1,0 +1,26 @@
+# Terraform now derives defaults from ../.env (or the path you set in `env_file`).
+# Copy this example to terraform.tfvars only if you need to override specific values.
+#
+# Example overrides:
+# env_file = "../.env"
+# postgres_host_port = 15432
+# docker_network_name = "slms-network"
+
+# ===== Public Host Configuration =====
+# For local development: leave empty (defaults to localhost)
+# For AWS EC2 / remote deployment: use the public IP or domain name
+# Examples:
+#   public_host = "ec2-3-85-123-45.compute-1.amazonaws.com"
+#   public_host = "54.123.45.67"
+#   public_host = "3.85.123.45"
+# 
+# This is used to build frontend API URLs (NEXT_PUBLIC_API_URL) at build time
+public_host = ""
+
+# ===== Service scaling =====
+# Override only if you need a different replica count (defaults to 2)
+# service_replica_count = 2
+
+# ===== QR Code Configuration =====
+# Override if you need a different QR confirmation base URL
+# qr_confirmation_base_url = "http://yourdomain.com/api/driver"

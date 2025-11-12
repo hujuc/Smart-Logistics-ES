@@ -6,14 +6,18 @@ export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type IssueStatus = "Open" | "In Progress" | "Escalated" | "Resolved" | "Closed";
 
-// Backend enum values - must match Java ShipmentOrderStatus enum
-export type ShipmentOrderStatus =
+// Backend enum values - must match Java OrderStatus enum
+export type OrderStatus =
     | "CREATED"
     | "READY_FOR_PICKUP"
     | "COLLECTED"
+    | "ASSIGNED_TO_SHIPMENT"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
+
+// Legacy alias for backward compatibility during migration
+export type ShipmentOrderStatus = OrderStatus;
     
 export type IssueType = 
   | "Delivery Delay"
@@ -61,8 +65,18 @@ export interface Order {
     description: string;
     status: ShipmentOrderStatus;
     shippingAddress: string;
+    shippingAddressLine1?: string;
+    shippingAddressLine2?: string;
+    shippingCity?: string;
+    shippingStateOrProvince?: string;
+    shippingPostalCode?: string;
+    shippingCountry?: string;
+    shippingPhone?: string;
+    shippingEmail?: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
+    shipmentId?: number;
+    shipmentCode?: string;
     carrierId?: number;
     carrierCode?: string;
     carrierName?: string;
@@ -107,6 +121,19 @@ export interface OrderDocument {
     url: string;
 }
 
+export interface ShipmentDocument {
+    shipmentId: number;
+    orderId?: number;
+    documentId: string;
+    objectKey?: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    url: string;
+    carrierCode?: string;
+    serviceLevel?: string;
+}
+
 export interface ContactInfo {
     phone: string;
     email: string;
@@ -121,8 +148,8 @@ export interface Address {
 }
 
 export interface StatCard {
-    value: number;
-    trend?: number;
+    value: number | string;
+    trend?: number | null;
     label?: string;
     alert?: string;
     hasWarning?: boolean;

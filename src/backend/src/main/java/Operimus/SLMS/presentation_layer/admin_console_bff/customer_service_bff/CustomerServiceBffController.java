@@ -3,11 +3,15 @@ package Operimus.SLMS.presentation_layer.admin_console_bff.customer_service_bff;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +37,8 @@ public class CustomerServiceBffController {
 
     private final DeliveryExceptionService exceptionService;
     private final OrderService orderService;
+    private final OrderEventService shipmentOrderEventService;
+    private final KeycloakUserService userService;
 
     /**
      * Health check endpoint
@@ -402,6 +408,73 @@ public class CustomerServiceBffController {
             ));
         } catch (Exception e) {
             log.error("Failed to fetch tracking for order {}: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Get order with events in a single optimized call (Version B - Feature Flag)
+     * GET /api/customer-service/orders/{id}/with-events
+     * 
+     * This endpoint returns order details along with all events in a single response,
+     * reducing the number of API calls needed and improving performance.
+     * Used by Version B of the order lookup interface for A/B testing.
+     */
+    @GetMapping("/orders/{id}/with-events")
+    public ResponseEntity<Map<String, Object>> getOrderWithEvents(@PathVariable Long id) {
+        try {
+            log.info("Customer Service BFF (Version B): Fetching order {} with events", id);
+            
+            // Fetch order
+            OrderResponse order = orderService.getById(id);
+            
+            // Fetch events
+            List<OrderEventResponse> events = shipmentOrderEventService.getEventsForOrder(id);
+            
+            // Return combined response
+            Map<String, Object> response = Map.of(
+                    "order", order,
+                    "events", events,
+                    "version", "B",
+                    "optimized", true
+            );
+            
+            log.info("Customer Service BFF (Version B): Successfully fetched order {} with {} events", 
+                    id, events.size());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch order {} with events: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // User Management Endpoints
+    // ========================================
+
+    /**
+     * Get all customer service representatives
+     * GET /api/customer-service/users/customer-service-reps
+     */
+    @GetMapping("/users/customer-service-reps")
+    public ResponseEntity<List<UserRepresentation>> getCustomerServiceReps() {
+        try {
+            log.info("Customer Service BFF: Fetching all customer service representatives");
+            
+            // Try both possible role names
+            List<UserRepresentation> csrUsers = userService.getUsersByRole("CUSTOMER_SERVICE_REP");
+            
+            // If nothing found with CUSTOMER_SERVICE_REP, try alternative name
+            if (csrUsers.isEmpty()) {
+                log.info("No users found with role CUSTOMER_SERVICE_REP, trying customer_service_representative");
+                csrUsers = userService.getUsersByRole("customer_service_representative");
+            }
+            
+            log.info("Found {} customer service representatives", csrUsers.size());
+            return ResponseEntity.ok(csrUsers);
+        } catch (Exception e) {
+            log.error("Failed to fetch customer service representatives: {}", e.getMessage(), e);
             throw e;
         }
     }

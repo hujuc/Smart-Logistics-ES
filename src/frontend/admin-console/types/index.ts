@@ -12,10 +12,16 @@ export type {
   Order,
   OrderEvent,
   OrderDocument,
+  ShipmentDocument,
   ContactInfo,
   Address,
   StatCard,
   DateRange,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  PasswordUpdateRequest,
+  UserRole,
 } from "./common"
 
 // Warehouse types

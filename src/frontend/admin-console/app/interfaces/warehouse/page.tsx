@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { isAuthenticated, debugToken } from "@/lib/shared-auth"
 import { QuickStats } from "@/components/warehouse/quick-stats"
 import { OrderTable } from "@/components/warehouse/order-table"
 import type { WarehousePackage } from "@/types"
 import { warehouseService } from "@/lib/services/warehouse.service"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 export default function WarehousePage() {
   const router = useRouter()
@@ -46,7 +46,7 @@ export default function WarehousePage() {
         status: order.status,
         priority: order.priority,
         origin: order.origin || "-",
-        destination: order.shippingAddress,
+        destination: formatOrderShippingAddress(order),
         scannedAt: order.scannedAt ? new Date(order.scannedAt).toLocaleString() : undefined,
         weight: order.weight,
       }))
@@ -60,20 +60,9 @@ export default function WarehousePage() {
     }
   }
 
-  const handleCollectPackage = async (id: string) => {
-    try {
-      await warehouseService.confirmPickup(parseInt(id))
-      // Reload orders to reflect the status change
-      await loadOrders()
-    } catch (err) {
-      console.error('Failed to collect package:', err)
-      alert('Failed to mark package as collected. Please try again.')
-    }
-  }
-
   const stats = {
     totalPackages: packages.length,
-    readyForDispatch: packages.filter(p => p.status === "READY_FOR_PICKUP").length,
+    readyForDispatch: packages.filter(p => p.status === "ASSIGNED_TO_SHIPMENT").length,
     pendingLabels: packages.filter(p => p.status === "CREATED").length,
     inTransit: packages.filter(p => p.status === "IN_TRANSIT").length,
   }
@@ -106,10 +95,8 @@ export default function WarehousePage() {
         <div>
           <h1 className="text-3xl font-bold text-black">Order Processing Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage incoming orders and prepare for dispatch</p>
+          <p className="text-sm text-gray-500 mt-1">Note: Order creation is now handled by customers through the Customer Portal</p>
         </div>
-        <Link href="/interfaces/warehouse/new-package">
-          <Button>Add New Package</Button>
-        </Link>
       </div>
 
       {/* Quick Stats */}
@@ -119,9 +106,7 @@ export default function WarehousePage() {
       <OrderTable
         packages={packages}
         onViewPackage={(id) => router.push(`/interfaces/warehouse/package/${id}`)}
-        onCollectPackage={handleCollectPackage}
       />
     </div>
   )
 }
-

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Users, CheckCircle2, XCircle, Shield, AlertCircle } from "lucide-react"
+import { Users, CheckCircle2, AlertCircle } from "lucide-react"
 import { UserSearchBar } from "@/components/logistics/user-search-bar"
 import { UserTable } from "@/components/logistics/user-table"
 import { UserFormDialog } from "@/components/logistics/user-form-dialog"

@@ -3,13 +3,16 @@ package Operimus.SLMS.presentation_layer.admin_console_bff.customer_service_bff;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.*;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -47,6 +50,12 @@ class CustomerServiceBffControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private OrderEventService shipmentOrderEventService;
+
+    @MockBean
+    private KeycloakUserService userService;
 
     // ========================================
     // Health Check Tests
@@ -363,6 +372,83 @@ class CustomerServiceBffControllerTest {
     }
 
     // ========================================
+    // Get Customer Service Reps Tests
+    // ========================================
+
+    @Test
+    void whenGetCustomerServiceReps_thenReturnCsrUsers() throws Exception {
+        UserRepresentation user1 = new UserRepresentation();
+        user1.setId("csr-1");
+        user1.setUsername("csr1");
+        user1.setFirstName("John");
+        user1.setLastName("Doe");
+        user1.setEmail("john.doe@example.com");
+
+        UserRepresentation user2 = new UserRepresentation();
+        user2.setId("csr-2");
+        user2.setUsername("csr2");
+        user2.setFirstName("Jane");
+        user2.setLastName("Smith");
+        user2.setEmail("jane.smith@example.com");
+
+        List<UserRepresentation> csrUsers = Arrays.asList(user1, user2);
+
+        when(userService.getUsersByRole("CUSTOMER_SERVICE_REP")).thenReturn(csrUsers);
+
+        mockMvc.perform(get("/api/customer-service/users/customer-service-reps"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is("csr-1")))
+                .andExpect(jsonPath("$[0].username", is("csr1")))
+                .andExpect(jsonPath("$[0].firstName", is("John")))
+                .andExpect(jsonPath("$[0].lastName", is("Doe")))
+                .andExpect(jsonPath("$[0].email", is("john.doe@example.com")))
+                .andExpect(jsonPath("$[1].id", is("csr-2")))
+                .andExpect(jsonPath("$[1].username", is("csr2")))
+                .andExpect(jsonPath("$[1].firstName", is("Jane")))
+                .andExpect(jsonPath("$[1].lastName", is("Smith")))
+                .andExpect(jsonPath("$[1].email", is("jane.smith@example.com")));
+
+        verify(userService).getUsersByRole("CUSTOMER_SERVICE_REP");
+    }
+
+    @Test
+    void whenGetCustomerServiceRepsEmpty_thenTryAlternativeRole() throws Exception {
+        UserRepresentation user1 = new UserRepresentation();
+        user1.setId("csr-1");
+        user1.setUsername("csr1");
+        user1.setFirstName("John");
+        user1.setLastName("Doe");
+        user1.setEmail("john.doe@example.com");
+
+        // First call returns empty, second call returns users
+        when(userService.getUsersByRole("CUSTOMER_SERVICE_REP")).thenReturn(Arrays.asList());
+        when(userService.getUsersByRole("customer_service_representative")).thenReturn(Arrays.asList(user1));
+
+        mockMvc.perform(get("/api/customer-service/users/customer-service-reps"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is("csr-1")))
+                .andExpect(jsonPath("$[0].firstName", is("John")));
+
+        verify(userService).getUsersByRole("CUSTOMER_SERVICE_REP");
+        verify(userService).getUsersByRole("customer_service_representative");
+    }
+
+    @Test
+    void whenGetCustomerServiceRepsBothRolesEmpty_thenReturnEmptyList() throws Exception {
+        when(userService.getUsersByRole("CUSTOMER_SERVICE_REP")).thenReturn(Arrays.asList());
+        when(userService.getUsersByRole("customer_service_representative")).thenReturn(Arrays.asList());
+
+        mockMvc.perform(get("/api/customer-service/users/customer-service-reps"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        verify(userService).getUsersByRole("CUSTOMER_SERVICE_REP");
+        verify(userService).getUsersByRole("customer_service_representative");
+    }
+
+    // ========================================
     // Helper Methods
     // ========================================
 
@@ -405,7 +491,7 @@ class CustomerServiceBffControllerTest {
                 .id(id)
                 .reference(reference)
                 .description("Test order")
-                .status(ShipmentOrderStatus.CREATED)
+                .status(OrderStatus.CREATED)
                 .shippingAddress("123 Test St")
                 .build();
     }

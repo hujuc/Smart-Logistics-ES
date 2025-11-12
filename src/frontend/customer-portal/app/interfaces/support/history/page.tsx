@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,70 +12,56 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, Package, MapPin, Truck, CheckCircle, Clock } from "lucide-react"
-
-// Mock data for customer's order history
-const mockOrders = [
-  {
-    id: "ORD001",
-    orderNumber: "ORD-2025-001",
-    trackingNumber: "TRK123456789",
-    description: "Electronics Package",
-    status: "Delivered",
-    destination: "123 Main St, Aveiro",
-    orderDate: "2025-10-20",
-    deliveryDate: "2025-10-25",
-    carrier: "DHL Express",
-  },
-  {
-    id: "ORD002",
-    orderNumber: "ORD-2025-002",
-    trackingNumber: "TRK987654321",
-    description: "Books - 3 items",
-    status: "In Transit",
-    destination: "456 Oak Ave, Porto",
-    orderDate: "2025-10-26",
-    estimatedDelivery: "2025-10-29",
-    carrier: "CTT",
-  },
-  {
-    id: "ORD003",
-    orderNumber: "ORD-2025-003",
-    trackingNumber: "TRK456789123",
-    description: "Clothing Package",
-    status: "Processing",
-    destination: "789 Pine Rd, Lisboa",
-    orderDate: "2025-10-27",
-    estimatedDelivery: "2025-10-30",
-    carrier: "UPS",
-  },
-  {
-    id: "ORD004",
-    orderNumber: "ORD-2025-004",
-    trackingNumber: "TRK321654987",
-    description: "Home Decor",
-    status: "Delivered",
-    destination: "321 Elm St, Braga",
-    orderDate: "2025-10-15",
-    deliveryDate: "2025-10-19",
-    carrier: "FedEx",
-  },
-]
+import { Search, Package, MapPin, Truck, CheckCircle, Clock, AlertCircle, XCircle, Plus } from "lucide-react"
+import { customerOrderApi } from "@/lib/services/customer-order.service"
+import type { Order, ShipmentOrderStatus } from "@/types/common"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 export default function OrderHistoryPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
-  const [orders] = useState(mockOrders)
-  const [filterStatus, setFilterStatus] = useState("All")
+  const [orders, setOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<string>("All")
+
+  // Load orders on mount
+  useEffect(() => {
+    console.log('[OrderHistory] Component mounted, loading orders...')
+    loadOrders()
+  }, [])
+
+  const loadOrders = async () => {
+    console.log('[OrderHistory] loadOrders: Starting...')
+    setIsLoading(true)
+    setError(null)
+    try {
+      console.log('[OrderHistory] loadOrders: Calling customerOrderApi.getAllOrders()')
+      const data = await customerOrderApi.getAllOrders()
+      console.log('[OrderHistory] loadOrders: Received data:', data)
+      console.log('[OrderHistory] loadOrders: Number of orders:', data?.length || 0)
+      setOrders(data)
+    } catch (err) {
+      console.error('[OrderHistory] loadOrders: Error occurred:', err)
+      setError('Failed to load orders. Please try again.')
+    } finally {
+      setIsLoading(false)
+      console.log('[OrderHistory] loadOrders: Finished')
+    }
+  }
 
   const handleTrackOrder = (trackingNumber: string) => {
     router.push(`/interfaces/support/history/${trackingNumber}`)
   }
 
+  const handleNewOrder = () => {
+    router.push("/interfaces/new-order")
+  }
+
   const filteredOrders = orders
     .filter((order) => {
       const matchesSearch =
-        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.description.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -84,35 +70,78 @@ export default function OrderHistoryPage() {
       return matchesSearch && matchesStatus
     })
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      Processing: "bg-blue-100 text-blue-800",
-      "In Transit": "bg-yellow-100 text-yellow-800",
-      Delivered: "bg-green-100 text-green-800",
-      Cancelled: "bg-red-100 text-red-800",
+  const getStatusBadge = (status: ShipmentOrderStatus) => {
+    const styles: Record<ShipmentOrderStatus, string> = {
+      CREATED: "bg-gray-100 text-gray-800",
+      READY_FOR_PICKUP: "bg-blue-100 text-blue-800",
+      COLLECTED: "bg-purple-100 text-purple-800",
+      ASSIGNED_TO_SHIPMENT: "bg-indigo-100 text-indigo-800",
+      IN_TRANSIT: "bg-yellow-100 text-yellow-800",
+      DELIVERED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
     }
-    return styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800"
+    return styles[status] || "bg-gray-100 text-gray-800"
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: ShipmentOrderStatus) => {
     switch (status) {
-      case "Processing":
+      case "CREATED":
+      case "READY_FOR_PICKUP":
         return <Clock className="h-4 w-4 text-blue-600" />
-      case "In Transit":
+      case "COLLECTED":
+      case "ASSIGNED_TO_SHIPMENT":
+      case "IN_TRANSIT":
         return <Truck className="h-4 w-4 text-yellow-600" />
-      case "Delivered":
+      case "DELIVERED":
         return <CheckCircle className="h-4 w-4 text-green-600" />
+      case "CANCELLED":
+        return <XCircle className="h-4 w-4 text-red-600" />
       default:
         return <Package className="h-4 w-4 text-gray-600" />
     }
   }
 
+  const getStatusLabel = (status: ShipmentOrderStatus) => {
+    const labels: Record<ShipmentOrderStatus, string> = {
+      CREATED: "Created",
+      READY_FOR_PICKUP: "Ready for Pickup",
+      COLLECTED: "Collected",
+      ASSIGNED_TO_SHIPMENT: "Assigned to Shipment",
+      IN_TRANSIT: "In Transit",
+      DELIVERED: "Delivered",
+      CANCELLED: "Cancelled",
+    }
+    return labels[status] || status
+  }
+
+  const formatDate = (dateString: Date | string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
+  // Calculate stats
+  const stats = {
+    processing: orders.filter(o => ['CREATED', 'READY_FOR_PICKUP'].includes(o.status)).length,
+    inTransit: orders.filter(o => ['COLLECTED', 'ASSIGNED_TO_SHIPMENT', 'IN_TRANSIT'].includes(o.status)).length,
+    delivered: orders.filter(o => o.status === 'DELIVERED').length,
+    total: orders.length,
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-black">Order History</h1>
-        <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-black">Order History</h1>
+          <p className="text-gray-600 mt-1">Track your deliveries and view past orders</p>
+        </div>
+        <Button className="gap-2" onClick={handleNewOrder}>
+          <Plus className="h-4 w-4" />
+          Create Order
+        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -133,10 +162,12 @@ export default function OrderHistoryPage() {
           className="border border-gray-300 rounded-md px-4 py-2 bg-white text-black"
         >
           <option value="All">All Status</option>
-          <option value="Processing">Processing</option>
-          <option value="In Transit">In Transit</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Cancelled">Cancelled</option>
+          <option value="CREATED">Created</option>
+          <option value="READY_FOR_PICKUP">Ready for Pickup</option>
+          <option value="COLLECTED">Collected</option>
+          <option value="IN_TRANSIT">In Transit</option>
+          <option value="DELIVERED">Delivered</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
 
@@ -147,111 +178,111 @@ export default function OrderHistoryPage() {
             <Clock className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-medium text-gray-600">Processing</span>
           </div>
-          <p className="text-2xl font-bold text-black">
-            {orders.filter((o) => o.status === "Processing").length}
-          </p>
+          <p className="text-2xl font-bold text-black">{stats.processing}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Truck className="h-4 w-4 text-yellow-600" />
             <span className="text-sm font-medium text-gray-600">In Transit</span>
           </div>
-          <p className="text-2xl font-bold text-black">
-            {orders.filter((o) => o.status === "In Transit").length}
-          </p>
+          <p className="text-2xl font-bold text-black">{stats.inTransit}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <span className="text-sm font-medium text-gray-600">Delivered</span>
           </div>
-          <p className="text-2xl font-bold text-black">
-            {orders.filter((o) => o.status === "Delivered").length}
-          </p>
+          <p className="text-2xl font-bold text-black">{stats.delivered}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Package className="h-4 w-4 text-gray-600" />
             <span className="text-sm font-medium text-gray-600">Total Orders</span>
           </div>
-          <p className="text-2xl font-bold text-black">{orders.length}</p>
+          <p className="text-2xl font-bold text-black">{stats.total}</p>
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading orders...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-red-800">{error}</p>
+          </div>
+          <Button onClick={loadOrders} className="mt-2" variant="outline" size="sm">
+            Try Again
+          </Button>
+        </div>
+      )}
+
       {/* Orders Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Tracking</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Destination</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Delivery</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredOrders.length === 0 ? (
+      {!isLoading && !error && (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                  No orders found
-                </TableCell>
+                <TableHead>Order Number</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Destination</TableHead>
+                <TableHead>Order Date</TableHead>
+                <TableHead>Tracking</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredOrders.map((order) => (
-                <TableRow key={order.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-gray-400" />
-                      {order.orderNumber}
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    No orders found
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{order.trackingNumber}</TableCell>
-                  <TableCell>{order.description}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(order.status)}
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <MapPin className="h-3 w-3" />
-                      {order.destination}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {new Date(order.orderDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {order.status === "Delivered" ? (
-                      <span className="text-green-600">
-                        {order.deliveryDate && new Date(order.deliveryDate).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span className="text-gray-600">
-                        Est: {order.estimatedDelivery && new Date(order.estimatedDelivery).toLocaleDateString()}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                </TableRow>
+              ) : (
+                filteredOrders.map((order) => (
+                  <TableRow key={order.id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">
+                      {order.reference}
+                    </TableCell>
+                    <TableCell>{order.description}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(order.status)}
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <MapPin className="h-3 w-3" />
+                        {formatOrderShippingAddress(order)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {formatDate(order.createdAt)}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{order.trackingNumber}</TableCell>
+                    <TableCell className="text-right">
                       <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order.trackingNumber)}>
                         Track
                       </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   )
 }

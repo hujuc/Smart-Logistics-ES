@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Mail, Edit, Trash2, Key } from "lucide-react"
+import { Mail, Trash2, Key } from "lucide-react"
 import { User } from "@/types/common"
 
 interface UserTableProps {

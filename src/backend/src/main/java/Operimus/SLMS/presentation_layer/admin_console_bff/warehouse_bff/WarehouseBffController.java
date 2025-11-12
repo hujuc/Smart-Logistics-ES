@@ -1,15 +1,19 @@
 package Operimus.SLMS.presentation_layer.admin_console_bff.warehouse_bff;
 
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentDownloadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.DocumentUploadResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderRequest;
-import Operimus.SLMS.business_layer.order_shipment_module.dto.OrderResponse;
-import Operimus.SLMS.business_layer.order_shipment_module.entities.ShipmentOrderStatus;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderDocumentService;
-import Operimus.SLMS.business_layer.order_shipment_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
+import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.dto.ShipmentDocumentResponse;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.ShipmentDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +44,8 @@ public class WarehouseBffController {
 
     private final OrderService orderService;
     private final OrderDocumentService orderDocumentService;
+    private final ShipmentDocumentService shipmentDocumentService;
+    private final KeycloakUserService keycloakUserService;
 
     /**
      * Health check endpoint
@@ -72,9 +78,9 @@ public class WarehouseBffController {
             // Filter by status if provided
             if (status != null && !status.isBlank()) {
                 // Parse comma-separated statuses
-                List<ShipmentOrderStatus> statuses = Arrays.stream(status.split(","))
+                List<OrderStatus> statuses = Arrays.stream(status.split(","))
                         .map(String::trim)
-                        .map(ShipmentOrderStatus::valueOf)
+                        .map(OrderStatus::valueOf)
                         .toList();
                 orders = orderService.getByStatus(statuses);
             } else {
@@ -124,13 +130,19 @@ public class WarehouseBffController {
 
     /**
      * Create a new order
+     * 
+     * DEPRECATED: Order creation has been moved to the Customer Portal BFF.
+     * Customers now create orders directly through /api/customer/orders endpoint.
+     * This endpoint is kept for backward compatibility and testing purposes only.
      *
      * @param request Order creation request
      * @return Created order
      */
+    @Deprecated
     @PostMapping("/orders")
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         try {
+            log.warn("Warehouse BFF: DEPRECATED endpoint called - order creation should be done via Customer Portal BFF");
             log.info("Warehouse BFF: Creating new order");
 
             // Delegate to business layer
@@ -172,28 +184,6 @@ public class WarehouseBffController {
     }
 
     /**
-     * Confirm carrier pickup for an order
-     *
-     * @param id Order ID
-     * @return Updated order
-     */
-    @PostMapping("/orders/{id}/collect")
-    public ResponseEntity<OrderResponse> confirmPickup(@PathVariable Long id) {
-        try {
-            log.info("Warehouse BFF: Confirming pickup for order {}", id);
-
-            // Delegate to business layer
-            OrderResponse response = orderService.confirmPickup(id);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Failed to confirm pickup for order {} via warehouse BFF: {}", id, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
      * Delete an order
      *
      * @param id Order ID
@@ -211,6 +201,46 @@ public class WarehouseBffController {
 
         } catch (Exception e) {
             log.error("Failed to delete order {} via warehouse BFF: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // Driver Operations
+    // ========================================
+
+    /**
+     * Get all drivers (users with DRIVER role)
+     * This endpoint allows warehouse staff to view available drivers for shipment assignment
+     *
+     * @return List of drivers
+     */
+    @GetMapping("/drivers")
+    public ResponseEntity<List<UserRepresentation>> getDrivers() {
+        try {
+            log.info("Warehouse BFF: Fetching all drivers");
+
+            // Get all users from Keycloak
+            List<UserRepresentation> allUsers = keycloakUserService.getAllUsers();
+
+            // Filter for users in the "Drivers" group
+            List<UserRepresentation> drivers = allUsers.stream()
+                    .filter(user -> {
+                        List<String> groups = user.getGroups();
+                        return groups != null && (
+                                groups.contains("Drivers") ||
+                                groups.contains("DRIVER") ||
+                                groups.contains("driver")
+                        );
+                    })
+                    .toList();
+
+            log.info("Warehouse BFF: Found {} drivers out of {} total users", drivers.size(), allUsers.size());
+
+            return ResponseEntity.ok(drivers);
+
+        } catch (Exception e) {
+            log.error("Failed to fetch drivers via warehouse BFF: {}", e.getMessage());
             throw e;
         }
     }
@@ -268,6 +298,42 @@ public class WarehouseBffController {
         } catch (Exception e) {
             log.error("Failed to download document {} for order {} via warehouse BFF: {}",
                     documentId, orderId, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * List all carrier shipping documents associated with the shipment that contains the order.
+     */
+    @GetMapping("/orders/{orderId}/shipment-documents")
+    public ResponseEntity<List<ShipmentDocumentResponse>> listShipmentDocuments(@PathVariable Long orderId) {
+        try {
+            log.info("Warehouse BFF: Listing shipment documents for order {}", orderId);
+            List<ShipmentDocumentResponse> documents = shipmentDocumentService.listByOrder(orderId);
+            return ResponseEntity.ok(documents);
+        } catch (Exception e) {
+            log.error("Failed to list shipment documents for order {}: {}", orderId, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Download a shipping document generated for the shipment containing the given order.
+     */
+    @GetMapping("/orders/{orderId}/shipment-documents/{documentId}/download")
+    public ResponseEntity<Resource> downloadShipmentDocument(
+            @PathVariable Long orderId,
+            @PathVariable String documentId) {
+        try {
+            log.info("Warehouse BFF: Downloading shipment document {} for order {}", documentId, orderId);
+            DocumentDownloadResponse response = shipmentDocumentService.downloadForOrder(orderId, documentId);
+            ByteArrayResource resource = new ByteArrayResource(response.getContent());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(response.getContentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + response.getFileName() + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            log.error("Failed to download shipment document {} for order {}: {}", documentId, orderId, e.getMessage());
             throw e;
         }
     }

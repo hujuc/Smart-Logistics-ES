@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   basePath: "/customer",
   assetPrefix: "/customer",
-  trailingSlash: false,
+  trailingSlash: true,
 };
 
 export default nextConfig;

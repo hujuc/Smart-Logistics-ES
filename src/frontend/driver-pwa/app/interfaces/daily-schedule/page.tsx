@@ -109,7 +109,7 @@ export default function DriverDailySchedule() {
       default:
         return sorted;
     }
-  }, [sortBy]);
+  }, [sortBy, deliveriesData]);
 
   const toggleExpand = (id: number) => {
     setExpandedOrder(expandedOrder === id ? null : id);

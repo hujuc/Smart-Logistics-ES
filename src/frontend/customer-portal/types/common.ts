@@ -6,11 +6,12 @@ export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type IssueStatus = "Open" | "In Progress" | "Resolved" | "Closed";
 
-// Backend enum values - must match Java ShipmentOrderStatus enum
+// Backend enum values - must match Java OrderStatus enum
 export type ShipmentOrderStatus =
     | "CREATED"
     | "READY_FOR_PICKUP"
     | "COLLECTED"
+    | "ASSIGNED_TO_SHIPMENT"
     | "IN_TRANSIT"
     | "DELIVERED"
     | "CANCELLED";
@@ -61,6 +62,14 @@ export interface Order {
     description: string;
     status: ShipmentOrderStatus;
     shippingAddress: string;
+    shippingAddressLine1?: string;
+    shippingAddressLine2?: string;
+    shippingCity?: string;
+    shippingStateOrProvince?: string;
+    shippingPostalCode?: string;
+    shippingCountry?: string;
+    shippingPhone?: string;
+    shippingEmail?: string;
     estimatedDeliveryDate: Date;
     warehouseId: number;
     shippoShipmentId: string;
@@ -69,6 +78,7 @@ export interface Order {
     shipstationCarrierCode: string;
     shipstationServiceCode: string;
     trackingNumber: string;
+    customerId?: string;
     createdAt: Date;
     updatedAt: Date;
     weight: number;
@@ -86,6 +96,27 @@ export interface OrderDocument {
     contentType: string;
     size: number;
     url: string;
+}
+
+export interface OrderEvent {
+    id: number;
+    orderId: number;
+    eventType: ShipmentOrderStatus;
+    occurredAt: string;
+    notes: string;
+}
+
+export interface Warehouse {
+    id: number;
+    code: string;
+    name: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    stateOrProvince: string;
+    country: string;
+    postalCode: string;
+    active: boolean;
 }
 
 export interface ContactInfo {

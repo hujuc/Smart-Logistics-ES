@@ -17,12 +17,12 @@ import {
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
 import type { Order, OrderEvent, ShipmentOrderStatus } from "@/types"
 import type { LucideIcon } from "lucide-react"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 // Status configuration for display
 const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string }> = {
   CREATED: { icon: Package, color: "text-gray-500", label: "Created" },
-  READY_FOR_PICKUP: { icon: Package, color: "text-blue-500", label: "Ready for Pickup" },
-  COLLECTED: { icon: CheckCircle, color: "text-purple-500", label: "Collected" },
+  ASSIGNED_TO_SHIPMENT: { icon: Package, color: "text-blue-500", label: "Assigned to Shipment" },
   IN_TRANSIT: { icon: MapPin, color: "text-orange-500", label: "In Transit" },
   DELIVERED: { icon: CheckCircle, color: "text-green-500", label: "Delivered" },
   CANCELLED: { icon: AlertTriangle, color: "text-red-500", label: "Cancelled" },
@@ -154,7 +154,7 @@ export default function OrderLookupVersionA() {
             </div>
             <div>
               <Label className="text-gray-600">Shipping Address</Label>
-              <p className="font-semibold">{selectedOrder.shippingAddress}</p>
+              <p className="font-semibold">{formatOrderShippingAddress(selectedOrder)}</p>
             </div>
             <div>
               <Label className="text-gray-600">Estimated Delivery</Label>
