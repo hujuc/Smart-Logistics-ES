@@ -56,6 +56,7 @@ public class DeliveryExceptionResponse {
     private String feedbackComment;
     
     // Audit
+    private LocalDateTime createdAt;  // Alias for reportedAt for frontend compatibility
     private LocalDateTime updatedAt;
     private String history;
 }

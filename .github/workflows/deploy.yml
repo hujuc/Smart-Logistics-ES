@@ -2,11 +2,11 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main , 182-304-integrate-terraform-with-cicd-pipeline ]
 
 jobs:
   deploy:
-    runs-on: [self-hosted, slms]
+    runs-on: [self-hosted, aws-runner]
     env:
       COMPOSE_PROJECT_NAME: slms-prod
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -18,6 +18,7 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
       KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       KC_DB: ${{ secrets.KC_DB }}
@@ -52,25 +53,26 @@ jobs:
       KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
       KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
       KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
+      KC_HOSTNAME_URL: ${{ secrets.KC_HOSTNAME_URL }}
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${{ secrets.NEXT_PUBLIC_FLAGSMITH_ENV_KEY }}
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
+      SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
+      PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
     steps:
       - name: Fix permissions before build
         shell: bash
         run: |
-          sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
-          sudo chmod -R 777 /home/sousahugo/actions-runner/_work
+          sudo chown -R $USER:users /home/ubuntu/actions-runner/_work
+          sudo chmod -R 777 /home/ubuntu/actions-runner/_work
 
-      - name: Allow current user to access Docker daemon
-        shell: bash
-        run: |
-          sudo setfacl -m "user:${USER}:rw" /var/run/docker.sock
+      # - name: Allow current user to access Docker daemon
+      #   shell: bash
+      #   run: |
+      #     sudo setfacl -m "user:${USER}:rw" /var/run/docker.sock
 
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.5.7'
 
       - name: Write .env for Compose
         working-directory: infra
@@ -87,6 +89,7 @@ jobs:
           "DB_NAME=${DB_NAME}" \
           "DB_USERNAME=${DB_USERNAME}" \
           "DB_PASSWORD=${DB_PASSWORD}" \
+          "JWT_ISSUER_URI=${JWT_ISSUER_URI}" \
           "KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}" \
           "KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}" \
           "KC_DB=${KC_DB}" \
@@ -119,15 +122,86 @@ jobs:
           "MINIO_ROOT_USER=${MINIO_ROOT_USER}" \
           "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
           "MINIO_BUCKET=${MINIO_BUCKET}" \
+          "MINIO_BUCKET_NAME=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
+          "KC_HOSTNAME_URL=${KC_HOSTNAME_URL}" \
+          "NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}" \
+          "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}" \
+          "SHIPPO_API_KEY=${SHIPPO_API_KEY}" \
+          "SHIPENGINE_API_KEY=${SHIPENGINE_API_KEY}" \
+          "SHIPENGINE_BASE_URL=https://api.shipengine.com/v1" \
+          "SHIPPO_BASE_URL=https://api.goshippo.com" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
+
+      - name: Write terraform.tfvars
+        working-directory: infra/terraform
+        shell: bash
+        run: |
+          cat > terraform.tfvars <<EOF
+          # PostgreSQL Configuration
+          postgres_user      = "${POSTGRES_USER}"
+          postgres_password  = "${POSTGRES_PASSWORD}"
+          postgres_db        = "${POSTGRES_DB}"
+          postgres_host_port = ${POSTGRES_PORT}
+
+          # Keycloak Configuration
+          keycloak_realm               = "${KEYCLOAK_REALM}"
+          keycloak_client_id           = "${KEYCLOAK_ADMIN_CLIENT_ID}"
+          keycloak_client_secret       = "${KEYCLOAK_ADMIN_CLIENT_SECRET}"
+          keycloak_hostname_url        = "${KC_HOSTNAME_URL}"
+          keycloak_admin               = "${KEYCLOAK_ADMIN}"
+          keycloak_admin_password      = "${KEYCLOAK_ADMIN_PASSWORD}"
+
+          # JWT Configuration
+          jwt_issuer_uri      = "${JWT_ISSUER_URI}"
+
+          # MinIO Configuration
+          minio_endpoint    = "http://slms-minio-prod:9000"
+          minio_access_key  = "${MINIO_ROOT_USER}"
+          minio_secret_key  = "${MINIO_ROOT_PASSWORD}"
+          minio_bucket_name = "${MINIO_BUCKET}"
+
+          # Shippo API Configuration
+          shippo_api_key  = "${SHIPPO_API_KEY}"
+          shippo_base_url = "https://api.goshippo.com"
+
+          # ShipEngine API Configuration
+          shipengine_api_key  = "${SHIPENGINE_API_KEY}"
+          shipengine_base_url = "https://api.shipengine.com/v1"
+
+          # Docker Network
+          docker_network_name = "slms-network"
+
+          # Public Host Configuration
+          public_host = "${PUBLIC_HOST}"
+
+          # Frontend API URL
+          next_public_api_url = "${NEXT_PUBLIC_API_URL}"
+
+          # Frontend Feature Flags
+          flagsmith_env_key   = "${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}"
+          mapbox_access_token = "${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}"
+          EOF
+          echo "✅ terraform.tfvars created with production secrets"
 
       - name: Shutdown existing Docker Compose services
         working-directory: infra
         shell: bash
-        run: docker compose down --remove-orphans || true
+        run: sudo docker compose down --remove-orphans || true
+
+      - name: Remove existing Terraform-managed containers
+        shell: bash
+        run: sudo docker compose down --remove-orphans || true
+          
+
+      - name: Remove existing Terraform-managed containers
+        shell: bash
+        run: |
+          # Stop and remove containers that might conflict with Terraform
+          docker stop slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+          docker rm -f slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
 
       - name: Ensure deploy script is executable
         shell: bash
@@ -138,4 +212,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Smart deploy: reuses existing containers when possible
+          # Rebuild images to include basePath configuration
           ./deploy.sh deploy
+
+      - name: Restart Nginx to refresh container DNS
+        shell: bash
+        run: |
+          # Restart Nginx so it resolves new container IPs after Terraform deploy
+          docker restart slms-nginx-prod || true

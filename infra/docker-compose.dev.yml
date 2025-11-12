@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: slms-postgres
+    container_name: slms-postgres-dev
     restart: unless-stopped
     env_file:
       - .env
@@ -63,6 +63,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      # Flagsmith Configuration
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
     working_dir: /app
     volumes:
       - ../src/frontend/admin-console:/app
@@ -83,6 +85,10 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      # API Configuration
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Flagsmith Configuration
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
     working_dir: /app
     volumes:
       - ../src/frontend/customer-portal:/app
@@ -103,6 +109,10 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      # API Configuration
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Mapbox Configuration
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
     working_dir: /app
     volumes:
       - ../src/frontend/driver-pwa:/app
@@ -123,6 +133,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      # API Configuration
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     working_dir: /app
     volumes:
       - ../src/frontend/landing-page:/app
@@ -148,7 +160,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: slms-minio-dev
     command: server /data --console-address ":9001"
     env_file:
       - .env
@@ -161,18 +173,18 @@ services:
 
   minio-create-bucket:
     image: minio/mc:latest
-    container_name: minio-create-bucket
+    container_name: slms-minio-create-bucket-dev
     depends_on:
       - minio
     env_file:
       - .env
     entrypoint: >
       /bin/sh -c "
-      until mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+      until mc alias set myminio http://slms-minio-dev:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
         echo 'Aguardando o MinIO ficar disponivel...';
         sleep 2;
       done;
-      mc mb --ignore-existing myminio/${MINIO_BUCKET};
+      mc mb --ignore-existing myminio/${MINIO_BUCKET_NAME};
       "
     restart: "no"
 
