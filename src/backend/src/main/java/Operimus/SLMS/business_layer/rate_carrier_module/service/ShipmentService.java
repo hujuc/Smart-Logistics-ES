@@ -10,6 +10,7 @@ import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ public class ShipmentService {
     private final ShipmentRepository shipmentRepository;
     private final OrderRepository orderRepository;
     private final CarrierService carrierService;
+    private final ObjectProvider<ShipmentLabelGenerationService> shipmentLabelGenerationService;
 
     @Transactional
     public Shipment create(String shipmentCode, Long carrierId, String driverId, List<Long> orderIds) {
@@ -79,6 +81,8 @@ public class ShipmentService {
         }
         orderRepository.saveAll(orders);
 
+        triggerShipmentDocuments(saved, orders);
+
         return saved;
     }
 
@@ -127,5 +131,12 @@ public class ShipmentService {
         return shipmentRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(id)));
+    }
+
+    private void triggerShipmentDocuments(Shipment shipment, List<Order> orders) {
+        ShipmentLabelGenerationService generator = shipmentLabelGenerationService.getIfAvailable();
+        if (generator != null) {
+            generator.generateCarrierDocuments(shipment, orders);
+        }
     }
 }

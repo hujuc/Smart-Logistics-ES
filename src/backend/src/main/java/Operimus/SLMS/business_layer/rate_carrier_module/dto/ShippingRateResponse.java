@@ -27,6 +27,7 @@ public class ShippingRateResponse {
     @AllArgsConstructor
     public static class RateQuote {
 
+        private String rateId;
         private String provider;
         private String carrierAccount;
         private String carrierCode;
@@ -37,4 +38,3 @@ public class ShippingRateResponse {
         private OffsetDateTime deliveryDate;
     }
 }
-

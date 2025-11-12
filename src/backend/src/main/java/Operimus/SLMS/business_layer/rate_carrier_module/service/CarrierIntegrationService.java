@@ -58,10 +58,11 @@ public class CarrierIntegrationService {
             ShippoCarrierAccount shippo = shippoByCode.get(code);
             ShipEngineCarrier shipEngine = shipEngineByCode.get(code);
 
-            // Only include carriers that have ShipEngine integration
-            if (shipEngine != null) {
-                snapshots.add(buildSnapshot(code, shippo, shipEngine));
+            if (shippo == null && shipEngine == null) {
+                continue;
             }
+
+            snapshots.add(buildSnapshot(code, shippo, shipEngine));
         }
 
         return snapshots;

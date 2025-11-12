@@ -4,9 +4,11 @@ import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
 import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
+import Operimus.SLMS.business_layer.order_module.dto.ShipmentDocumentResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.ShipmentDocumentService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,9 @@ class WarehouseBffControllerTest {
 
     @MockBean
     private OrderDocumentService orderDocumentService;
+
+    @MockBean
+    private ShipmentDocumentService shipmentDocumentService;
 
     @MockBean
     private KeycloakUserService keycloakUserService;
@@ -198,6 +203,44 @@ class WarehouseBffControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(orderService).delete(1L);
+    }
+
+    @Test
+    void whenListShipmentDocuments_thenReturnDocuments() throws Exception {
+        when(shipmentDocumentService.listByOrder(1L)).thenReturn(List.of(ShipmentDocumentResponse.builder()
+                .shipmentId(10L)
+                .orderId(1L)
+                .documentId("label.pdf")
+                .fileName("label.pdf")
+                .contentType("application/pdf")
+                .size(120)
+                .url("http://minio/label.pdf")
+                .carrierCode("UPS")
+                .build()));
+
+        mockMvc.perform(get("/api/warehouse/orders/{orderId}/shipment-documents", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].documentId", is("label.pdf")))
+                .andExpect(jsonPath("$[0].carrierCode", is("UPS")));
+
+        verify(shipmentDocumentService).listByOrder(1L);
+    }
+
+    @Test
+    void whenDownloadShipmentDocument_thenReturnFile() throws Exception {
+        DocumentDownloadResponse download = DocumentDownloadResponse.builder()
+                .fileName("label.pdf")
+                .contentType("application/pdf")
+                .content("content".getBytes())
+                .size(7)
+                .build();
+        when(shipmentDocumentService.downloadForOrder(1L, "label.pdf")).thenReturn(download);
+
+        mockMvc.perform(get("/api/warehouse/orders/{orderId}/shipment-documents/{documentId}/download", 1L, "label.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("label.pdf")));
+
+        verify(shipmentDocumentService).downloadForOrder(1L, "label.pdf");
     }
 
     // ========================================
