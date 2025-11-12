@@ -181,8 +181,8 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await page.getByPlaceholder(/order.*tracking/i).fill("999999");
     await page.getByRole("button", { name: /search/i }).click();
     
-    // Verify error message appears
-    await expect(page.getByText(/not found|no order found|order does not exist/i)).toBeVisible({ 
+    // Verify error message appears: "No orders found for "999999""
+    await expect(page.getByText(/no orders found/i)).toBeVisible({ 
       timeout: 30_000 
     });
   });
