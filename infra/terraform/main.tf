@@ -52,6 +52,17 @@ locals {
   config_flagsmith_env_key     = var.flagsmith_env_key != null ? var.flagsmith_env_key : ""
   config_mapbox_access_token   = var.mapbox_access_token != null ? var.mapbox_access_token : ""
   config_service_replica_count = var.service_replica_count != null ? var.service_replica_count : 2
+
+  # Observability configuration
+  config_elastic_apm_server_url   = var.elastic_apm_server_url != null ? var.elastic_apm_server_url : ""
+  config_elastic_apm_secret_token = var.elastic_apm_secret_token != null ? var.elastic_apm_secret_token : ""
+  config_deployment_env           = var.deployment_env != null ? var.deployment_env : "development"
+  config_project_version          = var.project_version != null ? var.project_version : "0.0.1-SNAPSHOT"
+  config_tracing_sampling_rate    = var.tracing_sampling_rate != null ? var.tracing_sampling_rate : "1.0"
+  config_log_level_root           = var.log_level_root != null ? var.log_level_root : "INFO"
+  config_log_level_app            = var.log_level_app != null ? var.log_level_app : "DEBUG"
+  config_log_level_web            = var.log_level_web != null ? var.log_level_web : "INFO"
+  config_log_level_security       = var.log_level_security != null ? var.log_level_security : "INFO"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -152,7 +163,16 @@ resource "docker_container" "backend" {
     "SHIPPO_API_KEY=${local.config_shippo_api_key}",
     "SHIPPO_BASE_URL=${local.config_shippo_base_url}",
     "SHIPENGINE_API_KEY=${local.config_shipengine_api_key}",
-    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}"
+    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}",
+    "ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "PROJECT_VERSION=${local.config_project_version}",
+    "TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}",
+    "LOG_LEVEL_ROOT=${local.config_log_level_root}",
+    "LOG_LEVEL_APP=${local.config_log_level_app}",
+    "LOG_LEVEL_WEB=${local.config_log_level_web}",
+    "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
   ]
 
   networks_advanced {
