@@ -635,7 +635,7 @@ export const customerServiceService = {
       : formattedNote;
     
     // Update the exception with the appended notes
-    const exception = await customerServiceExceptionsApi.update(ticketId, {
+    await customerServiceExceptionsApi.update(ticketId, {
       resolutionNotes: updatedNotes,
     });
 

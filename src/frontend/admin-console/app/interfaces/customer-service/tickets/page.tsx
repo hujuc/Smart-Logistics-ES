@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, FileText, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter, Settings } from "lucide-react"
+import { Search, Clock, User, MessageSquare, Package, AlertCircle, CheckCircle, Filter, Settings } from "lucide-react"
 import { customerServiceService } from "@/lib/services/customer-service.service"
 import { featureFlagManager } from "@/lib/flagsmith"
 import { getUserData } from "@/shared/lib/auth"
