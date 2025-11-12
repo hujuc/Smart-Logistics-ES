@@ -55,9 +55,6 @@ locals {
   config_mapbox_access_token   = var.mapbox_access_token != null ? var.mapbox_access_token : ""
   config_service_replica_count = var.service_replica_count != null ? var.service_replica_count : 2
 
-  # QR Code configuration
-  config_qr_confirmation_base_url = var.qr_confirmation_base_url != null ? var.qr_confirmation_base_url : "http://localhost:8080/api/driver"
-
   # Observability configuration
   config_elastic_apm_server_url   = var.elastic_apm_server_url != null ? var.elastic_apm_server_url : ""
   config_elastic_apm_secret_token = var.elastic_apm_secret_token != null ? var.elastic_apm_secret_token : ""
@@ -179,7 +176,6 @@ resource "docker_container" "backend" {
     "LOG_LEVEL_APP=${local.config_log_level_app}",
     "LOG_LEVEL_WEB=${local.config_log_level_web}",
     "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
-    "QR_CONFIRMATION_BASE_URL=${local.config_qr_confirmation_base_url}"
   ]
 
   networks_advanced {
