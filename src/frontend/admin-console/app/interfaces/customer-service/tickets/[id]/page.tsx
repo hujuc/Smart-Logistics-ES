@@ -31,6 +31,13 @@ export default function TicketDetailPage() {
   //  Resolution form state (US 8 & 9)
   const [resolutionNote, setResolutionNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Assignment state
+  const [selectedAssignee, setSelectedAssignee] = useState("")
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false)
+  const [availableAssignees, setAvailableAssignees] = useState<Array<{ id: string; name: string }>>(
+    [{ id: "unassigned", name: "Unassigned" }]
+  )
 
   const loadTicketDetails = useCallback(async () => {
     try {
@@ -38,6 +45,8 @@ export default function TicketDetailPage() {
       setError(null)
       const data = await customerServiceService.getTicketById(ticketId)
       setTicket(data)
+      // Set the selected assignee ID (not name) - will be mapped to name in UI
+      setSelectedAssignee(data.assignedTo || "unassigned")
     } catch (err) {
       console.error("Failed to load ticket:", err)
       setError("Failed to load ticket details. Please try again.")
@@ -48,7 +57,23 @@ export default function TicketDetailPage() {
 
   useEffect(() => {
     loadTicketDetails()
+    loadAvailableAssignees()
   }, [loadTicketDetails])
+
+  const loadAvailableAssignees = async () => {
+    try {
+      // Get customer service representatives from Keycloak
+      const csrUsers = await customerServiceService.getCustomerServiceReps();
+      const assignees = [
+        { id: "unassigned", name: "Unassigned" },
+        ...csrUsers.map(user => ({ id: user.id, name: user.name }))
+      ];
+      setAvailableAssignees(assignees);
+    } catch (err) {
+      console.error("Failed to load assignees:", err)
+      // Keep default "Unassigned" if fetch fails
+    }
+  }
 
   const handleAddNote = async () => {
     if (!resolutionNote.trim() || !ticket) return
@@ -84,6 +109,24 @@ export default function TicketDetailPage() {
       console.error("Failed to close ticket:", err)
       alert("Failed to close ticket. Please try again.")
       setIsSubmitting(false)
+    }
+  }
+
+  const handleUpdateAssignment = async () => {
+    if (!ticket) return
+
+    try {
+      setIsUpdatingAssignment(true)
+      // Send the user ID (UUID) to backend, or undefined if unassigned
+      const assignedTo = selectedAssignee === "unassigned" ? undefined : selectedAssignee
+      await customerServiceService.updateTicket(ticket.id, { assignedTo })
+      alert("Assignment updated successfully!")
+      await loadTicketDetails()
+    } catch (err) {
+      console.error("Failed to update assignment:", err)
+      alert("Failed to update assignment. Please try again.")
+    } finally {
+      setIsUpdatingAssignment(false)
     }
   }
 
@@ -280,17 +323,48 @@ export default function TicketDetailPage() {
         <div className="space-y-6">
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-black mb-4">Quick Actions</h2>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Category:</span> {ticket.category || "N/A"}
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Assigned To:</span> {ticket.assignedTo || "Unassigned"}
-              </p>
-              {ticket.messages && (
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Messages:</span> {ticket.messages}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Category:</span> {ticket.category || "N/A"}
                 </p>
+              </div>
+              
+              {/* Assignment Section */}
+              <div>
+                <Label htmlFor="assignee" className="text-sm font-medium text-gray-700">
+                  Assigned To
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <select
+                    id="assignee"
+                    value={selectedAssignee}
+                    onChange={(e) => setSelectedAssignee(e.target.value)}
+                    className="flex-1 text-sm border rounded-md px-3 py-2 bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {availableAssignees.map((assignee) => (
+                      <option key={assignee.id} value={assignee.id}>
+                        {assignee.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    onClick={handleUpdateAssignment}
+                    disabled={isUpdatingAssignment || selectedAssignee === ticket.assignedTo}
+                    className="whitespace-nowrap"
+                  >
+                    {isUpdatingAssignment ? "Saving..." : "Update"}
+                  </Button>
+                </div>
+              </div>
+
+              {ticket.messages !== undefined && (
+                <div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Messages:</span> {ticket.messages}
+                  </p>
+                </div>
               )}
             </div>
           </div>

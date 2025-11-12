@@ -240,30 +240,26 @@ export default function TicketsPage() {
       {/* Search Bar with Order Lookup - US 7 */}
       <div className="bg-white border rounded-lg p-4 md:p-6 shadow-sm">
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Search Orders or Tickets</Label>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="search"
-                  type="text"
-                  placeholder="Enter order reference (ORD-2024-123), tracking number, ticket #, or customer name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className="pl-10"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tip: Enter ORD- or TRK to search orders, or search tickets by name/subject
-              </p>
-            </div>
-            <div className="flex sm:items-end w-full sm:w-auto">
+          <div>
+            <Label htmlFor="search">Search Orders or Tickets</Label>
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Input
+                id="search"
+                type="text"
+                placeholder="Enter order reference (ORD-2024-123), tracking number, ticket #, or customer name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                className="flex-1"
+              />
               <Button onClick={handleSearch} disabled={isSearching} className="w-full sm:w-auto">
+                <Search className="w-4 h-4 mr-2" />
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Tip: Enter ORD- or TRK to search orders, or search tickets by name/subject
+            </p>
           </div>
 
           {/* Filters and Sort */}

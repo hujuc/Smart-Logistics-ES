@@ -79,11 +79,11 @@ export interface DeliveryException {
   id: string;
   orderId: number;
   customerId: string;
-  exceptionType: 'DAMAGED_PACKAGE' | 'LOST_PACKAGE' | 'DELAYED_DELIVERY' | 'WRONG_ADDRESS' | 'CUSTOMER_NOT_AVAILABLE' | 'WEATHER_DELAY' | 'CUSTOMS_HOLD' | 'OTHER';
+  type: 'DAMAGED_PACKAGE' | 'LOST_PACKAGE' | 'DELAYED_DELIVERY' | 'WRONG_ADDRESS' | 'CUSTOMER_NOT_AVAILABLE' | 'WEATHER_DELAY' | 'CUSTOMS_HOLD' | 'OTHER';
+  category: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-  title: string;
   description: string;
   resolutionNotes?: string;
   reportedAt: string;
@@ -99,10 +99,10 @@ export interface DeliveryException {
 export interface DeliveryExceptionRequest {
   orderId: number;
   customerId: string;
-  exceptionType: DeliveryException['exceptionType'];
+  type: DeliveryException['type'];
+  category: string;
   severity: DeliveryException['severity'];
   priority: DeliveryException['priority'];
-  title: string;
   description: string;
   source: DeliveryException['source'];
   assignedTo?: string;
@@ -219,19 +219,110 @@ export const customerServiceExceptionsApi = {
 // ========================================
 
 /**
+ * User information from Keycloak
+ */
+interface UserInfo {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  enabled: boolean;
+  realmRoles?: string[];
+}
+
+/**
+ * Cache for user information to avoid repeated API calls
+ */
+const userInfoCache = new Map<string, UserInfo>();
+
+/**
+ * Fetch user information from backend
+ */
+async function fetchUserInfo(userId: string): Promise<UserInfo | null> {
+  // Check cache first
+  if (userInfoCache.has(userId)) {
+    return userInfoCache.get(userId)!;
+  }
+
+  try {
+    const userInfo = await apiFetch<UserInfo>(`/api/users/${userId}`);
+    userInfoCache.set(userId, userInfo);
+    return userInfo;
+  } catch (error) {
+    console.error(`Failed to fetch user info for ${userId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Helper function to get customer name from user ID
+ */
+async function getCustomerName(customerId: string): Promise<string> {
+  const userInfo = await fetchUserInfo(customerId);
+  
+  if (userInfo && userInfo.firstName && userInfo.lastName) {
+    return `${userInfo.firstName} ${userInfo.lastName}`;
+  }
+  
+  // Fallback to formatted customer ID
+  return formatCustomerName(customerId);
+}
+
+/**
+ * Helper function to get assignee name from user ID
+ */
+async function getAssigneeName(assigneeId: string | null | undefined): Promise<string> {
+  if (!assigneeId) {
+    return 'Unassigned';
+  }
+
+  const userInfo = await fetchUserInfo(assigneeId);
+  
+  if (userInfo && userInfo.firstName && userInfo.lastName) {
+    return `${userInfo.firstName} ${userInfo.lastName}`;
+  }
+  
+  // Fallback to "Unassigned" if we can't get the info
+  return 'Unassigned';
+}
+
+/**
+ * Helper function to format customer ID into a more readable name
+ * Used as fallback when user info is not available
+ */
+function formatCustomerName(customerId: string): string {
+  // If it looks like an email, extract the name part
+  if (customerId.includes('@')) {
+    const namePart = customerId.split('@')[0];
+    return namePart.split('.').map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1)
+    ).join(' ');
+  }
+  
+  // If it's a UUID or ID-like string, show first part only
+  if (customerId.includes('-')) {
+    return `Customer ${customerId.split('-')[0].toUpperCase()}`;
+  }
+  
+  // Otherwise, just capitalize
+  return customerId.charAt(0).toUpperCase() + customerId.slice(1);
+}
+
+/**
  * Helper function to map backend DeliveryException to frontend TicketWithDetails
  */
-function mapExceptionToTicket(exception: DeliveryException): TicketWithDetails {
-  // Map exception type to category
-  const categoryMap: Record<DeliveryException['exceptionType'], string> = {
-    'DAMAGED_PACKAGE': 'Refund',
-    'LOST_PACKAGE': 'Delivery Issue',
-    'DELAYED_DELIVERY': 'Delivery Issue',
-    'WRONG_ADDRESS': 'Delivery Issue',
-    'CUSTOMER_NOT_AVAILABLE': 'Delivery Issue',
-    'WEATHER_DELAY': 'Delivery Issue',
-    'CUSTOMS_HOLD': 'Tracking',
-    'OTHER': 'General Inquiry',
+async function mapExceptionToTicket(exception: DeliveryException): Promise<TicketWithDetails> {
+  // Map exception type to human-readable format (for display purposes)
+  const typeDisplayMap: Record<DeliveryException['type'], string> = {
+    'DAMAGED_PACKAGE': 'Damaged Package',
+    'LOST_PACKAGE': 'Lost Package',
+    'DELAYED_DELIVERY': 'Delivery Delayed',
+    'WRONG_ADDRESS': 'Wrong Address',
+    'CUSTOMER_NOT_AVAILABLE': 'Customer Not Available',
+    'WEATHER_DELAY': 'Weather Delay',
+    'CUSTOMS_HOLD': 'Customs Hold',
+    'OTHER': 'Other',
   };
 
   // Map status to frontend format
@@ -242,44 +333,46 @@ function mapExceptionToTicket(exception: DeliveryException): TicketWithDetails {
     'CLOSED': 'Closed',
   };
 
-  // Map priority to frontend format
-  const priorityMap: Record<DeliveryException['priority'], 'Low' | 'Medium' | 'High'> = {
+  // Map severity to priority display (showing severity as priority in UI)
+  const severityToPriorityMap: Record<DeliveryException['severity'], 'Low' | 'Medium' | 'High'> = {
     'LOW': 'Low',
-    'NORMAL': 'Medium',
+    'MEDIUM': 'Medium',
     'HIGH': 'High',
-    'URGENT': 'High',
+    'CRITICAL': 'High', // Map CRITICAL severity to High priority for display
   };
+
+  // Get customer name from user service
+  const customerName = await getCustomerName(exception.customerId);
+  
+  // Get assignee name from user service
+  const assigneeName = await getAssigneeName(exception.assignedTo);
 
   const ticket: TicketWithDetails = {
     id: exception.id,
     ticketNumber: `TKT-${exception.id.substring(0, 8)}`,
     customerId: exception.customerId,
-    customerName: 'Customer', // TODO: Fetch from user service
-    customerEmail: `${exception.customerId}@example.com`, // TODO: Fetch from user service
-    subject: exception.title,
+    customerName: customerName,
+    customerEmail: exception.customerId.includes('@') ? exception.customerId : `${exception.customerId}@example.com`,
+    subject: exception.category, // Use category as the main subject
     description: exception.description,
     status: statusMap[exception.status] || 'Open',
-    priority: priorityMap[exception.priority] || 'Medium',
-    category: categoryMap[exception.exceptionType] || 'General Inquiry',
-    assignedTo: exception.assignedTo || 'Unassigned',
-    messages: 0, // TODO: Implement messaging system
+    priority: severityToPriorityMap[exception.severity] || 'Medium',
+    category: exception.category, // Use the category field directly from backend
+    assignedTo: assigneeName,
+    messages: 0,
     createdAt: new Date(exception.createdAt),
     updatedAt: new Date(exception.updatedAt),
     resolutionNotes: exception.resolutionNotes,
   };
 
-  // Add exception details
-  if (exception.carrierName || exception.trackingNumber) {
-    ticket.exceptionDetails = {
-      type: exception.exceptionType.split('_').map(w => 
-        w.charAt(0) + w.slice(1).toLowerCase()
-      ).join(' '),
-      carrier: exception.carrierName,
-      lastLocation: 'Unknown', // TODO: Get from order tracking
-      expectedDelivery: '', // TODO: Get from order
-      reason: exception.description,
-    };
-  }
+  // Add exception details with proper formatting
+  ticket.exceptionDetails = {
+    type: typeDisplayMap[exception.type] || exception.type,
+    carrier: exception.carrierName,
+    lastLocation: 'Unknown',
+    expectedDelivery: '',
+    reason: exception.description,
+  };
 
   // Add resolution history if notes exist
   if (exception.resolutionNotes) {
@@ -419,8 +512,8 @@ export const customerServiceService = {
 
     const exceptions = await customerServiceExceptionsApi.getAll(apiFilters);
 
-    // Map backend exceptions to frontend ticket format
-    let tickets = exceptions.map(mapExceptionToTicket);
+    // Map backend exceptions to frontend ticket format (with async user lookups)
+    let tickets = await Promise.all(exceptions.map(mapExceptionToTicket));
 
     // Apply client-side search filter
     if (filters?.search) {
@@ -440,7 +533,7 @@ export const customerServiceService = {
    */
   async getTicketById(id: string): Promise<TicketWithDetails> {
     const exception = await customerServiceExceptionsApi.getById(id);
-    return mapExceptionToTicket(exception);
+    return await mapExceptionToTicket(exception);
   },
 
   /**
@@ -605,5 +698,22 @@ export const customerServiceService = {
 
     // In real implementation, this would mark the notification as read
     console.log(`Notification for ticket ${ticketId} marked as read`);
+  },
+
+  /**
+   * Get all customer service representatives for ticket assignment
+   */
+  async getCustomerServiceReps(): Promise<Array<{ id: string; name: string; email: string }>> {
+    try {
+      const csrUsers = await apiFetch<UserInfo[]>(API_ENDPOINTS.customerService.customerServiceReps);
+      return csrUsers.map(user => ({
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`.trim() || user.username,
+        email: user.email,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch customer service representatives:', error);
+      return [];
+    }
   }
 };

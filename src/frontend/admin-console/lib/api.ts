@@ -88,6 +88,9 @@ export const API_ENDPOINTS = {
       const queryString = params.toString();
       return `${CUSTOMER_SERVICE_BASE}/delivery-exceptions${queryString ? `?${queryString}` : ''}`;
     },
+
+    // User management
+    customerServiceReps: `${CUSTOMER_SERVICE_BASE}/users/customer-service-reps`,
   },
 
   // Admin API - Direct backend endpoints (not through BFF)
