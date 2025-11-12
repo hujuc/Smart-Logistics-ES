@@ -67,8 +67,30 @@ export const API_ENDPOINTS = {
     orderTracking: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/tracking`,
     orderWithEvents: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/with-events`,
 
-    // Exceptions
-    orderExceptions: (orderId: number) => `${CUSTOMER_SERVICE_BASE}/orders/${orderId}/exceptions`,
+    // Delivery Exceptions (Tickets)
+    exceptions: `${CUSTOMER_SERVICE_BASE}/delivery-exceptions`,
+    exception: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}`,
+    exceptionClose: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/close`,
+    exceptionContactCarrier: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-carrier`,
+    exceptionContactCustomer: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-customer`,
+    exceptionsSummary: `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/summary`,
+    exceptionsWithFilters: (filters: {
+      status?: string;
+      priority?: string;
+      assignedTo?: string;
+      severity?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.priority) params.append('priority', filters.priority);
+      if (filters.assignedTo) params.append('assignedTo', filters.assignedTo);
+      if (filters.severity) params.append('severity', filters.severity);
+      const queryString = params.toString();
+      return `${CUSTOMER_SERVICE_BASE}/delivery-exceptions${queryString ? `?${queryString}` : ''}`;
+    },
+
+    // User management
+    customerServiceReps: `${CUSTOMER_SERVICE_BASE}/users/customer-service-reps`,
   },
 
   // Admin API - Direct backend endpoints (not through BFF)

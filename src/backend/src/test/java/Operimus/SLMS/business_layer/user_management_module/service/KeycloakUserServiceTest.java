@@ -552,6 +552,165 @@ class KeycloakUserServiceTest {
         assertEquals("Drivers", result.getGroups().get(0));
     }
 
+    // ========================================
+    // Get Users By Role Tests
+    // ========================================
+
+    @Test
+    void whenGetUsersByRole_thenReturnUsersWithThatRole() {
+        String roleName = "CUSTOMER_SERVICE_REP";
+        String userId1 = "user-1";
+        String userId2 = "user-2";
+        String userId3 = "user-3";
+
+        // Create users
+        UserRepresentation user1 = createUserRepresentation("user1", "user1@test.com");
+        user1.setId(userId1);
+        user1.setFirstName("John");
+        user1.setLastName("Doe");
+
+        UserRepresentation user2 = createUserRepresentation("user2", "user2@test.com");
+        user2.setId(userId2);
+        user2.setFirstName("Jane");
+        user2.setLastName("Smith");
+
+        UserRepresentation user3 = createUserRepresentation("user3", "user3@test.com");
+        user3.setId(userId3);
+        user3.setFirstName("Bob");
+        user3.setLastName("Johnson");
+
+        // Create roles
+        RoleRepresentation csrRole = createRoleRepresentation("CUSTOMER_SERVICE_REP");
+        RoleRepresentation customerRole = createRoleRepresentation("CUSTOMER");
+
+        // Mock Keycloak responses
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.list()).thenReturn(Arrays.asList(user1, user2, user3));
+
+        // Mock user1 and user2 have CSR role, user3 has CUSTOMER role
+        UserResource userResource1 = mock(UserResource.class);
+        UserResource userResource2 = mock(UserResource.class);
+        UserResource userResource3 = mock(UserResource.class);
+
+        when(usersResource.get(userId1)).thenReturn(userResource1);
+        when(usersResource.get(userId2)).thenReturn(userResource2);
+        when(usersResource.get(userId3)).thenReturn(userResource3);
+
+        RoleMappingResource roleMappingResource1 = mock(RoleMappingResource.class);
+        RoleMappingResource roleMappingResource2 = mock(RoleMappingResource.class);
+        RoleMappingResource roleMappingResource3 = mock(RoleMappingResource.class);
+
+        when(userResource1.roles()).thenReturn(roleMappingResource1);
+        when(userResource2.roles()).thenReturn(roleMappingResource2);
+        when(userResource3.roles()).thenReturn(roleMappingResource3);
+
+        RoleScopeResource roleScopeResource1 = mock(RoleScopeResource.class);
+        RoleScopeResource roleScopeResource2 = mock(RoleScopeResource.class);
+        RoleScopeResource roleScopeResource3 = mock(RoleScopeResource.class);
+
+        when(roleMappingResource1.realmLevel()).thenReturn(roleScopeResource1);
+        when(roleMappingResource2.realmLevel()).thenReturn(roleScopeResource2);
+        when(roleMappingResource3.realmLevel()).thenReturn(roleScopeResource3);
+
+        when(roleScopeResource1.listEffective()).thenReturn(Arrays.asList(csrRole));
+        when(roleScopeResource2.listEffective()).thenReturn(Arrays.asList(csrRole));
+        when(roleScopeResource3.listEffective()).thenReturn(Arrays.asList(customerRole));
+
+        // Execute
+        List<UserRepresentation> result = keycloakUserService.getUsersByRole(roleName);
+
+        // Verify
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(u -> u.getId().equals(userId1)));
+        assertTrue(result.stream().anyMatch(u -> u.getId().equals(userId2)));
+        assertFalse(result.stream().anyMatch(u -> u.getId().equals(userId3)));
+
+        verify(usersResource).list();
+        verify(usersResource).get(userId1);
+        verify(usersResource).get(userId2);
+        verify(usersResource).get(userId3);
+    }
+
+    @Test
+    void whenGetUsersByRoleCaseInsensitive_thenReturnUsersWithThatRole() {
+        String roleName = "customer_service_rep"; // lowercase
+        String userId = "user-1";
+
+        UserRepresentation user = createUserRepresentation("user1", "user1@test.com");
+        user.setId(userId);
+        user.setFirstName("John");
+        user.setLastName("Doe");
+
+        RoleRepresentation csrRole = createRoleRepresentation("CUSTOMER_SERVICE_REP"); // uppercase in Keycloak
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.list()).thenReturn(Arrays.asList(user));
+
+        UserResource mockUserResource = mock(UserResource.class);
+        when(usersResource.get(userId)).thenReturn(mockUserResource);
+
+        RoleMappingResource mockRoleMappingResource = mock(RoleMappingResource.class);
+        when(mockUserResource.roles()).thenReturn(mockRoleMappingResource);
+
+        RoleScopeResource mockRoleScopeResource = mock(RoleScopeResource.class);
+        when(mockRoleMappingResource.realmLevel()).thenReturn(mockRoleScopeResource);
+        when(mockRoleScopeResource.listEffective()).thenReturn(Arrays.asList(csrRole));
+
+        List<UserRepresentation> result = keycloakUserService.getUsersByRole(roleName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(userId, result.get(0).getId());
+    }
+
+    @Test
+    void whenGetUsersByRoleNoMatches_thenReturnEmptyList() {
+        String roleName = "NONEXISTENT_ROLE";
+        String userId = "user-1";
+
+        UserRepresentation user = createUserRepresentation("user1", "user1@test.com");
+        user.setId(userId);
+
+        RoleRepresentation customerRole = createRoleRepresentation("CUSTOMER");
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.list()).thenReturn(Arrays.asList(user));
+
+        UserResource mockUserResource = mock(UserResource.class);
+        when(usersResource.get(userId)).thenReturn(mockUserResource);
+
+        RoleMappingResource mockRoleMappingResource = mock(RoleMappingResource.class);
+        when(mockUserResource.roles()).thenReturn(mockRoleMappingResource);
+
+        RoleScopeResource mockRoleScopeResource = mock(RoleScopeResource.class);
+        when(mockRoleMappingResource.realmLevel()).thenReturn(mockRoleScopeResource);
+        when(mockRoleScopeResource.listEffective()).thenReturn(Arrays.asList(customerRole));
+
+        List<UserRepresentation> result = keycloakUserService.getUsersByRole(roleName);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void whenGetUsersByRoleEmptyUserList_thenReturnEmptyList() {
+        String roleName = "CUSTOMER_SERVICE_REP";
+
+        when(keycloak.realm(anyString())).thenReturn(realmResource);
+        when(realmResource.users()).thenReturn(usersResource);
+        when(usersResource.list()).thenReturn(Arrays.asList());
+
+        List<UserRepresentation> result = keycloakUserService.getUsersByRole(roleName);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(usersResource).list();
+    }
+
     private UserRepresentation createUserRepresentation(UserDTO userDTO) {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(userDTO.getUsername());
