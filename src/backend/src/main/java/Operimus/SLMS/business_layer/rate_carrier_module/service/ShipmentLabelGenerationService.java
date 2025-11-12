@@ -11,6 +11,13 @@ import Operimus.SLMS.business_layer.rate_carrier_module.entities.Carrier;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
 import Operimus.SLMS.business_layer.rate_carrier_module.integration.ShippoApiClient;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Text;
+import com.itextpdf.layout.properties.TextAlignment;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -54,6 +61,7 @@ public class ShipmentLabelGenerationService {
             return;
         }
 
+        // Generate labels for each order
         for (Order order : orders) {
             try {
                 generateForOrder(shipment, carrier, order);
@@ -64,6 +72,144 @@ public class ShipmentLabelGenerationService {
                 log.warn("Unable to generate shipping document for shipment {} order {}",
                         shipment.getId(), order.getId(), ex);
             }
+        }
+
+        // Generate shipment summary document
+        try {
+            generateShipmentSummary(shipment, carrier, orders);
+        } catch (Exception ex) {
+            log.warn("Unable to generate shipment summary document for shipment {}: {}",
+                    shipment.getId(), ex.getMessage(), ex);
+        }
+    }
+
+    private void generateShipmentSummary(Shipment shipment, Carrier carrier, List<Order> orders) {
+        if (orders.isEmpty()) {
+            return;
+        }
+
+        // Get warehouse info from first order
+        Warehouse warehouse = orders.get(0).getWarehouse();
+        if (warehouse == null) {
+            log.warn("Cannot generate shipment summary - no warehouse found");
+            return;
+        }
+
+        try {
+            // Generate PDF using iText
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+
+            // Title
+            Paragraph title = new Paragraph()
+                .add(new Text("SHIPMENT SUMMARY / RESUMO DO ENVIO").setBold().setFontSize(16))
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(20);
+            document.add(title);
+
+            // Shipment Information Section
+            document.add(new Paragraph("SHIPMENT INFORMATION / INFORMAÇÃO DO ENVIO")
+                .setBold()
+                .setFontSize(12)
+                .setMarginTop(10));
+            
+            document.add(new Paragraph(String.format("Shipment Code / Código: %s", shipment.getShipmentCode())));
+            document.add(new Paragraph(String.format("Carrier / Transportadora: %s (%s)", 
+                carrier.getName(), carrier.getCode())));
+            document.add(new Paragraph(String.format("Driver / Motorista: %s", shipment.getDriverId())));
+            document.add(new Paragraph(String.format("Total Orders / Total Encomendas: %d", orders.size())));
+            
+            if (shipment.getTotalWeight() != null) {
+                document.add(new Paragraph(String.format("Total Weight / Peso Total: %.2f %s", 
+                    shipment.getTotalWeight(), 
+                    defaultString(shipment.getWeightUnit(), "kg"))));
+            }
+            if (shipment.getEstimatedDeliveryDate() != null) {
+                document.add(new Paragraph(String.format("Estimated Delivery / Entrega Prevista: %s", 
+                    shipment.getEstimatedDeliveryDate())));
+            }
+
+            // Origin Section
+            document.add(new Paragraph("ORIGIN / ORIGEM")
+                .setBold()
+                .setFontSize(12)
+                .setMarginTop(15));
+            
+            document.add(new Paragraph(String.format("Warehouse / Armazém: %s", warehouse.getName())));
+            document.add(new Paragraph(String.format("Address / Morada: %s", 
+                defaultString(warehouse.getAddressLine1(), ""))));
+            if (StringUtils.hasText(warehouse.getAddressLine2())) {
+                document.add(new Paragraph(String.format("                   %s", warehouse.getAddressLine2())));
+            }
+            document.add(new Paragraph(String.format("City / Cidade: %s", 
+                defaultString(warehouse.getCity(), ""))));
+            document.add(new Paragraph(String.format("Postal Code / Código Postal: %s", 
+                defaultString(warehouse.getPostalCode(), ""))));
+            document.add(new Paragraph(String.format("Country / País: %s", 
+                defaultString(warehouse.getCountry(), ""))));
+
+            // Destinations Section
+            document.add(new Paragraph("DESTINATIONS / DESTINOS")
+                .setBold()
+                .setFontSize(12)
+                .setMarginTop(15));
+            
+            for (int i = 0; i < orders.size(); i++) {
+                Order order = orders.get(i);
+                document.add(new Paragraph(String.format("%d. Order / Encomenda: %s", 
+                    (i + 1), order.getReference())).setBold());
+                document.add(new Paragraph(String.format("   Address / Morada: %s", 
+                    defaultString(order.getShippingAddressLine1(), order.getShippingAddress()))));
+                
+                if (StringUtils.hasText(order.getShippingCity())) {
+                    document.add(new Paragraph(String.format("   City / Cidade: %s", 
+                        order.getShippingCity())));
+                }
+                if (StringUtils.hasText(order.getShippingPostalCode())) {
+                    document.add(new Paragraph(String.format("   Postal Code / Código: %s", 
+                        order.getShippingPostalCode())));
+                }
+                if (StringUtils.hasText(order.getTrackingNumber())) {
+                    document.add(new Paragraph(String.format("   Tracking / Rastreio: %s", 
+                        order.getTrackingNumber())));
+                }
+            }
+
+            // Footer
+            document.add(new Paragraph(String.format("\nGenerated / Gerado: %s", 
+                java.time.LocalDateTime.now()))
+                .setTextAlignment(TextAlignment.CENTER)
+                .setFontSize(8)
+                .setMarginTop(20));
+
+            document.close();
+            byte[] pdfBytes = baos.toByteArray();
+
+            // Save PDF document to MinIO
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("document-type", "SHIPMENT_SUMMARY");
+            metadata.put("carrier-code", carrier.getCode());
+            metadata.put("total-orders", String.valueOf(orders.size()));
+            metadata.put("driver-id", shipment.getDriverId());
+
+            shipmentDocumentService.saveDocument(
+                    shipment.getId(),
+                    null,  // Document at shipment level, not order level
+                    "shipment-summary",
+                    "Shipment-Summary-" + shipment.getShipmentCode() + ".pdf",
+                    "application/pdf",
+                    pdfBytes,
+                    metadata);
+
+            log.info("Generated PDF shipment summary document for shipment {} with {} orders", 
+                    shipment.getId(), orders.size());
+
+        } catch (Exception ex) {
+            log.error("Failed to generate PDF shipment summary for shipment {}: {}", 
+                shipment.getId(), ex.getMessage(), ex);
+            throw new RuntimeException("Failed to generate PDF shipment summary", ex);
         }
     }
 
@@ -132,6 +278,52 @@ public class ShipmentLabelGenerationService {
         if (StringUtils.hasText(labelResponse.getTransactionId())) {
             shipment.setShippoTransactionId(labelResponse.getTransactionId());
         }
+
+        // Generate customs document if available (international shipments)
+        try {
+            generateCustomsDocumentIfAvailable(labelResponse, shipment, order);
+        } catch (Exception ex) {
+            log.warn("Unable to generate customs document for shipment {} order {}: {}",
+                    shipment.getId(), order.getId(), ex.getMessage());
+        }
+    }
+
+    private void generateCustomsDocumentIfAvailable(ShippoLabelResponse labelResponse, Shipment shipment, Order order) {
+        if (!StringUtils.hasText(labelResponse.getCommercialInvoiceUrl())) {
+            log.debug("No customs document available for order {} - not an international shipment", order.getId());
+            return;
+        }
+
+        log.info("Downloading customs document for shipment {} order {} from {}", 
+                shipment.getId(), order.getId(), labelResponse.getCommercialInvoiceUrl());
+
+        byte[] customsContent = shippoApiClient.downloadLabel(labelResponse.getCommercialInvoiceUrl());
+        if (customsContent == null || customsContent.length == 0) {
+            log.warn("Downloaded customs document for order {} is empty", order.getId());
+            return;
+        }
+
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("document-type", "CUSTOMS_DECLARATION");
+        metadata.put("order-reference", defaultString(order.getReference()));
+        metadata.put("carrier-code", defaultString(shipment.getCarrier().getCode()));
+        metadata.put("shippo-transaction-id", defaultString(labelResponse.getTransactionId()));
+        metadata.put("tracking-number", defaultString(labelResponse.getTrackingNumber()));
+
+        String documentId = "customs-declaration-%d.pdf".formatted(order.getId());
+        String fileName = "Customs-Declaration-%s.pdf".formatted(order.getReference());
+
+        ShipmentDocumentResponse stored = shipmentDocumentService.saveDocument(
+                shipment.getId(),
+                order.getId(),
+                documentId,
+                fileName,
+                "application/pdf",
+                customsContent,
+                metadata);
+
+        log.info("Stored customs document {} for shipment {} order {}", 
+                stored.getDocumentId(), shipment.getId(), order.getId());
     }
 
     private Optional<ShippingRateResponse.RateQuote> selectRate(List<ShippingRateResponse.RateQuote> rates, Carrier carrier) {

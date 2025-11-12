@@ -27,6 +27,8 @@ public class ShippoLabelResponse {
     private String rateId;
     private BigDecimal amount;
     private String currency;
+    private String commercialInvoiceUrl;  // URL for customs documents (international shipments)
     @Builder.Default
     private List<String> messages = Collections.emptyList();
 }
+

@@ -428,6 +428,7 @@ public class ShippoApiClient {
                 .rateId(node.path("rate").asText(null))
                 .amount(amount)
                 .currency(node.path("currency").asText(null))
+                .commercialInvoiceUrl(node.path("commercial_invoice_url").asText(null))
                 .messages(messages)
                 .build();
     }
