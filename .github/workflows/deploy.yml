@@ -59,11 +59,11 @@ jobs:
       SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
       PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
     steps:
-      # - name: Fix permissions before build
-      #   shell: bash
-      #   run: |
-      #     sudo chown -R $USER:users /home/sousahugo/actions-runner/_work
-      #     sudo chmod -R 777 /home/sousahugo/actions-runner/_work
+      - name: Fix permissions before build
+        shell: bash
+        run: |
+          sudo chown -R $USER:users /home/ubuntu/actions-runner/_work
+          sudo chmod -R 777 /home/ubuntu/actions-runner/_work
 
       # - name: Allow current user to access Docker daemon
       #   shell: bash
