@@ -5,3 +5,14 @@
 # env_file = "../.env"
 # postgres_host_port = 15432
 # docker_network_name = "slms-network"
+
+# ===== Public Host Configuration =====
+# For local development: leave empty (defaults to localhost)
+# For AWS EC2 / remote deployment: use the public IP or domain name
+# Examples:
+#   public_host = "ec2-3-85-123-45.compute-1.amazonaws.com"
+#   public_host = "54.123.45.67"
+#   public_host = "3.85.123.45"
+# 
+# This is used to build frontend API URLs (NEXT_PUBLIC_API_URL) at build time
+public_host = ""

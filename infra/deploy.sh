@@ -26,17 +26,20 @@ ensure_network() {
 }
 
 cleanup_containers() {
+  log "Checking for outdated containers..."
   local containers=(
-    slms-postgres
-    slms-backend-dev
-    slms-admin-console-dev
-    slms-customer-portal-dev
-    slms-driver-pwa-dev
-    slms-landing-page-dev
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
   )
+
+  # Only remove stopped containers, keep running ones
   for name in "${containers[@]}"; do
-    if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
-      log "Removing existing container ${name}"
+    if docker ps -a --filter "status=exited" --format '{{.Names}}' | grep -qx "${name}"; then
+      log "Removing stopped container ${name}"
       docker rm -f "${name}" >/dev/null
     fi
   done
@@ -47,6 +50,7 @@ terraform_init() {
 }
 
 terraform_apply() {
+  log "Applying Terraform changes (will reuse existing resources when possible)..."
   (cd "${TERRAFORM_DIR}" && terraform apply -auto-approve)
 }
 
@@ -54,9 +58,24 @@ terraform_destroy() {
   (cd "${TERRAFORM_DIR}" && terraform destroy -auto-approve)
 }
 
+# Smarter deployment: only rebuilds changed images
+terraform_smart_deploy() {
+  log "Smart deploy: checking for changes..."
+  
+  # First, run terraform plan to see what changed
+  (cd "${TERRAFORM_DIR}" && terraform plan -out=tfplan >/dev/null 2>&1)
+  
+  # Apply the plan (this will only update what changed)
+  log "Applying infrastructure changes..."
+  (cd "${TERRAFORM_DIR}" && terraform apply -auto-approve tfplan)
+  
+  # Clean up plan file
+  rm -f "${TERRAFORM_DIR}/tfplan"
+}
+
 compose_up() {
   log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
-  docker compose up -d keycloak minio minio-create-bucket nginx
+  docker compose up -d --force-recreate keycloak minio minio-create-bucket nginx
 }
 
 compose_down() {
@@ -67,12 +86,12 @@ compose_down() {
 terraform_stop() {
   log "Stopping Terraform-managed containers"
   local containers=(
-    slms-postgres
-    slms-backend-dev
-    slms-admin-console-dev
-    slms-customer-portal-dev
-    slms-driver-pwa-dev
-    slms-landing-page-dev
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
   )
   for name in "${containers[@]}"; do
     if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
@@ -85,12 +104,12 @@ terraform_stop() {
 terraform_restart() {
   log "Restarting Terraform-managed containers"
   local containers=(
-    slms-postgres
-    slms-backend-dev
-    slms-admin-console-dev
-    slms-customer-portal-dev
-    slms-driver-pwa-dev
-    slms-landing-page-dev
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
   )
   for name in "${containers[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
@@ -106,7 +125,7 @@ case "${1:-}" in
     ensure_network
     cleanup_containers
     terraform_init
-    terraform_apply
+    terraform_smart_deploy  # Use smart deploy instead of always destroying
     compose_up
     log "Infrastructure available at:"
     log "  Backend:        http://localhost:8080"
@@ -137,15 +156,15 @@ case "${1:-}" in
   logs)
     service="${2:-backend}"
     case "${service}" in
-      backend) docker logs -f slms-backend-dev ;;
-      admin) docker logs -f slms-admin-console-dev ;;
-      customer) docker logs -f slms-customer-portal-dev ;;
-      driver) docker logs -f slms-driver-pwa-dev ;;
-      landing) docker logs -f slms-landing-page-dev ;;
-      postgres) docker logs -f slms-postgres ;;
-      keycloak) docker logs -f slms-keycloak-dev ;;
-      nginx) docker logs -f slms-nginx-dev ;;
-      minio) docker logs -f minio ;;
+      backend) docker logs -f slms-backend-prod ;;
+      admin) docker logs -f slms-admin-console-prod ;;
+      customer) docker logs -f slms-customer-portal-prod ;;
+      driver) docker logs -f slms-driver-pwa-prod ;;
+      landing) docker logs -f slms-landing-page-prod ;;
+      postgres) docker logs -f slms-postgres-prod ;;
+      keycloak) docker logs -f slms-keycloak-prod ;;
+      nginx) docker logs -f slms-nginx-prod ;;
+      minio) docker logs -f slms-minio-prod ;;
       *) log "Unknown service: ${service}"; exit 1 ;;
     esac
     ;;
@@ -153,15 +172,35 @@ case "${1:-}" in
     docker compose ps
     (cd "${TERRAFORM_DIR}" && terraform state list || true)
     ;;
+  rebuild)
+    log "Forcing rebuild of all images..."
+    ensure_tools
+    ensure_network
+    
+    # Taint all image resources to force rebuild
+    (cd "${TERRAFORM_DIR}" && {
+      terraform taint docker_image.backend 2>/dev/null || true
+      terraform taint docker_image.admin_console 2>/dev/null || true
+      terraform taint docker_image.customer_portal 2>/dev/null || true
+      terraform taint docker_image.driver_pwa 2>/dev/null || true
+      terraform taint docker_image.landing_page 2>/dev/null || true
+    })
+    
+    terraform_init
+    terraform_smart_deploy
+    compose_up
+    log "✅ Rebuild complete!"
+    ;;
 *)
-  echo "Usage: $0 {deploy|up|destroy|down|stop|restart|status|logs [service]}"
+  echo "Usage: $0 {deploy|up|destroy|down|stop|restart|status|rebuild|logs [service]}"
   echo ""
   echo "Commands:"
-  echo "  deploy|up       - Deploy full infrastructure"
+  echo "  deploy|up       - Smart deploy (reuses existing containers when possible)"
   echo "  destroy|down    - Destroy all infrastructure"
   echo "  stop            - Stop all containers (without removing)"
   echo "  restart         - Restart all containers"
   echo "  status          - Show status of all services"
+  echo "  rebuild         - Force rebuild of all Docker images"
   echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
   exit 1
   ;;

@@ -2,11 +2,13 @@
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
-	@echo "  make up            - Start complete production environment (Terraform + Docker Compose)"
-	@echo "  make down          - Stop all services"
-	@echo "  make restart       - Restart all services"
+	@echo "  make up            - Start/update production environment (smart deploy - reuses containers)"
+	@echo "  make down          - Stop all services and destroy infrastructure"
+	@echo "  make restart       - Restart all running services"
 	@echo "  make logs          - View all logs"
 	@echo "  make status        - Show running containers"
+	@echo "  make clean         - Remove stopped containers only"
+	@echo "  make clean-volumes - Remove containers and all data (destructive)"
 	@echo ""
 	@echo "Development commands (Docker Compose only):"
 	@echo "  make dev-up        - Start development environment"
@@ -18,24 +20,15 @@ help:
 	@echo "  make test          - Run all unit tests and integration tests"
 	@echo ""
 	@echo "Utility commands:"
-	@echo "  make clean         - Remove all containers and volumes"
-	@echo "  make clean-volumes - Remove containers and volumes (including data)"
 	@echo "  make hard-prune    - Full Docker cleanup (removes everything)"
 
 # Main deployment commands (Terraform + Docker Compose)
 up:
-	@echo "🚀 Starting complete SLMS environment..."
+	@echo "🚀 Starting/updating SLMS environment..."
 	@echo "1️⃣  Creating Docker network..."
 	@docker network inspect slms-network >/dev/null 2>&1 || docker network create slms-network
-	@echo "2️⃣  Starting supporting services (Keycloak, MinIO, Nginx)..."
-	@docker compose -f infra/docker-compose.yaml up -d
-	@echo "3️⃣  Waiting for services to be ready..."
-	@sleep 5
-	@echo "4️⃣  Deploying application with Terraform..."
-	@rm -f infra/terraform/.terraform.tfstate.lock.info
-	@cd infra/terraform && terraform init -upgrade && terraform apply -auto-approve
-	@echo "5️⃣  Restarting Nginx to refresh DNS..."
-	@docker restart slms-nginx-dev
+	@echo "2️⃣  Deploying with smart deployment (reuses existing containers)..."
+	@cd infra && ./deploy.sh deploy
 	@echo ""
 	@echo "✅ Deployment complete!"
 	@echo ""
@@ -52,21 +45,29 @@ up:
 
 down:
 	@echo "🛑 Stopping all services..."
-	@rm -f infra/terraform/.terraform.tfstate.lock.info
-	@cd infra/terraform && terraform destroy -auto-approve || true
-	@docker compose -f infra/docker-compose.yaml down
+	@cd infra && ./deploy.sh down
 	@echo "✅ All services stopped"
+
+clean:
+	@echo "🧹 Cleaning up stopped containers..."
+	@docker compose -f infra/docker-compose.yaml down
+	@docker container prune -f
+	@echo "✅ Cleanup complete"
+
+clean-volumes:
+	@echo "🗑️  Removing all containers and volumes..."
+	@cd infra && ./deploy.sh down
+	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
+	@echo "✅ All data removed"
 
 restart:
 	@echo "🔄 Restarting all services..."
-	@docker compose -f infra/docker-compose.yaml restart
-	@docker restart $$(docker ps -q --filter "name=slms-") 2>/dev/null || true
+	@cd infra && ./deploy.sh restart
 	@echo "✅ All services restarted"
 
 logs:
 	@echo "📋 Showing logs (Ctrl+C to exit)..."
-	@docker compose -f infra/docker-compose.yaml logs -f &
-	@docker logs -f slms-backend-dev 2>/dev/null || true
+	@cd infra && ./deploy.sh logs
 
 status:
 	@echo "📊 SLMS Services Status:"
@@ -97,12 +98,16 @@ test:
 
 # Cleanup
 clean:
-	docker compose -f infra/docker-compose.dev.yml down
-	docker compose -f infra/docker-compose.yaml down
+	@echo "🧹 Cleaning up stopped containers..."
+	@docker compose -f infra/docker-compose.yaml down
+	@docker container prune -f
+	@echo "✅ Cleanup complete"
 
 clean-volumes:
-	docker compose -f infra/docker-compose.dev.yml down -v
-	docker compose -f infra/docker-compose.yaml down -v
+	@echo "🗑️  Removing all containers and volumes..."
+	@cd infra && ./deploy.sh down
+	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
+	@echo "✅ All data removed"
 
 hard-prune:
 	docker system prune -a --volumes -f
