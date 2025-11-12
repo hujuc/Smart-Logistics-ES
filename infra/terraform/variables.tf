@@ -172,13 +172,6 @@ variable "service_replica_count" {
   default     = 2
 }
 
-# QR Code Configuration
-variable "qr_confirmation_base_url" {
-  description = "Base URL for QR code confirmation callbacks (e.g., http://your-host:8080/api/driver)"
-  type        = string
-  default     = null
-}
-
 # Observability - Elastic APM / OpenTelemetry Configuration
 variable "elastic_apm_server_url" {
   description = "Elastic APM Server URL for OpenTelemetry export (e.g., https://your-deployment.apm.elastic-cloud.com:443)"
