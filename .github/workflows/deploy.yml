@@ -57,6 +57,7 @@ jobs:
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
       SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
       SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
+      PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
     steps:
       # - name: Fix permissions before build
       #   shell: bash
@@ -131,6 +132,54 @@ jobs:
           "SHIPPO_BASE_URL=https://api.goshippo.com" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
+
+      - name: Write terraform.tfvars
+        working-directory: infra/terraform
+        shell: bash
+        run: |
+          cat > terraform.tfvars <<EOF
+          # PostgreSQL Configuration
+          postgres_user      = "${POSTGRES_USER}"
+          postgres_password  = "${POSTGRES_PASSWORD}"
+          postgres_db        = "${POSTGRES_DB}"
+          postgres_host_port = ${POSTGRES_PORT}
+
+          # Keycloak Configuration
+          keycloak_realm               = "${KEYCLOAK_REALM}"
+          keycloak_client_id           = "${KEYCLOAK_CLIENT_ID}"
+          keycloak_client_secret       = "${KEYCLOAK_CLIENT_SECRET}"
+          keycloak_hostname_url        = "${KC_HOSTNAME_URL}"
+          keycloak_admin               = "${KEYCLOAK_ADMIN}"
+          keycloak_admin_password      = "${KEYCLOAK_ADMIN_PASSWORD}"
+
+          # MinIO Configuration
+          minio_endpoint    = "http://slms-minio-prod:9000"
+          minio_access_key  = "${MINIO_ROOT_USER}"
+          minio_secret_key  = "${MINIO_ROOT_PASSWORD}"
+          minio_bucket_name = "${MINIO_BUCKET}"
+
+          # Shippo API Configuration
+          shippo_api_key  = "${SHIPPO_API_KEY}"
+          shippo_base_url = "https://api.goshippo.com"
+
+          # ShipEngine API Configuration
+          shipengine_api_key  = "${SHIPENGINE_API_KEY}"
+          shipengine_base_url = "https://api.shipengine.com/v1"
+
+          # Docker Network
+          docker_network_name = "slms-network"
+
+          # Public Host Configuration
+          public_host = "${PUBLIC_HOST}"
+
+          # Frontend API URL
+          next_public_api_url = "${NEXT_PUBLIC_API_URL}"
+
+          # Frontend Feature Flags
+          flagsmith_env_key   = "${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}"
+          mapbox_access_token = "${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}"
+          EOF
+          echo "✅ terraform.tfvars created with production secrets"
 
       - name: Shutdown existing Docker Compose services
         working-directory: infra
