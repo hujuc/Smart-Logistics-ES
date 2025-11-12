@@ -5,6 +5,7 @@
 
 import { API_ENDPOINTS, apiFetch } from '../api';
 import type { Order, OrderEvent } from '@/types';
+import type { IssueStatus } from '@/types/common';
 import type {
   TicketWithDetails,
   ResolutionNote,
@@ -68,8 +69,233 @@ export const customerServiceOrderApi = {
 };
 
 // ========================================
-// Mock data for tickets (temporary)
+// Real API methods for Delivery Exceptions (Tickets)
 // ========================================
+
+/**
+ * Backend DeliveryException types matching the Java backend
+ */
+export interface DeliveryException {
+  id: string;
+  orderId: number;
+  customerId: string;
+  exceptionType: 'DAMAGED_PACKAGE' | 'LOST_PACKAGE' | 'DELAYED_DELIVERY' | 'WRONG_ADDRESS' | 'CUSTOMER_NOT_AVAILABLE' | 'WEATHER_DELAY' | 'CUSTOMS_HOLD' | 'OTHER';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  title: string;
+  description: string;
+  resolutionNotes?: string;
+  reportedAt: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  source: 'CUSTOMER' | 'SYSTEM' | 'CARRIER' | 'WAREHOUSE';
+  assignedTo?: string;
+  carrierName?: string;
+  trackingNumber?: string;
+}
+
+export interface DeliveryExceptionRequest {
+  orderId: number;
+  customerId: string;
+  exceptionType: DeliveryException['exceptionType'];
+  severity: DeliveryException['severity'];
+  priority: DeliveryException['priority'];
+  title: string;
+  description: string;
+  source: DeliveryException['source'];
+  assignedTo?: string;
+}
+
+export interface DeliveryExceptionUpdateRequest {
+  status?: DeliveryException['status'];
+  priority?: DeliveryException['priority'];
+  severity?: DeliveryException['severity'];
+  assignedTo?: string;
+  resolutionNotes?: string;
+}
+
+export interface ExceptionSummaryResponse {
+  totalOpen: number;
+  totalInProgress: number;
+  totalResolved: number;
+  totalClosed: number;
+  highPriority: number;
+  criticalSeverity: number;
+  avgResolutionTimeHours: number;
+}
+
+export const customerServiceExceptionsApi = {
+  /**
+   * Get all delivery exceptions with optional filters
+   */
+  async getAll(filters?: {
+    status?: DeliveryException['status'];
+    priority?: DeliveryException['priority'];
+    assignedTo?: string;
+    severity?: DeliveryException['severity'];
+  }): Promise<DeliveryException[]> {
+    const endpoint = filters
+      ? API_ENDPOINTS.customerService.exceptionsWithFilters(filters)
+      : API_ENDPOINTS.customerService.exceptions;
+    return apiFetch<DeliveryException[]>(endpoint);
+  },
+
+  /**
+   * Get exception by ID
+   */
+  async getById(id: string): Promise<DeliveryException> {
+    return apiFetch<DeliveryException>(API_ENDPOINTS.customerService.exception(id));
+  },
+
+  /**
+   * Create a new delivery exception
+   */
+  async create(request: DeliveryExceptionRequest): Promise<DeliveryException> {
+    return apiFetch<DeliveryException>(API_ENDPOINTS.customerService.exceptions, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Update an existing exception
+   */
+  async update(id: string, request: DeliveryExceptionUpdateRequest): Promise<DeliveryException> {
+    return apiFetch<DeliveryException>(API_ENDPOINTS.customerService.exception(id), {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Close an exception with resolution notes
+   */
+  async close(id: string, resolutionNotes?: string): Promise<DeliveryException> {
+    return apiFetch<DeliveryException>(API_ENDPOINTS.customerService.exceptionClose(id), {
+      method: 'POST',
+      body: JSON.stringify({ resolutionNotes }),
+    });
+  },
+
+  /**
+   * Contact carrier about an exception
+   */
+  async contactCarrier(id: string, message: string): Promise<{ status: string; message: string }> {
+    return apiFetch<{ status: string; message: string }>(
+      API_ENDPOINTS.customerService.exceptionContactCarrier(id),
+      {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }
+    );
+  },
+
+  /**
+   * Contact customer about an exception
+   */
+  async contactCustomer(id: string, message: string): Promise<{ status: string; message: string }> {
+    return apiFetch<{ status: string; message: string }>(
+      API_ENDPOINTS.customerService.exceptionContactCustomer(id),
+      {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }
+    );
+  },
+
+  /**
+   * Get exception statistics summary
+   */
+  async getSummary(): Promise<ExceptionSummaryResponse> {
+    return apiFetch<ExceptionSummaryResponse>(API_ENDPOINTS.customerService.exceptionsSummary);
+  },
+};
+
+// ========================================
+// Legacy Mock data for backwards compatibility
+// Will be removed once all components migrate to real API
+// ========================================
+
+/**
+ * Helper function to map backend DeliveryException to frontend TicketWithDetails
+ */
+function mapExceptionToTicket(exception: DeliveryException): TicketWithDetails {
+  // Map exception type to category
+  const categoryMap: Record<DeliveryException['exceptionType'], string> = {
+    'DAMAGED_PACKAGE': 'Refund',
+    'LOST_PACKAGE': 'Delivery Issue',
+    'DELAYED_DELIVERY': 'Delivery Issue',
+    'WRONG_ADDRESS': 'Delivery Issue',
+    'CUSTOMER_NOT_AVAILABLE': 'Delivery Issue',
+    'WEATHER_DELAY': 'Delivery Issue',
+    'CUSTOMS_HOLD': 'Tracking',
+    'OTHER': 'General Inquiry',
+  };
+
+  // Map status to frontend format
+  const statusMap: Record<DeliveryException['status'], IssueStatus> = {
+    'OPEN': 'Open',
+    'IN_PROGRESS': 'In Progress',
+    'RESOLVED': 'Resolved',
+    'CLOSED': 'Closed',
+  };
+
+  // Map priority to frontend format
+  const priorityMap: Record<DeliveryException['priority'], 'Low' | 'Medium' | 'High'> = {
+    'LOW': 'Low',
+    'NORMAL': 'Medium',
+    'HIGH': 'High',
+    'URGENT': 'High',
+  };
+
+  const ticket: TicketWithDetails = {
+    id: exception.id,
+    ticketNumber: `TKT-${exception.id.substring(0, 8)}`,
+    customerId: exception.customerId,
+    customerName: 'Customer', // TODO: Fetch from user service
+    customerEmail: `${exception.customerId}@example.com`, // TODO: Fetch from user service
+    subject: exception.title,
+    description: exception.description,
+    status: statusMap[exception.status] || 'Open',
+    priority: priorityMap[exception.priority] || 'Medium',
+    category: categoryMap[exception.exceptionType] || 'General Inquiry',
+    assignedTo: exception.assignedTo || 'Unassigned',
+    messages: 0, // TODO: Implement messaging system
+    createdAt: new Date(exception.createdAt),
+    updatedAt: new Date(exception.updatedAt),
+    resolutionNotes: exception.resolutionNotes,
+  };
+
+  // Add exception details
+  if (exception.carrierName || exception.trackingNumber) {
+    ticket.exceptionDetails = {
+      type: exception.exceptionType.split('_').map(w => 
+        w.charAt(0) + w.slice(1).toLowerCase()
+      ).join(' '),
+      carrier: exception.carrierName,
+      lastLocation: 'Unknown', // TODO: Get from order tracking
+      expectedDelivery: '', // TODO: Get from order
+      reason: exception.description,
+    };
+  }
+
+  // Add resolution history if notes exist
+  if (exception.resolutionNotes) {
+    ticket.resolutionHistory = [
+      {
+        id: '1',
+        ticketId: exception.id,
+        note: exception.resolutionNotes,
+        createdBy: exception.assignedTo || 'System',
+        createdAt: new Date(exception.updatedAt),
+      },
+    ];
+  }
+
+  return ticket;
+}
 
 const MOCK_TICKETS: TicketWithDetails[] = [
   {
@@ -171,68 +397,54 @@ const MOCK_STATS: CustomerServiceStats = {
 
 export const customerServiceService = {
   /**
-   * Get all support tickets
+   * Get all support tickets (maps to delivery exceptions)
    */
   async getAllTickets(filters?: {
     status?: string;
     priority?: string;
     search?: string;
   }): Promise<TicketWithDetails[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const apiFilters: {
+      status?: DeliveryException['status'];
+      priority?: DeliveryException['priority'];
+    } = {};
 
-    let filtered = [...MOCK_TICKETS];
-
+    // Map filter values to API format
     if (filters?.status && filters.status !== 'All') {
-      filtered = filtered.filter(t => t.status === filters.status);
+      apiFilters.status = filters.status.toUpperCase().replace(' ', '_') as DeliveryException['status'];
     }
-
     if (filters?.priority) {
-      filtered = filtered.filter(t => t.priority === filters.priority);
+      apiFilters.priority = filters.priority.toUpperCase() as DeliveryException['priority'];
     }
 
+    const exceptions = await customerServiceExceptionsApi.getAll(apiFilters);
+
+    // Map backend exceptions to frontend ticket format
+    let tickets = exceptions.map(mapExceptionToTicket);
+
+    // Apply client-side search filter
     if (filters?.search) {
       const search = filters.search.toLowerCase();
-      filtered = filtered.filter(t =>
+      tickets = tickets.filter(t =>
         t.ticketNumber.toLowerCase().includes(search) ||
         t.customerName?.toLowerCase().includes(search) ||
         t.subject.toLowerCase().includes(search)
       );
     }
 
-    return filtered;
+    return tickets;
   },
 
   /**
-   * Get ticket by ID
+   * Get ticket by ID (maps to delivery exception)
    */
   async getTicketById(id: string): Promise<TicketWithDetails> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const ticket = MOCK_TICKETS.find(t => t.id === id);
-    if (!ticket) {
-      throw new Error('Ticket not found');
-    }
-
-    // Add resolution history for tickets with notes
-    if (ticket.resolutionNotes) {
-      ticket.resolutionHistory = [
-        {
-          id: '1',
-          ticketId: id,
-          note: ticket.resolutionNotes,
-          createdBy: 'Rita Lopes',
-          createdAt: new Date(ticket.updatedAt)
-        }
-      ];
-    }
-
-    return ticket;
+    const exception = await customerServiceExceptionsApi.getById(id);
+    return mapExceptionToTicket(exception);
   },
 
   /**
-   * Update a support ticket
+   * Update a support ticket (maps to exception update)
    */
   async updateTicket(id: string, updates: {
     status?: string;
@@ -240,56 +452,50 @@ export const customerServiceService = {
     assignedTo?: string;
     resolutionNotes?: string;
   }): Promise<TicketWithDetails> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 400));
+    const request: DeliveryExceptionUpdateRequest = {};
 
-    const ticket = MOCK_TICKETS.find(t => t.id === id);
-    if (!ticket) {
-      throw new Error('Ticket not found');
+    if (updates.status) {
+      request.status = updates.status.toUpperCase().replace(' ', '_') as DeliveryException['status'];
+    }
+    if (updates.priority) {
+      request.priority = updates.priority.toUpperCase() as DeliveryException['priority'];
+    }
+    if (updates.assignedTo) {
+      request.assignedTo = updates.assignedTo;
+    }
+    if (updates.resolutionNotes) {
+      request.resolutionNotes = updates.resolutionNotes;
     }
 
-    // Apply updates
-    Object.assign(ticket, updates);
-    ticket.updatedAt = new Date();
-
-    return ticket;
+    const exception = await customerServiceExceptionsApi.update(id, request);
+    return mapExceptionToTicket(exception);
   },
 
   /**
    * Close a ticket with resolution notes
    */
   async closeTicket(id: string, resolutionNotes: string): Promise<TicketWithDetails> {
-    return this.updateTicket(id, {
-      status: 'Resolved',
-      resolutionNotes
-    });
+    const exception = await customerServiceExceptionsApi.close(id, resolutionNotes);
+    return mapExceptionToTicket(exception);
   },
 
   /**
    * Add a resolution note to a ticket
    */
   async addResolutionNote(ticketId: string, note: string): Promise<ResolutionNote> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Update the exception with the new note
+    const exception = await customerServiceExceptionsApi.update(ticketId, {
+      resolutionNotes: note,
+    });
 
-    const newNote: ResolutionNote = {
+    // Return as resolution note format
+    return {
       id: Date.now().toString(),
       ticketId,
       note,
-      createdBy: 'Rita Lopes',
-      createdAt: new Date()
+      createdBy: 'Rita Lopes', // TODO: Get from auth context
+      createdAt: new Date(exception.updatedAt),
     };
-
-    const ticket = MOCK_TICKETS.find(t => t.id === ticketId);
-    if (ticket) {
-      if (!ticket.resolutionHistory) {
-        ticket.resolutionHistory = [];
-      }
-      ticket.resolutionHistory.push(newNote);
-      ticket.updatedAt = new Date();
-    }
-
-    return newNote;
   },
 
   /**
