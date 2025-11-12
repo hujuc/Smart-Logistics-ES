@@ -358,7 +358,8 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
     status: statusMap[exception.status] || 'Open',
     priority: severityToPriorityMap[exception.severity] || 'Medium',
     category: exception.category, // Use the category field directly from backend
-    assignedTo: assigneeName,
+    assignedTo: assigneeName,  // Display name
+    assignedToId: exception.assignedTo,  // Keep the UUID for form selection
     messages: 0,
     createdAt: new Date(exception.createdAt),
     updatedAt: new Date(exception.updatedAt),

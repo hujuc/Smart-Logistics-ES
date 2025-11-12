@@ -45,8 +45,10 @@ export default function TicketDetailPage() {
       setError(null)
       const data = await customerServiceService.getTicketById(ticketId)
       setTicket(data)
-      // Set the selected assignee ID (not name) - will be mapped to name in UI
-      setSelectedAssignee(data.assignedTo || "unassigned")
+      // Set the selected assignee ID (use assignedToId if available, fallback to "unassigned")
+      setSelectedAssignee(data.assignedToId || "unassigned")
+      // Load assignees after we have the ticket data
+      await loadAvailableAssignees(data.assignedToId)
     } catch (err) {
       console.error("Failed to load ticket:", err)
       setError("Failed to load ticket details. Please try again.")
@@ -57,17 +59,21 @@ export default function TicketDetailPage() {
 
   useEffect(() => {
     loadTicketDetails()
-    loadAvailableAssignees()
   }, [loadTicketDetails])
 
-  const loadAvailableAssignees = async () => {
+  const loadAvailableAssignees = async (currentAssigneeId?: string) => {
     try {
       // Get customer service representatives from Keycloak
       const csrUsers = await customerServiceService.getCustomerServiceReps();
-      const assignees = [
-        { id: "unassigned", name: "Unassigned" },
-        ...csrUsers.map(user => ({ id: user.id, name: user.name }))
-      ];
+      
+      // Only include "Unassigned" option if ticket is not yet assigned
+      const assignees = currentAssigneeId 
+        ? csrUsers.map(user => ({ id: user.id, name: user.name }))
+        : [
+            { id: "unassigned", name: "Unassigned" },
+            ...csrUsers.map(user => ({ id: user.id, name: user.name }))
+          ];
+      
       setAvailableAssignees(assignees);
     } catch (err) {
       console.error("Failed to load assignees:", err)
@@ -351,7 +357,7 @@ export default function TicketDetailPage() {
                   <Button
                     size="sm"
                     onClick={handleUpdateAssignment}
-                    disabled={isUpdatingAssignment || selectedAssignee === ticket.assignedTo}
+                    disabled={isUpdatingAssignment || selectedAssignee === (ticket.assignedToId || "unassigned")}
                     className="whitespace-nowrap"
                   >
                     {isUpdatingAssignment ? "Saving..." : "Update"}

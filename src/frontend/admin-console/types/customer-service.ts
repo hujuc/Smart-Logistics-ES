@@ -39,7 +39,8 @@ export interface TicketWithDetails extends SupportTicket {
   customerName?: string
   customerEmail?: string
   category?: string
-  assignedTo?: string
+  assignedTo?: string  // Display name of assigned user
+  assignedToId?: string  // ID of assigned user (UUID from Keycloak)
   resolutionNotes?: string
   messages?: number
   resolutionHistory?: ResolutionNote[]
