@@ -9,6 +9,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
 # instala dependências básicas e compatibilidade
+RUN apk add --no-cache libc6-compat curl
 
 # copia apenas os manifests para instalar deps
 COPY ${FRONTEND_PATH}/package.json ./
