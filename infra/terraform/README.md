@@ -6,11 +6,11 @@ This infrastructure setup uses **Terraform** to manage core application services
 
 ### Terraform-managed services:
 - **PostgreSQL** - Database (port 5432)
-- **Backend** - Spring Boot API (port 8080)
-- **Admin Console** - Next.js frontend (port 3001)
-- **Customer Portal** - Next.js frontend (port 3002)
-- **Driver PWA** - Next.js frontend (port 3003)
-- **Landing Page** - Next.js frontend (port 3004)
+- **Backend** - Spring Boot API (internal port 8080, two replicas load-balanced by Nginx at `/api`)
+- **Admin Console** - Next.js frontend (internal port 3000, two replicas served at `/admin`)
+- **Customer Portal** - Next.js frontend (internal port 3000, two replicas served at `/customer`)
+- **Driver PWA** - Next.js frontend (internal port 3000, two replicas served at `/driver`)
+- **Landing Page** - Next.js frontend (internal port 3000, two replicas served at `/`)
 
 ### Docker Compose-managed services:
 - **Keycloak** - Authentication service (port 8180)
@@ -107,12 +107,12 @@ docker compose ps
 docker network inspect slms-network
 ```
 
-Access the services:
-- Backend API: http://localhost:8080
-- Admin Console: http://localhost:3001
-- Customer Portal: http://localhost:3002
-- Driver PWA: http://localhost:3003
-- Landing Page: http://localhost:3004
+Access the services (proxied by Nginx unless noted):
+- Backend API: http://localhost/api
+- Admin Console: http://localhost/admin
+- Customer Portal: http://localhost/customer
+- Driver PWA: http://localhost/driver
+- Landing Page: http://localhost/
 - Keycloak: http://localhost:8180
 - MinIO Console: http://localhost:9001
 - Nginx Proxy: http://localhost
@@ -158,13 +158,25 @@ docker compose logs -f [service-name]
 docker compose restart [service-name]
 ```
 
+## Stateless Service Scaling
+
+- Backend and all Next.js frontends run with **two replicas** by default.
+- Traffic reaches them through the `slms-nginx-prod` reverse proxy, which load-balances across the replicas.
+- To change the replica count globally, set `service_replica_count` in `infra/terraform/terraform.tfvars` **or** export `SERVICE_REPLICA_COUNT`/`TF_VAR_service_replica_count` before running `terraform apply` or `./deploy.sh`.
+- Example: `SERVICE_REPLICA_COUNT=3 ./deploy.sh up`
+
 ### View Service Logs
 
 ```bash
-# Terraform-managed services
-docker logs slms-postgres
-docker logs slms-backend-dev
-docker logs slms-admin-console-dev
+# Terraform-managed services (replica index defaults to 1)
+cd infra
+./deploy.sh logs backend 1
+./deploy.sh logs backend 2
+./deploy.sh logs admin 1
+./deploy.sh logs customer 1
+./deploy.sh logs driver 1
+./deploy.sh logs landing 1
+./deploy.sh logs postgres
 
 # Docker Compose services
 docker compose logs keycloak
@@ -202,7 +214,7 @@ terraform apply -replace=docker_container.backend
 Connect to PostgreSQL:
 
 ```bash
-docker exec -it slms-postgres psql -U slms_user -d slms_db
+docker exec -it slms-postgres-prod psql -U slms_user -d slms_db
 ```
 
 ## Network Configuration
@@ -214,7 +226,7 @@ All services are connected to the `slms-network` bridge network:
 - Docker Compose services also reuse the same external network
 - Containers can communicate using service/container names as hostnames
 
-Example: Backend connects to PostgreSQL using `slms-postgres:5432`
+Example: Backend connects to PostgreSQL using `slms-postgres-prod:5432`
 
 ## Troubleshooting
 
@@ -239,7 +251,12 @@ terraform import [resource-type].[name] [resource-id]
 ### Port conflicts
 
 Ensure these ports are free before starting:
-- 80, 5432, 8080, 8180, 9000, 9001, 3001-3004
+- 80 (Nginx)
+- 5432 (PostgreSQL)
+- 8180 (Keycloak)
+- 9000-9001 (MinIO)
+
+The backend and frontend replicas no longer expose host ports directly; always access them through the Nginx proxy on port 80.
 
 ```bash
 # Check port usage
