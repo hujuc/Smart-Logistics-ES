@@ -146,3 +146,9 @@ jobs:
           ./deploy.sh deploy
         env:
           TF_VAR_public_host: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
+
+      - name: Restart Nginx to refresh container DNS
+        shell: bash
+        run: |
+          # Restart Nginx so it resolves new container IPs after Terraform deploy
+          docker restart slms-nginx-dev || true
