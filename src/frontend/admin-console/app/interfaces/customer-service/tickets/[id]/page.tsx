@@ -44,6 +44,12 @@ export default function TicketDetailPage() {
       setLoading(true)
       setError(null)
       const data = await customerServiceService.getTicketById(ticketId)
+      console.log("🎫 Ticket loaded:", { 
+        id: data.id, 
+        status: data.status, 
+        assignedTo: data.assignedTo,
+        assignedToId: data.assignedToId 
+      })
       setTicket(data)
       // Set the selected assignee ID (use assignedToId if available, fallback to "unassigned")
       setSelectedAssignee(data.assignedToId || "unassigned")
@@ -86,14 +92,18 @@ export default function TicketDetailPage() {
 
     try {
       setIsSubmitting(true)
+      console.log("📝 Adding note...")
       await customerServiceService.addResolutionNote(ticket.id, resolutionNote.trim())
+      console.log("✅ Note added successfully")
       setResolutionNote("")
       // Reload ticket to show new note
       await loadTicketDetails()
+      console.log("🔄 Ticket reloaded")
     } catch (err) {
-      console.error("Failed to add note:", err)
+      console.error("❌ Failed to add note:", err)
       alert("Failed to add note. Please try again.")
     } finally {
+      console.log("🏁 Setting isSubmitting to false")
       setIsSubmitting(false)
     }
   }
@@ -364,30 +374,22 @@ export default function TicketDetailPage() {
                   </Button>
                 </div>
               </div>
-
-              {ticket.messages !== undefined && (
-                <div>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Messages:</span> {ticket.messages}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Resolution Workflow - US 8 & 9 */}
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-black mb-4">
-              {ticket.status === "Resolved" ? "Ticket Resolved" : "Add Resolution Notes"}
+              {ticket.status === "Closed" ? "Ticket Closed" : "Add Resolution Notes"}
             </h2>
 
-            {ticket.status === "Resolved" ? (
+            {ticket.status === "Closed" ? (
               <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-green-900">Ticket Closed</p>
                   <p className="text-sm text-green-700 mt-1">
-                    This ticket has been successfully resolved.
+                    This ticket has been successfully resolved and closed.
                   </p>
                 </div>
               </div>

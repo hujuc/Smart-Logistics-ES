@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS, apiFetch } from '../api';
+import { getUserData } from '@/shared/lib/auth';
 import type { Order, OrderEvent } from '@/types';
 import type { IssueStatus } from '@/types/common';
 import type {
@@ -377,15 +378,33 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
 
   // Add resolution history if notes exist
   if (exception.resolutionNotes) {
-    ticket.resolutionHistory = [
-      {
-        id: '1',
+    // Split by double newline separator (notes are concatenated)
+    const noteParts = exception.resolutionNotes.split('\n\n');
+    
+    ticket.resolutionHistory = noteParts.map((notePart, index) => {
+      // Parse format: [timestamp] author: note
+      const match = notePart.match(/^\[(.*?)\]\s*(.*?):\s*([\s\S]*)$/);
+      
+      if (match) {
+        const [, timestamp, author, noteText] = match;
+        return {
+          id: `${index + 1}`,
+          ticketId: exception.id,
+          note: noteText.trim(),
+          createdBy: author.trim(),
+          createdAt: new Date(timestamp),
+        };
+      }
+      
+      // Fallback if format doesn't match (old notes without format)
+      return {
+        id: `${index + 1}`,
         ticketId: exception.id,
-        note: exception.resolutionNotes,
+        note: notePart.trim(),
         createdBy: exception.assignedTo || 'System',
         createdAt: new Date(exception.updatedAt),
-      },
-    ];
+      };
+    });
   }
 
   return ticket;
@@ -569,7 +588,26 @@ export const customerServiceService = {
    * Close a ticket with resolution notes
    */
   async closeTicket(id: string, resolutionNotes: string): Promise<TicketWithDetails> {
-    const exception = await customerServiceExceptionsApi.close(id, resolutionNotes);
+    // First, get the current ticket to append to existing notes
+    const currentException = await customerServiceExceptionsApi.getById(id);
+    
+    // Get current user info
+    const userData = getUserData();
+    const author = userData?.firstName && userData?.lastName
+      ? `${userData.firstName} ${userData.lastName}`
+      : userData?.username || 'Customer Service';
+    
+    // Format the new note with timestamp and author
+    const timestamp = new Date().toLocaleString();
+    const formattedNote = `[${timestamp}] ${author}: ${resolutionNotes}`;
+    
+    // Append to existing notes (or create new if none exist)
+    const updatedNotes = currentException.resolutionNotes 
+      ? `${currentException.resolutionNotes}\n\n${formattedNote}`
+      : formattedNote;
+    
+    // Close with all notes appended
+    const exception = await customerServiceExceptionsApi.close(id, updatedNotes);
     return mapExceptionToTicket(exception);
   },
 
@@ -577,9 +615,27 @@ export const customerServiceService = {
    * Add a resolution note to a ticket
    */
   async addResolutionNote(ticketId: string, note: string): Promise<ResolutionNote> {
-    // Update the exception with the new note
+    // First, get the current ticket to append to existing notes
+    const currentException = await customerServiceExceptionsApi.getById(ticketId);
+    
+    // Get current user info
+    const userData = getUserData();
+    const author = userData?.firstName && userData?.lastName
+      ? `${userData.firstName} ${userData.lastName}`
+      : userData?.username || 'Customer Service';
+    
+    // Format the new note with timestamp and author
+    const timestamp = new Date().toLocaleString();
+    const formattedNote = `[${timestamp}] ${author}: ${note}`;
+    
+    // Append to existing notes (or create new if none exist)
+    const updatedNotes = currentException.resolutionNotes 
+      ? `${currentException.resolutionNotes}\n\n${formattedNote}`
+      : formattedNote;
+    
+    // Update the exception with the appended notes
     const exception = await customerServiceExceptionsApi.update(ticketId, {
-      resolutionNotes: note,
+      resolutionNotes: updatedNotes,
     });
 
     // Return as resolution note format
@@ -587,8 +643,8 @@ export const customerServiceService = {
       id: Date.now().toString(),
       ticketId,
       note,
-      createdBy: 'Rita Lopes', // TODO: Get from auth context
-      createdAt: new Date(exception.updatedAt),
+      createdBy: author,
+      createdAt: new Date(),
     };
   },
 
