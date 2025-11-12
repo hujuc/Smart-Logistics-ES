@@ -131,25 +131,7 @@ export default function CarrierComparisonPage() {
     return logos[key] || '📦'
   }
 
-  // Initialize Flagsmith feature flags
-  useEffect(() => {
-    const initializeFlags = async () => {
-      // In production, you would get the user ID from authentication
-      const userId = 'warehouse_user' // Mock user ID
-      
-      await featureFlagManager.initialize(userId)
-      const assignedViewMode = featureFlagManager.getFlag('carrier-view-mode')
-      setCarrierViewMode(assignedViewMode)
-
-      // Show view toggle in development (for testing)
-      if (process.env.NODE_ENV === 'development') {
-        setShowViewToggle(true)
-      }
-    }
-
-    initializeFlags()
-  }, [])
-
+  // Fetch carriers with Shippo integration (with mock fallback)
   useEffect(() => {
     const fetchCarriers = async () => {
       try {
@@ -461,7 +443,7 @@ export default function CarrierComparisonPage() {
           country: "US",
         },
         toAddress: {
-          name: selectedOrder.customerId || selectedOrder.reference || "Customer",
+          name: selectedOrder.reference || "Customer",
           addressLine1: destination.line1 || "Customer Address",
           addressLine2: destination.line2 || undefined,
           city: destination.city || "San Jose",
