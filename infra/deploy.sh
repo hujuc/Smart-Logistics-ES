@@ -75,7 +75,7 @@ terraform_smart_deploy() {
 
 compose_up() {
   log "Starting auxiliary services (Keycloak, MinIO, Backup, Nginx)"
-  docker compose up -d keycloak minio minio-create-bucket backup nginx
+  docker compose up -d --force-recreate keycloak minio minio-create-bucket backup nginx
 }
 
 compose_down() {
