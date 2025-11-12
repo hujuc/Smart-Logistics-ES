@@ -1,23 +1,34 @@
 import { test, expect, Page } from "@playwright/test";
 
 /**
- * Helper to perform Customer Service Representative login
+ * Helper to perform Customer Service Representative login via landing page
  */
 const loginAsCSR = async (page: Page) => {
-  await page.goto("/admin");
+  // Start from landing page (which handles the auth flow correctly)
+  await page.goto("/");
+  
+  // Click on Login button
+  await page.getByRole("button", { name: /login/i }).first().click();
   
   // Wait for Keycloak login page
-  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
   
   // Fill credentials
-  await page.getByLabel(/username/i).fill("csr");
-  await page.getByLabel(/password/i).fill("csr");
+  await page.getByLabel(/username/i).fill("customer_service");
+  await page.getByLabel(/password/i).fill("support");
   
   // Click login button
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.getByRole("button", { name: /^login$/i }).last().click();
   
-  // Wait for successful login and redirect to admin console
-  await page.waitForURL(/\/admin(\/.*)?$/, { timeout: 60_000 });
+  // Wait a bit for login to complete
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000);
+  
+  // Navigate to admin console manually (CSR might not auto-redirect)
+  await page.goto("/admin");
+  
+  // Wait for admin console landing page to load
+  await expect(page.getByRole("heading", { name: /customer service/i })).toBeVisible({ timeout: 60_000 });
 };
 
 /**
@@ -37,14 +48,14 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   });
 
   test("CSR can navigate to order lookup page", async ({ page }) => {
-    // Navigate to Customer Service menu
+    // Navigate directly to order lookup page
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     
     // Verify page loaded
     await waitForOrderLookupPage(page);
     
     // Verify search input is present
-    await expect(page.getByPlaceholder(/order id/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/order.*tracking/i)).toBeVisible();
   });
 
   test("CSR can search for an order by ID", async ({ page }) => {
@@ -52,7 +63,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Enter order ID (assuming order 1 exists in test data)
-    const orderIdInput = page.getByPlaceholder(/order id/i);
+    const orderIdInput = page.getByPlaceholder(/order.*tracking/i);
     await orderIdInput.fill("1");
     
     // Click search button
@@ -70,7 +81,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Search for order
-    await page.getByPlaceholder(/order id/i).fill("1");
+    await page.getByPlaceholder(/order.*tracking/i).fill("1");
     await page.getByRole("button", { name: /search/i }).click();
     
     // Wait for details to load
@@ -90,7 +101,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Search for order
-    await page.getByPlaceholder(/order id/i).fill("1");
+    await page.getByPlaceholder(/order.*tracking/i).fill("1");
     await page.getByRole("button", { name: /search/i }).click();
     
     // Wait for details
@@ -105,7 +116,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Search for non-existent order
-    await page.getByPlaceholder(/order id/i).fill("999999");
+    await page.getByPlaceholder(/order.*tracking/i).fill("999999");
     await page.getByRole("button", { name: /search/i }).click();
     
     // Verify error message appears
@@ -119,7 +130,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Search for order
-    await page.getByPlaceholder(/order id/i).fill("1");
+    await page.getByPlaceholder(/order.*tracking/i).fill("1");
     await page.getByRole("button", { name: /search/i }).click();
     
     // Wait for details
@@ -137,12 +148,12 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // First search
-    await page.getByPlaceholder(/order id/i).fill("1");
+    await page.getByPlaceholder(/order.*tracking/i).fill("1");
     await page.getByRole("button", { name: /search/i }).click();
     await expect(page.getByText(/order #1/i)).toBeVisible({ timeout: 30_000 });
     
     // Clear and search for another order
-    const orderIdInput = page.getByPlaceholder(/order id/i);
+    const orderIdInput = page.getByPlaceholder(/order.*tracking/i);
     await orderIdInput.clear();
     await orderIdInput.fill("2");
     await page.getByRole("button", { name: /search/i }).click();
@@ -156,7 +167,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await waitForOrderLookupPage(page);
     
     // Search for order with shipment
-    await page.getByPlaceholder(/order id/i).fill("1");
+    await page.getByPlaceholder(/order.*tracking/i).fill("1");
     await page.getByRole("button", { name: /search/i }).click();
     
     // Wait for details
