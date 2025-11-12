@@ -32,6 +32,7 @@ locals {
   config_keycloak_hostname_url   = var.keycloak_hostname_url != null ? var.keycloak_hostname_url : "http://localhost:8180"
   config_keycloak_admin          = var.keycloak_admin != null ? var.keycloak_admin : "admin"
   config_keycloak_admin_password = var.keycloak_admin_password != null ? var.keycloak_admin_password : "admin"
+  config_jwt_issuer_uri = var.jwt_issuer_uri != null ? var.jwt_issuer_uri : "http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8080/realms/slms"
 
   config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://slms-minio-prod:9000"
   config_minio_access_key  = var.minio_access_key != null ? var.minio_access_key : "minioadmin"
@@ -138,7 +139,7 @@ resource "docker_container" "backend" {
     "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
     "KEYCLOAK_ADMIN_CLIENT_ID=${local.config_keycloak_client_id}",
     "KEYCLOAK_ADMIN_CLIENT_SECRET=${local.config_keycloak_client_secret}",
-    "JWT_ISSUER_URI=${local.config_keycloak_hostname_url}/realms/${local.config_keycloak_realm}",
+    "JWT_ISSUER_URI=${local.config_jwt_issuer_uri}",
     "MINIO_HOST=slms-minio-prod",
     "MINIO_PORT=9000",
     "MINIO_ROOT_USER=${local.config_minio_access_key}",

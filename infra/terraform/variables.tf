@@ -63,6 +63,12 @@ variable "keycloak_admin_password" {
   default     = null
 }
 
+variable "jwt_issuer_uri" {
+  description = "JWT Issuer URI for token validation (e.g., http://public-host:8180/realms/slms)"
+  type        = string
+  default     = null
+}
+
 # MinIO Configuration
 variable "minio_endpoint" {
   description = "MinIO endpoint URL"
