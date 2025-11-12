@@ -44,6 +44,25 @@ variable "keycloak_client_secret" {
   default     = null
 }
 
+variable "keycloak_hostname_url" {
+  description = "Public Keycloak URL (e.g., http://auth.yourdomain.com:8180) - used for JWT issuer"
+  type        = string
+  default     = null
+}
+
+variable "keycloak_admin" {
+  description = "Keycloak admin username"
+  type        = string
+  default     = null
+}
+
+variable "keycloak_admin_password" {
+  description = "Keycloak admin password"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 # MinIO Configuration
 variable "minio_endpoint" {
   description = "MinIO endpoint URL"
@@ -110,4 +129,25 @@ variable "public_host" {
   description = "Public hostname or IP for external access (e.g., AWS EC2 public IP). Defaults to localhost for local development."
   type        = string
   default     = ""
+}
+
+# Frontend Configuration
+variable "next_public_api_url" {
+  description = "Base API URL for frontend applications (e.g., http://localhost/api)"
+  type        = string
+  default     = null
+}
+
+variable "flagsmith_env_key" {
+  description = "Flagsmith Environment Key for customer portal feature flags"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "mapbox_access_token" {
+  description = "Mapbox access token for driver PWA map functionality"
+  type        = string
+  sensitive   = true
+  default     = null
 }

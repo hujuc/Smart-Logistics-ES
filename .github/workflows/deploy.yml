@@ -52,6 +52,11 @@ jobs:
       KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
       KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
       KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
+      KC_HOSTNAME_URL: ${{ secrets.KC_HOSTNAME_URL }}
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${{ secrets.NEXT_PUBLIC_FLAGSMITH_ENV_KEY }}
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
+      SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
     steps:
       # - name: Fix permissions before build
       #   shell: bash
@@ -118,6 +123,13 @@ jobs:
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
           "MAX_BACKUPS=4" \
+          "KC_HOSTNAME_URL=${KC_HOSTNAME_URL}" \
+          "NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}" \
+          "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}" \
+          "SHIPPO_API_KEY=${SHIPPO_API_KEY}" \
+          "SHIPENGINE_API_KEY=${SHIPENGINE_API_KEY}" \
+          "SHIPENGINE_BASE_URL=https://api.shipengine.com/v1" \
+          "SHIPPO_BASE_URL=https://api.goshippo.com" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
@@ -153,8 +165,8 @@ jobs:
         shell: bash
         run: |
           # Stop and remove containers that might conflict with Terraform
-          docker stop slms-postgres slms-backend-dev slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
-          docker rm -f slms-postgres slms-backend-dev slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod 2>/dev/null || true
+          docker stop slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod slms-backup-prod 2>/dev/null || true
+          docker rm -f slms-postgres-prod slms-backend-prod slms-admin-console-prod slms-customer-portal-prod slms-driver-pwa-prod slms-landing-page-prod slms-backup-prod 2>/dev/null || true
 
       - name: Ensure deploy script is executable
         shell: bash
@@ -193,4 +205,4 @@ jobs:
         shell: bash
         run: |
           # Restart Nginx so it resolves new container IPs after Terraform deploy
-          docker restart slms-nginx-dev || true
+          docker restart slms-nginx-prod || true

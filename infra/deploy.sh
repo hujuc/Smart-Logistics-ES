@@ -28,12 +28,13 @@ ensure_network() {
 cleanup_containers() {
   log "Checking for outdated containers..."
   local containers=(
-    slms-postgres
-    slms-backend-dev
+    slms-postgres-prod
+    slms-backend-prod
     slms-admin-console-prod
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
+    slms-backup-prod
   )
   
   # Only remove stopped containers, keep running ones
@@ -74,8 +75,8 @@ terraform_smart_deploy() {
 }
 
 compose_up() {
-  log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
-  docker compose up -d keycloak minio minio-create-bucket nginx
+  log "Starting auxiliary services (Keycloak, MinIO, Backup, Nginx)"
+  docker compose up -d keycloak minio minio-create-bucket backup nginx
 }
 
 compose_down() {
@@ -86,12 +87,13 @@ compose_down() {
 terraform_stop() {
   log "Stopping Terraform-managed containers"
   local containers=(
-    slms-postgres
-    slms-backend-dev
+    slms-postgres-prod
+    slms-backend-prod
     slms-admin-console-prod
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
+    slms-backup-prod
   )
   for name in "${containers[@]}"; do
     if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
@@ -104,12 +106,13 @@ terraform_stop() {
 terraform_restart() {
   log "Restarting Terraform-managed containers"
   local containers=(
-    slms-postgres
-    slms-backend-dev
+    slms-postgres-prod
+    slms-backend-prod
     slms-admin-console-prod
     slms-customer-portal-prod
     slms-driver-pwa-prod
     slms-landing-page-prod
+    slms-backup-prod
   )
   for name in "${containers[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
@@ -156,15 +159,16 @@ case "${1:-}" in
   logs)
     service="${2:-backend}"
     case "${service}" in
-      backend) docker logs -f slms-backend-dev ;;
+      backend) docker logs -f slms-backend-prod ;;
       admin) docker logs -f slms-admin-console-prod ;;
       customer) docker logs -f slms-customer-portal-prod ;;
       driver) docker logs -f slms-driver-pwa-prod ;;
       landing) docker logs -f slms-landing-page-prod ;;
-      postgres) docker logs -f slms-postgres ;;
-      keycloak) docker logs -f slms-keycloak-dev ;;
-      nginx) docker logs -f slms-nginx-dev ;;
-      minio) docker logs -f minio ;;
+      postgres) docker logs -f slms-postgres-prod ;;
+      keycloak) docker logs -f slms-keycloak-prod ;;
+      nginx) docker logs -f slms-nginx-prod ;;
+      minio) docker logs -f slms-minio-prod ;;
+      backup) docker logs -f slms-backup-prod ;;
       *) log "Unknown service: ${service}"; exit 1 ;;
     esac
     ;;
@@ -201,7 +205,7 @@ case "${1:-}" in
   echo "  restart         - Restart all containers"
   echo "  status          - Show status of all services"
   echo "  rebuild         - Force rebuild of all Docker images"
-  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
+  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio|backup)"
   exit 1
   ;;
 esac

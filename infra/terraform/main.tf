@@ -29,8 +29,11 @@ locals {
   config_keycloak_realm         = var.keycloak_realm != null ? var.keycloak_realm : "slms"
   config_keycloak_client_id     = var.keycloak_client_id != null ? var.keycloak_client_id : "slms-backend"
   config_keycloak_client_secret = var.keycloak_client_secret != null ? var.keycloak_client_secret : ""
+  config_keycloak_hostname_url  = var.keycloak_hostname_url != null ? var.keycloak_hostname_url : "http://localhost:8180"
+  config_keycloak_admin         = var.keycloak_admin != null ? var.keycloak_admin : "admin"
+  config_keycloak_admin_password = var.keycloak_admin_password != null ? var.keycloak_admin_password : "admin"
 
-  config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://minio:9000"
+  config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://slms-minio-prod:9000"
   config_minio_access_key  = var.minio_access_key != null ? var.minio_access_key : "minioadmin"
   config_minio_secret_key  = var.minio_secret_key != null ? var.minio_secret_key : "minioadmin"
   config_minio_bucket_name = var.minio_bucket_name != null ? var.minio_bucket_name : "slms-documents"
@@ -42,6 +45,11 @@ locals {
   config_shipengine_base_url = var.shipengine_base_url != null ? var.shipengine_base_url : "https://api.shipengine.com/v1"
 
   config_docker_network = var.docker_network_name != null ? var.docker_network_name : "slms-network"
+
+  # Frontend configuration
+  config_next_public_api_url = var.next_public_api_url != null ? var.next_public_api_url : "http://localhost/api"
+  config_flagsmith_env_key   = var.flagsmith_env_key != null ? var.flagsmith_env_key : ""
+  config_mapbox_access_token = var.mapbox_access_token != null ? var.mapbox_access_token : ""
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -56,7 +64,7 @@ resource "docker_image" "postgres" {
 }
 
 resource "docker_container" "postgres" {
-  name  = "slms-postgres"
+  name  = "slms-postgres-prod"
   image = docker_image.postgres.image_id
 
   env = [
@@ -90,7 +98,7 @@ resource "docker_container" "postgres" {
 }
 
 resource "docker_volume" "postgres_data" {
-  name = "slms-postgres-data"
+  name = "slms-postgres-data-prod"
 }
 
 # Backend Service
@@ -108,7 +116,7 @@ resource "docker_image" "backend" {
 }
 
 resource "docker_container" "backend" {
-  name  = "slms-backend-dev"
+  name  = "slms-backend-prod"
   image = docker_image.backend.image_id
 
   env = [
@@ -116,23 +124,22 @@ resource "docker_container" "backend" {
     "SPRING_DATASOURCE_USERNAME=${local.config_postgres_user}",
     "SPRING_DATASOURCE_PASSWORD=${local.config_postgres_password}",
     "SPRING_JPA_HIBERNATE_DDL_AUTO=update",
-    "KEYCLOAK_HOST=slms-keycloak-dev",
+    "KEYCLOAK_HOST=slms-keycloak-prod",
     "KEYCLOAK_PORT=8080",
     "KEYCLOAK_REALM=${local.config_keycloak_realm}",
     "KEYCLOAK_CLIENT_ID=${local.config_keycloak_client_id}",
     "KEYCLOAK_CLIENT_SECRET=${local.config_keycloak_client_secret}",
     "KEYCLOAK_ADMIN_CLIENT_ID=${local.config_keycloak_client_id}",
     "KEYCLOAK_ADMIN_CLIENT_SECRET=${local.config_keycloak_client_secret}",
-    "JWT_ISSUER_URI=http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8180/realms/${local.config_keycloak_realm}",
-    "MINIO_HOST=minio",
+    "JWT_ISSUER_URI=${local.config_keycloak_hostname_url}/realms/${local.config_keycloak_realm}",
+    "MINIO_HOST=slms-minio-prod",
     "MINIO_PORT=9000",
     "MINIO_ROOT_USER=${local.config_minio_access_key}",
     "MINIO_ROOT_PASSWORD=${local.config_minio_secret_key}",
-    "MINIO_BUCKET=${local.config_minio_bucket_name}",
+    "MINIO_BUCKET_NAME=${local.config_minio_bucket_name}",
     "MINIO_ENDPOINT=${local.config_minio_endpoint}",
     "MINIO_ACCESS_KEY=${local.config_minio_access_key}",
     "MINIO_SECRET_KEY=${local.config_minio_secret_key}",
-    "MINIO_BUCKET_NAME=${local.config_minio_bucket_name}",
     "SHIPPO_API_KEY=${local.config_shippo_api_key}",
     "SHIPPO_BASE_URL=${local.config_shippo_base_url}",
     "SHIPENGINE_API_KEY=${local.config_shipengine_api_key}",
@@ -162,11 +169,8 @@ resource "docker_image" "admin_console" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-admin-console:latest"]
     build_args = {
-      FRONTEND_PATH                     = "src/frontend/admin-console"
-      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api"
-      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
-      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
-      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-admin-console"
+      FRONTEND_PATH       = "src/frontend/admin-console"
+      NEXT_PUBLIC_API_URL = local.config_next_public_api_url
     }
   }
 }
@@ -203,13 +207,11 @@ resource "docker_image" "customer_portal" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
-      FRONTEND_PATH                     = "src/frontend/customer-portal"
-      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api"
-      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
-      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
-      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-customer-portal"
-      KEYCLOAK_BASE_URL                 = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
-      NEXTAUTH_URL                      = "http://${var.public_host != "" ? var.public_host : "localhost"}:3002"
+      FRONTEND_PATH                    = "src/frontend/customer-portal"
+      NEXT_PUBLIC_API_URL              = local.config_next_public_api_url
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY    = local.config_flagsmith_env_key
+      KEYCLOAK_BASE_URL                = local.config_keycloak_hostname_url
+      NEXTAUTH_URL                     = "http://${var.public_host != "" ? var.public_host : "localhost"}:3002"
     }
   }
 }
@@ -246,11 +248,9 @@ resource "docker_image" "driver_pwa" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
-      FRONTEND_PATH                     = "src/frontend/driver-pwa"
-      NEXT_PUBLIC_API_URL               = "http://${var.public_host != "" ? var.public_host : "localhost"}/api/driver"
-      NEXT_PUBLIC_KEYCLOAK_URL          = "http://${var.public_host != "" ? var.public_host : "localhost"}:8180"
-      NEXT_PUBLIC_KEYCLOAK_REALM        = local.config_keycloak_realm
-      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID    = "slms-driver-pwa"
+      FRONTEND_PATH                    = "src/frontend/driver-pwa"
+      NEXT_PUBLIC_API_URL              = local.config_next_public_api_url
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN  = local.config_mapbox_access_token
     }
   }
 }
@@ -288,7 +288,7 @@ resource "docker_image" "landing_page" {
     tag        = ["slms-landing-page:latest"]
     build_args = {
       FRONTEND_PATH       = "src/frontend/landing-page"
-      NEXT_PUBLIC_API_URL = "http://${var.public_host != "" ? var.public_host : "localhost"}/api/landing-page"
+      NEXT_PUBLIC_API_URL = local.config_next_public_api_url
     }
   }
 }
@@ -314,4 +314,47 @@ resource "docker_container" "landing_page" {
   }
 
   restart = "unless-stopped"
+}
+
+# Backup Service
+resource "docker_image" "backup" {
+  name         = "slms-backup:latest"
+  keep_locally = true
+  build {
+    context    = local.repo_root
+    dockerfile = "infra/docker/backup/Dockerfile"
+    tag        = ["slms-backup:latest"]
+  }
+}
+
+resource "docker_container" "backup" {
+  name  = "slms-backup-prod"
+  image = docker_image.backup.image_id
+
+  env = [
+    "POSTGRES_HOST=${docker_container.postgres.name}",
+    "POSTGRES_PORT=5432",
+    "POSTGRES_DB=${local.config_postgres_db}",
+    "POSTGRES_USER=${local.config_postgres_user}",
+    "POSTGRES_PASSWORD=${local.config_postgres_password}",
+    "BACKUP_DIR=/backups",
+    "MAX_BACKUPS=4"
+  ]
+
+  volumes {
+    volume_name    = docker_volume.backup_data.name
+    container_path = "/backups"
+  }
+
+  networks_advanced {
+    name = data.docker_network.slms_network.name
+  }
+
+  restart = "unless-stopped"
+
+  depends_on = [docker_container.postgres]
+}
+
+resource "docker_volume" "backup_data" {
+  name = "slms-backup-data-prod"
 }
