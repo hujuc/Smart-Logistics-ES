@@ -7,39 +7,6 @@ TERRAFORM_DIR="${SCRIPT_DIR}/terraform"
 
 export COMPOSE_PROJECT_NAME="slms"
 export COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yaml"
-SERVICE_REPLICA_COUNT="${SERVICE_REPLICA_COUNT:-2}"
-readonly SERVICE_REPLICA_COUNT
-export TF_VAR_service_replica_count="${SERVICE_REPLICA_COUNT}"
-
-readonly TERRAFORM_REPLICATED_BASES=(
-  slms-backend-prod
-  slms-admin-console-prod
-  slms-customer-portal-prod
-  slms-driver-pwa-prod
-  slms-landing-page-prod
-)
-
-terraform_managed_containers() {
-  printf '%s\n' "slms-postgres-prod"
-  local base
-  for base in "${TERRAFORM_REPLICATED_BASES[@]}"; do
-    for ((replica=1; replica<=SERVICE_REPLICA_COUNT; replica++)); do
-      printf '%s-%s\n' "${base}" "${replica}"
-    done
-  done
-}
-
-replicated_name() {
-  local base="$1"
-  local replica="${2:-1}"
-
-  if (( replica < 1 || replica > SERVICE_REPLICA_COUNT )); then
-    log "Replica ${replica} out of range (1-${SERVICE_REPLICA_COUNT}) for ${base}"
-    exit 1
-  fi
-
-  printf '%s-%s\n' "${base}" "${replica}"
-}
 
 log() {
   printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"
@@ -60,7 +27,14 @@ ensure_network() {
 
 cleanup_containers() {
   log "Checking for outdated containers..."
-  mapfile -t containers < <(terraform_managed_containers)
+  local containers=(
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
+  )
 
   # Only remove stopped containers, keep running ones
   for name in "${containers[@]}"; do
@@ -111,8 +85,14 @@ compose_down() {
 
 terraform_stop() {
   log "Stopping Terraform-managed containers"
-  mapfile -t containers < <(terraform_managed_containers)
-
+  local containers=(
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
+  )
   for name in "${containers[@]}"; do
     if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
       log "Stopping container ${name}"
@@ -123,8 +103,14 @@ terraform_stop() {
 
 terraform_restart() {
   log "Restarting Terraform-managed containers"
-  mapfile -t containers < <(terraform_managed_containers)
-
+  local containers=(
+    slms-postgres-prod
+    slms-backend-prod
+    slms-admin-console-prod
+    slms-customer-portal-prod
+    slms-driver-pwa-prod
+    slms-landing-page-prod
+  )
   for name in "${containers[@]}"; do
     if docker ps -a --format '{{.Names}}' | grep -qx "${name}"; then
       log "Restarting container ${name}"
@@ -142,11 +128,11 @@ case "${1:-}" in
     terraform_smart_deploy  # Use smart deploy instead of always destroying
     compose_up
     log "Infrastructure available at:"
-    log "  Backend API:    http://localhost/api"
-    log "  Admin Console:  http://localhost/admin"
-    log "  Customer Portal:http://localhost/customer"
-    log "  Driver PWA:     http://localhost/driver"
-    log "  Landing Page:   http://localhost/"
+    log "  Backend:        http://localhost:8080"
+    log "  Admin Console:  http://localhost:3001"
+    log "  Customer Portal:http://localhost:3002"
+    log "  Driver PWA:     http://localhost:3003"
+    log "  Landing Page:   http://localhost:3004"
     log "  Keycloak:       http://localhost:8180"
     log "  MinIO Console:  http://localhost:9001"
     log "  Nginx:          http://localhost"
@@ -169,20 +155,18 @@ case "${1:-}" in
     ;;
   logs)
     service="${2:-backend}"
-    replica="${3:-1}"
     case "${service}" in
-      backend) container="$(replicated_name slms-backend-prod "${replica}")" ;;
-      admin) container="$(replicated_name slms-admin-console-prod "${replica}")" ;;
-      customer) container="$(replicated_name slms-customer-portal-prod "${replica}")" ;;
-      driver) container="$(replicated_name slms-driver-pwa-prod "${replica}")" ;;
-      landing) container="$(replicated_name slms-landing-page-prod "${replica}")" ;;
-      postgres) container="slms-postgres-prod" ;;
-      keycloak) container="slms-keycloak-prod" ;;
-      nginx) container="slms-nginx-prod" ;;
-      minio) container="slms-minio-prod" ;;
+      backend) docker logs -f slms-backend-prod ;;
+      admin) docker logs -f slms-admin-console-prod ;;
+      customer) docker logs -f slms-customer-portal-prod ;;
+      driver) docker logs -f slms-driver-pwa-prod ;;
+      landing) docker logs -f slms-landing-page-prod ;;
+      postgres) docker logs -f slms-postgres-prod ;;
+      keycloak) docker logs -f slms-keycloak-prod ;;
+      nginx) docker logs -f slms-nginx-prod ;;
+      minio) docker logs -f slms-minio-prod ;;
       *) log "Unknown service: ${service}"; exit 1 ;;
     esac
-    docker logs -f "${container}"
     ;;
   status)
     docker compose ps
@@ -217,7 +201,7 @@ case "${1:-}" in
   echo "  restart         - Restart all containers"
   echo "  status          - Show status of all services"
   echo "  rebuild         - Force rebuild of all Docker images"
-  echo "  logs [service] [replica] - Follow logs of a service (replica applies to backend/frontends)"
+  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
   exit 1
   ;;
 esac
