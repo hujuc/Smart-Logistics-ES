@@ -2,9 +2,9 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main , 182-304-integrate-terraform-with-cicd-pipeline ]
+    branches: [ main ,183-304-implement-replicas-and-add-load-balancer]
 
-jobs:
+jobs: 
   deploy:
     runs-on: [self-hosted, aws-runner]
     env:
