@@ -69,6 +69,17 @@ public class Order {
     @Column(name = "qr_code_url", length = 512)
     private String qrCodeUrl;
 
+    // QR confirmation callback URL encoded in the QR image
+    @Column(name = "qr_confirmation_url", length = 512)
+    private String qrConfirmationUrl;
+
+    // Driver confirmation metadata
+    @Column(name = "qr_confirmed_at")
+    private OffsetDateTime qrConfirmedAt;
+
+    @Column(name = "qr_confirmed_by", length = 64)
+    private String qrConfirmedBy;
+
     // Tracking number (order-specific tracking if needed)
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
