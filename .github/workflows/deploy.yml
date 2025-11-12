@@ -116,7 +116,6 @@ jobs:
           "MINIO_BUCKET=${MINIO_BUCKET}" \
           "MINIO_PORT=${MINIO_PORT}" \
           "MINIO_HOST=${MINIO_HOST}" \
-          "PUBLIC_HOST= 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com'" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
