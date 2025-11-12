@@ -362,8 +362,8 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
     assignedTo: assigneeName,  // Display name
     assignedToId: exception.assignedTo,  // Keep the UUID for form selection
     messages: 0,
-    createdAt: new Date(exception.createdAt),
-    updatedAt: new Date(exception.updatedAt),
+    createdAt: exception.createdAt ? new Date(exception.createdAt) : new Date(),
+    updatedAt: exception.updatedAt ? new Date(exception.updatedAt) : new Date(),
     resolutionNotes: exception.resolutionNotes,
   };
 

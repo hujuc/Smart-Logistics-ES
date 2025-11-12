@@ -21,6 +21,8 @@ import type { LucideIcon } from "lucide-react"
 // Status configuration for display
 const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
   CREATED: { icon: Package, color: "text-gray-700", label: "Created", bgColor: "bg-gray-100" },
+  READY_FOR_PICKUP: { icon: Package, color: "text-blue-700", label: "Ready for Pickup", bgColor: "bg-blue-100" },
+  COLLECTED: { icon: Package, color: "text-blue-700", label: "Collected", bgColor: "bg-blue-100" },
   ASSIGNED_TO_SHIPMENT: { icon: Package, color: "text-blue-700", label: "Assigned to Shipment", bgColor: "bg-blue-100" },
   IN_TRANSIT: { icon: MapPin, color: "text-orange-700", label: "In Transit", bgColor: "bg-orange-100" },
   DELIVERED: { icon: CheckCircle, color: "text-green-700", label: "Delivered", bgColor: "bg-green-100" },
