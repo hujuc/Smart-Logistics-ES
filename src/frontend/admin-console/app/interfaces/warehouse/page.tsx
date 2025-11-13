@@ -8,6 +8,7 @@ import { QuickStats } from "@/components/warehouse/quick-stats"
 import { OrderTable } from "@/components/warehouse/order-table"
 import type { WarehousePackage } from "@/types"
 import { warehouseService } from "@/lib/services/warehouse.service"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 export default function WarehousePage() {
   const router = useRouter()
@@ -45,7 +46,7 @@ export default function WarehousePage() {
         status: order.status,
         priority: order.priority,
         origin: order.origin || "-",
-        destination: order.shippingAddress,
+        destination: formatOrderShippingAddress(order),
         scannedAt: order.scannedAt ? new Date(order.scannedAt).toLocaleString() : undefined,
         weight: order.weight,
       }))
@@ -109,4 +110,3 @@ export default function WarehousePage() {
     </div>
   )
 }
-

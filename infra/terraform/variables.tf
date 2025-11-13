@@ -123,6 +123,13 @@ variable "shipengine_base_url" {
   default     = null
 }
 
+# QR Code Configuration
+variable "qr_confirmation_base_url" {
+  description = "Base URL for QR code confirmation endpoints (e.g., http://yourdomain.com/api/driver)"
+  type        = string
+  default     = null
+}
+
 # Docker Network
 variable "docker_network_name" {
   description = "Existing Docker network that connects Terraform and Docker Compose services"
@@ -156,4 +163,68 @@ variable "mapbox_access_token" {
   type        = string
   sensitive   = true
   default     = null
+}
+
+# Service scaling
+variable "service_replica_count" {
+  description = "Number of replicas provisioned for each stateless service (backend and frontends)"
+  type        = number
+  default     = 2
+}
+
+# Observability - Elastic APM / OpenTelemetry Configuration
+variable "elastic_apm_server_url" {
+  description = "Elastic APM Server URL for OpenTelemetry export (e.g., https://your-deployment.apm.elastic-cloud.com:443)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "elastic_apm_secret_token" {
+  description = "Elastic APM Secret Token for authentication"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "deployment_env" {
+  description = "Deployment environment name (development, staging, production)"
+  type        = string
+  default     = "development"
+}
+
+variable "project_version" {
+  description = "Application version for tracing metadata"
+  type        = string
+  default     = "0.0.1-SNAPSHOT"
+}
+
+variable "tracing_sampling_rate" {
+  description = "Tracing sampling rate (0.0 to 1.0, where 1.0 = 100%)"
+  type        = string
+  default     = "1.0"
+}
+
+variable "log_level_root" {
+  description = "Root logging level (TRACE, DEBUG, INFO, WARN, ERROR)"
+  type        = string
+  default     = "INFO"
+}
+
+variable "log_level_app" {
+  description = "Application logging level"
+  type        = string
+  default     = "DEBUG"
+}
+
+variable "log_level_web" {
+  description = "Spring Web logging level"
+  type        = string
+  default     = "INFO"
+}
+
+variable "log_level_security" {
+  description = "Spring Security logging level"
+  type        = string
+  default     = "INFO"
 }

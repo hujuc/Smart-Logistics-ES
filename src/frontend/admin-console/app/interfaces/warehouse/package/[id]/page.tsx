@@ -11,9 +11,11 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
-import type { Order, ShipmentOrderStatus } from "@/types"
+import { buildShippingAddressString, formatOrderShippingAddress, type AddressFieldName } from "@/lib/address"
+import type { Order, ShipmentDocument, ShipmentOrderStatus } from "@/types"
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
+import { shipmentDocumentService } from "@/lib/services/shipment-document.service"
 
 interface PackageDetailsPageProps {
   params: Promise<{ id: string }>
@@ -30,6 +32,9 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
   const [isStatusChanging, setIsStatusChanging] = useState(false)
+  const [shipmentDocuments, setShipmentDocuments] = useState<ShipmentDocument[]>([])
+  const [isShipmentDocsLoading, setIsShipmentDocsLoading] = useState(false)
+  const [shipmentDocsError, setShipmentDocsError] = useState<string | null>(null)
 
   // Unwrap params Promise
   useEffect(() => {
@@ -150,22 +155,88 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
   }, [orderId])
 
+  useEffect(() => {
+    if (!orderId) {
+      setShipmentDocuments([])
+      return
+    }
+
+    const numericId = parseInt(orderId, 10)
+    if (Number.isNaN(numericId)) {
+      setShipmentDocuments([])
+      return
+    }
+
+    if (!order?.shipmentId) {
+      setShipmentDocuments([])
+      return
+    }
+
+    let isMounted = true
+    setIsShipmentDocsLoading(true)
+    setShipmentDocsError(null)
+
+    shipmentDocumentService
+      .list(numericId)
+      .then((docs) => {
+        if (!isMounted) return
+        setShipmentDocuments(docs)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        setShipmentDocsError(err instanceof Error ? err.message : "Failed to load shipping documents")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsShipmentDocsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [orderId, order?.shipmentId])
+
   const handleSave = async () => {
     if (!order) return
 
     try {
+      const normalizedAddress = buildShippingAddressString(order)
       await warehouseService.updateOrder(order.id, {
         reference: order.reference,
         description: order.description,
-        shippingAddress: order.shippingAddress,
+        status: order.status,
+        shippingAddress: normalizedAddress || order.shippingAddress,
+        shippingAddressLine1: order.shippingAddressLine1,
+        shippingAddressLine2: order.shippingAddressLine2,
+        shippingCity: order.shippingCity,
+        shippingStateOrProvince: order.shippingStateOrProvince,
+        shippingPostalCode: order.shippingPostalCode,
+        shippingCountry: order.shippingCountry,
+        shippingPhone: order.shippingPhone,
+        shippingEmail: order.shippingEmail,
         warehouseId: order.warehouseId,
         trackingNumber: order.trackingNumber,
+        estimatedDeliveryDate: order.estimatedDeliveryDate instanceof Date ? order.estimatedDeliveryDate.toISOString() : order.estimatedDeliveryDate as string,
+        carrierId: order.carrierId,
       })
       setIsEditing(false)
     } catch (err) {
       console.error('Failed to update order:', err)
       alert('Failed to update order. Please try again.')
     }
+  }
+
+  const handleAddressFieldChange = (field: AddressFieldName, value: string) => {
+    if (!order) return
+
+    const updatedOrder: Order = {
+      ...order,
+      [field]: value,
+    } as Order
+
+    const normalized = buildShippingAddressString(updatedOrder)
+    updatedOrder.shippingAddress = normalized || order.shippingAddress
+    setOrder(updatedOrder)
   }
 
   const handleStatusChange = async (newStatus: ShipmentOrderStatus) => {
@@ -185,6 +256,30 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       alert('Failed to update status. Please try again.')
     } finally {
       setIsStatusChanging(false)
+    }
+  }
+
+  const handleShipmentDocumentDownload = async (doc: ShipmentDocument) => {
+    if (!orderId) return
+
+    try {
+      const orderNumericId = parseInt(orderId, 10)
+      if (Number.isNaN(orderNumericId)) {
+        throw new Error("Invalid order identifier")
+      }
+
+      const blob = await shipmentDocumentService.download(orderNumericId, doc.documentId)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = doc.fileName || doc.documentId
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 500)
+    } catch (err) {
+      console.error("Failed to download shipment document", err)
+      setShipmentDocsError(err instanceof Error ? err.message : "Failed to download shipping document")
     }
   }
 
@@ -284,17 +379,116 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             <h3 className="font-semibold text-black border-b pb-2">
               Shipping Information
             </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="shippingAddressLine1">Address Line 1</Label>
+                <Input
+                  id="shippingAddressLine1"
+                  value={order.shippingAddressLine1 || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingAddressLine1", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingAddressLine2">Address Line 2</Label>
+                <Input
+                  id="shippingAddressLine2"
+                  value={order.shippingAddressLine2 || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingAddressLine2", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingCity">City</Label>
+                <Input
+                  id="shippingCity"
+                  value={order.shippingCity || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingCity", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingState">State / Province</Label>
+                <Input
+                  id="shippingState"
+                  value={order.shippingStateOrProvince || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingStateOrProvince", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingPostalCode">Postal Code</Label>
+                <Input
+                  id="shippingPostalCode"
+                  value={order.shippingPostalCode || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingPostalCode", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingCountry">Country</Label>
+                <Input
+                  id="shippingCountry"
+                  value={order.shippingCountry || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingCountry", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingPhone">Phone</Label>
+                <Input
+                  id="shippingPhone"
+                  value={order.shippingPhone || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingPhone", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="shippingEmail">Email</Label>
+                <Input
+                  id="shippingEmail"
+                  type="email"
+                  value={order.shippingEmail || ""}
+                  onChange={(e) =>
+                    handleAddressFieldChange("shippingEmail", e.target.value)
+                  }
+                  disabled={!isEditing}
+                  className="mt-1"
+                />
+              </div>
+            </div>
             <div>
-              <Label htmlFor="shippingAddress">Shipping Address</Label>
+              <Label htmlFor="shippingAddressPreview">Shipping Address Preview</Label>
               <Input
-                id="shippingAddress"
-                value={order.shippingAddress}
-                onChange={(e) =>
-                  setOrder({ ...order, shippingAddress: e.target.value })
-                }
-                disabled={!isEditing}
+                id="shippingAddressPreview"
+                value={formatOrderShippingAddress(order)}
+                disabled
                 className="mt-1"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                The preview above is synced to the legacy shippingAddress field for existing integrations.
+              </p>
             </div>
             <div>
               <Label htmlFor="estimatedDelivery">Estimated Delivery</Label>
@@ -447,7 +641,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
               <div className="text-sm text-black">Order created</div>
             </div>
           </div>
-        </div>
+      </div>
 
         <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-1">
           <h3 className="font-semibold text-black mb-4">Package QR Code</h3>
@@ -471,6 +665,54 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
             </p>
           )}
         </div>
+      </div>
+
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-black">Carrier Shipping Documents</h3>
+          {order.shipmentCode && (
+            <span className="text-xs text-gray-500">Shipment {order.shipmentCode}</span>
+          )}
+        </div>
+        {!order.shipmentId && (
+          <p className="text-sm text-gray-600">
+            Assign this order to a shipment to generate carrier documents.
+          </p>
+        )}
+        {order.shipmentId && (
+          <div className="space-y-3">
+            {isShipmentDocsLoading && (
+              <p className="text-sm text-gray-600">Loading shipping documents...</p>
+            )}
+            {shipmentDocsError && (
+              <p className="text-sm text-red-600">{shipmentDocsError}</p>
+            )}
+            {!isShipmentDocsLoading && !shipmentDocsError && shipmentDocuments.length === 0 && (
+              <p className="text-sm text-gray-600">No shipping documents are available yet.</p>
+            )}
+            {!isShipmentDocsLoading && shipmentDocuments.length > 0 && (
+              <ul className="space-y-3">
+                {shipmentDocuments.map((doc) => (
+                  <li key={doc.documentId} className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-black">{doc.fileName}</p>
+                      <p className="text-xs text-gray-500">
+                        {doc.carrierCode || 'Carrier'} • {(doc.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShipmentDocumentDownload(doc)}
+                    >
+                      Download
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

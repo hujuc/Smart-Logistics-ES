@@ -26,11 +26,11 @@ locals {
   config_postgres_db        = var.postgres_db != null ? var.postgres_db : "slms"
   config_postgres_host_port = var.postgres_host_port != null ? var.postgres_host_port : 5432
 
-  config_keycloak_realm         = var.keycloak_realm != null ? var.keycloak_realm : "slms"
-  config_keycloak_client_id     = var.keycloak_client_id != null ? var.keycloak_client_id : "slms-backend"
-  config_keycloak_client_secret = var.keycloak_client_secret != null ? var.keycloak_client_secret : ""
-  config_keycloak_hostname_url  = var.keycloak_hostname_url != null ? var.keycloak_hostname_url : "http://localhost:8180"
-  config_keycloak_admin         = var.keycloak_admin != null ? var.keycloak_admin : "admin"
+  config_keycloak_realm          = var.keycloak_realm != null ? var.keycloak_realm : "slms"
+  config_keycloak_client_id      = var.keycloak_client_id != null ? var.keycloak_client_id : "slms-backend"
+  config_keycloak_client_secret  = var.keycloak_client_secret != null ? var.keycloak_client_secret : ""
+  config_keycloak_hostname_url   = var.keycloak_hostname_url != null ? var.keycloak_hostname_url : "http://localhost:8180"
+  config_keycloak_admin          = var.keycloak_admin != null ? var.keycloak_admin : "admin"
   config_keycloak_admin_password = var.keycloak_admin_password != null ? var.keycloak_admin_password : "admin"
   config_jwt_issuer_uri = var.jwt_issuer_uri != null ? var.jwt_issuer_uri : "http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8080/realms/slms"
 
@@ -45,12 +45,26 @@ locals {
   config_shipengine_api_key  = var.shipengine_api_key != null ? var.shipengine_api_key : ""
   config_shipengine_base_url = var.shipengine_base_url != null ? var.shipengine_base_url : "https://api.shipengine.com/v1"
 
+  config_qr_confirmation_base_url = var.qr_confirmation_base_url != null ? var.qr_confirmation_base_url : "http://localhost:8080/api/driver"
+
   config_docker_network = var.docker_network_name != null ? var.docker_network_name : "slms-network"
 
   # Frontend configuration
-  config_next_public_api_url = var.next_public_api_url != null ? var.next_public_api_url : "http://localhost/api"
-  config_flagsmith_env_key   = var.flagsmith_env_key != null ? var.flagsmith_env_key : ""
-  config_mapbox_access_token = var.mapbox_access_token != null ? var.mapbox_access_token : ""
+  config_next_public_api_url   = var.next_public_api_url != null ? var.next_public_api_url : "http://localhost/api"
+  config_flagsmith_env_key     = var.flagsmith_env_key != null ? var.flagsmith_env_key : ""
+  config_mapbox_access_token   = var.mapbox_access_token != null ? var.mapbox_access_token : ""
+  config_service_replica_count = var.service_replica_count != null ? var.service_replica_count : 2
+
+  # Observability configuration
+  config_elastic_apm_server_url   = var.elastic_apm_server_url != null ? var.elastic_apm_server_url : ""
+  config_elastic_apm_secret_token = var.elastic_apm_secret_token != null ? var.elastic_apm_secret_token : ""
+  config_deployment_env           = var.deployment_env != null ? var.deployment_env : "development"
+  config_project_version          = var.project_version != null ? var.project_version : "0.0.1-SNAPSHOT"
+  config_tracing_sampling_rate    = var.tracing_sampling_rate != null ? var.tracing_sampling_rate : "1.0"
+  config_log_level_root           = var.log_level_root != null ? var.log_level_root : "INFO"
+  config_log_level_app            = var.log_level_app != null ? var.log_level_app : "DEBUG"
+  config_log_level_web            = var.log_level_web != null ? var.log_level_web : "INFO"
+  config_log_level_security       = var.log_level_security != null ? var.log_level_security : "INFO"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -61,7 +75,7 @@ data "docker_network" "slms_network" {
 # PostgreSQL Database
 resource "docker_image" "postgres" {
   name         = "postgres:16-alpine"
-  keep_locally = true  # Keep image locally to avoid re-pulling on every apply
+  keep_locally = true # Keep image locally to avoid re-pulling on every apply
 }
 
 resource "docker_container" "postgres" {
@@ -105,7 +119,7 @@ resource "docker_volume" "postgres_data" {
 # Backend Service
 resource "docker_image" "backend" {
   name         = "slms-backend:latest"
-  keep_locally = true  # Keep image locally for faster rebuilds
+  keep_locally = true # Keep image locally for faster rebuilds
   build {
     context    = local.backend_dir
     dockerfile = "Dockerfile"
@@ -117,7 +131,8 @@ resource "docker_image" "backend" {
 }
 
 resource "docker_container" "backend" {
-  name  = "slms-backend-prod"
+  count = local.config_service_replica_count
+  name  = "slms-backend-prod-${count.index + 1}"
   image = docker_image.backend.image_id
 
   env = [
@@ -150,16 +165,22 @@ resource "docker_container" "backend" {
     "SHIPPO_API_KEY=${local.config_shippo_api_key}",
     "SHIPPO_BASE_URL=${local.config_shippo_base_url}",
     "SHIPENGINE_API_KEY=${local.config_shipengine_api_key}",
-    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}"
+    "SHIPENGINE_BASE_URL=${local.config_shipengine_base_url}",
+    "QR_CONFIRMATION_BASE_URL=${local.config_qr_confirmation_base_url}",
+    "ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "PROJECT_VERSION=${local.config_project_version}",
+    "TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}",
+    "LOG_LEVEL_ROOT=${local.config_log_level_root}",
+    "LOG_LEVEL_APP=${local.config_log_level_app}",
+    "LOG_LEVEL_WEB=${local.config_log_level_web}",
+    "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
   ]
 
-  ports {
-    internal = 8080
-    external = 8080
-  }
-
   networks_advanced {
-    name = data.docker_network.slms_network.name
+    name    = data.docker_network.slms_network.name
+    aliases = ["slms-backend-prod"]
   }
 
   restart = "unless-stopped"
@@ -183,7 +204,8 @@ resource "docker_image" "admin_console" {
 }
 
 resource "docker_container" "admin_console" {
-  name  = "slms-admin-console-prod"
+  count = local.config_service_replica_count
+  name  = "slms-admin-console-prod-${count.index + 1}"
   image = docker_image.admin_console.image_id
 
   env = [
@@ -193,13 +215,9 @@ resource "docker_container" "admin_console" {
 
   working_dir = "/app"
 
-  ports {
-    internal = 3000
-    external = 3001
-  }
-
   networks_advanced {
-    name = data.docker_network.slms_network.name
+    name    = data.docker_network.slms_network.name
+    aliases = ["slms-admin-console-prod"]
   }
 
   restart = "unless-stopped"
@@ -214,17 +232,18 @@ resource "docker_image" "customer_portal" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
-      FRONTEND_PATH                    = "src/frontend/customer-portal"
-      NEXT_PUBLIC_API_URL              = local.config_next_public_api_url
-      NEXT_PUBLIC_FLAGSMITH_ENV_KEY    = local.config_flagsmith_env_key
-      KEYCLOAK_BASE_URL                = local.config_keycloak_hostname_url
-      NEXTAUTH_URL                     = "http://${var.public_host != "" ? var.public_host : "localhost"}:3002"
+      FRONTEND_PATH                 = "src/frontend/customer-portal"
+      NEXT_PUBLIC_API_URL           = local.config_next_public_api_url
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY = local.config_flagsmith_env_key
+      KEYCLOAK_BASE_URL             = local.config_keycloak_hostname_url
+      NEXTAUTH_URL                  = "http://${var.public_host != "" ? var.public_host : "localhost"}/customer"
     }
   }
 }
 
 resource "docker_container" "customer_portal" {
-  name  = "slms-customer-portal-prod"
+  count = local.config_service_replica_count
+  name  = "slms-customer-portal-prod-${count.index + 1}"
   image = docker_image.customer_portal.image_id
 
   env = [
@@ -234,13 +253,9 @@ resource "docker_container" "customer_portal" {
 
   working_dir = "/app"
 
-  ports {
-    internal = 3000
-    external = 3002
-  }
-
   networks_advanced {
-    name = data.docker_network.slms_network.name
+    name    = data.docker_network.slms_network.name
+    aliases = ["slms-customer-portal-prod"]
   }
 
   restart = "unless-stopped"
@@ -255,15 +270,16 @@ resource "docker_image" "driver_pwa" {
     dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
-      FRONTEND_PATH                    = "src/frontend/driver-pwa"
-      NEXT_PUBLIC_API_URL              = local.config_next_public_api_url
-      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN  = local.config_mapbox_access_token
+      FRONTEND_PATH                   = "src/frontend/driver-pwa"
+      NEXT_PUBLIC_API_URL             = local.config_next_public_api_url
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = local.config_mapbox_access_token
     }
   }
 }
 
 resource "docker_container" "driver_pwa" {
-  name  = "slms-driver-pwa-prod"
+  count = local.config_service_replica_count
+  name  = "slms-driver-pwa-prod-${count.index + 1}"
   image = docker_image.driver_pwa.image_id
 
   env = [
@@ -273,13 +289,9 @@ resource "docker_container" "driver_pwa" {
 
   working_dir = "/app"
 
-  ports {
-    internal = 3000
-    external = 3003
-  }
-
   networks_advanced {
-    name = data.docker_network.slms_network.name
+    name    = data.docker_network.slms_network.name
+    aliases = ["slms-driver-pwa-prod"]
   }
 
   restart = "unless-stopped"
@@ -301,7 +313,8 @@ resource "docker_image" "landing_page" {
 }
 
 resource "docker_container" "landing_page" {
-  name  = "slms-landing-page-prod"
+  count = local.config_service_replica_count
+  name  = "slms-landing-page-prod-${count.index + 1}"
   image = docker_image.landing_page.image_id
 
   env = [
@@ -311,13 +324,9 @@ resource "docker_container" "landing_page" {
 
   working_dir = "/app"
 
-  ports {
-    internal = 3000
-    external = 3004
-  }
-
   networks_advanced {
-    name = data.docker_network.slms_network.name
+    name    = data.docker_network.slms_network.name
+    aliases = ["slms-landing-page-prod"]
   }
 
   restart = "unless-stopped"

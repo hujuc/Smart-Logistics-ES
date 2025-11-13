@@ -4,15 +4,25 @@
  */
 
 import { API_ENDPOINTS, apiFetch } from '../api';
-import type { Order } from '@/types';
+import type { Order, ShipmentOrderStatus } from '@/types';
 
 export interface CreateOrderRequest {
   reference: string;
   description?: string;
   shippingAddress: string;
+  shippingAddressLine1?: string;
+  shippingAddressLine2?: string;
+  shippingCity?: string;
+  shippingStateOrProvince?: string;
+  shippingPostalCode?: string;
+  shippingCountry?: string;
+  shippingPhone?: string;
+  shippingEmail?: string;
   estimatedDeliveryDate?: string; // ISO date string
   warehouseId: number;
   trackingNumber?: string;
+  status?: ShipmentOrderStatus;
+  carrierId?: number;
 }
 
 export const warehouseService = {
@@ -74,7 +84,15 @@ export const warehouseService = {
         description: currentOrder.description,
         status: status,
         shippingAddress: currentOrder.shippingAddress,
-        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate,
+        shippingAddressLine1: currentOrder.shippingAddressLine1,
+        shippingAddressLine2: currentOrder.shippingAddressLine2,
+        shippingCity: currentOrder.shippingCity,
+        shippingStateOrProvince: currentOrder.shippingStateOrProvince,
+        shippingPostalCode: currentOrder.shippingPostalCode,
+        shippingCountry: currentOrder.shippingCountry,
+        shippingPhone: currentOrder.shippingPhone,
+        shippingEmail: currentOrder.shippingEmail,
+        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate instanceof Date ? currentOrder.estimatedDeliveryDate.toISOString() : currentOrder.estimatedDeliveryDate as string,
         warehouseId: currentOrder.warehouseId,
         carrierId: currentOrder.carrierId,
         trackingNumber: currentOrder.trackingNumber,
@@ -114,7 +132,15 @@ export const warehouseService = {
         description: `${currentOrder.description || ''} | Carrier: ${carrierName} - ${carrierService} ($${carrierCost}, ${transitTime})`.trim(),
         status: 'ASSIGNED_TO_SHIPMENT', // Update status when carrier is assigned
         shippingAddress: currentOrder.shippingAddress,
-        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate,
+        shippingAddressLine1: currentOrder.shippingAddressLine1,
+        shippingAddressLine2: currentOrder.shippingAddressLine2,
+        shippingCity: currentOrder.shippingCity,
+        shippingStateOrProvince: currentOrder.shippingStateOrProvince,
+        shippingPostalCode: currentOrder.shippingPostalCode,
+        shippingCountry: currentOrder.shippingCountry,
+        shippingPhone: currentOrder.shippingPhone,
+        shippingEmail: currentOrder.shippingEmail,
+        estimatedDeliveryDate: currentOrder.estimatedDeliveryDate instanceof Date ? currentOrder.estimatedDeliveryDate.toISOString() : currentOrder.estimatedDeliveryDate as string,
         warehouseId: currentOrder.warehouseId,
         trackingNumber: currentOrder.trackingNumber,
       }),

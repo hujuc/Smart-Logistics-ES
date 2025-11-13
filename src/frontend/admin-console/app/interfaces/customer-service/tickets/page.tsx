@@ -18,8 +18,65 @@ import { customerServiceService } from "@/lib/services/customer-service.service"
 import { featureFlagManager } from "@/lib/flagsmith"
 import { getUserData } from "@/shared/lib/auth"
 import type { Order } from "@/types"
+import { formatOrderShippingAddress } from "@/lib/address"
 import type { TicketWithDetails } from "@/types/customer-service"
 
+
+// Mock data for support tickets
+const mockTickets = [
+  {
+    id: "TKT001",
+    ticketNumber: "TKT-2025-001",
+    customer: "John Doe",
+    category: "Delivery Issue",
+    subject: "Package not delivered",
+    priority: "High",
+    status: "Open",
+    assignedTo: "Agent Smith",
+    createdAt: "2025-10-06 09:30",
+    lastUpdate: "2025-10-06 10:15",
+    messages: 3,
+  },
+  {
+    id: "TKT002",
+    ticketNumber: "TKT-2025-002",
+    customer: "Jane Smith",
+    category: "Tracking",
+    subject: "Unable to track package",
+    priority: "Medium",
+    status: "In Progress",
+    assignedTo: "Agent Jones",
+    createdAt: "2025-10-05 14:20",
+    lastUpdate: "2025-10-06 08:45",
+    messages: 5,
+  },
+  {
+    id: "TKT003",
+    ticketNumber: "TKT-2025-003",
+    customer: "Bob Williams",
+    category: "Refund",
+    subject: "Request refund for damaged item",
+    priority: "High",
+    status: "Escalated",
+    assignedTo: "Manager Brown",
+    createdAt: "2025-10-04 11:00",
+    lastUpdate: "2025-10-05 16:30",
+    messages: 8,
+  },
+  {
+    id: "TKT004",
+    ticketNumber: "TKT-2025-004",
+    customer: "Alice Johnson",
+    category: "General Inquiry",
+    subject: "Question about shipping rates",
+    priority: "Low",
+    status: "Resolved",
+    assignedTo: "Agent Davis",
+    createdAt: "2025-10-03 10:15",
+    lastUpdate: "2025-10-04 09:00",
+    messages: 2,
+  },
+]
 export default function TicketsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
@@ -462,7 +519,9 @@ export default function TicketsPage() {
                     )}
                     <div className="md:col-span-2">
                       <span className="text-gray-600">Destination:</span>
-                      <span className="ml-2 font-medium text-black">{orderResult.shippingAddress}</span>
+                      <span className="ml-2 font-medium text-black">
+                        {formatOrderShippingAddress(orderResult)}
+                      </span>
                     </div>
                     {orderResult.description && (
                       <div className="md:col-span-2">
