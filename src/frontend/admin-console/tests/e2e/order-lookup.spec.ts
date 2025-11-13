@@ -1,6 +1,128 @@
 import { test, expect, Page } from "@playwright/test";
-import { setupTestData, cleanupTestData } from "./test-setup";
-import type { OrderResponse, WarehouseResponse } from "./test-setup";
+
+// API configuration
+const BASE_URL = process.env.E2E_BASE_URL || "http://localhost";
+const API_URL = `${BASE_URL}/api`;
+
+// Types for test data
+interface WarehouseResponse {
+  id: number;
+  code: string;
+  name: string;
+  addressLine1: string;
+  city: string;
+  stateOrProvince: string;
+  country: string;
+  postalCode: string;
+  active: boolean;
+}
+
+interface OrderResponse {
+  id: number;
+  reference: string;
+  description: string;
+  status: string;
+  shippingAddress: string;
+  estimatedDeliveryDate: string;
+  warehouseId: number;
+  trackingNumber?: string;
+}
+
+/**
+ * Create a test warehouse for E2E tests
+ */
+async function createTestWarehouse(): Promise<WarehouseResponse> {
+  const timestamp = Date.now();
+  const warehouseData = {
+    code: `WH-E2E-${timestamp}`,
+    name: `E2E Test Warehouse ${timestamp}`,
+    addressLine1: "Rua de Teste 123",
+    city: "Aveiro",
+    stateOrProvince: "Aveiro",
+    country: "Portugal",
+    postalCode: "3800-123",
+    active: true,
+  };
+
+  const response = await fetch(`${API_URL}/admin/warehouses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(warehouseData),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to create warehouse: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return await response.json();
+}
+
+/**
+ * Create a test order for E2E tests
+ */
+async function createTestOrder(
+  warehouseId: number,
+  reference: string,
+  description: string,
+  trackingNumber?: string
+): Promise<OrderResponse> {
+  const orderData = {
+    reference,
+    description,
+    status: "CREATED",
+    shippingAddress: "Rua do Cliente 456, 4000-123 Porto, Portugal",
+    estimatedDeliveryDate: "2025-12-31",
+    warehouseId: warehouseId,
+    trackingNumber,
+  };
+
+  const response = await fetch(`${API_URL}/admin/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to create order: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return await response.json();
+}
+
+/**
+ * Delete test data after tests complete
+ */
+async function cleanupTestData(orderIds: number[], warehouseId: number): Promise<void> {
+  // Delete orders
+  for (const orderId of orderIds) {
+    try {
+      await fetch(`${API_URL}/admin/orders/${orderId}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      console.warn(`⚠ Could not delete order ${orderId}:`, error);
+    }
+  }
+
+  // Delete warehouse
+  try {
+    await fetch(`${API_URL}/admin/warehouses/${warehouseId}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    console.warn(`⚠ Could not delete warehouse ${warehouseId}:`, error);
+  }
+}
 
 /**
  * Helper to perform Customer Service Representative login via landing page
@@ -84,20 +206,53 @@ let testOrders: OrderResponse[] = [];
 let testWarehouse: WarehouseResponse;
 
 test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
-  // Setup test data before all tests
+  // Setup test data before all tests - create fresh data for each test run
   test.beforeAll(async () => {
-    const testData = await setupTestData();
-    testOrders = testData.orders;
-    testWarehouse = testData.warehouse;
+    console.log("Creating test data...");
+    
+    // Create a test warehouse
+    testWarehouse = await createTestWarehouse();
+    console.log(`✓ Created warehouse: ${testWarehouse.name} (ID: ${testWarehouse.id})`);
+    
+    // Create 3 test orders
+    const order1 = await createTestOrder(
+      testWarehouse.id,
+      `E2E-ORDER-1-${Date.now()}`,
+      "Test order 1 for E2E tests"
+    );
+    testOrders.push(order1);
+    console.log(`✓ Created order 1: ${order1.reference} (ID: ${order1.id})`);
+    
+    const order2 = await createTestOrder(
+      testWarehouse.id,
+      `E2E-ORDER-2-${Date.now()}`,
+      "Test order 2 for E2E tests",
+      "TRK-E2E-12345"
+    );
+    testOrders.push(order2);
+    console.log(`✓ Created order 2: ${order2.reference} (ID: ${order2.id})`);
+    
+    const order3 = await createTestOrder(
+      testWarehouse.id,
+      `E2E-ORDER-3-${Date.now()}`,
+      "Test order 3 for E2E tests",
+      "TRK-E2E-67890"
+    );
+    testOrders.push(order3);
+    console.log(`✓ Created order 3: ${order3.reference} (ID: ${order3.id})`);
+    
+    console.log("Test data creation complete!");
   });
 
-  // Note: No cleanup needed as we're using existing database records
-  // test.afterAll(async () => {
-  //   if (testOrders.length > 0) {
-  //     const orderIds = testOrders.map((order) => order.id);
-  //     await cleanupTestData(orderIds);
-  //   }
-  // });
+  // Cleanup test data after all tests
+  test.afterAll(async () => {
+    if (testOrders.length > 0 && testWarehouse) {
+      console.log("Cleaning up test data...");
+      const orderIds = testOrders.map((order) => order.id);
+      await cleanupTestData(orderIds, testWarehouse.id);
+      console.log("Cleanup complete!");
+    }
+  });
 
   test.beforeEach(async ({ page }) => {
     // Login as CSR before each test
