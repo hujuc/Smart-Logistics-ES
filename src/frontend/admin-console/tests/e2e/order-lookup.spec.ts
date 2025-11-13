@@ -216,6 +216,12 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     await searchAndViewOrder(page, firstOrder.reference, firstOrder.reference);
     await expect(page.getByRole("heading", { name: new RegExp(firstOrder.reference, "i") })).toBeVisible({ timeout: 30_000 });
     
+    // Go back to order lookup page for second search
+    await page.goto("/admin/interfaces/customer-service/order-lookup");
+    
+    // Wait for page to be ready - check for search input instead of heading
+    await expect(page.getByPlaceholder(/order.*tracking/i)).toBeVisible({ timeout: 30_000 });
+    
     // Search for second order (using reference as search term)
     await searchAndViewOrder(page, secondOrder.reference, secondOrder.reference);
     
