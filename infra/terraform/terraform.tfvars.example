@@ -20,3 +20,7 @@ public_host = ""
 # ===== Service scaling =====
 # Override only if you need a different replica count (defaults to 2)
 # service_replica_count = 2
+
+# ===== QR Code Configuration =====
+# Override if you need a different QR confirmation base URL
+# qr_confirmation_base_url = "http://yourdomain.com/api/driver"

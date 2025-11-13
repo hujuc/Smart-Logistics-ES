@@ -72,3 +72,9 @@ Both endpoints respond with a JSON array/object using the following shape:
 ```
 
 BFFs provide app-specific API contracts while business services ensure reusable, shared logic across all frontends.
+
+## Driver Shipment Confirmation Flow
+
+- Each order automatically gets a QR code image stored in MinIO. The QR encodes a signed-in-driver callback URL built from `slms.qr.confirmation-base-url` (configure via `QR_CONFIRMATION_BASE_URL`, defaults to `http://localhost:8080/api/driver`).
+- Scanning the code should trigger `POST /api/driver/orders/{orderId}/confirm`, which validates the authenticated driver against the shipment, flips the order status to `IN_TRANSIT`, and records the scan timestamp.
+- The response reports whether all orders in the shipment have been confirmed so the driver can continue once `allOrdersConfirmed=true`.

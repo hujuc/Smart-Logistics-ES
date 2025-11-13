@@ -59,11 +59,16 @@ jobs:
       SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
       SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
       PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
+      QR_CONFIRMATION_BASE_URL: ${{ secrets.QR_CONFIRMATION_BASE_URL }}
       ELASTIC_APM_SERVER_URL: ${{ secrets.ELASTIC_APM_SERVER_URL }}
       ELASTIC_APM_SECRET_TOKEN: ${{ secrets.ELASTIC_APM_SECRET_TOKEN }}
       DEPLOYMENT_ENV: ${{ secrets.DEPLOYMENT_ENV || 'production' }}
-      PROJECT_VERSION: ${{ github.sha }}
+      PROJECT_VERSION: ${{ secrets.PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
       TRACING_SAMPLING_RATE: ${{ secrets.TRACING_SAMPLING_RATE || '1.0' }}
+      LOG_LEVEL_ROOT: ${{ secrets.LOG_LEVEL_ROOT || 'INFO' }}
+      LOG_LEVEL_APP: ${{ secrets.LOG_LEVEL_APP || 'DEBUG' }}
+      LOG_LEVEL_WEB: ${{ secrets.LOG_LEVEL_WEB || 'INFO' }}
+      LOG_LEVEL_SECURITY: ${{ secrets.LOG_LEVEL_SECURITY || 'INFO' }}
     steps:
       - name: Fix permissions before build
         shell: bash
@@ -137,11 +142,16 @@ jobs:
           "SHIPENGINE_API_KEY=${SHIPENGINE_API_KEY}" \
           "SHIPENGINE_BASE_URL=https://api.shipengine.com/v1" \
           "SHIPPO_BASE_URL=https://api.goshippo.com" \
+          "QR_CONFIRMATION_BASE_URL=${QR_CONFIRMATION_BASE_URL}" \
           "ELASTIC_APM_SERVER_URL=${ELASTIC_APM_SERVER_URL}" \
           "ELASTIC_APM_SECRET_TOKEN=${ELASTIC_APM_SECRET_TOKEN}" \
           "DEPLOYMENT_ENV=${DEPLOYMENT_ENV}" \
           "PROJECT_VERSION=${PROJECT_VERSION}" \
           "TRACING_SAMPLING_RATE=${TRACING_SAMPLING_RATE}" \
+          "LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}" \
+          "LOG_LEVEL_APP=${LOG_LEVEL_APP}" \
+          "LOG_LEVEL_WEB=${LOG_LEVEL_WEB}" \
+          "LOG_LEVEL_SECURITY=${LOG_LEVEL_SECURITY}" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
@@ -193,6 +203,20 @@ jobs:
           # Frontend Feature Flags
           flagsmith_env_key   = "${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}"
           mapbox_access_token = "${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}"
+
+          # QR Code Configuration
+          qr_confirmation_base_url = "${QR_CONFIRMATION_BASE_URL}"
+
+          # Observability - Elastic APM / OpenTelemetry Configuration
+          elastic_apm_server_url   = "${ELASTIC_APM_SERVER_URL}"
+          elastic_apm_secret_token = "${ELASTIC_APM_SECRET_TOKEN}"
+          deployment_env           = "${DEPLOYMENT_ENV}"
+          project_version          = "${PROJECT_VERSION}"
+          tracing_sampling_rate    = "${TRACING_SAMPLING_RATE}"
+          log_level_root           = "${LOG_LEVEL_ROOT}"
+          log_level_app            = "${LOG_LEVEL_APP}"
+          log_level_web            = "${LOG_LEVEL_WEB}"
+          log_level_security       = "${LOG_LEVEL_SECURITY}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 

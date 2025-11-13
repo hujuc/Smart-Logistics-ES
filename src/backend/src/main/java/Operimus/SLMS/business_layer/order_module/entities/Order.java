@@ -49,6 +49,30 @@ public class Order {
     @Column(nullable = false)
     private String shippingAddress;
 
+    @Column(name = "shipping_address_line1")
+    private String shippingAddressLine1;
+
+    @Column(name = "shipping_address_line2")
+    private String shippingAddressLine2;
+
+    @Column(name = "shipping_city")
+    private String shippingCity;
+
+    @Column(name = "shipping_state")
+    private String shippingStateOrProvince;
+
+    @Column(name = "shipping_postal_code")
+    private String shippingPostalCode;
+
+    @Column(name = "shipping_country")
+    private String shippingCountry;
+
+    @Column(name = "shipping_phone")
+    private String shippingPhone;
+
+    @Column(name = "shipping_email")
+    private String shippingEmail;
+
     private LocalDate estimatedDeliveryDate;
 
     // Relationship to warehouse
@@ -68,6 +92,17 @@ public class Order {
     // QR Code for this order
     @Column(name = "qr_code_url", length = 512)
     private String qrCodeUrl;
+
+    // QR confirmation callback URL encoded in the QR image
+    @Column(name = "qr_confirmation_url", length = 512)
+    private String qrConfirmationUrl;
+
+    // Driver confirmation metadata
+    @Column(name = "qr_confirmed_at")
+    private OffsetDateTime qrConfirmedAt;
+
+    @Column(name = "qr_confirmed_by", length = 64)
+    private String qrConfirmedBy;
 
     // Tracking number (order-specific tracking if needed)
     @Column(name = "tracking_number", length = 64)

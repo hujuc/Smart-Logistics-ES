@@ -17,6 +17,7 @@ import {
 import { customerServiceOrderApi } from "@/lib/services/customer-service.service"
 import type { Order, OrderEvent, ShipmentOrderStatus } from "@/types"
 import type { LucideIcon } from "lucide-react"
+import { formatOrderShippingAddress } from "@/lib/address"
 
 // Status configuration for display
 const STATUS_CONFIG: Record<ShipmentOrderStatus, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
@@ -198,7 +199,7 @@ export default function OrderLookupVersionB({ onBack, initialOrderId }: OrderLoo
           </div>
           <div className="mt-3 pt-3 border-t">
             <Label className="text-xs text-gray-500">Shipping Address</Label>
-            <p className="text-sm">{selectedOrder.shippingAddress}</p>
+            <p className="text-sm">{formatOrderShippingAddress(selectedOrder)}</p>
           </div>
         </div>
 
