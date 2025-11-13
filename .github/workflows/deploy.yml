@@ -59,6 +59,11 @@ jobs:
       SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
       SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
       PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
+      ELASTIC_APM_SERVER_URL: ${{ secrets.ELASTIC_APM_SERVER_URL }}
+      ELASTIC_APM_SECRET_TOKEN: ${{ secrets.ELASTIC_APM_SECRET_TOKEN }}
+      DEPLOYMENT_ENV: ${{ secrets.DEPLOYMENT_ENV || 'production' }}
+      PROJECT_VERSION: ${{ github.sha }}
+      TRACING_SAMPLING_RATE: ${{ secrets.TRACING_SAMPLING_RATE || '1.0' }}
     steps:
       - name: Fix permissions before build
         shell: bash
@@ -132,6 +137,11 @@ jobs:
           "SHIPENGINE_API_KEY=${SHIPENGINE_API_KEY}" \
           "SHIPENGINE_BASE_URL=https://api.shipengine.com/v1" \
           "SHIPPO_BASE_URL=https://api.goshippo.com" \
+          "ELASTIC_APM_SERVER_URL=${ELASTIC_APM_SERVER_URL}" \
+          "ELASTIC_APM_SECRET_TOKEN=${ELASTIC_APM_SECRET_TOKEN}" \
+          "DEPLOYMENT_ENV=${DEPLOYMENT_ENV}" \
+          "PROJECT_VERSION=${PROJECT_VERSION}" \
+          "TRACING_SAMPLING_RATE=${TRACING_SAMPLING_RATE}" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
