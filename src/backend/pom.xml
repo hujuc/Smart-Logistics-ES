@@ -112,7 +112,14 @@
 			<version>2.10.0-alpha</version>
 		</dependency>
 
-		<!-- Logback JSON Encoder for Structured Logging -->
+		<!-- Elastic APM -->
+		<dependency>
+			<groupId>co.elastic.apm</groupId>
+			<artifactId>apm-agent-attach</artifactId>
+			<version>1.53.0</version>
+		</dependency>
+
+		<!-- Logstash JSON Encoder for structured logging -->
 		<dependency>
 			<groupId>net.logstash.logback</groupId>
 			<artifactId>logstash-logback-encoder</artifactId>
