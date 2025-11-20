@@ -189,27 +189,31 @@ export default function ChatBot() {
     return null;
   };
 
-  const savedState = loadState();
-
-  const [isOpen, setIsOpen] = useState(savedState?.isOpen ?? false);
+  const [isOpen, setIsOpen] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>(
-    savedState?.conversations ?? [
-      {
-        id: 1,
-        title: 'New Conversation',
-        messages: getInitialMessages(),
-        createdAt: new Date().toISOString(),
-        lastMessageAt: new Date().toISOString()
-      }
-    ]
-  );
-  const [currentConversationId, setCurrentConversationId] = useState<number>(
-    savedState?.currentConversationId ?? 1
-  );
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: 1,
+      title: 'New Conversation',
+      messages: getInitialMessages(),
+      createdAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString()
+    }
+  ]);
+  const [currentConversationId, setCurrentConversationId] = useState<number>(1);
   const [showHistory, setShowHistory] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load state from localStorage after component mounts
+  useEffect(() => {
+    const savedState = loadState();
+    if (savedState) {
+      setIsOpen(savedState.isOpen);
+      setConversations(savedState.conversations);
+      setCurrentConversationId(savedState.currentConversationId);
+    }
+  }, []);
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);
   const messages = currentConversation?.messages || [];
@@ -485,10 +489,10 @@ export default function ChatBot() {
     <>
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex z-50 border border-gray-200">
+        <div className="fixed bottom-21 right-6 z-50">
           {/* Sidebar - Conversation History */}
           {showHistory && (
-            <div className="w-64 border-r border-gray-200 flex flex-col bg-gray-50">
+            <div className="absolute bottom-0 right-96 w-64 h-[600px] border-r border-gray-200 flex flex-col bg-gray-50 rounded-tl-2xl rounded-bl-2xl border-t border-l border-b">
               <div className="p-4 border-b border-gray-200">
                 <button
                   onClick={createNewConversation}
@@ -543,8 +547,10 @@ export default function ChatBot() {
           )}
 
           {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col">
-            <div className="bg-black text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
+          <div className="w-96 h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col">
+            <div className={`bg-black text-white px-6 py-4 flex items-center justify-between ${
+              showHistory ? 'rounded-tr-2xl' : 'rounded-t-2xl'
+            }`}>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
