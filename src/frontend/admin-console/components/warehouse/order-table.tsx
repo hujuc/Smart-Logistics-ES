@@ -9,15 +9,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, Trash2 } from "lucide-react"
 import { WarehousePackage, STATUS_COLORS, STATUS_LABELS } from "@/types"
 
 interface OrderTableProps {
   packages: WarehousePackage[]
   onViewPackage?: (id: string) => void
+  onDeletePackage?: (id: string) => void
 }
 
-export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
+export function OrderTable({ packages, onViewPackage, onDeletePackage }: OrderTableProps) {
   return (
     <div className="bg-white border rounded-lg shadow-sm">
       <div className="p-6">
@@ -58,6 +59,15 @@ export function OrderTable({ packages, onViewPackage }: OrderTableProps) {
                   <div className="flex gap-2">
                     <Button variant="ghost" size="sm" onClick={() => onViewPackage?.(pkg.id)} title="View Details">
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeletePackage?.(pkg.id)}
+                      title="Delete Order"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
