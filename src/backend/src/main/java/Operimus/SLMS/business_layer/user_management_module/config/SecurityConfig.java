@@ -33,7 +33,21 @@ public class SecurityConfig {
      *    - /api/landing-page/auth/** - Authentication endpoints
      *    - /api/public/** - Public resources
      */
+    
     @Bean
+    @org.springframework.core.annotation.Order(1)
+    public SecurityFilterChain groqSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/api/groq/**")
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .anyRequest().permitAll()
+            );
+        return http.build();
+    }
+    
+    @Bean
+    @org.springframework.core.annotation.Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
