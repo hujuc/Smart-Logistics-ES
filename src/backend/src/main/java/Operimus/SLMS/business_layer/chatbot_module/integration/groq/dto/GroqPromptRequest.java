@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.groq.dto;
+package Operimus.SLMS.business_layer.chatbot_module.integration.groq.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

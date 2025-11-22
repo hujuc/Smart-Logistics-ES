@@ -1,4 +1,4 @@
-package Operimus.SLMS.assistant.rag.dto;
+package Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto;
 
 import java.util.List;
 import java.util.Map;

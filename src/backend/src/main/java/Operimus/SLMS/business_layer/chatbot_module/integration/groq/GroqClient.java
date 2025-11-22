@@ -1,66 +1,77 @@
-package Operimus.SLMS.presentation_layer.groq;
+package Operimus.SLMS.business_layer.chatbot_module.integration.groq;
 
+import Operimus.SLMS.business_layer.chatbot_module.integration.groq.dto.GroqResponseDto;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
-import Operimus.SLMS.presentation_layer.groq.dto.GroqResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-@Service
-public class GroqService {
+@Component
+public class GroqClient {
 
     private static final String GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
-    private final String model;
+    private final GroqProperties properties;
 
-    public GroqService(RestTemplateBuilder restTemplateBuilder,
-            ObjectMapper objectMapper,
-            @Value("${groq.api.key:}") String apiKey,
-            @Value("${groq.api.model:llama-3.3-70b-versatile}") String model) {
+    public GroqClient(RestTemplateBuilder restTemplateBuilder,
+                      ObjectMapper objectMapper,
+                      GroqProperties properties) {
 
-        if (!StringUtils.hasText(apiKey)) {
-            throw new ExternalServiceException("Groq API key is not configured");
-        }
+        Assert.hasText(properties.apiKey(), "chatbot.groq.api-key must be configured");
 
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
                 .setReadTimeout(Duration.ofSeconds(30))
                 .build();
         this.objectMapper = objectMapper;
-        this.apiKey = apiKey;
-        this.model = model;
+        this.properties = properties;
     }
 
-    public GroqResponseDto generateCompletion(String prompt) {
+    /**
+     * Generate a completion with optional conversation history.
+     * @param systemPrompt The system prompt to set the assistant's behavior
+     * @param messages List of conversation messages (role + content)
+     * @return The assistant's response
+     */
+    public GroqResponseDto generateCompletion(String systemPrompt, List<Map<String, String>> messages) {
+        List<Map<String, String>> allMessages = new ArrayList<>();
+
+        // Add system message first
+        if (StringUtils.hasText(systemPrompt)) {
+            allMessages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+
+        // Add conversation history
+        if (messages != null && !messages.isEmpty()) {
+            allMessages.addAll(messages);
+        }
+
+        String model = StringUtils.hasText(properties.model()) ? properties.model() : DEFAULT_MODEL;
+
         Map<String, Object> payload = Map.of(
                 "model", model,
-                "messages", List.of(
-                        Map.of(
-                                "role", "system",
-                                "content", "Voce e um assistente util especializado em logistica e supply chain."),
-                        Map.of(
-                                "role", "user",
-                                "content", prompt)),
+                "messages", allMessages,
                 "temperature", 0.6);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
+        headers.setBearerAuth(properties.apiKey());
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
 

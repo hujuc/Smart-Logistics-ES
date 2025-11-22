@@ -1,4 +1,4 @@
-package Operimus.SLMS.assistant.data;
+package Operimus.SLMS.business_layer.chatbot_module.entities;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;

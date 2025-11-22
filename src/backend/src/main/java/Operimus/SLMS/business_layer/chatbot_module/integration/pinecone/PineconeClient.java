@@ -1,8 +1,8 @@
-package Operimus.SLMS.assistant.rag;
+package Operimus.SLMS.business_layer.chatbot_module.integration.pinecone;
 
-import Operimus.SLMS.assistant.rag.dto.PineconeQueryRequest;
-import Operimus.SLMS.assistant.rag.dto.PineconeQueryResponse;
-import Operimus.SLMS.assistant.rag.dto.PineconeUpsertRequest;
+import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryRequest;
+import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryResponse;
+import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeUpsertRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +24,10 @@ public class PineconeClient {
     private final PineconeProperties properties;
 
     public PineconeClient(PineconeProperties properties) {
-        Assert.hasText(properties.apiKey(), "assistant.pinecone.api-key must be configured");
-        Assert.hasText(properties.environment(), "assistant.pinecone.environment must be configured");
-        Assert.hasText(properties.index(), "assistant.pinecone.index must be configured");
-        Assert.hasText(properties.namespace(), "assistant.pinecone.namespace must be configured");
+        Assert.hasText(properties.apiKey(), "chatbot.pinecone.api-key must be configured");
+        Assert.hasText(properties.environment(), "chatbot.pinecone.environment must be configured");
+        Assert.hasText(properties.index(), "chatbot.pinecone.index must be configured");
+        Assert.hasText(properties.namespace(), "chatbot.pinecone.namespace must be configured");
 
         this.properties = properties;
         String baseUrl = "https://" + properties.index() + "-" + properties.environment() + ".svc.pinecone.io";
