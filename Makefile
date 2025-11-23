@@ -25,62 +25,62 @@ help:
 
 # Main deployment commands (Terraform + Docker Compose)
 up:
-	@echo "🚀 Starting/updating SLMS environment..."
-	@echo "1️⃣  Creating Docker network..."
+	@echo "Starting/updating SLMS environment..."
+	@echo "Creating Docker network..."
 	@docker network inspect slms-network >/dev/null 2>&1 || docker network create slms-network
-	@echo "2️⃣  Deploying with smart deployment (reuses existing containers)..."
+	@echo "Deploying with smart deployment (reuses existing containers)..."
 	@cd infra && ./deploy.sh deploy
 	@echo ""
-	@echo "✅ Deployment complete!"
+	@echo " Deployment complete!"
 	@echo ""
-	@echo "📍 Access URLs:"
+	@echo " Access URLs:"
 	@echo "   Landing Page:    http://localhost/"
 	@echo "   Customer Portal: http://localhost/customer/"
 	@echo "   Admin Console:   http://localhost/admin/"
 	@echo "   Driver PWA:      http://localhost/driver/"
 	@echo ""
-	@echo "🔑 Test credentials: customer/customer"
+	@echo " Test credentials: customer/customer"
 	@echo ""
-	@echo "📊 Check status: make status"
-	@echo "📋 View logs:    make logs"
+	@echo " Check status: make status"
+	@echo " View logs:    make logs"
 
 down:
-	@echo "🛑 Stopping all services..."
+	@echo "Stopping all services..."
 	@cd infra && ./deploy.sh stop
-	@echo "✅ All services stopped (infrastructure preserved)"
+	@echo "All services stopped (infrastructure preserved)"
 
 destroy:
-	@echo "💣 Destroying all infrastructure..."
+	@echo "Destroying all infrastructure..."
 	@cd infra && ./deploy.sh down
-	@echo "✅ All infrastructure destroyed"
+	@echo "All infrastructure destroyed"
 
 clean:
-	@echo "🧹 Cleaning up stopped containers..."
+	@echo "Cleaning up stopped containers..."
 	@docker compose -f infra/docker-compose.yaml down
 	@docker container prune -f
-	@echo "✅ Cleanup complete"
+	@echo "Cleanup complete"
 
 clean-volumes:
-	@echo "🗑️  Removing all containers and volumes..."
+	@echo "Removing all containers and volumes..."
 	@cd infra && ./deploy.sh down
 	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
-	@echo "✅ All data removed"
+	@echo "All data removed"
 
 restart:
-	@echo "🔄 Restarting all services..."
+	@echo "Restarting all services..."
 	@cd infra && ./deploy.sh restart
-	@echo "✅ All services restarted"
+	@echo "All services restarted"
 
 logs:
-	@echo "📋 Showing logs (Ctrl+C to exit)..."
+	@echo "Showing logs (Ctrl+C to exit)..."
 	@cd infra && ./deploy.sh logs
 
 status:
-	@echo "📊 SLMS Services Status:"
+	@echo "SLMS Services Status:"
 	@echo ""
 	@docker ps --filter "name=slms-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 	@echo ""
-	@echo "💾 Volumes:"
+	@echo "Volumes:"
 	@docker volume ls --filter "name=slms-" --format "table {{.Name}}\t{{.Driver}}"
 
 # Development environment
@@ -104,16 +104,16 @@ test:
 
 # Cleanup
 clean:
-	@echo "🧹 Cleaning up stopped containers..."
+	@echo "Cleaning up stopped containers..."
 	@docker compose -f infra/docker-compose.yaml down
 	@docker container prune -f
-	@echo "✅ Cleanup complete"
+	@echo "Cleanup complete"
 
 clean-volumes:
-	@echo "🗑️  Removing all containers and volumes..."
+	@echo "Removing all containers and volumes..."
 	@cd infra && ./deploy.sh down
 	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
-	@echo "✅ All data removed"
+	@echo "All data removed"
 
 hard-prune:
 	docker system prune -a --volumes -f

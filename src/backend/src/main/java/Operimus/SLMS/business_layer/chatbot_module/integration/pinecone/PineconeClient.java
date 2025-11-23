@@ -25,14 +25,13 @@ public class PineconeClient {
 
     public PineconeClient(PineconeProperties properties) {
         Assert.hasText(properties.apiKey(), "chatbot.pinecone.api-key must be configured");
-        Assert.hasText(properties.environment(), "chatbot.pinecone.environment must be configured");
+        Assert.hasText(properties.host(), "chatbot.pinecone.host must be configured");
         Assert.hasText(properties.index(), "chatbot.pinecone.index must be configured");
         Assert.hasText(properties.namespace(), "chatbot.pinecone.namespace must be configured");
 
         this.properties = properties;
-        String baseUrl = "https://" + properties.index() + "-" + properties.environment() + ".svc.pinecone.io";
         this.webClient = WebClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(properties.host())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();

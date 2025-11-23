@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "chatbot.pinecone")
 public record PineconeProperties(
         String apiKey,
-        String environment,
+        String host,
         String index,
         String namespace
 ) {

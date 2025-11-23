@@ -3,8 +3,7 @@ package Operimus.SLMS.business_layer.chatbot_module.service;
 import Operimus.SLMS.business_layer.chatbot_module.dto.ChatMessage;
 import Operimus.SLMS.business_layer.chatbot_module.dto.ChatRequest;
 import Operimus.SLMS.business_layer.chatbot_module.dto.ChatResponse;
-import Operimus.SLMS.business_layer.chatbot_module.integration.groq.GroqClient;
-import Operimus.SLMS.business_layer.chatbot_module.integration.groq.dto.GroqResponseDto;
+import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.GeminiClient;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +26,14 @@ public class ChatbotService {
 
     private final EmbeddingService embeddingService;
     private final RagService ragService;
-    private final GroqClient groqClient;
+    private final GeminiClient geminiClient;
 
     public ChatbotService(EmbeddingService embeddingService,
                           RagService ragService,
-                          GroqClient groqClient) {
+                          GeminiClient geminiClient) {
         this.embeddingService = embeddingService;
         this.ragService = ragService;
-        this.groqClient = groqClient;
+        this.geminiClient = geminiClient;
     }
 
     /**
@@ -71,24 +70,24 @@ public class ChatbotService {
                     augmentedPrompt
             );
 
-            // 5. Call Groq LLM
+            // 5. Call Gemini LLM
             String systemPrompt = buildSystemPrompt(frontend, role);
-            GroqResponseDto groqResponse = groqClient.generateCompletion(systemPrompt, messages);
+            String geminiResponse = geminiClient.generateCompletion(systemPrompt, messages);
 
             // 6. Extract source document IDs
             List<String> sourceDocIds = ragService.extractChunkIds(relevantDocs);
 
-            return new ChatResponse(groqResponse.response(), sourceDocIds);
+            return new ChatResponse(geminiResponse, sourceDocIds);
 
-        } catch (UnsupportedOperationException ex) {
-            // Embedding service not implemented yet - fall back to non-RAG response
-            log.warn("RAG not available (embedding service not implemented). Falling back to direct LLM call.");
+        } catch (Exception ex) {
+            // RAG failed - fall back to non-RAG response
+            log.warn("RAG not available. Falling back to direct LLM call. Error: {}", ex.getMessage());
             return generateFallbackResponse(request, frontend, role);
         }
     }
 
     /**
-     * Fallback response without RAG (when embedding service is not available).
+     * Fallback response without RAG (when RAG is not available).
      */
     private ChatResponse generateFallbackResponse(ChatRequest request, String frontend, String role) {
         List<Map<String, String>> messages = buildConversationMessages(
@@ -97,9 +96,9 @@ public class ChatbotService {
         );
 
         String systemPrompt = buildSystemPrompt(frontend, role);
-        GroqResponseDto groqResponse = groqClient.generateCompletion(systemPrompt, messages);
+        String geminiResponse = geminiClient.generateCompletion(systemPrompt, messages);
 
-        return new ChatResponse(groqResponse.response(), List.of());
+        return new ChatResponse(geminiResponse, List.of());
     }
 
     /**
@@ -107,27 +106,27 @@ public class ChatbotService {
      */
     private String buildSystemPrompt(String frontend, String role) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("Você é um assistente útil especializado em logística e supply chain. ");
-        prompt.append("Você trabalha para o Smart Logistics Management System (SLMS). ");
+        prompt.append("You are a helpful assistant specialized in logistics and supply chain management. ");
+        prompt.append("You work for the Smart Logistics Management System (SLMS). ");
 
         // Customize based on frontend
         switch (frontend != null ? frontend : "landing-page") {
             case "customer-portal":
-                prompt.append("Você está ajudando um cliente a rastrear encomendas e resolver problemas de entrega. ");
+                prompt.append("You are helping a customer track orders and resolve delivery issues. ");
                 break;
             case "driver-pwa":
-                prompt.append("Você está ajudando um motorista com rotas, entregas e procedimentos operacionais. ");
+                prompt.append("You are helping a driver with routes, deliveries, and operational procedures. ");
                 break;
             case "admin-console":
-                prompt.append("Você está ajudando um administrador ou gestor de logística com operações e relatórios. ");
+                prompt.append("You are helping an administrator or logistics manager with operations and reports. ");
                 break;
             case "landing-page":
             default:
-                prompt.append("Você está ajudando um visitante a entender o sistema SLMS e suas funcionalidades. ");
+                prompt.append("You are helping a visitor understand the SLMS system and its features. ");
                 break;
         }
 
-        prompt.append("Sempre responda em português (pt-PT) de forma clara e profissional.");
+        prompt.append("Always respond in English (en-US) in a clear and professional manner.");
 
         return prompt.toString();
     }

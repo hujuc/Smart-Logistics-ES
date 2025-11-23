@@ -72,20 +72,20 @@ public class RagService {
         }
 
         StringBuilder contextBuilder = new StringBuilder();
-        contextBuilder.append("Contexto relevante:\n\n");
+        contextBuilder.append("Relevant context:\n\n");
 
         for (int i = 0; i < documents.size(); i++) {
             PineconeQueryResponse.Match doc = documents.get(i);
             Map<String, Object> metadata = doc.metadata();
 
             if (metadata != null && metadata.containsKey("content")) {
-                contextBuilder.append("[Documento ").append(i + 1).append("]\n");
+                contextBuilder.append("[Document ").append(i + 1).append("]\n");
                 contextBuilder.append(metadata.get("content")).append("\n\n");
             }
         }
 
         contextBuilder.append("---\n\n");
-        contextBuilder.append("Pergunta do utilizador: ").append(userMessage);
+        contextBuilder.append("User question: ").append(userMessage);
 
         return contextBuilder.toString();
     }

@@ -12,12 +12,12 @@ public record ChatRequest(
 
         List<ChatMessage> conversationHistory,
 
-        String locale  // Optional, defaults to "pt-PT" if not provided
+        String locale  // Optional, defaults to "en-US" if not provided
 ) {
     public ChatRequest {
         // Normalize locale
         if (locale == null || locale.isBlank()) {
-            locale = "pt-PT";
+            locale = "en-US";
         }
     }
 }
