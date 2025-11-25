@@ -57,6 +57,17 @@ public class OrderEventService {
                         "No events recorded for order %d".formatted(orderId)));
     }
 
+    /**
+     * Delete all events associated with an order
+     * Used when deleting an order to avoid foreign key constraint violations
+     *
+     * @param orderId Order ID
+     */
+    public void deleteByOrderId(Long orderId) {
+        List<OrderEvent> events = orderEventRepository.findByOrderIdOrderByOccurredAtAsc(orderId);
+        orderEventRepository.deleteAll(events);
+    }
+
     private void ensureOrderExists(Long orderId) {
         if (!orderRepository.existsById(orderId)) {
             throw new ResourceNotFoundException("Order %d not found".formatted(orderId));

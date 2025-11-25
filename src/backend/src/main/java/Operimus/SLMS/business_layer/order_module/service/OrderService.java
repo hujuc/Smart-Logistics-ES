@@ -167,6 +167,10 @@ public class OrderService {
         Order order = orderRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order %d not found".formatted(id)));
+
+        // Delete associated order events first to avoid foreign key constraint violation
+        orderEventService.deleteByOrderId(id);
+
         orderRepository.delete(order);
     }
 

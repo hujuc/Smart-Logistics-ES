@@ -166,6 +166,17 @@ export async function apiFetch<T>(
     throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
   }
 
+  // Handle 204 No Content responses (e.g., DELETE operations)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  // Handle responses with no content
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return undefined as T;
+  }
+
   return response.json();
 }
 

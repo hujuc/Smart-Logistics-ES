@@ -100,59 +100,59 @@ async function createTestOrder(
 }
 
 /**
- * Delete test data after tests complete
- */
-async function cleanupTestData(orderIds: number[], warehouseId: number): Promise<void> {
-  // Delete orders
-  for (const orderId of orderIds) {
-    try {
-      await fetch(`${API_URL}/admin/orders/${orderId}`, {
-        method: "DELETE",
-      });
-    } catch (error) {
-      console.warn(`⚠ Could not delete order ${orderId}:`, error);
-    }
-  }
-
-  // Delete warehouse
-  try {
-    await fetch(`${API_URL}/admin/warehouses/${warehouseId}`, {
-      method: "DELETE",
-    });
-  } catch (error) {
-    console.warn(`⚠ Could not delete warehouse ${warehouseId}:`, error);
-  }
-}
-
-/**
  * Helper to perform Customer Service Representative login via landing page
  */
 const loginAsCSR = async (page: Page) => {
   // Start from landing page (which handles the auth flow correctly)
   await page.goto("/");
-  
+
   // Click on Login button
   await page.getByRole("button", { name: /login/i }).first().click();
-  
+
   // Wait for Keycloak login page
   await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
-  
+
   // Fill credentials
   await page.getByLabel(/username/i).fill("customer_service");
   await page.getByLabel(/password/i).fill("support");
-  
+
   // Click login button
   await page.getByRole("button", { name: /^login$/i }).last().click();
-  
+
   // Wait a bit for login to complete
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
-  
+
   // Navigate to admin console manually (CSR might not auto-redirect)
   await page.goto("/admin");
-  
+
   // Wait for admin console landing page to load
   await expect(page.getByRole("heading", { name: /customer service/i })).toBeVisible({ timeout: 60_000 });
+};
+
+/**
+ * Helper to perform Warehouse Manager login via landing page
+ */
+const loginAsWarehouse = async (page: Page) => {
+  // Start from landing page
+  await page.goto("/");
+
+  // Click on Login button
+  await page.getByRole("button", { name: /login/i }).first().click();
+
+  // Wait for Keycloak login page
+  await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
+
+  // Fill credentials
+  await page.getByLabel(/username/i).fill("warehouse");
+  await page.getByLabel(/password/i).fill("warehouse");
+
+  // Click login button
+  await page.getByRole("button", { name: /^login$/i }).last().click();
+
+  // Wait for login to complete
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000);
 };
 
 /**
@@ -207,13 +207,91 @@ let testWarehouse: WarehouseResponse;
 
 test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   // Setup test data before all tests - create fresh data for each test run
-  test.beforeAll(async () => {
-    console.log("Creating test data...");
-    
+  test.beforeAll(async ({ browser }) => {
+    // Clean up orphaned orders from previous failed runs using authenticated context
+    const page = await browser.newPage();
+    const context = page.context();
+
+    try {
+      // 1. Login so Keycloak token gets stored in localStorage
+      await loginAsWarehouse(page);
+
+      // 2. Extract token from browser
+      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+
+      if (token) {
+        // Get all orders to find orphaned ones
+        const ordersResponse = await fetch(`${API_URL}/admin/orders`);
+        if (ordersResponse.ok) {
+          const orders: OrderResponse[] = await ordersResponse.json();
+          const e2eOrders = orders.filter(order => order.reference.startsWith("E2E-ORDER-"));
+
+          if (e2eOrders.length > 0) {
+            console.log(`Cleaning up ${e2eOrders.length} orphaned orders...`);
+            let deletedCount = 0;
+
+            for (const order of e2eOrders) {
+              try {
+                // Use authenticated request with Bearer token
+                const resp = await context.request.delete(`${API_URL}/warehouse/orders/${order.id}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (resp.ok() || resp.status() === 204) {
+                  deletedCount++;
+                  console.log(`  ✓ Deleted orphaned order ${order.reference} (ID: ${order.id})`);
+                }
+              } catch (error) {
+                console.warn(`  ✗ Failed to delete order ${order.id}`);
+              }
+            }
+            console.log(`✓ Cleaned up ${deletedCount}/${e2eOrders.length} orphaned orders`);
+          }
+        }
+
+        // Get all warehouses to find orphaned ones
+        const warehousesResponse = await fetch(`${API_URL}/admin/warehouses`);
+        if (warehousesResponse.ok) {
+          const warehouses: WarehouseResponse[] = await warehousesResponse.json();
+          const e2eWarehouses = warehouses.filter(wh => wh.code.startsWith("WH-E2E-"));
+
+          if (e2eWarehouses.length > 0) {
+            console.log(`Cleaning up ${e2eWarehouses.length} orphaned warehouses...`);
+            let deletedWhCount = 0;
+
+            for (const warehouse of e2eWarehouses) {
+              try {
+                // Use authenticated request with Bearer token
+                const resp = await context.request.delete(`${API_URL}/admin/warehouses/${warehouse.id}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (resp.ok() || resp.status() === 204) {
+                  deletedWhCount++;
+                  console.log(`  ✓ Deleted orphaned warehouse ${warehouse.code} (ID: ${warehouse.id})`);
+                }
+              } catch (error) {
+                console.warn(`  ✗ Failed to delete warehouse ${warehouse.id}`);
+              }
+            }
+            console.log(`✓ Cleaned up ${deletedWhCount}/${e2eWarehouses.length} orphaned warehouses`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Could not cleanup orphaned data:", error);
+    } finally {
+      await page.close();
+    }
+
+    console.log("\nCreating fresh test data...");
+
     // Create a test warehouse
     testWarehouse = await createTestWarehouse();
     console.log(`✓ Created warehouse: ${testWarehouse.name} (ID: ${testWarehouse.id})`);
-    
+
     // Create 3 test orders
     const order1 = await createTestOrder(
       testWarehouse.id,
@@ -222,7 +300,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     );
     testOrders.push(order1);
     console.log(`✓ Created order 1: ${order1.reference} (ID: ${order1.id})`);
-    
+
     const order2 = await createTestOrder(
       testWarehouse.id,
       `E2E-ORDER-2-${Date.now()}`,
@@ -231,7 +309,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     );
     testOrders.push(order2);
     console.log(`✓ Created order 2: ${order2.reference} (ID: ${order2.id})`);
-    
+
     const order3 = await createTestOrder(
       testWarehouse.id,
       `E2E-ORDER-3-${Date.now()}`,
@@ -240,17 +318,75 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     );
     testOrders.push(order3);
     console.log(`✓ Created order 3: ${order3.reference} (ID: ${order3.id})`);
-    
+
     console.log("Test data creation complete!");
   });
 
-  // Cleanup test data after all tests
-  test.afterAll(async () => {
-    if (testOrders.length > 0 && testWarehouse) {
-      console.log("Cleaning up test data...");
-      const orderIds = testOrders.map((order) => order.id);
-      await cleanupTestData(orderIds, testWarehouse.id);
-      console.log("Cleanup complete!");
+  // Clean up test data after all tests
+  test.afterAll(async ({ browser }) => {
+    console.log(`\nCleaning up test data...`);
+
+    const page = await browser.newPage();
+    const context = page.context();
+
+    try {
+      // 1. Login so Keycloak token gets stored in localStorage
+      await loginAsWarehouse(page);
+
+      // 2. Extract token from browser
+      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+
+      if (!token) {
+        throw new Error("Could not read Keycloak token from browser session");
+      }
+
+      let deletedCount = 0;
+
+      for (const order of testOrders) {
+        try {
+          // Use authenticated request with Bearer token
+          const resp = await context.request.delete(`${API_URL}/warehouse/orders/${order.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (resp.ok() || resp.status() === 204) {
+            deletedCount++;
+            console.log(`  ✓ Deleted order ${order.reference} (ID: ${order.id})`);
+          } else {
+            console.warn(`  ✗ Failed to delete order ${order.id}: ${resp.status()}`);
+          }
+        } catch (err) {
+          console.warn(`  ✗ Error deleting order ${order.id}:`, err);
+        }
+      }
+
+      console.log(`✓ Cleaned up ${deletedCount}/${testOrders.length} orders`);
+
+      // Delete test warehouse
+      if (testWarehouse) {
+        try {
+          const warehouseResp = await context.request.delete(`${API_URL}/admin/warehouses/${testWarehouse.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (warehouseResp.ok() || warehouseResp.status() === 204) {
+            console.log(`✓ Deleted warehouse ${testWarehouse.code} (ID: ${testWarehouse.id})`);
+          } else {
+            console.warn(`✗ Failed to delete warehouse ${testWarehouse.id}: ${warehouseResp.status()}`);
+          }
+        } catch (err) {
+          console.warn(`✗ Error deleting warehouse ${testWarehouse.id}:`, err);
+        }
+      }
+
+    } catch (error) {
+      console.error("Cleanup failed:", error);
+    } finally {
+      await page.close();
     }
   });
 
