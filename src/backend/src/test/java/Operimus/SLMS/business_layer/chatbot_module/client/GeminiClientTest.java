@@ -12,6 +12,7 @@ import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 
@@ -213,10 +214,10 @@ class GeminiClientTest {
      *
      * To run this test locally:
      * 1. Set GEMINI_API_KEY environment variable
-     * 2. Run: mvn test -Dtest=GeminiClientTest#generateCompletion_shouldReturnResponse_whenApiCallSucceeds
+     * 2. Run: mvn test -Dgroups=real-integration
      */
-    // @Test
-    // @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    @Test
+    @Tag("real-integration")
     void generateCompletion_shouldReturnResponse_whenApiCallSucceeds() {
         // Given - Use real API key from environment
         String apiKey = System.getenv("GEMINI_API_KEY");
@@ -251,10 +252,10 @@ class GeminiClientTest {
      *
      * To run this test locally:
      * 1. Set GEMINI_API_KEY environment variable
-     * 2. Run: mvn test -Dtest=GeminiClientTest#generateEmbedding_shouldReturnEmbedding_whenApiCallSucceeds
+     * 2. Run: mvn test -Dgroups=real-integration
      */
-    // @Test
-    // @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    @Test
+    @Tag("real-integration")
     void generateEmbedding_shouldReturnEmbedding_whenApiCallSucceeds() {
         // Given - Use real API key from environment
         String apiKey = System.getenv("GEMINI_API_KEY");
