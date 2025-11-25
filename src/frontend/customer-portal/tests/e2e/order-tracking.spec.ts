@@ -15,7 +15,6 @@ import { test, expect, type Page } from "@playwright/test";
 
 // Test data will be created fresh for each test run
 let testWarehouseId: number;
-let testOrderIds: number[] = [];
 let testOrders: Array<{
   id: number;
   reference: string;
@@ -95,39 +94,6 @@ async function createTestOrder(
   };
 }
 
-// Helper function to cleanup test data
-async function cleanupTestData(orderIds: number[], warehouseId: number) {
-  console.log("Cleaning up test data...");
-  
-  // Delete orders first (due to foreign key constraints)
-  for (const orderId of orderIds) {
-    try {
-      // First, delete any order events
-      await fetch(`http://localhost/api/admin/orders/${orderId}/events`, {
-        method: "DELETE",
-      });
-      
-      // Then delete the order
-      await fetch(`http://localhost/api/admin/orders/${orderId}`, {
-        method: "DELETE",
-      });
-    } catch (error) {
-      console.warn(`Failed to delete order ${orderId}:`, error);
-    }
-  }
-  
-  // Delete warehouse
-  try {
-    await fetch(`http://localhost/api/admin/warehouses/${warehouseId}`, {
-      method: "DELETE",
-    });
-  } catch (error) {
-    console.warn(`Failed to delete warehouse ${warehouseId}:`, error);
-  }
-  
-  console.log("Cleanup complete!");
-}
-
 // Helper function to login as customer
 async function loginAsCustomer(page: Page) {
   // Navigate to landing page
@@ -183,24 +149,102 @@ test.describe.configure({ mode: "serial" });
 
 test.describe("Customer Portal - Order Tracking and Details (US)", () => {
   test.beforeAll(async ({ browser }) => {
-    console.log("Creating test data...");
+    // Clean up orphaned data from previous failed runs using authenticated context
+    const page = await browser.newPage();
+    const context = page.context();
+
+    try {
+      // 1. Login so Keycloak token gets stored in localStorage
+      await loginAsCustomer(page);
+
+      // 2. Extract token from browser
+      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+
+      if (token) {
+        // Get all orders to find orphaned ones
+        const ordersResponse = await fetch("http://localhost/api/admin/orders");
+        if (ordersResponse.ok) {
+          const orders = await ordersResponse.json();
+          const e2eOrders = orders.filter((order: any) => order.reference?.startsWith("E2E-CUST-"));
+
+          if (e2eOrders.length > 0) {
+            console.log(`Cleaning up ${e2eOrders.length} orphaned orders...`);
+            let deletedCount = 0;
+
+            for (const order of e2eOrders) {
+              try {
+                // Use authenticated request with Bearer token
+                const resp = await context.request.delete(`http://localhost/api/admin/orders/${order.id}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (resp.ok() || resp.status() === 204) {
+                  deletedCount++;
+                  console.log(`  ✓ Deleted orphaned order ${order.reference} (ID: ${order.id})`);
+                }
+              } catch (error) {
+                console.warn(`  ✗ Failed to delete order ${order.id}`);
+              }
+            }
+            console.log(`✓ Cleaned up ${deletedCount}/${e2eOrders.length} orphaned orders`);
+          }
+        }
+
+        // Get all warehouses to find orphaned ones
+        const warehousesResponse = await fetch("http://localhost/api/admin/warehouses");
+        if (warehousesResponse.ok) {
+          const warehouses = await warehousesResponse.json();
+          const e2eWarehouses = warehouses.filter((wh: any) => wh.name?.includes("E2E Test Warehouse"));
+
+          if (e2eWarehouses.length > 0) {
+            console.log(`Cleaning up ${e2eWarehouses.length} orphaned warehouses...`);
+            let deletedWhCount = 0;
+
+            for (const warehouse of e2eWarehouses) {
+              try {
+                // Use authenticated request with Bearer token
+                const resp = await context.request.delete(`http://localhost/api/admin/warehouses/${warehouse.id}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (resp.ok() || resp.status() === 204) {
+                  deletedWhCount++;
+                  console.log(`  ✓ Deleted orphaned warehouse ${warehouse.name} (ID: ${warehouse.id})`);
+                }
+              } catch (error) {
+                console.warn(`  ✗ Failed to delete warehouse ${warehouse.id}`);
+              }
+            }
+            console.log(`✓ Cleaned up ${deletedWhCount}/${e2eWarehouses.length} orphaned warehouses`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Could not cleanup orphaned data:", error);
+    } finally {
+      await page.close();
+    }
+
+    console.log("\nCreating fresh test data...");
     const timestamp = Date.now();
-    
+
     // Create a temporary page to login and get customerId
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    
+    const newContext = await browser.newContext();
+    const newPage = await newContext.newPage();
+
     // Login to get the customerId from JWT
-    await loginAsCustomer(page);
-    const customerId = await getCustomerIdFromToken(page);
+    await loginAsCustomer(newPage);
+    const customerId = await getCustomerIdFromToken(newPage);
     console.log(`✓ Got customerId from JWT: ${customerId}`);
-    
+
     // Close temporary page
-    await context.close();
-    
+    await newContext.close();
+
     // Create warehouse
     testWarehouseId = await createTestWarehouse();
-    
+
     // Create 3 test orders with different statuses
     const order1 = await createTestOrder(
       testWarehouseId,
@@ -209,7 +253,7 @@ test.describe("Customer Portal - Order Tracking and Details (US)", () => {
       customerId,
       `TRACK-CUST-1-${timestamp}`
     );
-    
+
     const order2 = await createTestOrder(
       testWarehouseId,
       `E2E-CUST-2-${timestamp}`,
@@ -217,7 +261,7 @@ test.describe("Customer Portal - Order Tracking and Details (US)", () => {
       customerId,
       `TRACK-CUST-2-${timestamp}`
     );
-    
+
     const order3 = await createTestOrder(
       testWarehouseId,
       `E2E-CUST-3-${timestamp}`,
@@ -225,11 +269,78 @@ test.describe("Customer Portal - Order Tracking and Details (US)", () => {
       customerId,
       `TRACK-CUST-3-${timestamp}`
     );
-    
+
     testOrders = [order1, order2, order3];
-    testOrderIds = testOrders.map(o => o.id);
-    
+
     console.log("Test data creation complete!");
+  });
+
+  // Clean up test data after all tests
+  test.afterAll(async ({ browser }) => {
+    console.log(`\nCleaning up test data...`);
+
+    const page = await browser.newPage();
+    const context = page.context();
+
+    try {
+      // 1. Login so Keycloak token gets stored in localStorage
+      await loginAsCustomer(page);
+
+      // 2. Extract token from browser
+      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+
+      if (!token) {
+        throw new Error("Could not read Keycloak token from browser session");
+      }
+
+      let deletedCount = 0;
+
+      for (const order of testOrders) {
+        try {
+          // Use authenticated request with Bearer token
+          const resp = await context.request.delete(`http://localhost/api/admin/orders/${order.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (resp.ok() || resp.status() === 204) {
+            deletedCount++;
+            console.log(`  ✓ Deleted order ${order.reference} (ID: ${order.id})`);
+          } else {
+            console.warn(`  ✗ Failed to delete order ${order.id}: ${resp.status()}`);
+          }
+        } catch (err) {
+          console.warn(`  ✗ Error deleting order ${order.id}:`, err);
+        }
+      }
+
+      console.log(`✓ Cleaned up ${deletedCount}/${testOrders.length} orders`);
+
+      // Delete test warehouse
+      if (testWarehouseId) {
+        try {
+          const warehouseResp = await context.request.delete(`http://localhost/api/admin/warehouses/${testWarehouseId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (warehouseResp.ok() || warehouseResp.status() === 204) {
+            console.log(`✓ Deleted warehouse (ID: ${testWarehouseId})`);
+          } else {
+            console.warn(`✗ Failed to delete warehouse ${testWarehouseId}: ${warehouseResp.status()}`);
+          }
+        } catch (err) {
+          console.warn(`✗ Error deleting warehouse ${testWarehouseId}:`, err);
+        }
+      }
+
+    } catch (error) {
+      console.error("Cleanup failed:", error);
+    } finally {
+      await page.close();
+    }
   });
 
   test("Customer can navigate to order history page", async ({ page }) => {
@@ -399,10 +510,5 @@ test.describe("Customer Portal - Order Tracking and Details (US)", () => {
     // Verify we're back on order history (allow trailing slash)
     await expect(page).toHaveURL(/\/interfaces\/support\/history\/?$/);
     await expect(page.getByRole("heading", { name: /order history/i })).toBeVisible();
-  });
-
-  // Cleanup test - must be last
-  test("Cleanup test data", async () => {
-    await cleanupTestData(testOrderIds, testWarehouseId);
   });
 });
