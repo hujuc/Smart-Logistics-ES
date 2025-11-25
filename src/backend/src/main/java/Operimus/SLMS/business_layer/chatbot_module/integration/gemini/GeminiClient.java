@@ -28,8 +28,8 @@ import java.util.Map;
 public class GeminiClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
-    private static final String GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
-    private static final String GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:embedContent?key=%s";
+    private static final String GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1/models/%s:generateContent?key=%s";
+    private static final String GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1/models/%s:embedContent?key=%s";
     private static final String DEFAULT_CHAT_MODEL = "gemini-1.5-flash";
     private static final String DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 

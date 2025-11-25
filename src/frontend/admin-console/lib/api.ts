@@ -8,8 +8,7 @@
 import { getAccessToken } from './shared-auth';
 
 // Get the base API URL from environment or default to localhost
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
-const API_BASE = `${BASE_URL}/api`;
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost'}/api`;
 const LOGISTICS_BASE = `${API_BASE}/logistics`;
 const WAREHOUSE_BASE = `${API_BASE}/warehouse`;
 const CUSTOMER_SERVICE_BASE = `${API_BASE}/customer-service`;

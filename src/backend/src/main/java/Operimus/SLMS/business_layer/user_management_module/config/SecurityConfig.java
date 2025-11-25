@@ -43,6 +43,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // BFF Authentication endpoints (public)
                 .requestMatchers("/api/landing-page/auth/**").permitAll()
+                .requestMatchers("/api/landing-page/chat").permitAll() // Public chatbot for landing page
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
