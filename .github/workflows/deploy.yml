@@ -66,6 +66,14 @@ env:
   LOG_LEVEL_APP: ${{ secrets.LOG_LEVEL_APP || 'DEBUG' }}
   LOG_LEVEL_WEB: ${{ secrets.LOG_LEVEL_WEB || 'INFO' }}
   LOG_LEVEL_SECURITY: ${{ secrets.LOG_LEVEL_SECURITY || 'INFO' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
+  CHATBOT_SEEDER_ENABLED: ${{ secrets.CHATBOT_SEEDER_ENABLED || 'false' }}
 
 jobs: 
   backend-integration:
@@ -685,6 +693,16 @@ jobs:
           log_level_app            = "${LOG_LEVEL_APP}"
           log_level_web            = "${LOG_LEVEL_WEB}"
           log_level_security       = "${LOG_LEVEL_SECURITY}"
+
+          # Chatbot Module - AI & Vector Database Configuration
+          gemini_api_key          = "${GEMINI_API_KEY}"
+          gemini_model            = "${GEMINI_MODEL}"
+          gemini_embedding_model  = "${GEMINI_EMBEDDING_MODEL}"
+          pinecone_api_key        = "${PINECONE_API_KEY}"
+          pinecone_host           = "${PINECONE_HOST}"
+          pinecone_index          = "${PINECONE_INDEX}"
+          pinecone_namespace      = "${PINECONE_NAMESPACE}"
+          chatbot_seeder_enabled  = "${CHATBOT_SEEDER_ENABLED}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 

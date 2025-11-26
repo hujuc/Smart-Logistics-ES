@@ -228,3 +228,55 @@ variable "log_level_security" {
   type        = string
   default     = "INFO"
 }
+
+# Chatbot Module - AI & Vector Database Configuration
+variable "gemini_api_key" {
+  description = "Google Gemini AI API key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gemini_model" {
+  description = "Google Gemini model name (e.g., gemini-2.0-flash)"
+  type        = string
+  default     = "gemini-2.0-flash"
+}
+
+variable "gemini_embedding_model" {
+  description = "Google Gemini embedding model name"
+  type        = string
+  default     = "text-embedding-004"
+}
+
+variable "pinecone_api_key" {
+  description = "Pinecone Vector Database API key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "pinecone_host" {
+  description = "Pinecone index host URL (e.g., https://your-index.svc.region.pinecone.io)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "pinecone_index" {
+  description = "Pinecone index name"
+  type        = string
+  default     = "slms-chatbot"
+}
+
+variable "pinecone_namespace" {
+  description = "Pinecone namespace for document storage"
+  type        = string
+  default     = "en-US"
+}
+
+variable "chatbot_seeder_enabled" {
+  description = "Enable automatic seeding of chatbot knowledge base on startup"
+  type        = string
+  default     = "false"
+}

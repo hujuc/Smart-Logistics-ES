@@ -65,6 +65,16 @@ locals {
   config_log_level_app            = var.log_level_app != null ? var.log_level_app : "DEBUG"
   config_log_level_web            = var.log_level_web != null ? var.log_level_web : "INFO"
   config_log_level_security       = var.log_level_security != null ? var.log_level_security : "INFO"
+
+  # Chatbot configuration
+  config_gemini_api_key          = var.gemini_api_key != null ? var.gemini_api_key : ""
+  config_gemini_model            = var.gemini_model != null ? var.gemini_model : "gemini-2.0-flash"
+  config_gemini_embedding_model  = var.gemini_embedding_model != null ? var.gemini_embedding_model : "text-embedding-004"
+  config_pinecone_api_key        = var.pinecone_api_key != null ? var.pinecone_api_key : ""
+  config_pinecone_host           = var.pinecone_host != null ? var.pinecone_host : ""
+  config_pinecone_index          = var.pinecone_index != null ? var.pinecone_index : "slms-chatbot"
+  config_pinecone_namespace      = var.pinecone_namespace != null ? var.pinecone_namespace : "en-US"
+  config_chatbot_seeder_enabled  = var.chatbot_seeder_enabled != null ? var.chatbot_seeder_enabled : "false"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -175,7 +185,15 @@ resource "docker_container" "backend" {
     "LOG_LEVEL_ROOT=${local.config_log_level_root}",
     "LOG_LEVEL_APP=${local.config_log_level_app}",
     "LOG_LEVEL_WEB=${local.config_log_level_web}",
-    "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
+    "LOG_LEVEL_SECURITY=${local.config_log_level_security}",
+    "GEMINI_API_KEY=${local.config_gemini_api_key}",
+    "GEMINI_MODEL=${local.config_gemini_model}",
+    "GEMINI_EMBEDDING_MODEL=${local.config_gemini_embedding_model}",
+    "PINECONE_API_KEY=${local.config_pinecone_api_key}",
+    "PINECONE_HOST=${local.config_pinecone_host}",
+    "PINECONE_INDEX=${local.config_pinecone_index}",
+    "PINECONE_NAMESPACE=${local.config_pinecone_namespace}",
+    "CHATBOT_SEEDER_ENABLED=${local.config_chatbot_seeder_enabled}"
   ]
 
   networks_advanced {
