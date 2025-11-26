@@ -90,6 +90,46 @@ function parseAddressString(value?: string | null): AddressComponents {
   return result
 }
 
+// Normalize country to ISO 2-letter code
+function normalizeCountryCode(country?: string | null): string {
+  if (!country) return "US"
+
+  const countryUpper = country.toUpperCase().trim()
+
+  // If already a 2-letter code, return it
+  if (countryUpper.length === 2) {
+    return countryUpper
+  }
+
+  // Map common country names to ISO codes
+  const countryMap: Record<string, string> = {
+    "UNITED STATES": "US",
+    "USA": "US",
+    "UNITED STATES OF AMERICA": "US",
+    "PORTUGAL": "PT",
+    "SPAIN": "ES",
+    "FRANCE": "FR",
+    "GERMANY": "DE",
+    "UNITED KINGDOM": "GB",
+    "UK": "GB",
+    "CANADA": "CA",
+    "MEXICO": "MX",
+    "BRAZIL": "BR",
+    "CHINA": "CN",
+    "JAPAN": "JP",
+    "INDIA": "IN",
+    "AUSTRALIA": "AU",
+  }
+
+  return countryMap[countryUpper] || "US" // Default to US if unknown
+}
+
+// Truncate string to max length to comply with API validation
+function truncateString(value: string | undefined, maxLength: number, defaultValue: string = ""): string {
+  if (!value) return defaultValue
+  return value.substring(0, maxLength)
+}
+
 export default function CarrierComparisonPage() {
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
@@ -441,13 +481,13 @@ export default function CarrierComparisonPage() {
           country: "US",
         },
         toAddress: {
-          name: selectedOrder.reference || "Customer",
-          addressLine1: destination.line1 || "Customer Address",
-          addressLine2: destination.line2 || undefined,
-          city: destination.city || "San Jose",
-          state: destination.state || "CA",
-          postalCode: destination.postalCode || "95122",
-          country: destination.country || "US",
+          name: truncateString(selectedOrder.reference, 64, "Customer"),
+          addressLine1: truncateString(destination.line1, 128, "Customer Address"),
+          addressLine2: destination.line2 ? truncateString(destination.line2, 128) : undefined,
+          city: truncateString(destination.city, 64, "San Jose"),
+          state: truncateString(destination.state, 64, "CA"),
+          postalCode: truncateString(destination.postalCode, 32, "95122"),
+          country: normalizeCountryCode(destination.country),
         },
         parcels: [{
           weight: selectedOrder.weight || 2.5, // Default to 2.5kg if not set
