@@ -1,4 +1,4 @@
-.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs install build test test-unit test-integration test-e2e test-real
+.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-ci test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
@@ -163,6 +163,10 @@ test-real:
 	@echo "  - Pinecone API (requires PINECONE_API_KEY in infra/.env)"
 	@docker exec slms-backend-dev /bin/sh -c "cd /app && ./mvnw test -Preal-integration"
 	@echo "Real integration tests complete!"
+
+test-ci:
+	@echo "Running CI tests with quality gates (JaCoCo coverage)..."
+	cd src/backend && mvn -B -ntp -DskipTests=false -Dtest='!**/*IntegrationTest' clean verify
 
 # Cleanup
 hard-prune:
