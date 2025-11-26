@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
+import { ChatWidget } from "@shared/components/chatbot/ChatWidget";
 
 export const metadata: Metadata = {
   title: "SLMS - Customer Portal",
@@ -26,6 +27,7 @@ export default function RootLayout({
         <main className="pr-30 pl-40" style={{ marginBottom: "80px" }}>
           {children}
         </main>
+        <ChatWidget apiEndpoint="/api/customer/chat" />
       </body>
     </html>
   );

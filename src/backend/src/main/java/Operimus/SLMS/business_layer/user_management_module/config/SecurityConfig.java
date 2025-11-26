@@ -33,7 +33,9 @@ public class SecurityConfig {
      *    - /api/landing-page/auth/** - Authentication endpoints
      *    - /api/public/** - Public resources
      */
+
     @Bean
+    @org.springframework.core.annotation.Order(1)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
@@ -41,6 +43,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // BFF Authentication endpoints (public)
                 .requestMatchers("/api/landing-page/auth/**").permitAll()
+                .requestMatchers("/api/landing-page/chat").permitAll() // Public chatbot for landing page
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()

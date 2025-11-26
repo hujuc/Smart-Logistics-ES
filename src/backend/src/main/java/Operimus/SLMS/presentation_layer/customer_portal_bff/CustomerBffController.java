@@ -102,11 +102,10 @@ public class CustomerBffController {
                     customerId = jwt.getClaimAsString("sub"); // Try explicit 'sub'
                 }
                 if (customerId == null) {
-                    // Last resort: use preferred_username to lookup the user
+                    // Last resort: use preferred_username as customerID
                     String username = jwt.getClaimAsString("preferred_username");
-                    log.warn("Customer BFF: No sub/user_id claim found. Using preferred_username: {}", username);
-                    // For now, we'll return empty list if we can't get a proper ID
-                    // In production, you might want to lookup user by username via Keycloak
+                    log.warn("Customer BFF: No sub/user_id claim found. Using preferred_username as customerID: {}", username);
+                    customerId = username; // Use username as customerID
                 }
             }
             
