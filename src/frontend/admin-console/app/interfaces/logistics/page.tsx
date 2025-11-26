@@ -15,6 +15,7 @@ export default function LogisticsPage() {
   const [stats, setStats] = useState<LogisticsStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   // Fetch statistics from backend
   useEffect(() => {
@@ -34,6 +35,19 @@ export default function LogisticsPage() {
 
     fetchStats()
   }, [period])
+
+  // Handle PDF export
+  const handleExportReport = async () => {
+    try {
+      setExporting(true)
+      await logisticsService.exportReport(period)
+    } catch (err) {
+      console.error('Failed to export report:', err)
+      setError(err instanceof Error ? err.message : 'Failed to export report')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Helper function to render breakdown sections
   const renderCarrierBreakdown = (carriers: CarrierBreakdown[]) => (
@@ -326,9 +340,14 @@ export default function LogisticsPage() {
             <BarChart3 className="mr-2 h-4 w-4" />
             Analytics
           </Button>
-          <Button variant="outline" onClick={() => alert("Exporting report...")} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={handleExportReport}
+            disabled={exporting || loading}
+            className="w-full sm:w-auto"
+          >
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            {exporting ? "Exporting..." : "Export Report"}
           </Button>
         </div>
       </div>
