@@ -3,7 +3,7 @@
  * Handles API calls for logistics dashboard statistics
  */
 
-import { API_ENDPOINTS, apiFetch } from '../api';
+import { API_ENDPOINTS, apiFetch, createAuthHeaders } from '../api';
 
 /**
  * Period type for trend calculation
@@ -180,8 +180,58 @@ export async function getLogisticsStats(period: TrendPeriod = 'daily'): Promise<
 }
 
 /**
+ * Export logistics KPI report as PDF
+ *
+ * @param period - Time period for the report (daily, weekly, monthly)
+ * @returns Promise that triggers PDF download
+ */
+export async function exportLogisticsReport(period: TrendPeriod = 'daily'): Promise<void> {
+  try {
+    const response = await fetch(API_ENDPOINTS.logistics.exportReport(period), {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        ...createAuthHeaders(''),
+        'Accept': 'application/pdf',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to export report' }));
+      throw new Error(errorData.error || 'Failed to export report');
+    }
+
+    // Get filename from Content-Disposition header or create default
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `logistics_kpi_report_${period}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+
+    // Convert response to blob and trigger download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error exporting logistics report:', error);
+    throw error;
+  }
+}
+
+/**
  * Logistics service object with all available methods
  */
 export const logisticsService = {
   getStats: getLogisticsStats,
+  exportReport: exportLogisticsReport,
 };

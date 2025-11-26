@@ -60,11 +60,12 @@
                         <artifactId>spring-kafka</artifactId>
                 </dependency>
 
-                <!-- Database Drivers -->
-                <dependency>
-                        <groupId>org.postgresql</groupId>
-                        <artifactId>postgresql</artifactId>
-                </dependency>
+                <!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+				<dependency>
+					<groupId>org.postgresql</groupId>
+					<artifactId>postgresql</artifactId>
+					<version>42.7.8</version>
+				</dependency>
 
 		<!-- Development Tools -->
 		<dependency>
@@ -112,7 +113,14 @@
 			<version>2.10.0-alpha</version>
 		</dependency>
 
-		<!-- Logback JSON Encoder for Structured Logging -->
+		<!-- Elastic APM -->
+		<dependency>
+			<groupId>co.elastic.apm</groupId>
+			<artifactId>apm-agent-attach</artifactId>
+			<version>1.53.0</version>
+		</dependency>
+
+		<!-- Logstash JSON Encoder for structured logging -->
 		<dependency>
 			<groupId>net.logstash.logback</groupId>
 			<artifactId>logstash-logback-encoder</artifactId>
@@ -226,9 +234,13 @@
 		<!-- PDF Generation -->
 		<dependency>
 			<groupId>com.itextpdf</groupId>
-			<artifactId>itext7-core</artifactId>
+			<artifactId>kernel</artifactId>
 			<version>7.2.5</version>
-			<type>pom</type> 
+		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>layout</artifactId>
+			<version>7.2.5</version>
 		</dependency>
 
         <!-- ZXing for QR code generation -->
