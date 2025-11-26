@@ -14,8 +14,10 @@ import {
   FileText
 } from "lucide-react"
 import { customerOrderApi } from "@/lib/services/customer-order.service"
+import { orderDocumentService } from "@/lib/services/order-document.service"
 import type { Order, OrderEvent } from "@/types/common"
 import { formatOrderShippingAddress } from "@/lib/address"
+import Image from "next/image"
 
 export default function OrderTrackingPage() {
   const params = useParams()
@@ -26,6 +28,8 @@ export default function OrderTrackingPage() {
   const [events, setEvents] = useState<OrderEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [podImageUrl, setPodImageUrl] = useState<string | null>(null)
+  const [isPodLoading, setIsPodLoading] = useState(false)
 
   const loadOrderData = useCallback(async () => {
     setLoading(true)
@@ -57,6 +61,69 @@ export default function OrderTrackingPage() {
   useEffect(() => {
     loadOrderData()
   }, [loadOrderData])
+
+  useEffect(() => {
+    if (!order?.id) {
+      setPodImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      return
+    }
+
+    let isMounted = true
+    let currentUrl: string | null = null
+
+    const loadPodImage = async () => {
+      setIsPodLoading(true)
+
+      try {
+        const documents = await orderDocumentService.list(order.id)
+        // Look for POD images - they typically don't start with "qr"
+        const podDocument = documents.find((doc) =>
+          !doc.documentId.toLowerCase().startsWith("qr") &&
+          (doc.contentType?.startsWith("image/") ||
+           doc.documentId.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+        )
+
+        if (!podDocument || !isMounted) {
+          return
+        }
+
+        const blob = await orderDocumentService.download(order.id, podDocument.documentId)
+
+        if (!isMounted) {
+          return
+        }
+
+        const objectUrl = URL.createObjectURL(blob)
+        currentUrl = objectUrl
+        setPodImageUrl((prev) => {
+          if (prev) {
+            URL.revokeObjectURL(prev)
+          }
+          return objectUrl
+        })
+      } catch (err) {
+        console.error("Failed to load POD image:", err)
+      } finally {
+        if (isMounted) {
+          setIsPodLoading(false)
+        }
+      }
+    }
+
+    loadPodImage()
+
+    return () => {
+      isMounted = false
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+    }
+  }, [order?.id])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -182,12 +249,12 @@ export default function OrderTrackingPage() {
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-gray-200" />
-                
+
                 {/* Events */}
                 <div className="space-y-6">
                   {events.map((event, index) => {
                     const isLast = index === events.length - 1
-                    
+
                     return (
                       <div key={event.id} className="relative flex gap-4">
                         {/* Icon */}
@@ -227,6 +294,32 @@ export default function OrderTrackingPage() {
               <p className="text-gray-500 text-center py-4">No tracking events available yet.</p>
             )}
           </div>
+
+          {(order.status === 'DELIVERED' && podImageUrl) && (
+            <div className="bg-white border rounded-lg p-6 shadow-sm">
+              <h2 className="text-xl font-semibold mb-4">Proof of Delivery</h2>
+              {isPodLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              ) : podImageUrl ? (
+                <div className="flex flex-col items-center">
+                  <div className="relative w-full max-w-md">
+                    <Image
+                      src={podImageUrl}
+                      alt="Proof of delivery"
+                      width={400}
+                      height={400}
+                      className="rounded-lg border bg-gray-50 object-contain w-full"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-3 text-center">
+                    Photo taken by driver upon delivery
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

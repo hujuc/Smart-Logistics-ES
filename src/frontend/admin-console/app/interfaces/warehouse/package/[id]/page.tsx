@@ -31,6 +31,9 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [isQrLoading, setIsQrLoading] = useState(false)
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+  const [isPodLoading, setIsPodLoading] = useState(false)
+  const [podError, setPodError] = useState<string | null>(null)
+  const [podImageUrl, setPodImageUrl] = useState<string | null>(null)
   const [isStatusChanging, setIsStatusChanging] = useState(false)
   const [shipmentDocuments, setShipmentDocuments] = useState<ShipmentDocument[]>([])
   const [isShipmentDocsLoading, setIsShipmentDocsLoading] = useState(false)
@@ -146,6 +149,95 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
 
     loadQrCode()
+
+    return () => {
+      isMounted = false
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+    }
+  }, [orderId])
+
+  useEffect(() => {
+    if (!orderId) {
+      setPodImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      return
+    }
+
+    if (!isAuthenticated()) return
+
+    let isMounted = true
+    let currentUrl: string | null = null
+
+    const resetPodImage = () => {
+      setPodImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      currentUrl = null
+    }
+
+    const loadPodImage = async () => {
+      setIsPodLoading(true)
+      setPodError(null)
+      resetPodImage()
+
+      try {
+        const orderNumericId = parseInt(orderId, 10)
+        if (Number.isNaN(orderNumericId)) {
+          throw new Error("Invalid order identifier")
+        }
+
+        const documents = await orderDocumentService.list(orderNumericId)
+        // Look for POD images - they typically don't start with "qr"
+        const podDocument = documents.find((doc) =>
+          !doc.documentId.toLowerCase().startsWith("qr") &&
+          (doc.contentType?.startsWith("image/") ||
+           doc.documentId.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+        )
+
+        if (!podDocument) {
+          return
+        }
+
+        const blob = await orderDocumentService.download(
+          orderNumericId,
+          podDocument.documentId,
+        )
+
+        if (!isMounted) {
+          return
+        }
+
+        const objectUrl = URL.createObjectURL(blob)
+        currentUrl = objectUrl
+        setPodImageUrl((prev) => {
+          if (prev) {
+            URL.revokeObjectURL(prev)
+          }
+          return objectUrl
+        })
+      } catch (err) {
+        console.error("Failed to load POD image:", err)
+        if (isMounted) {
+          setPodError("Failed to load proof of delivery photo.")
+          resetPodImage()
+        }
+      } finally {
+        if (isMounted) {
+          setIsPodLoading(false)
+        }
+      }
+    }
+
+    loadPodImage()
 
     return () => {
       isMounted = false
@@ -666,6 +758,34 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
           )}
         </div>
       </div>
+
+      {(order.status === 'DELIVERED' || podImageUrl) && (
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
+          <h3 className="font-semibold text-black mb-4">Proof of Delivery</h3>
+          {isPodLoading ? (
+            <p className="text-gray-600 text-sm">Loading proof of delivery...</p>
+          ) : podError ? (
+            <p className="text-red-600 text-sm">{podError}</p>
+          ) : podImageUrl ? (
+            <div className="flex flex-col items-center">
+              <Image
+                src={podImageUrl}
+                alt="Proof of delivery"
+                width={400}
+                height={400}
+                className="rounded-md border bg-gray-50 object-contain max-h-[600px]"
+              />
+              <p className="text-sm text-gray-500 mt-2">
+                Photo taken by driver upon delivery
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-600 text-sm">
+              No proof of delivery photo is available for this order.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">

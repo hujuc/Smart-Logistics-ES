@@ -1,9 +1,12 @@
 package Operimus.SLMS.presentation_layer.customer_portal_bff;
 
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
@@ -40,6 +43,7 @@ public class CustomerBffController {
     private final OrderEventService orderEventService;
     private final WarehouseService warehouseService;
     private final DeliveryExceptionService exceptionService;
+    private final OrderDocumentService orderDocumentService;
 
     /**
      * Extract customer ID from JWT token
@@ -373,20 +377,98 @@ public class CustomerBffController {
         try {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching exceptions for order {} for customer {}", orderId, customerId);
-            
+
             // Security check: verify that the order belongs to this customer
             OrderResponse order = orderService.getById(orderId);
             if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
-                log.warn("Customer {} attempted to access exceptions for order {} (order customerId: {})", 
+                log.warn("Customer {} attempted to access exceptions for order {} (order customerId: {})",
                         customerId, orderId, order.getCustomerId());
                 throw new RuntimeException("Access denied: Order does not belong to this customer");
             }
-            
+
             List<DeliveryExceptionResponse> exceptions = exceptionService.getByOrderId(orderId);
             log.info("Customer BFF: Successfully fetched {} exceptions for order {}", exceptions.size(), orderId);
             return ResponseEntity.ok(exceptions);
         } catch (Exception e) {
             log.error("Customer BFF: Failed to fetch exceptions for order {}: {}", orderId, e.getMessage());
+            throw e;
+        }
+    }
+
+    // ========================================
+    // Order Document Endpoints
+    // ========================================
+
+    /**
+     * Get all documents for an order
+     * GET /api/customer/orders/{id}/documents
+     *
+     * @param id Order ID
+     * @param jwt JWT token with customer information
+     * @return List of documents (only if order belongs to customer)
+     */
+    @GetMapping("/orders/{id}/documents")
+    public ResponseEntity<List<DocumentUploadResponse>> getOrderDocuments(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = extractCustomerId(jwt);
+            log.info("Customer BFF: Fetching documents for order {} for customer {}", id, customerId);
+
+            // Security check: verify that the order belongs to this customer
+            OrderResponse order = orderService.getById(id);
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to access documents for order {} (order customerId: {})",
+                        customerId, id, order.getCustomerId());
+                throw new RuntimeException("Access denied: Order does not belong to this customer");
+            }
+
+            List<DocumentUploadResponse> documents = orderDocumentService.listDocuments(id);
+            log.info("Customer BFF: Successfully fetched {} documents for order {}", documents.size(), id);
+            return ResponseEntity.ok(documents);
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to fetch documents for order {}: {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Download a specific document for an order
+     * GET /api/customer/orders/{id}/documents/{documentId}/download
+     *
+     * @param id Order ID
+     * @param documentId Document ID (filename)
+     * @param jwt JWT token with customer information
+     * @return Document content (only if order belongs to customer)
+     */
+    @GetMapping("/orders/{id}/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadOrderDocument(
+            @PathVariable Long id,
+            @PathVariable String documentId,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String customerId = extractCustomerId(jwt);
+            log.info("Customer BFF: Downloading document {} for order {} for customer {}",
+                    documentId, id, customerId);
+
+            // Security check: verify that the order belongs to this customer
+            OrderResponse order = orderService.getById(id);
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to download document {} for order {} (order customerId: {})",
+                        customerId, documentId, id, order.getCustomerId());
+                throw new RuntimeException("Access denied: Order does not belong to this customer");
+            }
+
+            DocumentDownloadResponse doc = orderDocumentService.downloadDocument(id, documentId);
+            log.info("Customer BFF: Successfully downloaded document {} for order {}", documentId, id);
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", doc.getContentType())
+                    .header("Content-Disposition", "inline; filename=\"" + documentId + "\"")
+                    .body(doc.getContent());
+        } catch (Exception e) {
+            log.error("Customer BFF: Failed to download document {} for order {}: {}",
+                    documentId, id, e.getMessage());
             throw e;
         }
     }
