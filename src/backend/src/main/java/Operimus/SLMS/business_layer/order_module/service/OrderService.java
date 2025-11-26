@@ -336,6 +336,7 @@ public class OrderService {
                 .qrConfirmationUrl(order.getQrConfirmationUrl())
                 .qrConfirmedAt(order.getQrConfirmedAt())
                 .qrConfirmedBy(order.getQrConfirmedBy())
+                .proofOfDeliveryUrl(order.getProofOfDeliveryUrl())
                 .weight(order.getWeight())
                 .weightUnit(order.getWeightUnit())
                 .length(order.getLength())

@@ -172,7 +172,7 @@ export default function DriverHome() {
               </button>
             </Link>
 
-            <Link href="/">
+            <Link href="/interfaces/scan-package">
               <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
                 <Package className="w-5 h-5" />
                 Scan Package

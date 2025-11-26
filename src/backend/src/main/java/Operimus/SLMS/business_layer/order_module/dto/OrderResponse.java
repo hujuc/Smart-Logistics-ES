@@ -44,6 +44,7 @@ public class OrderResponse {
     private String trackingNumber;
     private OffsetDateTime qrConfirmedAt;
     private String qrConfirmedBy;
+    private String proofOfDeliveryUrl;
 
     // Parcel dimensions for shipping rate calculation
     private Double weight;

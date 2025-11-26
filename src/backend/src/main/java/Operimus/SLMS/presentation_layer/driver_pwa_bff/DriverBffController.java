@@ -1,8 +1,10 @@
 package Operimus.SLMS.presentation_layer.driver_pwa_bff;
 
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
@@ -19,6 +21,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Comparator;
 import java.util.List;
@@ -43,6 +46,7 @@ public class DriverBffController {
     private final ShipmentRepository shipmentRepository;
     private final OrderRepository orderRepository;
     private final KeycloakUserService keycloakUserService;
+    private final OrderDocumentService orderDocumentService;
 
     /**
      * Health check endpoint
@@ -78,6 +82,61 @@ public class DriverBffController {
 
         var result = orderService.confirmOrderScan(orderId, driverId);
         return ResponseEntity.ok(DriverOrderScanResponse.from(result));
+    }
+
+    /**
+     * Complete delivery with proof of delivery photo
+     *
+     * @param orderId Order identifier
+     * @param file Proof of delivery photo
+     * @param principal Authenticated driver token
+     * @return Order details with POD URL
+     */
+    @PostMapping("/orders/{orderId}/deliver")
+    public ResponseEntity<java.util.Map<String, Object>> completeDelivery(
+            @PathVariable Long orderId,
+            @RequestParam("photo") MultipartFile file,
+            @AuthenticationPrincipal Jwt principal) {
+        String driverId = extractDriverIdentifier(principal);
+        if (!StringUtils.hasText(driverId)) {
+            throw new AccessDeniedException("Driver authentication is required.");
+        }
+
+        log.info("Driver {} completing delivery for order {} with POD", driverId, orderId);
+
+        // Verify the order exists and belongs to the driver's shipment
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (order.getShipmentId() == null) {
+            throw new RuntimeException("Order is not assigned to a shipment");
+        }
+
+        Shipment shipment = shipmentRepository.findById(order.getShipmentId())
+                .orElseThrow(() -> new RuntimeException("Shipment not found"));
+
+        String resolvedDriverId = normalizeDriverIdentifier(driverId);
+        if (!resolvedDriverId.equals(shipment.getDriverId())) {
+            throw new AccessDeniedException("Driver is not assigned to this shipment");
+        }
+
+        // Upload the proof of delivery photo
+        DocumentUploadResponse uploadResponse = orderDocumentService.uploadDocument(orderId, file);
+
+        // Update order with POD URL and mark as delivered
+        order.setProofOfDeliveryUrl(uploadResponse.getUrl());
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.DELIVERED);
+        orderRepository.save(order);
+
+        log.info("Order {} marked as delivered with POD at {}", orderId, uploadResponse.getUrl());
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "orderId", order.getId(),
+                "status", order.getStatus().toString(),
+                "proofOfDeliveryUrl", uploadResponse.getUrl(),
+                "message", "Delivery completed successfully"
+        ));
     }
 
     /**
