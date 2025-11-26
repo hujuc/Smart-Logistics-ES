@@ -4,7 +4,7 @@
  */
 
 import { API_ENDPOINTS, apiFetch } from '../api';
-import type { Order, ShipmentOrderStatus } from '@/types';
+import type { Order, ShipmentOrderStatus, OrderEvent } from '@/types';
 
 export interface CreateOrderRequest {
   reference: string;
@@ -145,5 +145,12 @@ export const warehouseService = {
         trackingNumber: currentOrder.trackingNumber,
       }),
     });
+  },
+
+  /**
+   * Get order events (timeline)
+   */
+  async getOrderEvents(id: number): Promise<OrderEvent[]> {
+    return apiFetch<OrderEvent[]>(API_ENDPOINTS.customerService.orderEvents(id));
   },
 };
