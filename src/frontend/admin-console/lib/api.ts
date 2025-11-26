@@ -37,6 +37,9 @@ export const API_ENDPOINTS = {
     warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
     warehouseOrders: (warehouseId: number, status?: string) =>
       `${LOGISTICS_BASE}/warehouses/${warehouseId}/orders${status ? `?status=${status}` : ''}`,
+
+    // Report export
+    exportReport: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/reports/export?period=${period}`,
   },
 
   // Warehouse Staff BFF

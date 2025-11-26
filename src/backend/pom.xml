@@ -64,11 +64,12 @@
                         <artifactId>spring-kafka</artifactId>
                 </dependency>
 
-                <!-- Database Drivers -->
-                <dependency>
-                        <groupId>org.postgresql</groupId>
-                        <artifactId>postgresql</artifactId>
-                </dependency>
+                <!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+				<dependency>
+					<groupId>org.postgresql</groupId>
+					<artifactId>postgresql</artifactId>
+					<version>42.7.8</version>
+				</dependency>
 
 		<!-- Development Tools -->
 		<dependency>
@@ -245,9 +246,13 @@
 		<!-- PDF Generation -->
 		<dependency>
 			<groupId>com.itextpdf</groupId>
-			<artifactId>itext7-core</artifactId>
+			<artifactId>kernel</artifactId>
 			<version>7.2.5</version>
-			<type>pom</type> 
+		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>layout</artifactId>
+			<version>7.2.5</version>
 		</dependency>
 
         <!-- ZXing for QR code generation -->
