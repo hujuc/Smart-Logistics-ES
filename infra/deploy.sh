@@ -226,6 +226,10 @@ case "${1:-}" in
     docker compose ps
     (cd "${TERRAFORM_DIR}" && terraform state list || true)
     ;;
+  monitor)
+    log "Starting production container monitor..."
+    python3 "${SCRIPT_DIR}/scripts/monitor_prod.py"
+    ;;
   rebuild)
     log "Forcing rebuild of all images..."
     ensure_tools
@@ -253,8 +257,10 @@ case "${1:-}" in
   echo "  destroy|down    - Destroy all infrastructure"
   echo "  stop            - Stop all containers (without removing)"
   echo "  restart         - Restart all containers"
-  echo "  status          - Show status of all services"
-  echo "  rebuild         - Force rebuild of all Docker images"
+  echo "  status          - Show status of all services
+  monitor         - Start the container monitoring and resurrection service
+  rebuild         - Force rebuild of all Docker images
+"
   echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio|all)"
   exit 1
   ;;
