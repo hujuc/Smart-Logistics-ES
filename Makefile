@@ -1,4 +1,4 @@
-.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
+.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-ci test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
@@ -101,6 +101,10 @@ test:
 	@echo "Running ALL tests (unit + integration)..."
 	@echo "Make sure services are running: make test-services-up"
 	cd src/backend && mvn clean test
+
+test-ci:
+	@echo "Running CI tests with quality gates (JaCoCo coverage)..."
+	cd src/backend && mvn -B -ntp -DskipTests=false -Dtest='!**/*IntegrationTest' clean verify
 
 # Cleanup
 clean:

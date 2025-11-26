@@ -34,7 +34,7 @@ jobs:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     defaults:
       run:
-        working-directory: src/backend
+        working-directory: .
 
     steps:
       - uses: actions/checkout@v4
@@ -47,13 +47,13 @@ jobs:
 
       - name: Build & Test (with JaCoCo gate)
         id: build
-        run: mvn -B -ntp -DskipTests=false -Dtest='!**/*IntegrationTest' clean verify
+        run: make test-ci
 
       - name: Generate Allure report
         if: always()
         run: |
-          if [ -d target/allure-results ] && [ "$(ls -A target/allure-results)" ]; then
-            mvn -B -ntp allure:report
+          if [ -d src/backend/target/allure-results ] && [ "$(ls -A src/backend/target/allure-results)" ]; then
+            cd src/backend && mvn -B -ntp allure:report
           else
             echo "No Allure results found; skipping HTML report generation."
           fi
