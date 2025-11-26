@@ -228,3 +228,50 @@ variable "log_level_security" {
   type        = string
   default     = "INFO"
 }
+
+# -----------------------------------------------------------------------------
+# Chatbot Module - AI & Vector Database Configuration
+# -----------------------------------------------------------------------------
+variable "gemini_api_key" {
+  description = "Google Gemini AI API key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gemini_model" {
+  description = "Google Gemini AI model name"
+  type        = string
+  default     = "gemini-2.0-flash"
+}
+
+variable "gemini_embedding_model" {
+  description = "Google Gemini embedding model name"
+  type        = string
+  default     = "text-embedding-004"
+}
+
+variable "pinecone_api_key" {
+  description = "Pinecone vector database API key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "pinecone_host" {
+  description = "Pinecone vector database host URL"
+  type        = string
+  default     = null
+}
+
+variable "pinecone_index" {
+  description = "Pinecone index name"
+  type        = string
+  default     = "slms-chatbot"
+}
+
+variable "pinecone_namespace" {
+  description = "Pinecone namespace"
+  type        = string
+  default     = "en-US"
+}

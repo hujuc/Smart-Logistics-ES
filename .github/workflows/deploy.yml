@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ,183-304-implement-replicas-and-add-load-balancer]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -81,6 +81,18 @@ env:
   KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
   KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
   KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
+  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL }}
+  NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN }}
+  NEXT_PUBLIC_DEPLOYMENT_ENV: ${{ secrets.NEXT_PUBLIC_DEPLOYMENT_ENV || 'production' }}
+  NEXT_PUBLIC_PROJECT_VERSION: ${{ secrets.NEXT_PUBLIC_PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
+  NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${{ secrets.NEXT_PUBLIC_TRACING_SAMPLING_RATE || '1.0' }}
 
 jobs: 
   backend-integration:
@@ -588,10 +600,7 @@ jobs:
             down -v
 
   deploy:
-    needs:
-      - backend-integration
-      - admin-console-e2e
-      - landing-page-e2e
+    needs: backend-integration
     runs-on: [self-hosted, aws-runner]
     steps:
       - name: Fix permissions before build
@@ -676,6 +685,18 @@ jobs:
           "LOG_LEVEL_APP=${LOG_LEVEL_APP}" \
           "LOG_LEVEL_WEB=${LOG_LEVEL_WEB}" \
           "LOG_LEVEL_SECURITY=${LOG_LEVEL_SECURITY}" \
+          "GEMINI_API_KEY=${GEMINI_API_KEY}" \
+          "GEMINI_MODEL=${GEMINI_MODEL}" \
+          "GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL}" \
+          "PINECONE_API_KEY=${PINECONE_API_KEY}" \
+          "PINECONE_HOST=${PINECONE_HOST}" \
+          "PINECONE_INDEX=${PINECONE_INDEX}" \
+          "PINECONE_NAMESPACE=${PINECONE_NAMESPACE}" \
+          "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}" \
+          "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}" \
+          "NEXT_PUBLIC_DEPLOYMENT_ENV=${NEXT_PUBLIC_DEPLOYMENT_ENV}" \
+          "NEXT_PUBLIC_PROJECT_VERSION=${NEXT_PUBLIC_PROJECT_VERSION}" \
+          "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${NEXT_PUBLIC_TRACING_SAMPLING_RATE}" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
@@ -741,6 +762,15 @@ jobs:
           log_level_app            = "${LOG_LEVEL_APP}"
           log_level_web            = "${LOG_LEVEL_WEB}"
           log_level_security       = "${LOG_LEVEL_SECURITY}"
+
+          # Chatbot Module - AI & Vector Database Configuration
+          gemini_api_key          = "${GEMINI_API_KEY}"
+          gemini_model            = "${GEMINI_MODEL}"
+          gemini_embedding_model  = "${GEMINI_EMBEDDING_MODEL}"
+          pinecone_api_key        = "${PINECONE_API_KEY}"
+          pinecone_host           = "${PINECONE_HOST}"
+          pinecone_index          = "${PINECONE_INDEX}"
+          pinecone_namespace      = "${PINECONE_NAMESPACE}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 

@@ -1,0 +1,49 @@
+# Build artifacts
+target/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+.m2/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.factorypath
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+LICENSE*
+docs/
+
+# Environment and config
+.env
+.env.*
+application-local.properties
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+*~
+
+# Test reports
+**/surefire-reports/
+**/allure-results/
+coverage/
