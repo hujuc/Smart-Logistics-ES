@@ -5,6 +5,7 @@ import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
@@ -47,6 +48,7 @@ public class DriverBffController {
     private final OrderRepository orderRepository;
     private final KeycloakUserService keycloakUserService;
     private final OrderDocumentService orderDocumentService;
+    private final OrderEventService orderEventService;
 
     /**
      * Health check endpoint
@@ -128,6 +130,9 @@ public class DriverBffController {
         OrderStatus previousStatus = order.getStatus();
         order.setStatus(OrderStatus.DELIVERED);
         orderRepository.save(order);
+
+        // Record the status change event
+        orderEventService.recordStatusChange(order, previousStatus, OrderStatus.DELIVERED);
 
         log.info("Order {} marked as delivered with POD at {}", orderId, uploadResponse.getUrl());
 
