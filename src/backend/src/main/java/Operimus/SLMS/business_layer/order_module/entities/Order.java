@@ -104,6 +104,10 @@ public class Order {
     @Column(name = "qr_confirmed_by", length = 64)
     private String qrConfirmedBy;
 
+    // Proof of Delivery (POD) - photo uploaded by driver when delivering
+    @Column(name = "proof_of_delivery_url", length = 512)
+    private String proofOfDeliveryUrl;
+
     // Tracking number (order-specific tracking if needed)
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
