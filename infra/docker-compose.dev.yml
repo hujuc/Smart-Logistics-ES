@@ -54,6 +54,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      kafka:
+        condition: service_started
       minio:
         condition: service_healthy
     env_file:
@@ -100,6 +102,13 @@ services:
       WATCHPACK_POLLING: "true"
       # Flagsmith Configuration
       NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
+      # Observability Configuration
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
+      NEXT_PUBLIC_DEPLOYMENT_ENV: ${NEXT_PUBLIC_DEPLOYMENT_ENV}
+      NEXT_PUBLIC_PROJECT_VERSION: ${NEXT_PUBLIC_PROJECT_VERSION}
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     working_dir: /app
     volumes:
       - ../src/frontend/admin-console:/app
@@ -130,6 +139,12 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       # Flagsmith Configuration
       NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
+      # Observability Configuration
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
+      NEXT_PUBLIC_DEPLOYMENT_ENV: ${NEXT_PUBLIC_DEPLOYMENT_ENV}
+      NEXT_PUBLIC_PROJECT_VERSION: ${NEXT_PUBLIC_PROJECT_VERSION}
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
     working_dir: /app
     volumes:
       - ../src/frontend/customer-portal:/app
@@ -160,6 +175,14 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       # Mapbox Configuration
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+      # Observability Configuration
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
+      NEXT_PUBLIC_DEPLOYMENT_ENV: ${NEXT_PUBLIC_DEPLOYMENT_ENV}
+      NEXT_PUBLIC_PROJECT_VERSION: ${NEXT_PUBLIC_PROJECT_VERSION}
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
+      # Flagsmith Configuration
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
     working_dir: /app
     volumes:
       - ../src/frontend/driver-pwa:/app
@@ -188,6 +211,12 @@ services:
       WATCHPACK_POLLING: "true"
       # API Configuration
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Observability Configuration
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
+      NEXT_PUBLIC_DEPLOYMENT_ENV: ${NEXT_PUBLIC_DEPLOYMENT_ENV}
+      NEXT_PUBLIC_PROJECT_VERSION: ${NEXT_PUBLIC_PROJECT_VERSION}
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
     working_dir: /app
     volumes:
       - ../src/frontend/landing-page:/app
@@ -222,6 +251,41 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: slms-zookeeper-dev
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${KAFKA_ZOOKEEPER_PORT:-2181}
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "${KAFKA_ZOOKEEPER_PORT:-2181}:2181"
+    volumes:
+      - zookeeper-data:/bitnami/zookeeper
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: slms-kafka-dev
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_HOST:-zookeeper}:${KAFKA_ZOOKEEPER_PORT:-2181}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:${KAFKA_BROKER_EXTERNAL_PORT:-9094}
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://${KAFKA_BROKER_HOST:-kafka}:${KAFKA_BROKER_PORT:-9092},EXTERNAL://${KAFKA_ADVERTISED_HOST:-localhost}:${KAFKA_BROKER_EXTERNAL_PORT:-9094}
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "${KAFKA_BROKER_PORT:-9092}:9092"
+      - "${KAFKA_BROKER_EXTERNAL_PORT:-9094}:9094"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
@@ -263,3 +327,5 @@ volumes:
   postgres-data:
   minio_data:
   keycloak-data:
+  kafka-data:
+  zookeeper-data:

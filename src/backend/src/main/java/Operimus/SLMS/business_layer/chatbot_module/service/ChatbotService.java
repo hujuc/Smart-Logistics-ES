@@ -45,6 +45,11 @@ public class ChatbotService {
      * @return ChatResponse with the assistant's reply and source documents
      */
     public ChatResponse generateResponse(ChatRequest request, String frontend, String role) {
+        // Check if this is a command (starts with /)
+        if (request.message().trim().startsWith("/")) {
+            return handleCommand(request.message().trim());
+        }
+
         try {
             // 1. Generate embedding for the user's message
             log.debug("Generating embedding for message: {}", request.message());
@@ -102,6 +107,48 @@ public class ChatbotService {
     }
 
     /**
+     * Handle hardcoded chatbot commands.
+     *
+     * @param message The command message (starting with /)
+     * @return ChatResponse with the command result
+     */
+    private ChatResponse handleCommand(String message) {
+        String command = message.toLowerCase().split("\\s+")[0];
+
+        switch (command) {
+            case "/help":
+                String helpText = buildHelpMessage();
+                return new ChatResponse(helpText, List.of());
+
+            default:
+                String unknownCommandMsg = "Unknown command: " + command + "\n" +
+                        "Type /help to see available commands.";
+                return new ChatResponse(unknownCommandMsg, List.of());
+        }
+    }
+
+    /**
+     * Build the help message with available commands and information.
+     */
+    private String buildHelpMessage() {
+        return """
+                SLMS Chatbot Help
+
+                Available Commands:
+                /help - Show this help message
+
+                About:
+                I'm your Smart Logistics assistant. I can help you with:
+                - Tracking orders and shipments
+                - Delivery information
+                - System features and capabilities
+                - General logistics questions
+
+                Just type your question and I'll assist you!
+                """;
+    }
+
+    /**
      * Build system prompt based on frontend and role.
      */
     private String buildSystemPrompt(String frontend, String role) {
@@ -126,7 +173,12 @@ public class ChatbotService {
                 break;
         }
 
-        prompt.append("Always respond in English (en-US) in a clear and professional manner.");
+        // Response formatting instructions
+        prompt.append("Always respond in English (en-US) in a clear and professional manner. ");
+        prompt.append("IMPORTANT: Keep your responses brief and concise - aim for 2-3 sentences maximum. ");
+        prompt.append("This is a chatbot conversation, so provide direct, conversational answers. ");
+        prompt.append("Do not use markdown formatting - avoid asterisks (**), hashtags (##), or any markdown syntax. ");
+        prompt.append("Respond in plain text only without any special formatting.");
 
         return prompt.toString();
     }

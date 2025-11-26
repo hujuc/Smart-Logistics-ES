@@ -436,7 +436,7 @@ export default function CarrierComparisonPage() {
           name: "Warehouse",
           addressLine1: "215 Clayton St",
           city: "San Francisco",
-          state: "CA",
+          stateOrProvince: "CA",
           postalCode: "94117",
           country: "US",
         },
@@ -445,7 +445,7 @@ export default function CarrierComparisonPage() {
           addressLine1: destination.line1 || "Customer Address",
           addressLine2: destination.line2 || undefined,
           city: destination.city || "San Jose",
-          state: destination.state || "CA",
+          stateOrProvince: destination.state || "CA",
           postalCode: destination.postalCode || "95122",
           country: destination.country || "US",
         },
@@ -563,6 +563,26 @@ export default function CarrierComparisonPage() {
 
       const shipmentCode = `SHIP-${Date.now()}`
       const orderIds = selectedShipments.map(id => parseInt(id))
+
+      console.log('[ShipmentCreation] Creating shipment with:', {
+        shipmentCode,
+        carrierId: carrierRecord.id,
+        carrierName: carrierRecord.name,
+        carrierCode: carrierRecord.code,
+        driverId: selectedDriver.id,
+        driverName: `${selectedDriver.firstName} ${selectedDriver.lastName}`,
+        orderIds,
+        totalOrders: orderIds.length,
+        shippingCost: selectedCarrier.cost,
+        transitTime: selectedCarrier.transitTime,
+      })
+
+      console.log('[ShipmentCreation] Available carrier records:', carrierRecords.map(c => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        active: c.active
+      })))
 
       const newShipment = await shipmentService.createShipment({
         shipmentCode,

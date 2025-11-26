@@ -2,7 +2,12 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main,231-304-implement-replica-revival-and-re-connection-in-production]
+    branches: [ main ]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 env:
   COMPOSE_PROJECT_NAME: slms-prod
@@ -66,14 +71,6 @@ env:
   LOG_LEVEL_APP: ${{ secrets.LOG_LEVEL_APP || 'DEBUG' }}
   LOG_LEVEL_WEB: ${{ secrets.LOG_LEVEL_WEB || 'INFO' }}
   LOG_LEVEL_SECURITY: ${{ secrets.LOG_LEVEL_SECURITY || 'INFO' }}
-  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
-  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
-  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
-  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
-  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
-  CHATBOT_SEEDER_ENABLED: ${{ secrets.CHATBOT_SEEDER_ENABLED || 'false' }}
 
 jobs: 
   backend-integration:
@@ -122,6 +119,17 @@ jobs:
           MINIO_ROOT_USER=${MINIO_ROOT_USER}
           MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           MINIO_BUCKET=${MINIO_BUCKET}
+
+          KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}
+          KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}
+          KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}
+          KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}
+          KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}
+          KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}
+          KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+          KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+          KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}
 
           KEYCLOAK_HOST=${KEYCLOAK_HOST}
           KEYCLOAK_PORT=${KEYCLOAK_PORT}
@@ -178,9 +186,9 @@ jobs:
           docker compose \
             -f infra/docker-compose.dev.yml \
             -f infra/docker-compose.ci.yml \
-            up -d postgres keycloak minio minio-create-bucket
+            up -d postgres keycloak minio minio-create-bucket zookeeper kafka
 
-      - name: Wait for Keycloak and MinIO
+      - name: Wait for Keycloak, MinIO, and Kafka
         run: |
           timeout 300 bash -c '
             until curl -fsSL http://localhost:${KEYCLOAK_PORT}/health/ready >/dev/null; do
@@ -190,6 +198,10 @@ jobs:
             until curl -fsSL http://localhost:${MINIO_PORT}/minio/health/live >/dev/null; do
               echo "Waiting for MinIO to be ready..."
               sleep 5
+            done
+            echo "Waiting for Kafka to be ready..."
+            sleep 15
+          '
             done
           '
 
@@ -203,6 +215,10 @@ jobs:
           MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+          KAFKA_BOOTSTRAP_SERVERS: localhost:39092
+          KAFKA_CONSUMER_GROUP_ID: slms-consumers-test
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+          KAFKA_SECURITY_PROTOCOL: PLAINTEXT
         run: mvn -B -ntp -Dtest='**/*IntegrationTest' -DfailIfNoTests=false test
 
       - name: Stop integration test stack
@@ -276,6 +292,17 @@ jobs:
           MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           MINIO_BUCKET=${MINIO_BUCKET}
 
+          KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}
+          KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}
+          KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}
+          KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}
+          KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}
+          KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}
+          KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+          KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+          KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}
+
           KEYCLOAK_HOST=${KEYCLOAK_HOST}
           KEYCLOAK_PORT=${KEYCLOAK_PORT}
           KEYCLOAK_REALM=slms
@@ -295,7 +322,7 @@ jobs:
           KC_HOSTNAME_ADMIN_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
           KC_HOSTNAME_STRICT=false
           KC_HOSTNAME_STRICT_BACKCHANNEL=false
-          KC_HOSTNAME=${KEYCLOAK_HOST:-keycloak}
+          KC_HOSTNAME=${KC_HOSTNAME:-keycloak}
           KC_HOSTNAME_PORT=${KEYCLOAK_PORT:-8080}
           KC_HTTP_ENABLED=true
           KC_PROXY_HEADERS=xforwarded
@@ -439,6 +466,17 @@ jobs:
           MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           MINIO_BUCKET=${MINIO_BUCKET}
 
+          KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}
+          KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}
+          KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}
+          KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}
+          KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}
+          KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}
+          KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+          KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+          KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}
+
           KEYCLOAK_HOST=${KEYCLOAK_HOST}
           KEYCLOAK_PORT=${KEYCLOAK_PORT}
           KEYCLOAK_REALM=slms
@@ -540,10 +578,7 @@ jobs:
             down -v
 
   deploy:
-    needs:
-      - backend-integration
-      - admin-console-e2e
-      - landing-page-e2e
+    needs: backend-integration
     runs-on: [self-hosted, aws-runner]
     steps:
       - name: Fix permissions before build
@@ -628,6 +663,18 @@ jobs:
           "LOG_LEVEL_APP=${LOG_LEVEL_APP}" \
           "LOG_LEVEL_WEB=${LOG_LEVEL_WEB}" \
           "LOG_LEVEL_SECURITY=${LOG_LEVEL_SECURITY}" \
+          "GEMINI_API_KEY=${GEMINI_API_KEY}" \
+          "GEMINI_MODEL=${GEMINI_MODEL}" \
+          "GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL}" \
+          "PINECONE_API_KEY=${PINECONE_API_KEY}" \
+          "PINECONE_HOST=${PINECONE_HOST}" \
+          "PINECONE_INDEX=${PINECONE_INDEX}" \
+          "PINECONE_NAMESPACE=${PINECONE_NAMESPACE}" \
+          "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}" \
+          "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}" \
+          "NEXT_PUBLIC_DEPLOYMENT_ENV=${NEXT_PUBLIC_DEPLOYMENT_ENV}" \
+          "NEXT_PUBLIC_PROJECT_VERSION=${NEXT_PUBLIC_PROJECT_VERSION}" \
+          "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${NEXT_PUBLIC_TRACING_SAMPLING_RATE}" \
           > .env
           head -n 5 .env | sed 's/=.*/=***/'
 
@@ -693,16 +740,6 @@ jobs:
           log_level_app            = "${LOG_LEVEL_APP}"
           log_level_web            = "${LOG_LEVEL_WEB}"
           log_level_security       = "${LOG_LEVEL_SECURITY}"
-
-          # Chatbot Module - AI & Vector Database Configuration
-          gemini_api_key          = "${GEMINI_API_KEY}"
-          gemini_model            = "${GEMINI_MODEL}"
-          gemini_embedding_model  = "${GEMINI_EMBEDDING_MODEL}"
-          pinecone_api_key        = "${PINECONE_API_KEY}"
-          pinecone_host           = "${PINECONE_HOST}"
-          pinecone_index          = "${PINECONE_INDEX}"
-          pinecone_namespace      = "${PINECONE_NAMESPACE}"
-          chatbot_seeder_enabled  = "${CHATBOT_SEEDER_ENABLED}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 
