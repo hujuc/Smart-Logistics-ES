@@ -7,16 +7,30 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 ARG FRONTEND_PATH
-COPY ${FRONTEND_PATH}/package.json ${FRONTEND_PATH}/package-lock.json* ./
-RUN npm ci
+# Copy package files
+COPY ${FRONTEND_PATH}/package.json ./package.json
+COPY ${FRONTEND_PATH}/package-lock.json ./package-lock.json
+
+# Install dependencies with error handling
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Build stage
 FROM base AS builder
 WORKDIR /app
 
 ARG FRONTEND_PATH
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_FLAGSMITH_ENV_KEY
+ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+ARG KEYCLOAK_BASE_URL
+ARG NEXTAUTH_URL
+
+# Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY ${FRONTEND_PATH} .
+COPY --from=deps /app/package.json ./package.json
+
+# Copy all source files
+COPY ${FRONTEND_PATH}/ ./
 
 # Set production environment
 ENV NODE_ENV=production
@@ -34,8 +48,14 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
 ENV NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
 
-# Build the application
-RUN npm run build
+# Verify installation and build
+RUN echo "=== Checking Node.js and npm ===" && \
+    node --version && \
+    npm --version && \
+    echo "=== Checking if next is installed ===" && \
+    ls -la node_modules/.bin/ | grep next || echo "Next.js not found in node_modules!" && \
+    echo "=== Starting build ===" && \
+    npm run build
 
 # Production stage
 FROM base AS runner
