@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
+import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 
 export const metadata: Metadata = {
   title: "SLMS - Customer Portal",
@@ -18,14 +19,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <UserStoreInitializer />
-        <Navbar />
-        <Suspense fallback={null}>
-          <DynamicFloatingNav />
-        </Suspense>
-        <main className="pr-30 pl-40" style={{ marginBottom: "80px" }}>
-          {children}
-        </main>
+        <ObservabilityProvider serviceName="slms-customer-portal">
+          <UserStoreInitializer />
+          <Navbar />
+          <Suspense fallback={null}>
+            <DynamicFloatingNav />
+          </Suspense>
+          <main className="pr-30 pl-40" style={{ marginBottom: "80px" }}>
+            {children}
+          </main>
+        </ObservabilityProvider>
       </body>
     </html>
   );

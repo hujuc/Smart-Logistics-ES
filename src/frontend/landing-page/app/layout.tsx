@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { UserStateDebugger } from "@shared/components/UserStateDebugger";
+import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 
 export const metadata: Metadata = {
   title: "SLMS - Smart Logistics Management System",
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <UserStoreInitializer />
-        <UserStateDebugger />
-        {children}
+        <ObservabilityProvider serviceName="slms-landing-page">
+          <UserStoreInitializer />
+          <UserStateDebugger />
+          {children}
+        </ObservabilityProvider>
       </body>
     </html>
   );
