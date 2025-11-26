@@ -46,6 +46,9 @@ class LogisticsBffControllerTest {
     private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService statsService;
 
     @MockBean
+    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsReportService reportService;
+
+    @MockBean
     private Operimus.SLMS.business_layer.order_module.service.WarehouseService warehouseService;
 
     @MockBean

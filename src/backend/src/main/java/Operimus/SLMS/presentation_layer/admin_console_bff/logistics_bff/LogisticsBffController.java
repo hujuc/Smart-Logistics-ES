@@ -12,11 +12,14 @@ import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
 import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService;
+import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +43,7 @@ public class LogisticsBffController {
 
     private final KeycloakUserService userService;
     private final LogisticsStatsService statsService;
+    private final LogisticsReportService reportService;
     private final WarehouseService warehouseService;
     private final OrderService orderService;
 
@@ -86,6 +90,51 @@ public class LogisticsBffController {
                     .body(Map.of("error", "Failed to fetch statistics: " + e.getMessage()));
         }
     }
+
+    /**
+     * Export comprehensive logistics KPI report as PDF
+     *
+     * @param period Time period for trend calculation: "daily", "weekly", or "monthly" (default: "daily")
+     * @return PDF file download
+     */
+    @GetMapping(
+        value = "/reports/export",
+        produces = MediaType.APPLICATION_PDF_VALUE
+    )
+    public ResponseEntity<byte[]> exportKPIReport(@RequestParam(defaultValue = "daily") String period) {
+        try {
+            log.info("Exporting logistics KPI report for period: {}", period);
+
+            if (!period.matches("daily|weekly|monthly")) {
+                return ResponseEntity.badRequest()
+                        .body(null);
+            }
+
+            byte[] pdfBytes = reportService.generateKPIReport(period);
+
+            String timestamp = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+            String filename = String.format("logistics_kpi_report_%s_%s.pdf", period, timestamp);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentLength(pdfBytes.length);
+
+            return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (Exception e) {
+            log.error("Error exporting KPI report", e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+
 
     // ===========================
     // Warehouse Management Endpoints

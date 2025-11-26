@@ -10,10 +10,12 @@ import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -26,6 +28,9 @@ public class ShipmentService {
 
     @Transactional
     public Shipment create(String shipmentCode, Long carrierId, String driverId, List<Long> orderIds) {
+        log.info("[ShipmentService] Creating shipment with code: {}, carrierId: {}, driverId: {}, orderIds: {}",
+                shipmentCode, carrierId, driverId, orderIds);
+
         if (shipmentRepository.existsByShipmentCodeIgnoreCase(shipmentCode)) {
             throw new ResourceConflictException(
                     "A shipment with code '%s' already exists.".formatted(shipmentCode));
@@ -35,7 +40,10 @@ public class ShipmentService {
             throw new IllegalArgumentException("Driver ID is required when creating a shipment");
         }
 
+        log.info("[ShipmentService] Looking for carrier with ID: {}", carrierId);
         Carrier carrier = carrierService.findEntityById(carrierId);
+        log.info("[ShipmentService] Found carrier: id={}, name={}, code={}",
+                carrier.getId(), carrier.getName(), carrier.getCode());
 
         // Fetch orders and validate they're available for shipment
         List<Order> orders = orderRepository.findAllById(orderIds);

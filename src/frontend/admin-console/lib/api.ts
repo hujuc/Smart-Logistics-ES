@@ -38,6 +38,9 @@ export const API_ENDPOINTS = {
     warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
     warehouseOrders: (warehouseId: number, status?: string) =>
       `${LOGISTICS_BASE}/warehouses/${warehouseId}/orders${status ? `?status=${status}` : ''}`,
+
+    // Report export
+    exportReport: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/reports/export?period=${period}`,
   },
 
   // Warehouse Staff BFF
@@ -164,6 +167,17 @@ export async function apiFetch<T>(
       requestBody: options.body,
     });
     throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  // Handle 204 No Content responses (e.g., DELETE operations)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  // Handle responses with no content
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return undefined as T;
   }
 
   return response.json();

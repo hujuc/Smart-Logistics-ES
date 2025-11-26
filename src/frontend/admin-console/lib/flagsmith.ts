@@ -18,12 +18,14 @@ interface FeatureFlags {
   'order-lookup-version': 'A' | 'B';
   'carrier-view-mode': 'table' | 'cards';
   'ticket-visibility-mode': 'all' | 'assigned';
+  'proof-of-delivery-enabled': boolean;
 }
 
 const defaultFlags: FeatureFlags = {
   'order-lookup-version': 'A',
   'carrier-view-mode': 'table',
   'ticket-visibility-mode': 'all',
+  'proof-of-delivery-enabled': true,
 };
 
 // Flagsmith Environment Key
@@ -110,17 +112,20 @@ class FeatureFlagManager {
    */
   private loadFlagsFromFlagsmith(): void {
     if (!this.useFlagsmithAPI) return;
-    
+
     // Get flag values from Flagsmith
     const orderLookupVersion = flagsmith.getValue('order-lookup-version') as 'A' | 'B' | null;
     const carrierViewMode = flagsmith.getValue('carrier-view-mode') as 'table' | 'cards' | null;
     const ticketVisibilityMode = flagsmith.getValue('ticket-visibility-mode') as 'all' | 'assigned' | null;
-    
+    const podEnabled = flagsmith.hasFeature('proof-of-delivery-enabled') &&
+      flagsmith.getValue('proof-of-delivery-enabled') === true;
+
     // Update local flags with values from Flagsmith, fallback to defaults
     this.flags['order-lookup-version'] = orderLookupVersion || defaultFlags['order-lookup-version'];
     this.flags['carrier-view-mode'] = carrierViewMode || defaultFlags['carrier-view-mode'];
     this.flags['ticket-visibility-mode'] = ticketVisibilityMode || defaultFlags['ticket-visibility-mode'];
-    
+    this.flags['proof-of-delivery-enabled'] = podEnabled;
+
     console.log('[Flagsmith] Loaded flags:', this.flags);
   }
 
@@ -140,7 +145,7 @@ class FeatureFlagManager {
    * Check if feature is enabled
    */
   isEnabled(flagName: keyof FeatureFlags): boolean {
-    return this.flags[flagName] !== undefined;
+    return this.flags[flagName] === true;
   }
 
   /**
@@ -209,4 +214,17 @@ export function useFeatureFlag<K extends keyof FeatureFlags>(
  */
 export function getOrderLookupVersion(): 'A' | 'B' {
   return featureFlagManager.getFlag('order-lookup-version');
+}
+
+/**
+ * Check if Proof of Delivery feature is enabled (shared across all apps)
+ * Convenience function for showing/hiding POD photos
+ *
+ * @example
+ * if (isProofOfDeliveryEnabled()) {
+ *   return <PODPhotoSection />
+ * }
+ */
+export function isProofOfDeliveryEnabled(): boolean {
+  return featureFlagManager.isEnabled('proof-of-delivery-enabled');
 }
