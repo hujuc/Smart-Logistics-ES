@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ,183-304-implement-replicas-and-add-load-balancer]
+    branches: [ main ,231-304-implement-replica-revival-and-re-connection-in-production]
 
 jobs: 
   deploy:
