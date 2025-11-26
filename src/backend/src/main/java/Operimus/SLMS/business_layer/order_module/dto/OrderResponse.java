@@ -34,6 +34,9 @@ public class OrderResponse {
     // Shipment relationship
     private Long shipmentId;
     private String shipmentCode;
+    private Long carrierId;
+    private String carrierCode;
+    private String carrierName;
 
     private String customerId;
     private String qrCodeUrl;
@@ -41,6 +44,7 @@ public class OrderResponse {
     private String trackingNumber;
     private OffsetDateTime qrConfirmedAt;
     private String qrConfirmedBy;
+    private String proofOfDeliveryUrl;
 
     // Parcel dimensions for shipping rate calculation
     private Double weight;

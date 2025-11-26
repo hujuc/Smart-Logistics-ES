@@ -291,6 +291,24 @@ public class OrderService {
     }
 
     private OrderResponse mapToResponse(Order order) {
+        // Fetch shipment data if order is assigned to a shipment
+        String shipmentCode = null;
+        Long carrierId = null;
+        String carrierCode = null;
+        String carrierName = null;
+
+        if (order.getShipmentId() != null) {
+            Shipment shipment = shipmentRepository.findById(order.getShipmentId()).orElse(null);
+            if (shipment != null) {
+                shipmentCode = shipment.getShipmentCode();
+                if (shipment.getCarrier() != null) {
+                    carrierId = shipment.getCarrier().getId();
+                    carrierCode = shipment.getCarrier().getCode();
+                    carrierName = shipment.getCarrier().getName();
+                }
+            }
+        }
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .reference(order.getReference())
@@ -308,13 +326,17 @@ public class OrderService {
                 .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                 .warehouseId(order.getWarehouse().getId())
                 .shipmentId(order.getShipmentId())
-                .shipmentCode(null) // Shipment code not available in Order entity (cross-module)
+                .shipmentCode(shipmentCode)
+                .carrierId(carrierId)
+                .carrierCode(carrierCode)
+                .carrierName(carrierName)
                 .trackingNumber(order.getTrackingNumber())
                 .customerId(order.getCustomerId())
                 .qrCodeUrl(order.getQrCodeUrl())
                 .qrConfirmationUrl(order.getQrConfirmationUrl())
                 .qrConfirmedAt(order.getQrConfirmedAt())
                 .qrConfirmedBy(order.getQrConfirmedBy())
+                .proofOfDeliveryUrl(order.getProofOfDeliveryUrl())
                 .weight(order.getWeight())
                 .weightUnit(order.getWeightUnit())
                 .length(order.getLength())
