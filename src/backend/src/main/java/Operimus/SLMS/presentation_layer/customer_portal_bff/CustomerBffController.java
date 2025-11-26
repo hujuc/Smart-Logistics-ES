@@ -42,6 +42,20 @@ public class CustomerBffController {
     private final DeliveryExceptionService exceptionService;
 
     /**
+     * Extract customer ID from JWT token
+     * Tries 'sub' claim first, falls back to 'preferred_username'
+     */
+    private String extractCustomerId(Jwt jwt) {
+        String customerId = jwt.getSubject();
+        if (customerId == null) {
+            log.warn("JWT sub claim is null. Available claims: {}", jwt.getClaims().keySet());
+            customerId = jwt.getClaimAsString("preferred_username");
+            log.info("Using preferred_username as customerId: {}", customerId);
+        }
+        return customerId;
+    }
+
+    /**
      * Health check endpoint
      *
      * @return Health status
@@ -84,39 +98,9 @@ public class CustomerBffController {
     @GetMapping("/orders")
     public ResponseEntity<List<OrderResponse>> getCustomerOrders(@AuthenticationPrincipal Jwt jwt) {
         try {
-            log.info("Customer BFF: JWT object is: {}", jwt != null ? "present" : "NULL");
-            if (jwt != null) {
-                log.info("Customer BFF: JWT subject: {}", jwt.getSubject());
-                log.info("Customer BFF: JWT claims: {}", jwt.getClaims());
-            }
-            
-            // Extract customer ID from JWT
-            // Try multiple claim sources: sub, user_id, or preferred_username
-            String customerId = null;
-            if (jwt != null) {
-                customerId = jwt.getSubject(); // Standard 'sub' claim
-                if (customerId == null) {
-                    customerId = jwt.getClaimAsString("user_id"); // Try 'user_id'
-                }
-                if (customerId == null) {
-                    customerId = jwt.getClaimAsString("sub"); // Try explicit 'sub'
-                }
-                if (customerId == null) {
-                    // Last resort: use preferred_username to lookup the user
-                    String username = jwt.getClaimAsString("preferred_username");
-                    log.warn("Customer BFF: No sub/user_id claim found. Using preferred_username: {}", username);
-                    // For now, we'll return empty list if we can't get a proper ID
-                    // In production, you might want to lookup user by username via Keycloak
-                }
-            }
-            
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching orders for customer {}", customerId);
-            
-            if (customerId == null) {
-                log.error("Customer BFF: customerId is null - JWT had no sub/user_id claim");
-                return ResponseEntity.ok(java.util.Collections.emptyList());
-            }
-            
+
             List<OrderResponse> orders = orderService.getByCustomerId(customerId);
             log.info("Customer BFF: Successfully fetched {} orders for customer {}", orders.size(), customerId);
             return ResponseEntity.ok(orders);
@@ -137,18 +121,18 @@ public class CustomerBffController {
     @GetMapping("/orders/tracking/{trackingNumber}")
     public ResponseEntity<OrderResponse> getOrderByTrackingNumber(@PathVariable String trackingNumber, @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching order with tracking {} for customer {}", trackingNumber, customerId);
-            
+
             OrderResponse order = orderService.getByTrackingNumber(trackingNumber);
-            
+
             // Security check: verify that the order belongs to this customer
             if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
-                log.warn("Customer {} attempted to access order with tracking {} (order customerId: {})", 
+                log.warn("Customer {} attempted to access order with tracking {} (order customerId: {})",
                         customerId, trackingNumber, order.getCustomerId());
                 throw new RuntimeException("Access denied: Order does not belong to this customer");
             }
-            
+
             log.info("Customer BFF: Successfully fetched order with tracking {}", trackingNumber);
             return ResponseEntity.ok(order);
         } catch (Exception e) {
@@ -168,7 +152,7 @@ public class CustomerBffController {
     @GetMapping("/orders/{id}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching order {} for customer {}", id, customerId);
             
             OrderResponse order = orderService.getById(id);
@@ -199,7 +183,7 @@ public class CustomerBffController {
     @GetMapping("/orders/{id}/events")
     public ResponseEntity<List<OrderEventResponse>> getOrderEvents(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching events for order {} for customer {}", id, customerId);
             
             // First verify the order belongs to this customer
@@ -232,7 +216,7 @@ public class CustomerBffController {
             @Valid @RequestBody OrderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Customer {} creating new order", customerId);
 
             // Set the customer ID from the JWT token (security: customer can only create orders for themselves)
@@ -240,7 +224,7 @@ public class CustomerBffController {
 
             // Create the order via business layer
             OrderResponse response = orderService.create(request);
-            
+
             log.info("Customer BFF: Successfully created order {} for customer {}", response.getId(), customerId);
 
             return ResponseEntity
@@ -267,18 +251,26 @@ public class CustomerBffController {
     @GetMapping("/delivery-exceptions")
     public ResponseEntity<List<DeliveryExceptionResponse>> getCustomerExceptions(@AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching delivery exceptions for customer {}", customerId);
-            
+
             if (customerId == null) {
                 log.error("Customer BFF: customerId is null - JWT had no sub claim");
                 return ResponseEntity.ok(java.util.Collections.emptyList());
             }
-            
-            // Convert String UUID to java.util.UUID
-            java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
+
+            // Try to convert String to UUID
+            // If customerId is not a valid UUID (e.g., username), return empty list
+            java.util.UUID customerUuid;
+            try {
+                customerUuid = java.util.UUID.fromString(customerId);
+            } catch (IllegalArgumentException e) {
+                log.warn("Customer BFF: customerId '{}' is not a valid UUID, cannot fetch exceptions", customerId);
+                return ResponseEntity.ok(java.util.Collections.emptyList());
+            }
+
             List<DeliveryExceptionResponse> exceptions = exceptionService.getByCustomerId(customerUuid);
-            
+
             log.info("Customer BFF: Successfully fetched {} exceptions for customer {}", exceptions.size(), customerId);
             return ResponseEntity.ok(exceptions);
         } catch (Exception e) {
@@ -300,7 +292,7 @@ public class CustomerBffController {
             @PathVariable java.util.UUID id,
             @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching exception {} for customer {}", id, customerId);
             
             DeliveryExceptionResponse exception = exceptionService.getById(id);
@@ -333,7 +325,7 @@ public class CustomerBffController {
             @Valid @RequestBody DeliveryExceptionRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Customer {} creating new delivery exception for order {}", 
                     customerId, request.getOrderId());
             
@@ -379,7 +371,7 @@ public class CustomerBffController {
             @PathVariable Long orderId,
             @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerId = jwt.getSubject();
+            String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching exceptions for order {} for customer {}", orderId, customerId);
             
             // Security check: verify that the order belongs to this customer

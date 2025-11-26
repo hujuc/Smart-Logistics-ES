@@ -560,19 +560,19 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
               Carrier Information
             </h3>
             <div>
-              <Label htmlFor="carrierCode">Carrier Code</Label>
+              <Label htmlFor="carrierName">Carrier Name</Label>
               <Input
-                id="carrierCode"
-                value={order.shipstationCarrierCode || "-"}
+                id="carrierName"
+                value={order.carrierName || "-"}
                 disabled
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="serviceCode">Service Code</Label>
+              <Label htmlFor="carrierCode">Carrier Code</Label>
               <Input
-                id="serviceCode"
-                value={order.shipstationServiceCode || "-"}
+                id="carrierCode"
+                value={order.carrierCode || "-"}
                 disabled
                 className="mt-1"
               />

@@ -14,11 +14,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -105,9 +107,24 @@ public class CarrierService {
 
     @Transactional(readOnly = true)
     public Carrier findEntityById(Long id) {
+        log.info("[CarrierService] Looking for carrier with ID: {}", id);
+
+        // First, let's check all carriers in DB for debugging
+        List<Carrier> allCarriers = carrierRepository.findAll();
+        log.info("[CarrierService] Total carriers in database: {}", allCarriers.size());
+        if (!allCarriers.isEmpty()) {
+            log.info("[CarrierService] Available carriers: {}",
+                allCarriers.stream()
+                    .map(c -> String.format("id=%d, name=%s, code=%s", c.getId(), c.getName(), c.getCode()))
+                    .collect(java.util.stream.Collectors.joining(", ")));
+        }
+
         return carrierRepository
                 .findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Carrier %d not found".formatted(id)));
+                .orElseThrow(() -> {
+                    log.error("[CarrierService] Carrier with ID {} not found!", id);
+                    return new ResourceNotFoundException("Carrier %d not found".formatted(id));
+                });
     }
 
     @Transactional
