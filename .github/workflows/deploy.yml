@@ -237,6 +237,18 @@ jobs:
           docker ps -a --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' | xargs -r docker stop || true
           docker ps -a --format '{{.Names}}' | grep -E 'slms-(backend|admin-console|customer-portal|driver-pwa|landing-page|postgres)-prod' | xargs -r docker rm -f || true
 
+      - name: Clear Docker build cache and old images
+        shell: bash
+        run: |
+          echo "Clearing Docker build cache..."
+          docker builder prune -f || true
+          echo "Removing old landing-page image..."
+          docker rmi slms-landing-page:latest -f || true
+          docker rmi slms-admin-console:latest -f || true
+          docker rmi slms-customer-portal:latest -f || true
+          docker rmi slms-driver-pwa:latest -f || true
+          echo "Docker cache cleared"
+
       - name: Ensure deploy script is executable
         shell: bash
         run: chmod +x infra/deploy.sh
