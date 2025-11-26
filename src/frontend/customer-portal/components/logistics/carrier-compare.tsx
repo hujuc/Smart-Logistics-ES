@@ -98,8 +98,8 @@ export function CarrierCompare({
       return <ArrowUpDown className="h-3 w-3 text-gray-400" />
     }
     return sortOrder === 'asc'
-      ? <ArrowUp className="h-3 w-3 text-brand-purple" />
-      : <ArrowDown className="h-3 w-3 text-brand-purple" />
+      ? <ArrowUp className="h-3 w-3 text-purple-700 fill-purple-700" />
+      : <ArrowDown className="h-3 w-3 text-purple-700 fill-purple-700" />
   }
 
   return (
