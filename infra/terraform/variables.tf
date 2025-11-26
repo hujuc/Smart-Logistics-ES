@@ -275,3 +275,66 @@ variable "pinecone_namespace" {
   type        = string
   default     = "en-US"
 }
+
+# -----------------------------------------------------------------------------
+# Kafka Message Broker Configuration
+# -----------------------------------------------------------------------------
+variable "kafka_broker_host" {
+  description = "Kafka broker hostname"
+  type        = string
+  default     = "kafka"
+}
+
+variable "kafka_broker_port" {
+  description = "Kafka broker internal port"
+  type        = string
+  default     = "9092"
+}
+
+variable "kafka_broker_external_port" {
+  description = "Kafka broker external port"
+  type        = string
+  default     = "9094"
+}
+
+variable "kafka_advertised_host" {
+  description = "Kafka advertised hostname (public hostname for external access)"
+  type        = string
+  default     = null
+}
+
+variable "kafka_zookeeper_host" {
+  description = "Zookeeper hostname for Kafka"
+  type        = string
+  default     = "zookeeper"
+}
+
+variable "kafka_zookeeper_port" {
+  description = "Zookeeper port"
+  type        = string
+  default     = "2181"
+}
+
+variable "kafka_bootstrap_servers" {
+  description = "Kafka bootstrap servers (e.g., kafka:9092)"
+  type        = string
+  default     = "kafka:9092"
+}
+
+variable "kafka_consumer_group_id" {
+  description = "Kafka consumer group ID"
+  type        = string
+  default     = "slms-consumers"
+}
+
+variable "kafka_consumer_auto_offset_reset" {
+  description = "Kafka consumer auto offset reset strategy"
+  type        = string
+  default     = "earliest"
+}
+
+variable "kafka_security_protocol" {
+  description = "Kafka security protocol (PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL)"
+  type        = string
+  default     = "PLAINTEXT"
+}

@@ -74,6 +74,18 @@ locals {
   config_pinecone_host           = var.pinecone_host != null ? var.pinecone_host : ""
   config_pinecone_index          = var.pinecone_index != null ? var.pinecone_index : "slms-chatbot"
   config_pinecone_namespace      = var.pinecone_namespace != null ? var.pinecone_namespace : "en-US"
+
+  # Kafka configuration
+  config_kafka_broker_host                 = var.kafka_broker_host != null ? var.kafka_broker_host : "kafka"
+  config_kafka_broker_port                 = var.kafka_broker_port != null ? var.kafka_broker_port : "9092"
+  config_kafka_broker_external_port        = var.kafka_broker_external_port != null ? var.kafka_broker_external_port : "9094"
+  config_kafka_advertised_host             = var.kafka_advertised_host != null ? var.kafka_advertised_host : "localhost"
+  config_kafka_zookeeper_host              = var.kafka_zookeeper_host != null ? var.kafka_zookeeper_host : "zookeeper"
+  config_kafka_zookeeper_port              = var.kafka_zookeeper_port != null ? var.kafka_zookeeper_port : "2181"
+  config_kafka_bootstrap_servers           = var.kafka_bootstrap_servers != null ? var.kafka_bootstrap_servers : "kafka:9092"
+  config_kafka_consumer_group_id           = var.kafka_consumer_group_id != null ? var.kafka_consumer_group_id : "slms-consumers"
+  config_kafka_consumer_auto_offset_reset  = var.kafka_consumer_auto_offset_reset != null ? var.kafka_consumer_auto_offset_reset : "earliest"
+  config_kafka_security_protocol           = var.kafka_security_protocol != null ? var.kafka_security_protocol : "PLAINTEXT"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -191,7 +203,17 @@ resource "docker_container" "backend" {
     "PINECONE_API_KEY=${local.config_pinecone_api_key}",
     "PINECONE_HOST=${local.config_pinecone_host}",
     "PINECONE_INDEX=${local.config_pinecone_index}",
-    "PINECONE_NAMESPACE=${local.config_pinecone_namespace}"
+    "PINECONE_NAMESPACE=${local.config_pinecone_namespace}",
+    "KAFKA_BROKER_HOST=${local.config_kafka_broker_host}",
+    "KAFKA_BROKER_PORT=${local.config_kafka_broker_port}",
+    "KAFKA_BROKER_EXTERNAL_PORT=${local.config_kafka_broker_external_port}",
+    "KAFKA_ADVERTISED_HOST=${local.config_kafka_advertised_host}",
+    "KAFKA_ZOOKEEPER_HOST=${local.config_kafka_zookeeper_host}",
+    "KAFKA_ZOOKEEPER_PORT=${local.config_kafka_zookeeper_port}",
+    "KAFKA_BOOTSTRAP_SERVERS=${local.config_kafka_bootstrap_servers}",
+    "KAFKA_CONSUMER_GROUP_ID=${local.config_kafka_consumer_group_id}",
+    "KAFKA_CONSUMER_AUTO_OFFSET_RESET=${local.config_kafka_consumer_auto_offset_reset}",
+    "KAFKA_SECURITY_PROTOCOL=${local.config_kafka_security_protocol}"
   ]
 
   networks_advanced {

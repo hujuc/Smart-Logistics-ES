@@ -78,24 +78,16 @@ env:
   PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
   PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
   PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
-  CHATBOT_SEEDER_ENABLED: ${{ secrets.CHATBOT_SEEDER_ENABLED || 'false' }}
   KAFKA_BROKER_HOST: ${{ secrets.KAFKA_BROKER_HOST || 'kafka' }}
   KAFKA_BROKER_PORT: ${{ secrets.KAFKA_BROKER_PORT || '9092' }}
   KAFKA_BROKER_EXTERNAL_PORT: ${{ secrets.KAFKA_BROKER_EXTERNAL_PORT || '9094' }}
-  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com`' }}
+  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
   KAFKA_ZOOKEEPER_HOST: ${{ secrets.KAFKA_ZOOKEEPER_HOST || 'zookeeper' }}
   KAFKA_ZOOKEEPER_PORT: ${{ secrets.KAFKA_ZOOKEEPER_PORT || '2181' }}
   KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092' }}
   KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
   KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
   KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
-  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
-  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
-  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
-  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
-  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
   NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL }}
   NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN }}
   NEXT_PUBLIC_DEPLOYMENT_ENV: ${{ secrets.NEXT_PUBLIC_DEPLOYMENT_ENV || 'production' }}
@@ -700,6 +692,16 @@ jobs:
           "PINECONE_HOST=${PINECONE_HOST}" \
           "PINECONE_INDEX=${PINECONE_INDEX}" \
           "PINECONE_NAMESPACE=${PINECONE_NAMESPACE}" \
+          "KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}" \
+          "KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}" \
+          "KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}" \
+          "KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}" \
+          "KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}" \
+          "KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}" \
+          "KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}" \
+          "KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}" \
+          "KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}" \
+          "KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}" \
           "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}" \
           "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}" \
           "NEXT_PUBLIC_DEPLOYMENT_ENV=${NEXT_PUBLIC_DEPLOYMENT_ENV}" \
@@ -779,7 +781,18 @@ jobs:
           pinecone_host           = "${PINECONE_HOST}"
           pinecone_index          = "${PINECONE_INDEX}"
           pinecone_namespace      = "${PINECONE_NAMESPACE}"
-          chatbot_seeder_enabled  = "${CHATBOT_SEEDER_ENABLED}"
+
+          # Kafka Message Broker Configuration
+          kafka_broker_host                = "${KAFKA_BROKER_HOST}"
+          kafka_broker_port                = "${KAFKA_BROKER_PORT}"
+          kafka_broker_external_port       = "${KAFKA_BROKER_EXTERNAL_PORT}"
+          kafka_advertised_host            = "${KAFKA_ADVERTISED_HOST}"
+          kafka_zookeeper_host             = "${KAFKA_ZOOKEEPER_HOST}"
+          kafka_zookeeper_port             = "${KAFKA_ZOOKEEPER_PORT}"
+          kafka_bootstrap_servers          = "${KAFKA_BOOTSTRAP_SERVERS}"
+          kafka_consumer_group_id          = "${KAFKA_CONSUMER_GROUP_ID}"
+          kafka_consumer_auto_offset_reset = "${KAFKA_CONSUMER_AUTO_OFFSET_RESET}"
+          kafka_security_protocol          = "${KAFKA_SECURITY_PROTOCOL}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 
