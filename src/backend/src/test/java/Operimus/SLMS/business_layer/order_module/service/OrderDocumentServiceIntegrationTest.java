@@ -12,6 +12,7 @@ import Operimus.SLMS.config.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,10 +37,13 @@ import static org.assertj.core.api.Assertions.*;
  *
  * Note: This test uses @SpringBootTest and requires the full application context.
  * Security is mocked via TestSecurityConfig to avoid connecting to Keycloak.
+ *
+ * Run with: mvn test -Dgroups=real-integration
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
+@Tag("real-integration")
 class OrderDocumentServiceIntegrationTest {
 
     @Autowired
@@ -100,11 +104,32 @@ class OrderDocumentServiceIntegrationTest {
                 .estimatedDeliveryDate(LocalDate.now().plusDays(7))
                 .build();
         testOrder = shipmentOrderRepository.save(testOrder);
+
+        // Clean up any existing documents for this order (in case of previous test failures)
+        cleanupDocuments();
     }
 
     @AfterEach
     void tearDown() {
         // Clean up test documents from MinIO
+        cleanupDocuments();
+
+        // Clean up database
+        if (testOrder != null) {
+            shipmentOrderRepository.delete(testOrder);
+        }
+        if (testWarehouse != null) {
+            warehouseRepository.delete(testWarehouse);
+        }
+    }
+
+    /**
+     * Helper method to clean up documents for the test order
+     */
+    private void cleanupDocuments() {
+        if (testOrder == null) {
+            return;
+        }
         try {
             String prefix = "orders/" + testOrder.getId() + "/";
             ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
@@ -121,14 +146,6 @@ class OrderDocumentServiceIntegrationTest {
             }
         } catch (Exception e) {
             // Ignore cleanup errors
-        }
-
-        // Clean up database
-        if (testOrder != null) {
-            shipmentOrderRepository.delete(testOrder);
-        }
-        if (testWarehouse != null) {
-            warehouseRepository.delete(testWarehouse);
         }
     }
 

@@ -60,6 +60,22 @@ export default function WarehousePage() {
     }
   }
 
+  const handleDeleteOrder = async (id: string) => {
+    if (!confirm(`Are you sure you want to delete order ${id}?`)) {
+      return
+    }
+
+    try {
+      await warehouseService.deleteOrder(parseInt(id))
+      // Reload orders after successful delete
+      await loadOrders()
+      alert('Order deleted successfully')
+    } catch (err) {
+      console.error('Failed to delete order:', err)
+      alert('Failed to delete order. This might be due to authentication issues with the DELETE endpoint.')
+    }
+  }
+
   const stats = {
     totalPackages: packages.length,
     readyForDispatch: packages.filter(p => p.status === "ASSIGNED_TO_SHIPMENT").length,
@@ -106,6 +122,7 @@ export default function WarehousePage() {
       <OrderTable
         packages={packages}
         onViewPackage={(id) => router.push(`/interfaces/warehouse/package/${id}`)}
+        onDeletePackage={handleDeleteOrder}
       />
     </div>
   )

@@ -2,19 +2,37 @@
  * Order document service - handles MinIO-backed document interactions.
  */
 
-import { getSession } from "next-auth/react";
 import type { OrderDocument } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost";
 
-async function getAuthHeaders(contentType?: string): Promise<HeadersInit> {
-  const session = await getSession();
+/**
+ * Get access token from cookies
+ */
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(cookie => cookie.trim().startsWith('access_token='));
+
+  if (tokenCookie) {
+    return tokenCookie.split('=')[1];
+  }
+
+  return null;
+}
+
+/**
+ * Create auth headers using cookie-based token
+ */
+function getAuthHeaders(contentType?: string): HeadersInit {
+  const token = getAccessToken();
   const headers: HeadersInit = contentType ? { "Content-Type": contentType } : {};
 
-  if (session?.accessToken) {
-    headers["Authorization"] = `Bearer ${session.accessToken}`;
-  } else {
-    console.warn("No access token found in session");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return headers;
@@ -39,24 +57,26 @@ async function handleJsonResponse<T>(response: Response): Promise<T> {
 
 export const orderDocumentService = {
   async list(orderId: number): Promise<OrderDocument[]> {
-    const headers = await getAuthHeaders("application/json");
+    const headers = getAuthHeaders("application/json");
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents`,
+      `${API_BASE_URL}/api/customer/orders/${orderId}/documents`,
       {
         method: "GET",
         headers,
+        credentials: 'include',
       },
     );
     return handleJsonResponse<OrderDocument[]>(response);
   },
 
   async download(orderId: number, documentId: string): Promise<Blob> {
-    const headers = await getAuthHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(
-      `${API_BASE_URL}/admin/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
+      `${API_BASE_URL}/api/customer/orders/${orderId}/documents/${encodeURIComponent(documentId)}/download`,
       {
         method: "GET",
         headers,
+        credentials: 'include',
       },
     );
     if (!response.ok) {
