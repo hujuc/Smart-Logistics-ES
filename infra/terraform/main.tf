@@ -193,11 +193,10 @@ resource "docker_image" "admin_console" {
   name         = "slms-admin-console:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/admin-console"
+    dockerfile = "Dockerfile"
     tag        = ["slms-admin-console:latest"]
     build_args = {
-      FRONTEND_PATH       = "src/frontend/admin-console"
       NEXT_PUBLIC_API_URL = local.config_next_public_api_url
     }
   }
@@ -228,11 +227,10 @@ resource "docker_image" "customer_portal" {
   name         = "slms-customer-portal:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/customer-portal"
+    dockerfile = "Dockerfile"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
-      FRONTEND_PATH                 = "src/frontend/customer-portal"
       NEXT_PUBLIC_API_URL           = local.config_next_public_api_url
       NEXT_PUBLIC_FLAGSMITH_ENV_KEY = local.config_flagsmith_env_key
       KEYCLOAK_BASE_URL             = local.config_keycloak_hostname_url
@@ -266,11 +264,10 @@ resource "docker_image" "driver_pwa" {
   name         = "slms-driver-pwa:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/driver-pwa"
+    dockerfile = "Dockerfile"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
-      FRONTEND_PATH                   = "src/frontend/driver-pwa"
       NEXT_PUBLIC_API_URL             = local.config_next_public_api_url
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = local.config_mapbox_access_token
     }
@@ -302,11 +299,10 @@ resource "docker_image" "landing_page" {
   name         = "slms-landing-page:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/landing-page"
+    dockerfile = "Dockerfile"
     tag        = ["slms-landing-page:latest"]
     build_args = {
-      FRONTEND_PATH       = "src/frontend/landing-page"
       NEXT_PUBLIC_API_URL = local.config_next_public_api_url
     }
   }
