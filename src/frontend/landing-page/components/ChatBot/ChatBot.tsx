@@ -193,6 +193,23 @@ const getInitialMessages = (): Message[] => [
 
 // Main ChatBot Component
 export default function ChatBot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: Date.now(),
+      title: "New Conversation",
+      messages: getInitialMessages(),
+      createdAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString(),
+    },
+  ]);
+  const [currentConversationId, setCurrentConversationId] = useState(
+    Date.now()
+  );
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   // Load state from localStorage after component mounts
   useEffect(() => {
     const loadState = () => {
@@ -246,7 +263,7 @@ export default function ChatBot() {
     } catch (error) {
       console.error("Error saving chatbot state:", error);
     }
-  }, [isOpen, conversations, currentConversationId]);
+  }, [isOpen, conversations]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
