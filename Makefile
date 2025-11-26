@@ -106,15 +106,15 @@ dev-logs:
 
 # Dependency installation
 install:
-	@echo "Installing frontend dependencies..."
+	@echo "Installing frontend dependencies (using npm ci for reproducibility)..."
 	@echo "Installing landing-page dependencies..."
-	@cd src/frontend/landing-page && npm install
+	@cd src/frontend/landing-page && npm ci
 	@echo "Installing admin-console dependencies..."
-	@cd src/frontend/admin-console && npm install
+	@cd src/frontend/admin-console && npm ci
 	@echo "Installing customer-portal dependencies..."
-	@cd src/frontend/customer-portal && npm install
+	@cd src/frontend/customer-portal && npm ci
 	@echo "Installing driver-pwa dependencies..."
-	@cd src/frontend/driver-pwa && npm install
+	@cd src/frontend/driver-pwa && npm ci
 	@echo "Installing Playwright browsers (for e2e tests)..."
 	@cd src/frontend/landing-page && npx playwright install chromium
 	@cd src/frontend/admin-console && npx playwright install chromium
@@ -122,6 +122,8 @@ install:
 	@echo ""
 	@echo "NOTE: If Playwright tests fail due to missing system dependencies,"
 	@echo "      run: sudo npx playwright install-deps chromium"
+	@echo ""
+	@echo "TIP: To add new packages, run 'npm install <package>' directly in the frontend directory"
 
 # Build commands
 build: install
