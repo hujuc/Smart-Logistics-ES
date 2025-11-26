@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ,231-304-implement-replica-revival-and-re-connection-in-production]
+    branches: [ main,231-304-implement-replica-revival-and-re-connection-in-production]
 
 jobs: 
   deploy:
