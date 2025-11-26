@@ -2,7 +2,11 @@
 
 ## Overview
 
-Elastic RUM (Real User Monitoring) + OpenTelemetry instrumentation has been implemented across all 4 Next.js frontends to capture real-time performance metrics, user experience data, and enable end-to-end distributed tracing.
+The SLMS (Smart Logistics Management System) implements comprehensive observability across all frontend and backend services using Elastic APM (Application Performance Monitoring). This provides real-time insights into application performance, user experience, and end-to-end distributed tracing from browser to database.
+
+**Status**: ✅ **Production Ready**
+
+**Last Updated**: November 26, 2025
 
 ## What's Been Implemented
 
@@ -16,18 +20,25 @@ Elastic RUM (Real User Monitoring) + OpenTelemetry instrumentation has been impl
 - Custom transactions and spans
 - User context tracking
 
-#### **OpenTelemetry Browser SDK**
-- Document load instrumentation
-- User interaction tracking (clicks, form submissions)
-- Resource timing (CSS, JS, images)
-- Additional fetch/XHR instrumentation with W3C trace context propagation
+#### **Core Web Vitals (Google's Performance Metrics)**
+- **LCP** (Largest Contentful Paint) - Loading performance (< 2.5s = good)
+- **INP** (Interaction to Next Paint) - Responsiveness (< 200ms = good, replaces deprecated FID)
+- **CLS** (Cumulative Layout Shift) - Visual stability (< 0.1 = good)
+- **FCP** (First Contentful Paint) - Initial rendering (< 1.8s = good)
+- **TTFB** (Time to First Byte) - Server response time (< 800ms = good)
 
-#### **Core Web Vitals**
-- **LCP** (Largest Contentful Paint) - Loading performance
-- **FID/INP** (First Input Delay / Interaction to Next Paint) - Responsiveness
-- **CLS** (Cumulative Layout Shift) - Visual stability
-- **FCP** (First Contentful Paint) - First paint timing
-- **TTFB** (Time to First Byte) - Server response time
+#### **Backend APM (Spring Boot)**
+- Automatic transaction tracking for all HTTP requests
+- Database query monitoring (JPA/Hibernate)
+- External API call tracing (Shippo, ShipEngine)
+- Exception and error tracking
+- JVM metrics (heap, GC, threads)
+- Kafka message tracing
+
+#### **OpenTelemetry Integration**
+- **Status**: Currently disabled due to Next.js compatibility issues
+- **Reason**: Elastic APM RUM provides all necessary browser instrumentation
+- Can be re-enabled if vendor-neutral telemetry is required
 
 ### 2. Architecture
 
