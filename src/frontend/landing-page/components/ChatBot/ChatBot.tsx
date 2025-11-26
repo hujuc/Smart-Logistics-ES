@@ -222,7 +222,7 @@ export default function ChatBot() {
           // Convert date strings back to Date objects
           return {
             ...parsed,
-            conversations: parsed.conversations.map((conv: any) => ({
+            conversations: parsed.conversations.map((conv: Conversation) => ({
               ...conv,
               createdAt: conv.createdAt,
               lastMessageAt: conv.lastMessageAt,

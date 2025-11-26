@@ -12,7 +12,12 @@ COPY ${FRONTEND_PATH}/package.json ./package.json
 COPY ${FRONTEND_PATH}/package-lock.json ./package-lock.json
 
 # Install dependencies with error handling
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps || { \
+      echo "npm ci failed, trying npm install..."; \
+      npm install --legacy-peer-deps; \
+    } && \
+    echo "=== Dependencies installed successfully ===" && \
+    ls -la node_modules/.bin/ | head -20
 
 # Build stage
 FROM base AS builder
@@ -31,6 +36,14 @@ COPY --from=deps /app/package.json ./package.json
 
 # Copy all source files
 COPY ${FRONTEND_PATH}/ ./
+
+# Debug: List copied files
+RUN echo "=== Listing copied files ===" && \
+    ls -la && \
+    echo "=== Checking if shared/ exists ===" && \
+    ls -la shared/ 2>/dev/null || echo "WARNING: shared/ directory not found!" && \
+    echo "=== Checking package.json ===" && \
+    cat package.json | grep -E '"name"|"version"|"next"' || true
 
 # Set production environment
 ENV NODE_ENV=production
@@ -52,9 +65,13 @@ ENV NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
 RUN echo "=== Checking Node.js and npm ===" && \
     node --version && \
     npm --version && \
-    echo "=== Checking if next is installed ===" && \
-    ls -la node_modules/.bin/ | grep next || echo "Next.js not found in node_modules!" && \
-    echo "=== Starting build ===" && \
+    echo "=== Verifying Next.js installation ===" && \
+    ls -la node_modules/.bin/ && \
+    if [ ! -f "node_modules/.bin/next" ]; then \
+      echo "ERROR: Next.js not found in node_modules!" && \
+      exit 1; \
+    fi && \
+    echo "=== Next.js found, starting build ===" && \
     npm run build
 
 # Production stage
