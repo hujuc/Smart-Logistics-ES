@@ -80,8 +80,8 @@ compose_up() {
     exit 1
   fi
 
-  log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
-  docker compose up -d --force-recreate keycloak minio minio-create-bucket nginx
+   log "Starting auxiliary services (Zookeeper, Kafka, Keycloak, MinIO, Nginx)"
+  docker compose up -d --force-recreate zookeeper kafka keycloak minio minio-create-bucket nginx
 }
 
 compose_down() {

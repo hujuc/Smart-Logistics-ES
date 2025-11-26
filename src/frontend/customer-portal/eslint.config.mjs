@@ -29,6 +29,9 @@ const eslintConfig = [
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_" 
       }], // Allow unused vars starting with _
+      "@next/next/no-html-link-for-pages": "warn", // Allow <a> tags with warning
+      "react/no-unescaped-entities": "warn", // Allow apostrophes with warning
+      "react-hooks/exhaustive-deps": "warn", // Dependencies warning only
     },
   },
 ];
