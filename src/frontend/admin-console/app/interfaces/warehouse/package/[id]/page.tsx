@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import { buildShippingAddressString, formatOrderShippingAddress, type AddressFieldName } from "@/lib/address"
-import type { Order, ShipmentDocument, ShipmentOrderStatus } from "@/types"
+import type { Order, ShipmentDocument, ShipmentOrderStatus, OrderEvent } from "@/types"
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
 import { shipmentDocumentService } from "@/lib/services/shipment-document.service"
@@ -35,6 +35,9 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [shipmentDocuments, setShipmentDocuments] = useState<ShipmentDocument[]>([])
   const [isShipmentDocsLoading, setIsShipmentDocsLoading] = useState(false)
   const [shipmentDocsError, setShipmentDocsError] = useState<string | null>(null)
+  const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([])
+  const [isEventsLoading, setIsEventsLoading] = useState(false)
+  const [eventsError, setEventsError] = useState<string | null>(null)
 
   // Unwrap params Promise
   useEffect(() => {
@@ -196,6 +199,43 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     }
   }, [orderId, order?.shipmentId])
 
+  // Fetch order events
+  useEffect(() => {
+    if (!orderId) {
+      setOrderEvents([])
+      return
+    }
+
+    const numericId = parseInt(orderId, 10)
+    if (Number.isNaN(numericId)) {
+      setOrderEvents([])
+      return
+    }
+
+    let isMounted = true
+    setIsEventsLoading(true)
+    setEventsError(null)
+
+    warehouseService
+      .getOrderEvents(numericId)
+      .then((events) => {
+        if (!isMounted) return
+        setOrderEvents(events)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        setEventsError(err instanceof Error ? err.message : "Failed to load order events")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsEventsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [orderId])
+
   const handleSave = async () => {
     if (!order) return
 
@@ -245,11 +285,15 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     try {
       setIsStatusChanging(true)
       await warehouseService.updateOrderStatus(parseInt(orderId), newStatus)
-      
+
       // Reload order to get updated data
       const updatedOrder = await warehouseService.getOrderById(parseInt(orderId))
       setOrder(updatedOrder)
-      
+
+      // Reload order events to get the new status event
+      const events = await warehouseService.getOrderEvents(parseInt(orderId))
+      setOrderEvents(events)
+
       alert(`Status successfully changed to ${STATUS_LABELS[newStatus]}`)
     } catch (err) {
       console.error('Failed to update status:', err)
@@ -611,36 +655,42 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-2">
           <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
-          <div className="space-y-3">
-            {order.actualDelivery && (
+          {isEventsLoading ? (
+            <p className="text-sm text-gray-600">Loading timeline...</p>
+          ) : eventsError ? (
+            <p className="text-sm text-red-600">{eventsError}</p>
+          ) : orderEvents.length > 0 ? (
+            <div className="space-y-3">
+              {orderEvents
+                .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+                .map((event, index) => (
+                  <div
+                    key={event.id}
+                    className={`flex gap-4 pb-3 ${index < orderEvents.length - 1 ? 'border-b' : ''}`}
+                  >
+                    <div className="text-sm text-gray-500 w-48">
+                      {new Date(event.occurredAt).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-black">
+                      {STATUS_LABELS[event.eventType] || event.eventType}
+                      {event.notes && (
+                        <span className="text-gray-600 ml-2">- {event.notes}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
               <div className="flex gap-4 pb-3 border-b">
                 <div className="text-sm text-gray-500 w-48">
-                  {new Date(order.actualDelivery).toLocaleString()}
+                  {new Date(order.createdAt).toLocaleString()}
                 </div>
-                <div className="text-sm text-black">Package delivered</div>
+                <div className="text-sm text-black">Order created</div>
               </div>
-            )}
-            {order.scannedAt && (
-              <div className="flex gap-4 pb-3 border-b">
-                <div className="text-sm text-gray-500 w-48">
-                  {new Date(order.scannedAt).toLocaleString()}
-                </div>
-                <div className="text-sm text-black">Package scanned at warehouse</div>
-              </div>
-            )}
-            <div className="flex gap-4 pb-3 border-b">
-              <div className="text-sm text-gray-500 w-48">
-                {new Date(order.updatedAt).toLocaleString()}
-              </div>
-              <div className="text-sm text-black">Last updated</div>
+              <p className="text-sm text-gray-600">No timeline events available yet.</p>
             </div>
-            <div className="flex gap-4 pb-3">
-              <div className="text-sm text-gray-500 w-48">
-                {new Date(order.createdAt).toLocaleString()}
-              </div>
-              <div className="text-sm text-black">Order created</div>
-            </div>
-          </div>
+          )}
       </div>
 
         <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-1">
