@@ -109,30 +109,22 @@ export function initializeOpenTelemetry(config: ObservabilityConfig): WebTracerP
       },
     });
 
-    // Create tracer provider with span processors
-    tracerProvider = new WebTracerProvider();
+    // Create span processors (required before provider initialization in v2.x)
+    const spanProcessors: SpanProcessor[] = [
+      // Custom processor to inject service attributes into all spans
+      new ServiceAttributesSpanProcessor(serviceAttributes),
+      // Batch processor for performance (batches spans before sending)
+      new BatchSpanProcessor(exporter, {
+        maxQueueSize: 100,
+        maxExportBatchSize: 10,
+        scheduledDelayMillis: 5000, // Send every 5 seconds
+      }),
+    ];
 
-    // Add custom span processor to inject service attributes
-    try {
-      tracerProvider.addSpanProcessor(
-        new ServiceAttributesSpanProcessor(serviceAttributes)
-      );
-    } catch (err) {
-      console.warn('[OTEL] Could not add service attributes processor:', err);
-    }
-
-    // Add span processor with batching for performance
-    try {
-      tracerProvider.addSpanProcessor(
-        new BatchSpanProcessor(exporter, {
-          maxQueueSize: 100,
-          maxExportBatchSize: 10,
-          scheduledDelayMillis: 5000, // Send every 5 seconds
-        })
-      );
-    } catch (err) {
-      console.warn('[OTEL] Could not add batch span processor:', err);
-    }
+    // Create tracer provider with span processors (OpenTelemetry v2.x API)
+    tracerProvider = new WebTracerProvider({
+      spanProcessors,
+    });
 
     // Register the provider
     tracerProvider.register();

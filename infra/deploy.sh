@@ -68,6 +68,18 @@ terraform_smart_deploy() {
 }
 
 compose_up() {
+  # Validate .env file exists (required for Keycloak and MinIO)
+  if [ ! -f "${SCRIPT_DIR}/.env" ]; then
+    log "ERROR: ${SCRIPT_DIR}/.env not found"
+    log "This file is required for Keycloak and MinIO configuration"
+    log "Please create it from .env.example or with required variables:"
+    log "  - KEYCLOAK_ADMIN, KEYCLOAK_ADMIN_PASSWORD"
+    log "  - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB"
+    log "  - MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, MINIO_BUCKET_NAME"
+    log "  - KC_HOSTNAME_URL (Keycloak public URL)"
+    exit 1
+  fi
+
   log "Starting auxiliary services (Keycloak, MinIO, Nginx)"
   docker compose up -d --force-recreate keycloak minio minio-create-bucket nginx
 }
@@ -157,16 +169,57 @@ case "${1:-}" in
   logs)
     service="${2:-backend}"
     case "${service}" in
-      backend) docker logs -f slms-backend-prod ;;
-      admin) docker logs -f slms-admin-console-prod ;;
-      customer) docker logs -f slms-customer-portal-prod ;;
-      driver) docker logs -f slms-driver-pwa-prod ;;
-      landing) docker logs -f slms-landing-page-prod ;;
-      postgres) docker logs -f slms-postgres-prod ;;
-      keycloak) docker logs -f slms-keycloak-prod ;;
-      nginx) docker logs -f slms-nginx-prod ;;
-      minio) docker logs -f slms-minio-prod ;;
-      *) log "Unknown service: ${service}"; exit 1 ;;
+      backend)
+        # Show logs from all backend replicas
+        containers=$(docker ps --format '{{.Names}}' | grep -E '^slms-backend-prod(-[0-9]+)?$' || true)
+        if [ -z "$containers" ]; then
+          log "No backend containers running"
+          exit 1
+        fi
+        docker logs -f --tail=100 $containers
+        ;;
+      admin)
+        containers=$(docker ps --format '{{.Names}}' | grep -E '^slms-admin-console-prod(-[0-9]+)?$' || true)
+        if [ -z "$containers" ]; then
+          log "No admin console containers running"
+          exit 1
+        fi
+        docker logs -f --tail=100 $containers
+        ;;
+      customer)
+        containers=$(docker ps --format '{{.Names}}' | grep -E '^slms-customer-portal-prod(-[0-9]+)?$' || true)
+        if [ -z "$containers" ]; then
+          log "No customer portal containers running"
+          exit 1
+        fi
+        docker logs -f --tail=100 $containers
+        ;;
+      driver)
+        containers=$(docker ps --format '{{.Names}}' | grep -E '^slms-driver-pwa-prod(-[0-9]+)?$' || true)
+        if [ -z "$containers" ]; then
+          log "No driver PWA containers running"
+          exit 1
+        fi
+        docker logs -f --tail=100 $containers
+        ;;
+      landing)
+        containers=$(docker ps --format '{{.Names}}' | grep -E '^slms-landing-page-prod(-[0-9]+)?$' || true)
+        if [ -z "$containers" ]; then
+          log "No landing page containers running"
+          exit 1
+        fi
+        docker logs -f --tail=100 $containers
+        ;;
+      postgres) docker logs -f --tail=100 slms-postgres-prod ;;
+      keycloak) docker logs -f --tail=100 slms-keycloak-prod ;;
+      nginx) docker logs -f --tail=100 slms-nginx-prod ;;
+      minio) docker logs -f --tail=100 slms-minio-prod ;;
+      all)
+        # Show logs from all SLMS containers
+        log "Showing logs from all services (Ctrl+C to exit)"
+        docker logs -f --tail=50 $(docker ps --filter "name=slms-" --format '{{.Names}}')
+        ;;
+      *) log "Unknown service: ${service}. Available: backend, admin, customer, driver, landing, postgres, keycloak, nginx, minio, all"; exit 1 ;;
     esac
     ;;
   status)
@@ -202,7 +255,7 @@ case "${1:-}" in
   echo "  restart         - Restart all containers"
   echo "  status          - Show status of all services"
   echo "  rebuild         - Force rebuild of all Docker images"
-  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio)"
+  echo "  logs [service]  - Follow logs of a service (backend|admin|customer|driver|landing|postgres|keycloak|nginx|minio|all)"
   exit 1
   ;;
 esac

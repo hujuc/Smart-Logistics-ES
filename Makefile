@@ -1,4 +1,4 @@
-.PHONY: help up down destroy restart logs status clean clean-volumes hard-prune dev-up dev-down dev-restart dev-logs install build test test-unit test-integration test-e2e test-real
+.PHONY: help up down destroy restart logs status clean clean-volumes rebuild hard-prune dev-up dev-down dev-restart dev-logs install build test test-unit test-integration test-e2e test-real
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
@@ -6,8 +6,9 @@ help:
 	@echo "  make down          - Stop all services (non-destructive, keeps infrastructure)"
 	@echo "  make destroy       - Stop and destroy all infrastructure (destructive)"
 	@echo "  make restart       - Restart all running services"
-	@echo "  make logs          - View all logs"
-	@echo "  make status        - Show running containers"
+	@echo "  make logs          - View logs (default: backend, add SERVICE=all for all logs)"
+	@echo "  make status        - Show running containers and health status"
+	@echo "  make rebuild       - Force rebuild all Docker images (ignores cache)"
 	@echo "  make clean         - Remove stopped containers only"
 	@echo "  make clean-volumes - Remove containers and all data (destructive)"
 	@echo ""
@@ -64,7 +65,6 @@ destroy:
 
 clean:
 	@echo "Cleaning up stopped containers..."
-	@docker compose -f infra/docker-compose.yaml down
 	@docker container prune -f
 	@echo "Cleanup complete"
 
@@ -81,15 +81,27 @@ restart:
 
 logs:
 	@echo "Showing logs (Ctrl+C to exit)..."
-	@cd infra && ./deploy.sh logs
+	@cd infra && ./deploy.sh logs $(SERVICE)
+
+rebuild:
+	@echo "Force rebuilding all Docker images..."
+	@cd infra && ./deploy.sh rebuild
+	@echo "Rebuild complete!"
 
 status:
-	@echo "SLMS Services Status:"
+	@echo "===== SLMS Services Status ====="
 	@echo ""
-	@docker ps --filter "name=slms-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@echo "Containers (with health status):"
+	@docker ps --filter "name=slms-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
 	@echo ""
 	@echo "Volumes:"
-	@docker volume ls --filter "name=slms-" --format "table {{.Name}}\t{{.Driver}}"
+	@docker volume ls --filter "name=slms-" --format "table {{.Name}}\t{{.Driver}}" 2>/dev/null || echo "No volumes found"
+	@echo ""
+	@echo "Terraform-managed resources:"
+	@cd infra/terraform && terraform state list 2>/dev/null | wc -l | xargs -I {} echo "  {} resources managed" || echo "  Terraform not initialized"
+	@echo ""
+	@echo "Network:"
+	@docker network inspect slms-network --format "  {{.Name}}: {{len .Containers}} containers connected" 2>/dev/null || echo "  slms-network: not found"
 
 # Development environment
 dev-up:

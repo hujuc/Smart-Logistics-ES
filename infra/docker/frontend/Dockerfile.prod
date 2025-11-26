@@ -8,7 +8,8 @@ WORKDIR /app
 
 ARG FRONTEND_PATH
 COPY ${FRONTEND_PATH}/package.json ${FRONTEND_PATH}/package-lock.json* ./
-RUN npm ci
+# Use BuildKit cache mount for faster builds
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
 
 # Build stage
 FROM base AS builder

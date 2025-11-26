@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getApm } from '@shared/lib/observability/apm';
+import { getApm, getApmConfig } from '@shared/lib/observability/apm';
 
 export default function TestAPMPage() {
   const [status, setStatus] = useState<any>({});
@@ -9,14 +9,15 @@ export default function TestAPMPage() {
   useEffect(() => {
     // Check APM status
     const apm = getApm();
+    const config = getApmConfig();
 
     const statusInfo = {
       apmInitialized: apm !== null,
       serverUrl: process.env.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL,
       hasSecretToken: !!process.env.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN,
-      serviceName: apm?.config ? apm.config('serviceName') : 'Not available',
-      environment: apm?.config ? apm.config('environment') : 'Not available',
-      active: apm?.config ? apm.config('active') : false,
+      serviceName: config?.serviceName || 'Not available',
+      environment: config?.environment || process.env.NEXT_PUBLIC_DEPLOYMENT_ENV || 'Not available',
+      active: apm?.isActive() || false,
     };
 
     setStatus(statusInfo);

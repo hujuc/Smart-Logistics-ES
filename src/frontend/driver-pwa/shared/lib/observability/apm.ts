@@ -14,6 +14,7 @@ import { init as initApm, ApmBase } from '@elastic/apm-rum';
 import type { ObservabilityConfig } from './types';
 
 let apmInstance: ApmBase | null = null;
+let apmConfig: ObservabilityConfig | null = null;
 
 /**
  * Initialize Elastic APM RUM agent
@@ -57,6 +58,9 @@ export function initializeApm(config: ObservabilityConfig): ApmBase | null {
     const sampleRate = config.sampleRate ??
       parseFloat(process.env.NEXT_PUBLIC_TRACING_SAMPLING_RATE || '1.0');
 
+    // Store config for later retrieval
+    apmConfig = config;
+
     apmInstance = initApm({
       // Required
       serviceName: config.serviceName,
@@ -94,7 +98,6 @@ export function initializeApm(config: ObservabilityConfig): ApmBase | null {
       pageLoadSampled: true,
 
       // Error handling
-      captureErrors: true,
       errorThrottleLimit: 20,
       errorThrottleInterval: 30000, // 30 seconds
 
@@ -109,7 +112,7 @@ export function initializeApm(config: ObservabilityConfig): ApmBase | null {
     });
 
     console.log(`[APM] ✓ Initialized for service: ${config.serviceName}`);
-    console.log(`[APM] Environment: ${apmInstance.config('environment')}`);
+    console.log(`[APM] Environment: ${config.environment || process.env.NEXT_PUBLIC_DEPLOYMENT_ENV || 'development'}`);
     console.log(`[APM] Sample rate: ${sampleRate * 100}%`);
 
     return apmInstance;
@@ -124,6 +127,14 @@ export function initializeApm(config: ObservabilityConfig): ApmBase | null {
  */
 export function getApm(): ApmBase | null {
   return apmInstance;
+}
+
+/**
+ * Get the APM configuration
+ * Returns the config used to initialize APM
+ */
+export function getApmConfig(): ObservabilityConfig | null {
+  return apmConfig;
 }
 
 /**
@@ -143,11 +154,11 @@ export function startTransaction(name: string, type = 'custom') {
  * Start a custom span within the current transaction
  * Useful for tracking specific operations within a transaction
  */
-export function startSpan(name: string, type = 'custom', subtype?: string) {
+export function startSpan(name: string, type = 'custom') {
   const apm = getApm();
   if (!apm) return null;
 
-  return apm.startSpan(name, type, { subtype });
+  return apm.startSpan(name, type);
 }
 
 /**
@@ -178,14 +189,14 @@ export function addContext(key: string, value: unknown) {
 /**
  * Capture a custom error
  */
-export function captureError(error: Error | string, context?: Record<string, unknown>) {
+export function captureError(error: Error | string, labels?: Record<string, string | number | boolean>) {
   const apm = getApm();
   if (!apm) {
     console.error('[APM] Cannot capture error - APM not initialized:', error);
     return;
   }
 
-  apm.captureError(error, context);
+  apm.captureError(error, labels ? { labels } : undefined);
   console.log('[APM] Error captured:', error);
 }
 
