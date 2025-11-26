@@ -44,7 +44,15 @@ interface FeatureFlags {
    * When true: Intelligent assignment based on workload/availability
    */
   'ticket-auto-assign-enabled': boolean;
-  
+
+  /**
+   * Master switch for Proof of Delivery (POD) feature (shared across all applications)
+   * When false: Customers don't see POD photos
+   * When true: Customers can view POD photos in Track Order page
+   * NOTE: This is the same flag used in driver-pwa and admin-console
+   */
+  'proof-of-delivery-enabled': boolean;
+
   // ========================================
   // RELEASE TOGGLES (Gradual rollout)
   // ========================================
@@ -86,11 +94,12 @@ const defaultFlags: FeatureFlags = {
   'support-tickets-enabled': true,
   'ticket-file-upload-enabled': false, // Disable attachments initially
   'ticket-auto-assign-enabled': false, // Disable auto-assign initially
-  
+  'proof-of-delivery-enabled': true, // Enable POD feature (shared across all apps)
+
   // Release toggle - Start with 100% rollout for development
   // In production, you'd start at 0-10% and gradually increase
   'tickets-rollout-percentage': 100,
-  
+
   // Multivariate toggles - Default to simple versions
   'ticket-creation-version': 'basic',
   'ticket-list-view': 'table',
@@ -217,10 +226,14 @@ class FeatureFlagManager {
       flagsmith.hasFeature('ticket-file-upload-enabled') && 
       flagsmith.getValue('ticket-file-upload-enabled') === true;
     
-    this.flags['ticket-auto-assign-enabled'] = 
-      flagsmith.hasFeature('ticket-auto-assign-enabled') && 
+    this.flags['ticket-auto-assign-enabled'] =
+      flagsmith.hasFeature('ticket-auto-assign-enabled') &&
       flagsmith.getValue('ticket-auto-assign-enabled') === true;
-    
+
+    this.flags['proof-of-delivery-enabled'] =
+      flagsmith.hasFeature('proof-of-delivery-enabled') &&
+      flagsmith.getValue('proof-of-delivery-enabled') === true;
+
     // Sync numeric flag (rollout percentage)
     const rolloutValue = flagsmith.getValue('tickets-rollout-percentage');
     this.flags['tickets-rollout-percentage'] = rolloutValue 
@@ -392,13 +405,26 @@ export function getTicketCreationVersion(): 'basic' | 'advanced' {
 /**
  * Get the ticket list view mode for current user
  * Convenience function for A/B testing the list view
- * 
+ *
  * @example
  * const view = getTicketListView()
  * return view === 'table' ? <TableView /> : <CardsView />
  */
 export function getTicketListView(): 'table' | 'cards' {
   return featureFlagManager.getFlag('ticket-list-view');
+}
+
+/**
+ * Check if Proof of Delivery feature is enabled (shared across all apps)
+ * Convenience function for showing/hiding POD photos
+ *
+ * @example
+ * if (isProofOfDeliveryEnabled()) {
+ *   return <PODPhotoSection />
+ * }
+ */
+export function isProofOfDeliveryEnabled(): boolean {
+  return featureFlagManager.isEnabled('proof-of-delivery-enabled');
 }
 
 // Export the FeatureFlags type for use in other files
