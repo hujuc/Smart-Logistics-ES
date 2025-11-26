@@ -12,10 +12,11 @@ import { useRouter } from "next/navigation"
 import { isAuthenticated } from "@/lib/shared-auth"
 import { warehouseService } from "@/lib/services/warehouse.service"
 import { buildShippingAddressString, formatOrderShippingAddress, type AddressFieldName } from "@/lib/address"
-import type { Order, ShipmentDocument, ShipmentOrderStatus } from "@/types"
+import type { Order, ShipmentDocument, ShipmentOrderStatus, OrderEvent } from "@/types"
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
 import { shipmentDocumentService } from "@/lib/services/shipment-document.service"
+import { featureFlagManager, isProofOfDeliveryEnabled } from "@/lib/flagsmith"
 
 interface PackageDetailsPageProps {
   params: Promise<{ id: string }>
@@ -31,10 +32,29 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [isQrLoading, setIsQrLoading] = useState(false)
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+  const [isPodLoading, setIsPodLoading] = useState(false)
+  const [podError, setPodError] = useState<string | null>(null)
+  const [podImageUrl, setPodImageUrl] = useState<string | null>(null)
+  const [podFeatureEnabled, setPodFeatureEnabled] = useState(false)
   const [isStatusChanging, setIsStatusChanging] = useState(false)
   const [shipmentDocuments, setShipmentDocuments] = useState<ShipmentDocument[]>([])
   const [isShipmentDocsLoading, setIsShipmentDocsLoading] = useState(false)
   const [shipmentDocsError, setShipmentDocsError] = useState<string | null>(null)
+  const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([])
+  const [isEventsLoading, setIsEventsLoading] = useState(false)
+  const [eventsError, setEventsError] = useState<string | null>(null)
+
+  // Initialize Flagsmith on mount
+  useEffect(() => {
+    const initFlags = async () => {
+      const warehouseId = 'warehouse-' + Math.random().toString(36).substring(7);
+      await featureFlagManager.initialize(warehouseId);
+      const enabled = isProofOfDeliveryEnabled();
+      setPodFeatureEnabled(enabled);
+      console.log('[PackageDetails] POD feature enabled:', enabled);
+    };
+    initFlags();
+  }, []);
 
   // Unwrap params Promise
   useEffect(() => {
@@ -156,6 +176,95 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   }, [orderId])
 
   useEffect(() => {
+    if (!orderId || !podFeatureEnabled) {
+      setPodImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      return
+    }
+
+    if (!isAuthenticated()) return
+
+    let isMounted = true
+    let currentUrl: string | null = null
+
+    const resetPodImage = () => {
+      setPodImageUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev)
+        }
+        return null
+      })
+      currentUrl = null
+    }
+
+    const loadPodImage = async () => {
+      setIsPodLoading(true)
+      setPodError(null)
+      resetPodImage()
+
+      try {
+        const orderNumericId = parseInt(orderId, 10)
+        if (Number.isNaN(orderNumericId)) {
+          throw new Error("Invalid order identifier")
+        }
+
+        const documents = await orderDocumentService.list(orderNumericId)
+        // Look for POD images - they typically don't start with "qr"
+        const podDocument = documents.find((doc) =>
+          !doc.documentId.toLowerCase().startsWith("qr") &&
+          (doc.contentType?.startsWith("image/") ||
+           doc.documentId.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+        )
+
+        if (!podDocument) {
+          return
+        }
+
+        const blob = await orderDocumentService.download(
+          orderNumericId,
+          podDocument.documentId,
+        )
+
+        if (!isMounted) {
+          return
+        }
+
+        const objectUrl = URL.createObjectURL(blob)
+        currentUrl = objectUrl
+        setPodImageUrl((prev) => {
+          if (prev) {
+            URL.revokeObjectURL(prev)
+          }
+          return objectUrl
+        })
+      } catch (err) {
+        console.error("Failed to load POD image:", err)
+        if (isMounted) {
+          setPodError("Failed to load proof of delivery photo.")
+          resetPodImage()
+        }
+      } finally {
+        if (isMounted) {
+          setIsPodLoading(false)
+        }
+      }
+    }
+
+    loadPodImage()
+
+    return () => {
+      isMounted = false
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+    }
+  }, [orderId, podFeatureEnabled])
+
+  useEffect(() => {
     if (!orderId) {
       setShipmentDocuments([])
       return
@@ -195,6 +304,43 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       isMounted = false
     }
   }, [orderId, order?.shipmentId])
+
+  // Fetch order events
+  useEffect(() => {
+    if (!orderId) {
+      setOrderEvents([])
+      return
+    }
+
+    const numericId = parseInt(orderId, 10)
+    if (Number.isNaN(numericId)) {
+      setOrderEvents([])
+      return
+    }
+
+    let isMounted = true
+    setIsEventsLoading(true)
+    setEventsError(null)
+
+    warehouseService
+      .getOrderEvents(numericId)
+      .then((events) => {
+        if (!isMounted) return
+        setOrderEvents(events)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        setEventsError(err instanceof Error ? err.message : "Failed to load order events")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsEventsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [orderId])
 
   const handleSave = async () => {
     if (!order) return
@@ -245,11 +391,15 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
     try {
       setIsStatusChanging(true)
       await warehouseService.updateOrderStatus(parseInt(orderId), newStatus)
-      
+
       // Reload order to get updated data
       const updatedOrder = await warehouseService.getOrderById(parseInt(orderId))
       setOrder(updatedOrder)
-      
+
+      // Reload order events to get the new status event
+      const events = await warehouseService.getOrderEvents(parseInt(orderId))
+      setOrderEvents(events)
+
       alert(`Status successfully changed to ${STATUS_LABELS[newStatus]}`)
     } catch (err) {
       console.error('Failed to update status:', err)
@@ -560,19 +710,19 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
               Carrier Information
             </h3>
             <div>
-              <Label htmlFor="carrierCode">Carrier Code</Label>
+              <Label htmlFor="carrierName">Carrier Name</Label>
               <Input
-                id="carrierCode"
-                value={order.shipstationCarrierCode || "-"}
+                id="carrierName"
+                value={order.carrierName || "-"}
                 disabled
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="serviceCode">Service Code</Label>
+              <Label htmlFor="carrierCode">Carrier Code</Label>
               <Input
-                id="serviceCode"
-                value={order.shipstationServiceCode || "-"}
+                id="carrierCode"
+                value={order.carrierCode || "-"}
                 disabled
                 className="mt-1"
               />
@@ -611,36 +761,42 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-2">
           <h3 className="font-semibold text-black mb-4">Order Timeline</h3>
-          <div className="space-y-3">
-            {order.actualDelivery && (
+          {isEventsLoading ? (
+            <p className="text-sm text-gray-600">Loading timeline...</p>
+          ) : eventsError ? (
+            <p className="text-sm text-red-600">{eventsError}</p>
+          ) : orderEvents.length > 0 ? (
+            <div className="space-y-3">
+              {orderEvents
+                .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+                .map((event, index) => (
+                  <div
+                    key={event.id}
+                    className={`flex gap-4 pb-3 ${index < orderEvents.length - 1 ? 'border-b' : ''}`}
+                  >
+                    <div className="text-sm text-gray-500 w-48">
+                      {new Date(event.occurredAt).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-black">
+                      {STATUS_LABELS[event.eventType] || event.eventType}
+                      {event.notes && (
+                        <span className="text-gray-600 ml-2">- {event.notes}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
               <div className="flex gap-4 pb-3 border-b">
                 <div className="text-sm text-gray-500 w-48">
-                  {new Date(order.actualDelivery).toLocaleString()}
+                  {new Date(order.createdAt).toLocaleString()}
                 </div>
-                <div className="text-sm text-black">Package delivered</div>
+                <div className="text-sm text-black">Order created</div>
               </div>
-            )}
-            {order.scannedAt && (
-              <div className="flex gap-4 pb-3 border-b">
-                <div className="text-sm text-gray-500 w-48">
-                  {new Date(order.scannedAt).toLocaleString()}
-                </div>
-                <div className="text-sm text-black">Package scanned at warehouse</div>
-              </div>
-            )}
-            <div className="flex gap-4 pb-3 border-b">
-              <div className="text-sm text-gray-500 w-48">
-                {new Date(order.updatedAt).toLocaleString()}
-              </div>
-              <div className="text-sm text-black">Last updated</div>
+              <p className="text-sm text-gray-600">No timeline events available yet.</p>
             </div>
-            <div className="flex gap-4 pb-3">
-              <div className="text-sm text-gray-500 w-48">
-                {new Date(order.createdAt).toLocaleString()}
-              </div>
-              <div className="text-sm text-black">Order created</div>
-            </div>
-          </div>
+          )}
       </div>
 
         <div className="bg-white border rounded-lg p-6 shadow-sm lg:col-span-1">
@@ -666,6 +822,34 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
           )}
         </div>
       </div>
+
+      {podFeatureEnabled && (order.status === 'DELIVERED' || podImageUrl) && (
+        <div className="bg-white border rounded-lg p-6 shadow-sm">
+          <h3 className="font-semibold text-black mb-4">Proof of Delivery</h3>
+          {isPodLoading ? (
+            <p className="text-gray-600 text-sm">Loading proof of delivery...</p>
+          ) : podError ? (
+            <p className="text-red-600 text-sm">{podError}</p>
+          ) : podImageUrl ? (
+            <div className="flex flex-col items-center">
+              <Image
+                src={podImageUrl}
+                alt="Proof of delivery"
+                width={400}
+                height={400}
+                className="rounded-md border bg-gray-50 object-contain max-h-[600px]"
+              />
+              <p className="text-sm text-gray-500 mt-2">
+                Photo taken by driver upon delivery
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-600 text-sm">
+              No proof of delivery photo is available for this order.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
