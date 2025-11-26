@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MapPin, Package, Phone, Navigation, ChevronDown, ChevronUp, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getDailySchedule } from '@/lib/api';
+import { useUser } from '@/shared/hooks/use-user';
 
 type Delivery = {
   id: number;
@@ -19,73 +21,118 @@ type Delivery = {
   weight: string;
 };
 
+function mapStatus(status: string): string {
+  switch (status) {
+    case 'IN_TRANSIT':
+      return 'In Transit';
+    case 'DELIVERED':
+      return 'Delivered';
+    case 'CREATED':
+    case 'READY_FOR_PICKUP':
+    case 'COLLECTED':
+    case 'ASSIGNED_TO_SHIPMENT':
+      return 'Pending';
+    default:
+      return status;
+  }
+}
+
 export default function DriverDailySchedule() {
   const router = useRouter();
+  const user = useUser();
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'route' | 'time' | 'priority'>('route');
+  const [deliveriesData, setDeliveriesData] = useState<Delivery[]>([]);
+  const [totalStops, setTotalStops] = useState(0);
+  const [totalPackages, setTotalPackages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data baseado nos requisitos
+  useEffect(() => {
+    async function fetchSchedule() {
+      try {
+        const scheduleData = await getDailySchedule();
+
+        const deliveries: Delivery[] = scheduleData.deliveries.map(d => ({
+          id: d.orderId,
+          stopNumber: d.stopNumber,
+          customerName: d.customerName || 'Unknown Customer',
+          address: d.address,
+          packageCount: 1,
+          priority: 'Medium' as const,
+          timeWindow: '09:00-17:00',
+          status: mapStatus(d.status),
+          specialInstructions: '',
+          phone: d.phone || '',
+          weight: d.weight ? `${d.weight} ${d.weightUnit || 'kg'}` : '0 kg'
+        }));
+
+        setDeliveriesData(deliveries);
+        setTotalStops(scheduleData.totalStops);
+        setTotalPackages(scheduleData.totalPackages);
+      } catch (err) {
+        console.error('Failed to fetch daily schedule:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load schedule');
+
+        // Use mock data as fallback
+        const mockData: Delivery[] = [
+          {
+            id: 1,
+            stopNumber: 1,
+            customerName: 'João Silva',
+            address: '123 Rua Street, Aveiro, CA 94520',
+            packageCount: 2,
+            priority: 'High',
+            timeWindow: '09:00-12:00',
+            status: 'Pending',
+            specialInstructions: 'Ring doorbell twice. Leave at front door if no answer.',
+            phone: '+351 912 345 678',
+            weight: '2.5 kg'
+          },
+          {
+            id: 2,
+            stopNumber: 2,
+            customerName: 'Maria Santos',
+            address: '456 Ave Street, Aveiro, CA 94521',
+            packageCount: 1,
+            priority: 'Medium',
+            timeWindow: '10:00-14:00',
+            status: 'Pending',
+            specialInstructions: 'Call before arrival. Gate code: 1234',
+            phone: '+351 918 765 432',
+            weight: '1.2 kg'
+          },
+          {
+            id: 3,
+            stopNumber: 3,
+            customerName: 'Carlos Ferreira',
+            address: '789 Main Street, Aveiro, CA 94522',
+            packageCount: 3,
+            priority: 'Low',
+            timeWindow: '13:00-17:00',
+            status: 'Pending',
+            specialInstructions: 'Business hours only. Reception desk.',
+            phone: '+351 915 222 333',
+            weight: '5.8 kg'
+          }
+        ];
+        setDeliveriesData(mockData);
+        setTotalStops(3);
+        setTotalPackages(6);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSchedule();
+  }, []);
+
   const deliveryStats = {
-    totalStops: 25,
-    totalPackages: 48,
+    totalStops: totalStops,
+    totalPackages: totalPackages,
     estimatedTime: '23:45',
     distance: '87 km'
   };
-
-  const deliveriesData: Delivery[] = [
-    {
-      id: 1,
-      stopNumber: 1,
-      customerName: 'João Silva',
-      address: '123 Rua Street, Aveiro, CA 94520',
-      packageCount: 2,
-      priority: 'High',
-      timeWindow: '09:00-12:00',
-      status: 'Pending',
-      specialInstructions: 'Ring doorbell twice. Leave at front door if no answer.',
-      phone: '+351 912 345 678',
-      weight: '2.5 kg'
-    },
-    {
-      id: 2,
-      stopNumber: 2,
-      customerName: 'Maria Santos',
-      address: '456 Ave Street, Aveiro, CA 94521',
-      packageCount: 1,
-      priority: 'Medium',
-      timeWindow: '10:00-14:00',
-      status: 'Pending',
-      specialInstructions: 'Call before arrival. Gate code: 1234',
-      phone: '+351 918 765 432',
-      weight: '1.2 kg'
-    },
-    {
-      id: 3,
-      stopNumber: 3,
-      customerName: 'Carlos Ferreira',
-      address: '789 Main Street, Aveiro, CA 94522',
-      packageCount: 3,
-      priority: 'Low',
-      timeWindow: '13:00-17:00',
-      status: 'Pending',
-      specialInstructions: 'Business hours only. Reception desk.',
-      phone: '+351 915 222 333',
-      weight: '5.8 kg'
-    },
-    {
-      id: 4,
-      stopNumber: 4,
-      customerName: 'João Roldão',
-      address: '1011 Rua de Espinho, Aveiro, CA 94211',
-      packageCount: 30,
-      priority: 'Medium',
-      timeWindow: '08:00-11:00',
-      status: 'Pending',
-      specialInstructions: 'If not home, leave with neighbor at 1013.',
-      phone: '+351 912 345 678',
-      weight: '50.1 kg'
-    }
-  ];
 
   // Sorting logic
   const sortedDeliveries = useMemo(() => {
@@ -158,6 +205,17 @@ export default function DriverDailySchedule() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Package className="h-12 w-12 text-black mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Loading schedule...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
       <div className="min-h-screen bg-white pb-20">
         {/* Header */}
@@ -167,7 +225,9 @@ export default function DriverDailySchedule() {
             <span className="text-base font-bold text-white">SLMS</span>
           </div>
           <h1 className="text-2xl font-bold">Daily Schedule</h1>
-          <p className="text-gray-300 text-sm mt-1">Carlos Silva • Driver</p>
+          <p className="text-gray-300 text-sm mt-1">
+            {user ? `${user.firstName} ${user.lastName}` : 'Driver'} • Driver
+          </p>
           <div className="absolute top-4 right-4">
             <Link href="/" className="flex items-center gap-1 text-white hover:text-gray-300">
               <ArrowLeft className="w-5 h-5" />
@@ -175,6 +235,19 @@ export default function DriverDailySchedule() {
             </Link>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-yellow-400" />
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  Using mock data. {error}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Route Summary */}
         <div className="bg-white border-b border-gray-200 p-4">
@@ -197,7 +270,7 @@ export default function DriverDailySchedule() {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={handleViewMap}
             className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
           >
@@ -292,14 +365,14 @@ export default function DriverDailySchedule() {
                         </div>
 
                         <div className="flex gap-2 mt-4">
-                          <button 
+                          <button
                             onClick={() => handleCallCustomer(delivery.phone)}
                             className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-black py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                           >
                             <Phone className="w-4 h-4" />
                             Call
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleNavigate(delivery.id)}
                             className="flex-1 flex items-center justify-center gap-2 bg-black text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
                           >
@@ -334,7 +407,7 @@ export default function DriverDailySchedule() {
 
         {/* Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <button 
+          <button
             onClick={handleGoToNextOrder}
             className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
           >
