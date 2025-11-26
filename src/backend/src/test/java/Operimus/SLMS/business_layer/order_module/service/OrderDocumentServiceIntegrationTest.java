@@ -100,11 +100,32 @@ class OrderDocumentServiceIntegrationTest {
                 .estimatedDeliveryDate(LocalDate.now().plusDays(7))
                 .build();
         testOrder = shipmentOrderRepository.save(testOrder);
+
+        // Clean up any existing documents for this order (in case of previous test failures)
+        cleanupDocuments();
     }
 
     @AfterEach
     void tearDown() {
         // Clean up test documents from MinIO
+        cleanupDocuments();
+
+        // Clean up database
+        if (testOrder != null) {
+            shipmentOrderRepository.delete(testOrder);
+        }
+        if (testWarehouse != null) {
+            warehouseRepository.delete(testWarehouse);
+        }
+    }
+
+    /**
+     * Helper method to clean up documents for the test order
+     */
+    private void cleanupDocuments() {
+        if (testOrder == null) {
+            return;
+        }
         try {
             String prefix = "orders/" + testOrder.getId() + "/";
             ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
@@ -121,14 +142,6 @@ class OrderDocumentServiceIntegrationTest {
             }
         } catch (Exception e) {
             // Ignore cleanup errors
-        }
-
-        // Clean up database
-        if (testOrder != null) {
-            shipmentOrderRepository.delete(testOrder);
-        }
-        if (testWarehouse != null) {
-            warehouseRepository.delete(testWarehouse);
         }
     }
 
