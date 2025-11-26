@@ -223,8 +223,8 @@ class GeminiClientTest {
         String apiKey = System.getenv("GEMINI_API_KEY");
         GeminiProperties properties = new GeminiProperties(
                 apiKey,
-                "gemini-1.5-flash",
-                "gemini-embedding-001"
+                "gemini-2.0-flash",
+                "text-embedding-004"
         );
 
         GeminiClient client = new GeminiClient(
@@ -261,8 +261,8 @@ class GeminiClientTest {
         String apiKey = System.getenv("GEMINI_API_KEY");
         GeminiProperties properties = new GeminiProperties(
                 apiKey,
-                "gemini-1.5-flash",
-                "gemini-embedding-001"
+                "gemini-2.0-flash",
+                "text-embedding-004"
         );
 
         GeminiClient client = new GeminiClient(
@@ -279,7 +279,7 @@ class GeminiClientTest {
         // Then
         assertThat(embedding).isNotNull();
         assertThat(embedding.length).isGreaterThan(0);
-        // gemini-embedding-001 typically returns 768 dimensions
+        // text-embedding-004 returns 768 dimensions (matching Pinecone index configuration)
         assertThat(embedding.length).isEqualTo(768);
     }
 

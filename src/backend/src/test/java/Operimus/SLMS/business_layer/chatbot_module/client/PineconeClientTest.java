@@ -140,7 +140,8 @@ class PineconeClientTest {
         RecordedRequest request = mockWebServer.takeRequest();
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getPath()).isEqualTo("/vectors/upsert");
-        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer test-api-key");
+        assertThat(request.getHeader("Api-Key")).isEqualTo("test-api-key");
+        assertThat(request.getHeader("X-Pinecone-API-Version")).isEqualTo("2025-01");
         assertThat(request.getHeader("Content-Type")).contains("application/json");
 
         // Verify request body
@@ -236,7 +237,8 @@ class PineconeClientTest {
         RecordedRequest request = mockWebServer.takeRequest();
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getPath()).isEqualTo("/query");
-        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer test-api-key");
+        assertThat(request.getHeader("Api-Key")).isEqualTo("test-api-key");
+        assertThat(request.getHeader("X-Pinecone-API-Version")).isEqualTo("2025-01");
 
         // Verify request body
         String requestBody = request.getBody().readUtf8();

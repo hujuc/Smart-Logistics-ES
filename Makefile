@@ -158,11 +158,10 @@ test-e2e: install
 
 test-real:
 	@echo "Running tests with real external services..."
-	@echo "NOTE: Requires running services:"
-	@echo "  - Gemini API (requires GEMINI_API_KEY)"
-	@echo "  - MinIO (docker-compose -f infra/docker-compose.dev.yml up minio -d)"
-	@echo "  - Keycloak (docker-compose -f infra/docker-compose.dev.yml up keycloak -d)"
-	@cd src/backend && mvn test -Preal-integration
+	@echo "NOTE: Requires running backend service (make dev-up)"
+	@echo "  - Gemini API (requires GEMINI_API_KEY in infra/.env)"
+	@echo "  - Pinecone API (requires PINECONE_API_KEY in infra/.env)"
+	@docker exec slms-backend-dev /bin/sh -c "cd /app && ./mvnw test -Preal-integration"
 	@echo "Real integration tests complete!"
 
 # Cleanup

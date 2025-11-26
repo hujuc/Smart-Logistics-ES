@@ -32,7 +32,8 @@ public class PineconeClient {
         this.properties = properties;
         this.webClient = WebClient.builder()
                 .baseUrl(properties.host())
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
+                .defaultHeader("Api-Key", properties.apiKey())
+                .defaultHeader("X-Pinecone-API-Version", "2025-01")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
