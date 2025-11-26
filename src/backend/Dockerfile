@@ -10,10 +10,24 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests \
   && cp "${JAR_FILE}" app.jar \
   && rm -rf target
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY --from=builder /workspace/app.jar app.jar
+# Create non-root user for security
+RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
+
+COPY --from=builder --chown=appuser:appgroup /workspace/app.jar app.jar
+
+# Switch to non-root user
+USER appuser
+
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# JVM optimizations for containers
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:+UseG1GC", \
+  "-XX:+OptimizeStringConcat", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]
