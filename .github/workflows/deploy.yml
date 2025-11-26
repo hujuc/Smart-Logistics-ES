@@ -71,6 +71,36 @@ env:
   LOG_LEVEL_APP: ${{ secrets.LOG_LEVEL_APP || 'DEBUG' }}
   LOG_LEVEL_WEB: ${{ secrets.LOG_LEVEL_WEB || 'INFO' }}
   LOG_LEVEL_SECURITY: ${{ secrets.LOG_LEVEL_SECURITY || 'INFO' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
+  CHATBOT_SEEDER_ENABLED: ${{ secrets.CHATBOT_SEEDER_ENABLED || 'false' }}
+  KAFKA_BROKER_HOST: ${{ secrets.KAFKA_BROKER_HOST || 'kafka' }}
+  KAFKA_BROKER_PORT: ${{ secrets.KAFKA_BROKER_PORT || '9092' }}
+  KAFKA_BROKER_EXTERNAL_PORT: ${{ secrets.KAFKA_BROKER_EXTERNAL_PORT || '9094' }}
+  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com`' }}
+  KAFKA_ZOOKEEPER_HOST: ${{ secrets.KAFKA_ZOOKEEPER_HOST || 'zookeeper' }}
+  KAFKA_ZOOKEEPER_PORT: ${{ secrets.KAFKA_ZOOKEEPER_PORT || '2181' }}
+  KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092' }}
+  KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
+  KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
+  KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
+  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL }}
+  NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN }}
+  NEXT_PUBLIC_DEPLOYMENT_ENV: ${{ secrets.NEXT_PUBLIC_DEPLOYMENT_ENV || 'production' }}
+  NEXT_PUBLIC_PROJECT_VERSION: ${{ secrets.NEXT_PUBLIC_PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
+  NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${{ secrets.NEXT_PUBLIC_TRACING_SAMPLING_RATE || '1.0' }}
 
 jobs: 
   backend-integration:
@@ -740,6 +770,16 @@ jobs:
           log_level_app            = "${LOG_LEVEL_APP}"
           log_level_web            = "${LOG_LEVEL_WEB}"
           log_level_security       = "${LOG_LEVEL_SECURITY}"
+
+          # Chatbot Module - AI & Vector Database Configuration
+          gemini_api_key          = "${GEMINI_API_KEY}"
+          gemini_model            = "${GEMINI_MODEL}"
+          gemini_embedding_model  = "${GEMINI_EMBEDDING_MODEL}"
+          pinecone_api_key        = "${PINECONE_API_KEY}"
+          pinecone_host           = "${PINECONE_HOST}"
+          pinecone_index          = "${PINECONE_INDEX}"
+          pinecone_namespace      = "${PINECONE_NAMESPACE}"
+          chatbot_seeder_enabled  = "${CHATBOT_SEEDER_ENABLED}"
           EOF
           echo "✅ terraform.tfvars created with production secrets"
 
