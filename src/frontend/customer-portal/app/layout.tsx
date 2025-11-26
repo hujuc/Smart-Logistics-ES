@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
+import { ChatWidget } from "@shared/components/chatbot/ChatWidget";
 import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
             {children}
           </main>
         </ObservabilityProvider>
+        <ChatWidget apiEndpoint="/api/customer/chat" />
       </body>
     </html>
   );

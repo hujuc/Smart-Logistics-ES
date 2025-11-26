@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { UserStateDebugger } from "@shared/components/UserStateDebugger";
+import { ChatWidget } from "@shared/components/chatbot/ChatWidget";
 import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
           <UserStoreInitializer />
           <UserStateDebugger />
           {children}
+        <ChatWidget apiEndpoint="/api/landing-page/chat" skipAuth={true} />
         </ObservabilityProvider>
       </body>
     </html>

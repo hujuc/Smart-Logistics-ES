@@ -30,11 +30,14 @@ import static org.assertj.core.api.Assertions.*;
  * 2. Obtain admin token using client credentials
  * 3. Create, read, search, and delete users
  * 4. Assign and verify roles
+ *
+ * Run with: mvn test -Dgroups=real-integration
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("real-integration")
 class KeycloakUserServiceIntegrationTest {
 
     @Autowired

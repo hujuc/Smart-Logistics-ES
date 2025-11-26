@@ -53,6 +53,10 @@
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-starter-websocket</artifactId>
                 </dependency>
+                <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-webflux</artifactId>
+                </dependency>
 
                 <!-- Kafka Dependencies -->
                 <dependency>
@@ -172,6 +176,14 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- MockWebServer for testing HTTP clients -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>mockwebserver</artifactId>
+			<version>4.12.0</version>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- Cucumber BDD Testing -->
 		<dependency>
 			<groupId>io.cucumber</groupId>
@@ -271,6 +283,30 @@
 		</dependency>
 	</dependencies>
 
+	<profiles>
+		<!-- Profile for running real integration tests with external APIs -->
+		<profile>
+			<id>real-integration</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration combine.self="override">
+							<groups>real-integration</groups>
+							<includes>
+								<include>**/*Test.java</include>
+							</includes>
+							<systemPropertyVariables>
+								<allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -306,6 +342,7 @@
 					<includes>
 						<include>**/*Test.java</include>
 					</includes>
+					<excludedGroups>real-integration</excludedGroups>
 					<systemPropertyVariables>
 						<allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
 					</systemPropertyVariables>
