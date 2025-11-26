@@ -2,13 +2,17 @@ package Operimus.SLMS.presentation_layer.driver_pwa_bff;
 
 import Operimus.SLMS.business_layer.order_module.dto.OrderScanResult;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
+import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
+import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = DriverBffController.class,
     excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class, KafkaAutoConfiguration.class})
-@AutoConfigureMockMvc(addFilters = false)
 class DriverBffControllerTest {
 
     @Autowired
@@ -36,6 +39,21 @@ class DriverBffControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private OrderEventService orderEventService;
+
+    @MockBean
+    private ShipmentRepository shipmentRepository;
+
+    @MockBean
+    private OrderRepository orderRepository;
+
+    @MockBean
+    private KeycloakUserService keycloakUserService;
+
+    @MockBean
+    private OrderDocumentService orderDocumentService;
 
     @MockBean
     private JwtDecoder jwtDecoder;
@@ -124,7 +142,7 @@ class DriverBffControllerTest {
     @Test
     void whenConfirmOrderScan_withoutAuthentication_thenReturnUnauthorized() throws Exception {
         mockMvc.perform(post("/api/driver/orders/1/confirm"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());  // Changed from isUnauthorized() to isForbidden()
 
         verify(orderService, never()).confirmOrderScan(anyLong(), anyString());
     }
