@@ -83,6 +83,7 @@ public class ShipmentController {
         return ShipmentResponse.builder()
                 .id(shipment.getId())
                 .shipmentCode(shipment.getShipmentCode())
+                .status(shipment.getStatus() != null ? shipment.getStatus().toString() : null)
                 .carrierId(shipment.getCarrier().getId())
                 .carrierCode(shipment.getCarrier().getCode())
                 .carrierName(shipment.getCarrier().getName())

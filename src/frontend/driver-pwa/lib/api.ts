@@ -132,3 +132,43 @@ export interface DashboardResponse {
 export async function getDashboard(): Promise<DashboardResponse> {
   return apiFetch(API_ENDPOINTS.dashboard);
 }
+
+/**
+ * Shipment acceptance types
+ */
+export interface PendingShipment {
+  id: number;
+  shipmentCode: string;
+  status: string;
+  carrierName: string;
+  totalOrders: number;
+  estimatedDeliveryDate: string | null;
+}
+
+/**
+ * Get pending shipments for driver acceptance
+ */
+export async function getPendingShipments(): Promise<PendingShipment[]> {
+  // This endpoint doesn't exist yet, but we'll create it
+  // For now, we can fetch from the daily schedule and filter by status
+  return apiFetch(`${API_ENDPOINTS.base}/pending-shipments`);
+}
+
+/**
+ * Accept a shipment
+ */
+export async function acceptShipment(shipmentId: number): Promise<any> {
+  return apiFetch(`${API_ENDPOINTS.base}/shipments/${shipmentId}/accept`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Reject a shipment
+ */
+export async function rejectShipment(shipmentId: number, reason?: string): Promise<any> {
+  return apiFetch(`${API_ENDPOINTS.base}/shipments/${shipmentId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}

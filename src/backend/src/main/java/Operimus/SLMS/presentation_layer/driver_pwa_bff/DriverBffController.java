@@ -7,9 +7,14 @@ import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
+import Operimus.SLMS.business_layer.rate_carrier_module.dto.DeliveryCompletionRequest;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
+import Operimus.SLMS.business_layer.rate_carrier_module.entities.ShipmentStatus;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
+import Operimus.SLMS.business_layer.rate_carrier_module.service.ShipmentService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionType;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import Operimus.SLMS.presentation_layer.driver_pwa_bff.dto.DailyScheduleDeliveryResponse;
 import Operimus.SLMS.presentation_layer.driver_pwa_bff.dto.DailyScheduleResponse;
 import Operimus.SLMS.presentation_layer.driver_pwa_bff.dto.DriverDashboardResponse;
@@ -45,10 +50,12 @@ public class DriverBffController {
 
     private final OrderService orderService;
     private final ShipmentRepository shipmentRepository;
+    private final ShipmentService shipmentService;
     private final OrderRepository orderRepository;
     private final KeycloakUserService keycloakUserService;
     private final OrderDocumentService orderDocumentService;
     private final OrderEventService orderEventService;
+    private final DeliveryExceptionService deliveryExceptionService;
 
     /**
      * Health check endpoint
@@ -214,6 +221,41 @@ public class DriverBffController {
     }
 
     /**
+     * Get pending shipments awaiting driver acceptance
+     *
+     * @param principal Authenticated driver token
+     * @return List of shipments in PENDING_ACCEPTANCE status
+     */
+    @GetMapping("/pending-shipments")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getPendingShipments(
+            @AuthenticationPrincipal Jwt principal) {
+        String driverId = extractDriverIdentifier(principal);
+        if (!StringUtils.hasText(driverId)) {
+            throw new AccessDeniedException("Driver authentication is required.");
+        }
+
+        log.info("Driver {} requesting pending shipments", driverId);
+
+        List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
+
+        List<java.util.Map<String, Object>> pendingShipments = shipments.stream()
+                .filter(s -> s.getStatus() == ShipmentStatus.PENDING_ACCEPTANCE)
+                .map(s -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", s.getId());
+                    map.put("shipmentCode", s.getShipmentCode());
+                    map.put("status", s.getStatus().toString());
+                    map.put("carrierName", s.getCarrier().getName());
+                    map.put("totalOrders", s.getTotalOrders() != null ? s.getTotalOrders() : 0);
+                    map.put("estimatedDeliveryDate", s.getEstimatedDeliveryDate() != null ? s.getEstimatedDeliveryDate().toString() : "");
+                    return map;
+                })
+                .toList();
+
+        return ResponseEntity.ok(pendingShipments);
+    }
+
+    /**
      * Get the driver's dashboard data
      *
      * @param principal Authenticated driver token
@@ -290,6 +332,128 @@ public class DriverBffController {
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Driver accepts a shipment assigned to them
+     *
+     * @param shipmentId Shipment identifier
+     * @param principal Authenticated driver token
+     * @return Confirmation and updated shipment status
+     */
+    @PostMapping("/shipments/{shipmentId}/accept")
+    public ResponseEntity<java.util.Map<String, Object>> acceptShipment(
+            @PathVariable Long shipmentId,
+            @AuthenticationPrincipal Jwt principal) {
+        String driverId = extractDriverIdentifier(principal);
+        if (!StringUtils.hasText(driverId)) {
+            throw new AccessDeniedException("Driver authentication is required.");
+        }
+
+        log.info("Driver {} accepting shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentService.acceptShipment(shipmentId, driverId);
+
+        // Get order count for response
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "shipmentId", shipment.getId(),
+                "shipmentCode", shipment.getShipmentCode(),
+                "status", shipment.getStatus().toString(),
+                "orderCount", orders.size(),
+                "message", "Shipment accepted successfully. All orders are now IN_TRANSIT."
+        ));
+    }
+
+    /**
+     * Driver completes delivery for entire shipment.
+     * Can either deliver successfully or report exceptions.
+     *
+     * @param shipmentId Shipment identifier
+     * @param request Delivery completion details (hasException, exceptionType, exceptionDescription)
+     * @param principal Authenticated driver token
+     * @return Confirmation of delivery completion or exception reporting
+     */
+    @PostMapping("/shipments/{shipmentId}/complete")
+    public ResponseEntity<java.util.Map<String, Object>> completeShipmentDelivery(
+            @PathVariable Long shipmentId,
+            @RequestBody DeliveryCompletionRequest request,
+            @AuthenticationPrincipal Jwt principal) {
+        String driverId = extractDriverIdentifier(principal);
+        if (!StringUtils.hasText(driverId)) {
+            throw new AccessDeniedException("Driver authentication is required.");
+        }
+
+        log.info("Driver {} completing delivery for shipment {} (hasException: {})",
+                driverId, shipmentId, request.getHasException());
+
+        // Get shipment and orders
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+        if (orders.isEmpty()) {
+            throw new RuntimeException("No orders found for shipment " + shipmentId);
+        }
+
+        if (Boolean.TRUE.equals(request.getHasException())) {
+            // Driver reported an exception during delivery
+            if (request.getExceptionType() == null || request.getExceptionDescription() == null) {
+                throw new IllegalArgumentException("Exception type and description are required when hasException is true");
+            }
+
+            // Mark shipment as EXCEPTION
+            Shipment shipment = shipmentService.reportDeliveryException(shipmentId, driverId);
+
+            // Create delivery exceptions for all orders in the shipment
+            ExceptionType exceptionType = parseExceptionType(request.getExceptionType());
+            java.util.UUID driverUuid = java.util.UUID.fromString(driverId);
+
+            orders.forEach(order -> {
+                deliveryExceptionService.createDriverException(
+                        order.getId(),
+                        exceptionType,
+                        request.getExceptionDescription(),
+                        driverUuid
+                );
+            });
+
+            log.info("Shipment {} marked as EXCEPTION with {} delivery exceptions created",
+                    shipmentId, orders.size());
+
+            return ResponseEntity.ok(java.util.Map.of(
+                    "shipmentId", shipment.getId(),
+                    "status", shipment.getStatus().toString(),
+                    "exceptionType", request.getExceptionType(),
+                    "ordersAffected", orders.size(),
+                    "message", "Delivery exception reported. CSR team has been notified."
+            ));
+        } else {
+            // Normal delivery completion
+            Shipment shipment = shipmentService.completeDelivery(shipmentId, driverId);
+
+            log.info("Shipment {} completed successfully with {} orders delivered",
+                    shipmentId, orders.size());
+
+            return ResponseEntity.ok(java.util.Map.of(
+                    "shipmentId", shipment.getId(),
+                    "status", shipment.getStatus().toString(),
+                    "ordersDelivered", orders.size(),
+                    "message", "All deliveries completed successfully!"
+            ));
+        }
+    }
+
+    /**
+     * Parse exception type string to enum
+     */
+    private ExceptionType parseExceptionType(String exceptionTypeStr) {
+        return switch (exceptionTypeStr.toUpperCase()) {
+            case "CUSTOMER_NOT_AVAILABLE" -> ExceptionType.CUSTOMER_NOT_AVAILABLE;
+            case "WRONG_ADDRESS" -> ExceptionType.WRONG_ADDRESS;
+            case "PACKAGE_DAMAGED", "DAMAGED" -> ExceptionType.DAMAGED;
+            case "ACCESS_DENIED" -> ExceptionType.ACCESS_DENIED;
+            case "WEATHER" -> ExceptionType.WEATHER;
+            default -> ExceptionType.OTHER;
+        };
     }
 
     private String extractDriverIdentifier(Jwt principal) {

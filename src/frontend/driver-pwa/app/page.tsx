@@ -2,24 +2,34 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Truck, Package, MapPin, Clock, Bell } from 'lucide-react';
-import { getDashboard, DashboardResponse } from '@/lib/api';
+import { Truck, Package, MapPin, Clock, Bell, CheckCircle, XCircle } from 'lucide-react';
+import { getDashboard, DashboardResponse, getPendingShipments, acceptShipment, PendingShipment } from '@/lib/api';
 import { useUser } from '@/shared/hooks/use-user';
 
 export default function DriverHome() {
   const user = useUser();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
+  const [pendingShipments, setPendingShipments] = useState<PendingShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [acceptingShipmentId, setAcceptingShipmentId] = useState<number | null>(null);
 
   useEffect(() => {
-    async function fetchDashboard() {
+    async function fetchData() {
       try {
-        const data = await getDashboard();
-        setDashboardData(data);
+        // Fetch both dashboard and pending shipments
+        const [dashData, pendingData] = await Promise.all([
+          getDashboard().catch(() => null),
+          getPendingShipments().catch(() => [])
+        ]);
+
+        if (dashData) {
+          setDashboardData(dashData);
+        }
+        setPendingShipments(pendingData);
       } catch (err) {
-        console.error('Failed to fetch dashboard:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+        console.error('Failed to fetch data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
 
         // Use mock data as fallback
         setDashboardData({
@@ -58,8 +68,26 @@ export default function DriverHome() {
       }
     }
 
-    fetchDashboard();
+    fetchData();
   }, []);
+
+  const handleAcceptShipment = async (shipmentId: number) => {
+    setAcceptingShipmentId(shipmentId);
+    try {
+      await acceptShipment(shipmentId);
+      alert('Shipment accepted successfully!');
+      // Remove from pending list
+      setPendingShipments(prev => prev.filter(s => s.id !== shipmentId));
+      // Refresh dashboard
+      const dashData = await getDashboard().catch(() => null);
+      if (dashData) setDashboardData(dashData);
+    } catch (err) {
+      console.error('Failed to accept shipment:', err);
+      alert('Failed to accept shipment: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setAcceptingShipmentId(null);
+    }
+  };
 
   const todayStats = dashboardData?.todayStats || {
     totalDeliveries: 0,
@@ -124,6 +152,50 @@ export default function DriverHome() {
                 <p className="text-sm text-yellow-700">
                   Using mock data. {error}
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Shipments - Awaiting Acceptance */}
+        {pendingShipments.length > 0 && (
+          <div className="p-6 pb-0">
+            <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-orange-900 mb-3 flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Shipments Awaiting Your Acceptance
+              </h2>
+              <div className="space-y-3">
+                {pendingShipments.map((shipment) => (
+                  <div key={shipment.id} className="bg-white rounded-lg p-4 border border-orange-200">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-bold text-black text-lg">{shipment.shipmentCode}</p>
+                        <p className="text-sm text-gray-600">{shipment.carrierName}</p>
+                        <p className="text-sm text-gray-600">{shipment.totalOrders} order(s)</p>
+                      </div>
+                      <span className="bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full">
+                        Pending
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAcceptShipment(shipment.id)}
+                        disabled={acceptingShipmentId === shipment.id}
+                        className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        {acceptingShipmentId === shipment.id ? 'Accepting...' : 'Accept Shipment'}
+                      </button>
+                      <button
+                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <XCircle className="w-5 h-5" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
