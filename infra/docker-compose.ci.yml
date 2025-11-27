@@ -37,6 +37,39 @@ services:
       - keycloak-data-ci:/opt/keycloak/data
       - ./keycloak:/opt/keycloak/data/import
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${CI_KAFKA_ZOOKEEPER_PORT:-32181}
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "${CI_KAFKA_ZOOKEEPER_PORT:-32181}:2181"
+    volumes:
+      - zookeeper-data-ci:/bitnami/zookeeper
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:${CI_KAFKA_EXTERNAL_PORT:-39094}
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:${CI_KAFKA_EXTERNAL_PORT:-39094}
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "${CI_KAFKA_INTERNAL_PORT:-39092}:9092"
+      - "${CI_KAFKA_EXTERNAL_PORT:-39094}:9094"
+    volumes:
+      - kafka-data-ci:/var/lib/kafka/data
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":39001"
@@ -72,3 +105,5 @@ volumes:
   postgres-data-ci:
   keycloak-data-ci:
   minio-data-ci:
+  kafka-data-ci:
+  zookeeper-data-ci:

@@ -61,9 +61,9 @@ export default function OrderHistoryPage() {
   const filteredOrders = orders
     .filter((order) => {
       const matchesSearch =
-        order.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (order.reference?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (order.trackingNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (order.description?.toLowerCase() || '').includes(searchTerm.toLowerCase())
 
       const matchesStatus = filterStatus === "All" || order.status === filterStatus
 

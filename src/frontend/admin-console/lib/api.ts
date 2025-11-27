@@ -8,8 +8,7 @@
 import { getAccessToken } from './shared-auth';
 
 // Get the base API URL from environment or default to localhost
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
-const API_BASE = `${BASE_URL}/api`;
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost'}/api`;
 const LOGISTICS_BASE = `${API_BASE}/logistics`;
 const WAREHOUSE_BASE = `${API_BASE}/warehouse`;
 const CUSTOMER_SERVICE_BASE = `${API_BASE}/customer-service`;
@@ -38,6 +37,9 @@ export const API_ENDPOINTS = {
     warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
     warehouseOrders: (warehouseId: number, status?: string) =>
       `${LOGISTICS_BASE}/warehouses/${warehouseId}/orders${status ? `?status=${status}` : ''}`,
+
+    // Report export
+    exportReport: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/reports/export?period=${period}`,
   },
 
   // Warehouse Staff BFF
@@ -164,6 +166,17 @@ export async function apiFetch<T>(
       requestBody: options.body,
     });
     throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  // Handle 204 No Content responses (e.g., DELETE operations)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  // Handle responses with no content
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return undefined as T;
   }
 
   return response.json();
