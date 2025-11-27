@@ -80,6 +80,10 @@ public class Shipment {
     @Column(name = "transit_time", length = 64)
     private String transitTime;
 
+    // Status
+    @Column(name = "active", nullable = false, columnDefinition = "boolean default true")
+    private Boolean active = true;
+
     // Timestamps
     @CreationTimestamp
     @Column(updatable = false)

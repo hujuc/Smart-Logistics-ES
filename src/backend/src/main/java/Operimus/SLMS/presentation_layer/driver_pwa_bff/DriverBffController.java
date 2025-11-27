@@ -160,11 +160,11 @@ public class DriverBffController {
 
         log.info("Driver {} requesting daily schedule", driverId);
 
-        // Get all shipments for this driver
-        List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
+        // Get all active shipments for this driver
+        List<Shipment> activeShipments = shipmentRepository.findByDriverIdAndActiveTrue(driverId);
 
-        if (shipments.isEmpty()) {
-            log.info("No shipments found for driver {}", driverId);
+        if (activeShipments.isEmpty()) {
+            log.info("No active shipments found for driver {}", driverId);
             return ResponseEntity.ok(DailyScheduleResponse.builder()
                     .totalStops(0)
                     .totalPackages(0)
@@ -173,17 +173,16 @@ public class DriverBffController {
                     .build());
         }
 
-        // For now, return the first shipment (in future, could filter by date)
-        Shipment shipment = shipments.get(0);
-        List<Order> orders = orderRepository.findByShipmentId(shipment.getId());
-
-        // Sort orders by estimated delivery date and shipping city
-        orders.sort(Comparator
-                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
-                .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
+        // Collect all orders from all active shipments and sort them
+        List<Order> allOrders = activeShipments.stream()
+                .flatMap(shipment -> orderRepository.findByShipmentId(shipment.getId()).stream())
+                .sorted(Comparator
+                        .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
+                        .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""))
+                .toList();
 
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DailyScheduleDeliveryResponse> deliveries = orders.stream()
+        List<DailyScheduleDeliveryResponse> deliveries = allOrders.stream()
                 .map(order -> DailyScheduleDeliveryResponse.builder()
                         .orderId(order.getId())
                         .orderReference(order.getReference())
@@ -200,13 +199,33 @@ public class DriverBffController {
                         .build())
                 .toList();
 
+        // Calculate totals across all active shipments
+        double totalWeight = activeShipments.stream()
+                .mapToDouble(s -> s.getTotalWeight() != null ? s.getTotalWeight() : 0.0)
+                .sum();
+        String weightUnit = activeShipments.stream()
+                .filter(s -> s.getWeightUnit() != null)
+                .map(Shipment::getWeightUnit)
+                .findFirst()
+                .orElse("kg");
+
+        // Use the most recent shipment code for reference
+        String shipmentCode = activeShipments.stream()
+                .max(Comparator.comparing(Shipment::getCreatedAt))
+                .map(Shipment::getShipmentCode)
+                .orElse("N/A");
+        Long shipmentId = activeShipments.stream()
+                .max(Comparator.comparing(Shipment::getCreatedAt))
+                .map(Shipment::getId)
+                .orElse(null);
+
         DailyScheduleResponse response = DailyScheduleResponse.builder()
-                .shipmentCode(shipment.getShipmentCode())
-                .shipmentId(shipment.getId())
-                .totalStops(orders.size())
-                .totalPackages(orders.size()) // Assuming 1 package per order for now
-                .totalWeight(shipment.getTotalWeight())
-                .weightUnit(shipment.getWeightUnit())
+                .shipmentCode(shipmentCode)
+                .shipmentId(shipmentId)
+                .totalStops(allOrders.size())
+                .totalPackages(allOrders.size()) // Assuming 1 package per order for now
+                .totalWeight(totalWeight)
+                .weightUnit(weightUnit)
                 .deliveries(deliveries)
                 .build();
 
@@ -229,11 +248,11 @@ public class DriverBffController {
 
         log.info("Driver {} requesting dashboard", driverId);
 
-        // Get all shipments for this driver
-        List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
+        // Get all active shipments for this driver
+        List<Shipment> activeShipments = shipmentRepository.findByDriverIdAndActiveTrue(driverId);
 
-        if (shipments.isEmpty()) {
-            log.info("No shipments found for driver {}", driverId);
+        if (activeShipments.isEmpty()) {
+            log.info("No active shipments found for driver {}", driverId);
             return ResponseEntity.ok(DriverDashboardResponse.builder()
                     .todayStats(DriverDashboardResponse.TodayStats.builder()
                             .totalDeliveries(0)
@@ -245,27 +264,26 @@ public class DriverBffController {
                     .build());
         }
 
-        // For now, use the first shipment
-        Shipment shipment = shipments.get(0);
-        List<Order> orders = orderRepository.findByShipmentId(shipment.getId());
-
-        // Sort orders by estimated delivery date and shipping city
-        orders.sort(Comparator
-                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
-                .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
+        // Collect all orders from all active shipments and sort them
+        List<Order> allOrders = activeShipments.stream()
+                .flatMap(shipment -> orderRepository.findByShipmentId(shipment.getId()).stream())
+                .sorted(Comparator
+                        .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
+                        .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""))
+                .toList();
 
         // Calculate statistics
-        long completed = orders.stream()
+        long completed = allOrders.stream()
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .count();
 
-        long remaining = orders.stream()
+        long remaining = allOrders.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .count();
 
         // Get next 3 deliveries that are pending
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = orders.stream()
+        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = allOrders.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .limit(3)
                 .map(order -> DriverDashboardResponse.NextDeliveryPreview.builder()
@@ -278,7 +296,7 @@ public class DriverBffController {
                 .toList();
 
         DriverDashboardResponse.TodayStats stats = DriverDashboardResponse.TodayStats.builder()
-                .totalDeliveries(orders.size())
+                .totalDeliveries(allOrders.size())
                 .completed((int) completed)
                 .remaining((int) remaining)
                 .nextStopETA("15 min") // Placeholder for now
