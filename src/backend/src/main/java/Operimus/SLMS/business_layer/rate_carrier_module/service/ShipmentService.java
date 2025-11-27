@@ -78,6 +78,7 @@ public class ShipmentService {
                 .totalOrders(orders.size())
                 .totalWeight(totalWeight)
                 .weightUnit(orders.isEmpty() ? null : orders.get(0).getWeightUnit())
+                .active(true)
                 .build();
 
         Shipment saved = shipmentRepository.save(shipment);
