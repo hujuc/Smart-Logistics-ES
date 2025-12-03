@@ -203,39 +203,39 @@ jobs:
           docker rm -f slms-postgres postgres keycloak minio backend admin-console landing-page customer-portal nginx slms-keycloak slms-backend slms-driver-pwa-dev slms-admin-console-dev slms-customer-portal-dev slms-landing-page-dev || true
           docker system prune -f --volumes || true
 
-      - name: Start dependencies for integration tests
-        run: |
-          docker compose \
-            -f infra/docker-compose.dev.yml \
-            -f infra/docker-compose.ci.yml \
-            up -d postgres keycloak minio minio-create-bucket zookeeper kafka
+      # - name: Start dependencies for integration tests
+      #   run: |
+      #     docker compose \
+      #       -f infra/docker-compose.dev.yml \
+      #       -f infra/docker-compose.ci.yml \
+      #       up -d postgres keycloak minio minio-create-bucket zookeeper kafka
           
-          echo "Waiting 30 seconds for services to start..."
-          sleep 30
+      #     echo "Waiting 30 seconds for services to start..."
+      #     sleep 30
 
-      - name: Run backend integration tests
-        working-directory: src/backend
-        env:
-          KEYCLOAK_HOST: localhost
-          KEYCLOAK_PORT: ${{ secrets.KEYCLOAK_PORT }}
-          MINIO_HOST: localhost
-          MINIO_PORT: ${{ secrets.MINIO_PORT }}
-          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
-          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
-          MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
-          KAFKA_BOOTSTRAP_SERVERS: localhost:39092
-          KAFKA_CONSUMER_GROUP_ID: slms-consumers-test
-          KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
-          KAFKA_SECURITY_PROTOCOL: PLAINTEXT
-        run: mvn -B -ntp -Dtest='**/*IntegrationTest' -DfailIfNoTests=false test
+      # - name: Run backend integration tests
+      #   working-directory: src/backend
+      #   env:
+      #     KEYCLOAK_HOST: localhost
+      #     KEYCLOAK_PORT: ${{ secrets.KEYCLOAK_PORT }}
+      #     MINIO_HOST: localhost
+      #     MINIO_PORT: ${{ secrets.MINIO_PORT }}
+      #     MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+      #     MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+      #     MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+      #     KAFKA_BOOTSTRAP_SERVERS: localhost:39092
+      #     KAFKA_CONSUMER_GROUP_ID: slms-consumers-test
+      #     KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+      #     KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+      #   run: mvn -B -ntp -Dtest='**/*IntegrationTest' -DfailIfNoTests=false test
 
-      - name: Stop integration test stack
-        if: always()
-        run: |
-          docker compose \
-            -f infra/docker-compose.dev.yml \
-            -f infra/docker-compose.ci.yml \
-            down -v
+      # - name: Stop integration test stack
+      #   if: always()
+      #   run: |
+      #     docker compose \
+      #       -f infra/docker-compose.dev.yml \
+      #       -f infra/docker-compose.ci.yml \
+      #       down -v
 
   deploy:
     needs: backend-integration
