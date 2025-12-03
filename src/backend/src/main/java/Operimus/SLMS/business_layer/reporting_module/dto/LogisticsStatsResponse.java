@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto;
+package Operimus.SLMS.business_layer.reporting_module.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service;
+package Operimus.SLMS.business_layer.reporting_module.service;
 
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
@@ -8,8 +8,8 @@ import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse.*;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LogisticsStatsService {
+public class ReportStatsService {
 
     private final OrderRepository orderRepository;
     private final WarehouseRepository warehouseRepository;

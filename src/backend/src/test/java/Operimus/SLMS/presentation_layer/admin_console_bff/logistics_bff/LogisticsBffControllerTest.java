@@ -43,10 +43,10 @@ class LogisticsBffControllerTest {
     private KeycloakUserService userService;
 
     @MockBean
-    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService statsService;
+    private Operimus.SLMS.business_layer.reporting_module.service.ReportStatsService statsService;
 
     @MockBean
-    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsReportService reportService;
+    private Operimus.SLMS.business_layer.reporting_module.service.ReportGenerationService reportService;
 
     @MockBean
     private Operimus.SLMS.business_layer.order_module.service.WarehouseService warehouseService;

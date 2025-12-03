@@ -1,7 +1,7 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service;
+package Operimus.SLMS.business_layer.reporting_module.service;
 
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse.*;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse.*;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -25,9 +25,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class LogisticsReportService {
+public class ReportGenerationService {
 
-    private final LogisticsStatsService logisticsStatsService;
+    private final ReportStatsService reportStatsService;
 
     private static final DeviceRgb HEADER_BG_COLOR = new DeviceRgb(41, 98, 255); // Blue
     private static final DeviceRgb BORDER_COLOR = new DeviceRgb(229, 231, 235);
@@ -40,7 +40,7 @@ public class LogisticsReportService {
 
         try {
             // Fetch statistics from backend
-            LogisticsStatsResponse stats = logisticsStatsService.calculateStats(period);
+            LogisticsStatsResponse stats = reportStatsService.calculateStats(period);
 
             // Create PDF in memory
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
