@@ -1,0 +1,418 @@
+name: E2E Tests
+
+on:
+
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  COMPOSE_PROJECT_NAME: slms-prod
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
+  KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+  KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+  KC_DB: ${{ secrets.KC_DB }}
+  KC_DB_URL: ${{ secrets.KC_DB_URL }}
+  KC_DB_USERNAME: ${{ secrets.KC_DB_USERNAME }}
+  KC_DB_PASSWORD: ${{ secrets.KC_DB_PASSWORD }}
+  KC_HOSTNAME: ${{ secrets.KC_HOSTNAME }}
+  KC_PROXY: ${{ secrets.KC_PROXY }}
+  KC_HOSTNAME_PORT: ${{ secrets.KC_HOSTNAME_PORT }}
+  KC_HOSTNAME_STRICT: ${{ secrets.KC_HOSTNAME_STRICT }}
+  KC_HTTP_ENABLED: ${{ secrets.KC_HTTP_ENABLED }}
+  KC_PROXY_HEADERS: ${{ secrets.KC_PROXY_HEADERS }}
+  BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+  FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
+  NEXT_TELEMETRY_DISABLED: ${{ secrets.NEXT_TELEMETRY_DISABLED }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+  MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+  MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+  MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+  MINIO_PORT: ${{ secrets.MINIO_PORT }}
+  MINIO_HOST: ${{ secrets.MINIO_HOST }}
+  KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
+  KEYCLOAK_PORT: ${{ secrets.KEYCLOAK_PORT }}
+  KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM }}
+  KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
+  KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+  NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
+  KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+  KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+  KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
+  KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
+  KC_HOSTNAME_URL: ${{ secrets.KC_HOSTNAME_URL }}
+  NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${{ secrets.NEXT_PUBLIC_FLAGSMITH_ENV_KEY }}
+  NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+  KAFKA_BROKER_HOST: ${{ secrets.KAFKA_BROKER_HOST || 'kafka' }}
+  KAFKA_BROKER_PORT: ${{ secrets.KAFKA_BROKER_PORT || '9092' }}
+  KAFKA_BROKER_EXTERNAL_PORT: ${{ secrets.KAFKA_BROKER_EXTERNAL_PORT || '9094' }}
+  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'ec2-35-181-9-117.eu-west-3.compute.amazonaws.com' }}
+  KAFKA_ZOOKEEPER_HOST: ${{ secrets.KAFKA_ZOOKEEPER_HOST || 'zookeeper' }}
+  KAFKA_ZOOKEEPER_PORT: ${{ secrets.KAFKA_ZOOKEEPER_PORT || '2181' }}
+  KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092' }}
+  KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
+  KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
+  KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+
+jobs:
+  admin-console-e2e:
+    runs-on: [self-hosted, aws-runner]
+    env:
+      CI: true
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      KEYCLOAK_HOST: keycloak
+      KEYCLOAK_PORT: "8080"
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
+      KC_DB_URL: jdbc:postgresql://postgres:5432/slms
+      KC_DB_USERNAME: ${{ secrets.POSTGRES_USER }}
+      KC_DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      KC_HOSTNAME: keycloak
+    steps:
+      - name: Fix permissions before tests
+        shell: bash
+        run: |
+          sudo chown -R $USER:users /home/ubuntu/actions-runner/_work
+          sudo chmod -R 777 /home/ubuntu/actions-runner/_work
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/admin-console/package-lock.json
+
+      - name: Add Node to PATH
+        run: |
+          echo "${{ runner.tool_cache }}/node/20.19.5/x64/bin" >> $GITHUB_PATH
+          export PATH="${{ runner.tool_cache }}/node/20.19.5/x64/bin:$PATH"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+
+      - name: Install admin-console dependencies
+        working-directory: src/frontend/admin-console
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: src/frontend/admin-console
+        run: npx playwright install --with-deps
+
+      - name: Generate Docker env file from secrets
+        run: |
+          cat <<EOF > infra/.env
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          DB_NAME=${DB_NAME}
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+          MINIO_HOST=${MINIO_HOST}
+          MINIO_PORT=${MINIO_PORT}
+          MINIO_ROOT_USER=${MINIO_ROOT_USER}
+          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+          MINIO_BUCKET=${MINIO_BUCKET}
+
+          KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}
+          KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}
+          KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}
+          KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}
+          KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}
+          KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}
+          KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+          KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+          KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}
+
+          KEYCLOAK_HOST=${KEYCLOAK_HOST}
+          KEYCLOAK_PORT=${KEYCLOAK_PORT}
+          KEYCLOAK_REALM=slms
+          KEYCLOAK_ADMIN_CLIENT_ID=slms-backend
+          KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          JWT_ISSUER_URI=${JWT_ISSUER_URI}
+
+          KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+
+          KC_DB=postgres
+          KC_DB_URL=${KC_DB_URL}
+          KC_DB_USERNAME=${KC_DB_USERNAME}
+          KC_DB_PASSWORD=${KC_DB_PASSWORD}
+          KC_HOSTNAME_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_ADMIN_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_STRICT=false
+          KC_HOSTNAME_STRICT_BACKCHANNEL=false
+          KC_HOSTNAME=${KC_HOSTNAME:-keycloak}
+          KC_HOSTNAME_PORT=${KEYCLOAK_PORT:-8080}
+          KC_HTTP_ENABLED=true
+          KC_PROXY_HEADERS=xforwarded
+          KC_PROXY=edge
+
+          ADMIN_KEYCLOAK_CLIENT_ID=slms-backend
+          ADMIN_KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+          ADMIN_KEYCLOAK_ISSUER=${JWT_ISSUER_URI}
+
+          NEXTAUTH_URL=http://localhost/admin
+          NEXTAUTH_URL_INTERNAL=http://admin-console:3000/admin
+          NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+          AUTH_TRUST_HOST=true
+
+          KEYCLOAK_CLIENT_ID=slms-backend
+          KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          BACKEND_PORT=8080
+
+          NODE_ENV=production
+          NEXT_TELEMETRY_DISABLED=1
+          SPRING_DEVTOOLS_RESTART_ENABLED=false
+          EOF
+
+      - name: Cleanup existing containers
+        run: |
+          docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml down --remove-orphans || true
+          docker rm -f slms-postgres postgres keycloak minio backend admin-console landing-page customer-portal nginx slms-keycloak slms-backend slms-driver-pwa-dev slms-admin-console-dev slms-customer-portal-dev slms-landing-page-dev || true
+          docker system prune -f --volumes || true
+
+      - name: Start SLMS stack for E2E
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            up -d postgres keycloak minio minio-create-bucket backend admin-console landing-page customer-portal nginx
+
+      - name: Wait for landing page and admin console
+        run: |
+          timeout 300 bash -c '
+            until curl -fsSL http://localhost/ >/dev/null; do
+              echo "Waiting for landing page to be ready..."
+              sleep 5
+            done
+            until curl -fsSL http://localhost/admin/ >/dev/null; do
+              echo "Waiting for admin console to be ready..."
+              sleep 5
+            done
+          '
+
+      - name: Run E2E tests
+        working-directory: src/frontend/admin-console
+        env:
+          E2E_BASE_URL: http://localhost
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-console-playwright-report
+          path: src/frontend/admin-console/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-console-playwright-results
+          path: src/frontend/admin-console/playwright-results
+          if-no-files-found: ignore
+
+      - name: Stop SLMS stack
+        if: always()
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            down -v
+
+  landing-page-e2e:
+    runs-on: [self-hosted, aws-runner]
+    env:
+      CI: true
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      KEYCLOAK_HOST: keycloak
+      KEYCLOAK_PORT: "8080"
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
+      KC_DB_URL: jdbc:postgresql://postgres:5432/slms
+      KC_DB_USERNAME: ${{ secrets.POSTGRES_USER }}
+      KC_DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      KC_HOSTNAME: keycloak
+    steps:
+      - name: Fix permissions before tests
+        shell: bash
+        run: |
+          sudo chown -R $USER:users /home/ubuntu/actions-runner/_work
+          sudo chmod -R 777 /home/ubuntu/actions-runner/_work
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/landing-page/package-lock.json
+
+      - name: Add Node to PATH
+        run: |
+          echo "${{ runner.tool_cache }}/node/20.19.5/x64/bin" >> $GITHUB_PATH
+          export PATH="${{ runner.tool_cache }}/node/20.19.5/x64/bin:$PATH"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+
+      - name: Install landing page dependencies
+        working-directory: src/frontend/landing-page
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: src/frontend/landing-page
+        run: npx playwright install --with-deps
+
+      - name: Generate Docker env file from secrets
+        run: |
+          cat <<EOF > infra/.env
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          DB_NAME=${DB_NAME}
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+          MINIO_HOST=${MINIO_HOST}
+          MINIO_PORT=${MINIO_PORT}
+          MINIO_ROOT_USER=${MINIO_ROOT_USER}
+          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+          MINIO_BUCKET=${MINIO_BUCKET}
+
+          KAFKA_BROKER_HOST=${KAFKA_BROKER_HOST}
+          KAFKA_BROKER_PORT=${KAFKA_BROKER_PORT}
+          KAFKA_BROKER_EXTERNAL_PORT=${KAFKA_BROKER_EXTERNAL_PORT}
+          KAFKA_ADVERTISED_HOST=${KAFKA_ADVERTISED_HOST}
+          KAFKA_ZOOKEEPER_HOST=${KAFKA_ZOOKEEPER_HOST}
+          KAFKA_ZOOKEEPER_PORT=${KAFKA_ZOOKEEPER_PORT}
+          KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+          KAFKA_CONSUMER_GROUP_ID=${KAFKA_CONSUMER_GROUP_ID}
+          KAFKA_CONSUMER_AUTO_OFFSET_RESET=${KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+          KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL}
+
+          KEYCLOAK_HOST=${KEYCLOAK_HOST}
+          KEYCLOAK_PORT=${KEYCLOAK_PORT}
+          KEYCLOAK_REALM=slms
+          KEYCLOAK_ADMIN_CLIENT_ID=slms-backend
+          KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          JWT_ISSUER_URI=${JWT_ISSUER_URI}
+
+          KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+
+          KC_DB=postgres
+          KC_DB_URL=${KC_DB_URL}
+          KC_DB_USERNAME=${KC_DB_USERNAME}
+          KC_DB_PASSWORD=${KC_DB_PASSWORD}
+          KC_HOSTNAME_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_ADMIN_URL=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}
+          KC_HOSTNAME_STRICT=false
+          KC_HOSTNAME_STRICT_BACKCHANNEL=false
+          KC_HOSTNAME=${KC_HOSTNAME:-keycloak}
+          KC_HOSTNAME_PORT=${KEYCLOAK_PORT:-8080}
+          KC_HTTP_ENABLED=true
+          KC_PROXY_HEADERS=xforwarded
+          KC_PROXY=edge
+
+          ADMIN_KEYCLOAK_CLIENT_ID=slms-backend
+          ADMIN_KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+          ADMIN_KEYCLOAK_ISSUER=${JWT_ISSUER_URI}
+
+          NEXTAUTH_URL=http://localhost/admin
+          NEXTAUTH_URL_INTERNAL=http://admin-console:3000/admin
+          NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+          AUTH_TRUST_HOST=true
+
+          KEYCLOAK_CLIENT_ID=slms-backend
+          KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+          BACKEND_PORT=8080
+
+          NODE_ENV=production
+          NEXT_TELEMETRY_DISABLED=1
+          SPRING_DEVTOOLS_RESTART_ENABLED=false
+          EOF
+
+      - name: Cleanup existing containers
+        run: |
+          docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml down --remove-orphans || true
+          docker rm -f slms-postgres postgres keycloak minio backend admin-console landing-page customer-portal nginx slms-keycloak slms-backend slms-driver-pwa-dev slms-admin-console-dev slms-customer-portal-dev slms-landing-page-dev || true
+          docker system prune -f --volumes || true
+
+      - name: Start SLMS stack for E2E
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            up -d postgres keycloak minio minio-create-bucket backend admin-console landing-page customer-portal nginx
+
+      - name: Wait for landing page and admin console
+        run: |
+          timeout 300 bash -c '
+            until curl -fsSL http://localhost/ >/dev/null; do
+              echo "Waiting for landing page to be ready..."
+              sleep 5
+            done
+            until curl -fsSL http://localhost/admin/ >/dev/null; do
+              echo "Waiting for admin console to be ready..."
+              sleep 5
+            done
+          '
+
+      - name: Run Playwright E2E tests
+        working-directory: src/frontend/landing-page
+        env:
+          E2E_BASE_URL: http://localhost
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-page-playwright-report
+          path: src/frontend/landing-page/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-page-playwright-results
+          path: src/frontend/landing-page/playwright-results
+          if-no-files-found: ignore
+
+      - name: Stop SLMS stack
+        if: always()
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            down -v
