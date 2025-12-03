@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 269-304-verify-vm-usability-cicd-state ]
 
 permissions:
   contents: read
