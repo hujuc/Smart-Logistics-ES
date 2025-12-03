@@ -32,7 +32,7 @@ export default function DebugObservabilityPage() {
       </pre>
 
       <h2>Check Browser Console</h2>
-      <p>Open your browser's developer console (F12) and look for:</p>
+      <p>Open your browser&apos;s developer console (F12) and look for:</p>
       <ul>
         <li>[Observability] Initializing messages</li>
         <li>[APM] Initialized messages</li>
@@ -44,7 +44,6 @@ export default function DebugObservabilityPage() {
         onClick={() => {
           console.log("Testing APM error capture...");
           try {
-            // @ts-expect-error
             throw new Error("Test error from debug page");
           } catch (err) {
             console.error("Caught test error:", err);
