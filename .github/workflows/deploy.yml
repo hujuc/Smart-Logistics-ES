@@ -209,21 +209,9 @@ jobs:
             -f infra/docker-compose.dev.yml \
             -f infra/docker-compose.ci.yml \
             up -d postgres keycloak minio minio-create-bucket zookeeper kafka
-
-      - name: Wait for Keycloak, MinIO, and Kafka
-        run: |
-          timeout 300 bash -c '
-            until curl -fsSL http://localhost:${KEYCLOAK_PORT}/health >/dev/null 2>&1 || curl -fsSL http://localhost:${KEYCLOAK_PORT}/ >/dev/null 2>&1; do
-              echo "Waiting for Keycloak to be ready..."
-              sleep 5
-            done
-            until curl -fsSL http://localhost:${MINIO_PORT}/minio/health/live >/dev/null 2>&1; do
-              echo "Waiting for MinIO to be ready..."
-              sleep 5
-            done
-            echo "Waiting for Kafka to be ready..."
-            sleep 15
-          '
+          
+          echo "Waiting 30 seconds for services to start..."
+          sleep 30
 
       - name: Run backend integration tests
         working-directory: src/backend
