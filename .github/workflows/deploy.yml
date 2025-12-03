@@ -2,7 +2,7 @@ name: Deploy project
 
 on:
   push:
-    branches: [ main, 269-304-verify-vm-usability-cicd-state ]
+    branches: [main, 269-304-verify-vm-usability-cicd-state]
 
 permissions:
   contents: read
@@ -94,17 +94,17 @@ env:
   NEXT_PUBLIC_PROJECT_VERSION: ${{ secrets.NEXT_PUBLIC_PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
   NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${{ secrets.NEXT_PUBLIC_TRACING_SAMPLING_RATE || '1.0' }}
 
-jobs: 
+jobs:
   backend-integration:
     runs-on: [self-hosted, aws-runner]
     env:
       CI: true
       DB_HOST: postgres
-      DB_PORT: '5432'
+      DB_PORT: "5432"
       KEYCLOAK_HOST: localhost
-      KEYCLOAK_PORT: '28180'
+      KEYCLOAK_PORT: "28180"
       MINIO_HOST: localhost
-      MINIO_PORT: '39000'
+      MINIO_PORT: "39000"
       KC_DB_URL: jdbc:postgresql://postgres:5432/slms
       KC_DB_USERNAME: ${{ secrets.POSTGRES_USER }}
       KC_DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -121,7 +121,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: '21'
+          java-version: "21"
           cache: maven
 
       - name: Generate Docker env file from secrets
@@ -224,8 +224,6 @@ jobs:
             echo "Waiting for Kafka to be ready..."
             sleep 15
           '
-            done
-          '
 
       - name: Run backend integration tests
         working-directory: src/backend
@@ -257,11 +255,11 @@ jobs:
     env:
       CI: true
       DB_HOST: postgres
-      DB_PORT: '5432'
+      DB_PORT: "5432"
       KEYCLOAK_HOST: keycloak
-      KEYCLOAK_PORT: '8080'
+      KEYCLOAK_PORT: "8080"
       MINIO_HOST: minio
-      MINIO_PORT: '9000'
+      MINIO_PORT: "9000"
       KC_DB_URL: jdbc:postgresql://postgres:5432/slms
       KC_DB_USERNAME: ${{ secrets.POSTGRES_USER }}
       KC_DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -277,8 +275,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: src/frontend/admin-console/package-lock.json
 
       - name: Add Node to PATH
@@ -431,11 +429,11 @@ jobs:
     env:
       CI: true
       DB_HOST: postgres
-      DB_PORT: '5432'
+      DB_PORT: "5432"
       KEYCLOAK_HOST: keycloak
-      KEYCLOAK_PORT: '8080'
+      KEYCLOAK_PORT: "8080"
       MINIO_HOST: minio
-      MINIO_PORT: '9000'
+      MINIO_PORT: "9000"
       KC_DB_URL: jdbc:postgresql://postgres:5432/slms
       KC_DB_USERNAME: ${{ secrets.POSTGRES_USER }}
       KC_DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -451,8 +449,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: src/frontend/landing-page/package-lock.json
 
       - name: Add Node to PATH
@@ -804,7 +802,6 @@ jobs:
       - name: Remove existing Terraform-managed containers
         shell: bash
         run: sudo docker compose down --remove-orphans || true
-          
 
       - name: Remove existing Terraform-managed containers
         shell: bash
