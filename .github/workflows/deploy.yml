@@ -213,11 +213,11 @@ jobs:
       - name: Wait for Keycloak, MinIO, and Kafka
         run: |
           timeout 300 bash -c '
-            until curl -fsSL http://localhost:${KEYCLOAK_PORT}/health/ready >/dev/null; do
+            until curl -fsSL http://localhost:${KEYCLOAK_PORT}/health >/dev/null 2>&1 || curl -fsSL http://localhost:${KEYCLOAK_PORT}/ >/dev/null 2>&1; do
               echo "Waiting for Keycloak to be ready..."
               sleep 5
             done
-            until curl -fsSL http://localhost:${MINIO_PORT}/minio/health/live >/dev/null; do
+            until curl -fsSL http://localhost:${MINIO_PORT}/minio/health/live >/dev/null 2>&1; do
               echo "Waiting for MinIO to be ready..."
               sleep 5
             done
