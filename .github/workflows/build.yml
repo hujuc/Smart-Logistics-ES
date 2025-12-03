@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  push:
+    branches: [269-304-verify-vm-usability-cicd-state]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 permissions:
   contents: read
