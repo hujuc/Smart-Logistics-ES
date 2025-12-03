@@ -16,13 +16,13 @@ concurrency:
 
 jobs:
   backend-quality:
-    runs-on: [self-hosted, aws-runner]
+    runs-on: ubuntu-latest
     env:
       KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
-      KEYCLOAK_PORT: '28180'
+      KEYCLOAK_PORT: "28180"
       JWT_ISSUER_URI: http://localhost:28180/realms/slms
       MINIO_HOST: ${{ secrets.MINIO_HOST }}
-      MINIO_PORT: '39000'
+      MINIO_PORT: "39000"
       MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
       MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
       MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
@@ -30,7 +30,7 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       DB_HOST: postgres
-      DB_PORT: '5432'
+      DB_PORT: "5432"
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: '21'
+          java-version: "21"
           cache: maven
 
       - name: Build & Test (with JaCoCo gate)
@@ -117,7 +117,7 @@ jobs:
 
   frontend-quality:
     name: Frontend (${{ matrix.app }})
-    runs-on: [self-hosted, aws-runner]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -129,10 +129,10 @@ jobs:
     env:
       CI: true
       KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
-      KEYCLOAK_PORT: '28180'
+      KEYCLOAK_PORT: "28180"
       JWT_ISSUER_URI: http://localhost:28180/realms/slms
       MINIO_HOST: ${{ secrets.MINIO_HOST }}
-      MINIO_PORT: '39000'
+      MINIO_PORT: "39000"
       MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
       MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
       MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
@@ -140,7 +140,7 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       DB_HOST: postgres
-      DB_PORT: '5432'
+      DB_PORT: "5432"
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -157,16 +157,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
-
-      - name: Add Node to PATH
-        run: |
-          echo "${{ runner.tool_cache }}/node/20.19.5/x64/bin" >> $GITHUB_PATH
-          export PATH="${{ runner.tool_cache }}/node/20.19.5/x64/bin:$PATH"
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
 
       - name: Install dependencies
         run: npm ci
