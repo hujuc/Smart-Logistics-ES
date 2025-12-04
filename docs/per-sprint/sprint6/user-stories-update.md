@@ -18,6 +18,9 @@ This document reflects adjustments made to the user stories for Sprint 6 based o
    - Reason: Chatbot functionality is already implemented (Sprint 4) but was missing formal user story documentation
    - Adds comprehensive AI assistance across all user roles and frontends
 
+4. **Removed Keycloak registration confirmation email** from US14 acceptance criteria
+   - Reason: Handled by Keycloak, out of scope for SLMS user stories
+
 ### Impact
 - **Net stories:** 18 (removed 1, added 1)
 - **Net story points:** -8 (removed 21, added 13)
@@ -199,7 +202,7 @@ As a Customer I want to create an account through the SLMS landing page so that 
 - **Complete registration**
   - *Given* that I enter valid registration details (name, email, password)
   - *When* I submit the form
-  - *Then* my account must be created, and I receive a confirmation email
+  - *Then* my account must be created
 
 - **Access customer portal**
   - *Given* that my registration is complete
