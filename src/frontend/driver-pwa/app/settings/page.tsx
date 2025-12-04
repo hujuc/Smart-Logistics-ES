@@ -5,7 +5,6 @@ import Link from "next/link"
 import {
   User,
   Bell,
-  Truck,
   Monitor,
   ArrowLeft,
   CheckCircle2,
@@ -35,10 +34,6 @@ export default function SettingsPage() {
     // Display Settings
     theme: "light",
     language: "English",
-
-    // Driver Settings
-    autoNavigation: true,
-    voiceGuidance: true,
   })
 
   useEffect(() => {
@@ -256,48 +251,6 @@ export default function SettingsPage() {
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
               </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Driver Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-black rounded-lg flex items-center justify-center">
-              <Truck className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-black">Driver Preferences</h2>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-black text-sm">Auto Navigation</p>
-                <p className="text-xs text-gray-600 mt-0.5">Automatically start navigation to next stop</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.autoNavigation}
-                  onChange={(e) => setSettings({ ...settings, autoNavigation: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-black text-sm">Voice Guidance</p>
-                <p className="text-xs text-gray-600 mt-0.5">Enable voice navigation instructions</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.voiceGuidance}
-                  onChange={(e) => setSettings({ ...settings, voiceGuidance: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-              </label>
             </div>
           </div>
         </div>
