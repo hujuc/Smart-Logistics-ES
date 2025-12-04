@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +18,6 @@ import { useUser, useUserActions } from "@/shared/hooks/use-user"
 import { clearAuth } from "@/shared/lib/auth"
 
 export default function SettingsPage() {
-  const router = useRouter()
   const user = useUser()
   const { clearUser } = useUserActions()
   const [saved, setSaved] = useState(false)
@@ -94,7 +92,8 @@ export default function SettingsPage() {
       // Clear client-side auth regardless of API response
       clearAuth()
       clearUser()
-      router.push('/')
+      // Use window.location.href to redirect to landing page (outside basePath)
+      window.location.href = '/'
     }
   }
 
