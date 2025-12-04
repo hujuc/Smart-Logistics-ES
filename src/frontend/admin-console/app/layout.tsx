@@ -5,6 +5,7 @@ import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { UserStateDebugger } from "@shared/components/UserStateDebugger";
+import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 import { AdminChatbot } from "@/components/admin-chatbot";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <ObservabilityProvider serviceName="slms-admin-console">
           <UserStoreInitializer />
           <UserStateDebugger />
           <Navbar />
@@ -30,6 +32,7 @@ export default function RootLayout({
             {children}
           </main>
           <AdminChatbot />
+        </ObservabilityProvider>
       </body>
     </html>
   );

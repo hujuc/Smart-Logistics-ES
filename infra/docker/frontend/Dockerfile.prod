@@ -1,22 +1,52 @@
 # Multi-stage build for Next.js production
 FROM node:20-alpine AS base
 
-# Dependencies stage
+# Dependencies stage 
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 ARG FRONTEND_PATH
 COPY ${FRONTEND_PATH}/package.json ${FRONTEND_PATH}/package-lock.json* ./
-RUN npm ci
+# Use BuildKit cache mount for faster builds
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+# Copy package files
+COPY ${FRONTEND_PATH}/package.json ./package.json
+COPY ${FRONTEND_PATH}/package-lock.json ./package-lock.json
+
+# Install dependencies with error handling
+RUN npm ci --legacy-peer-deps || { \
+      echo "npm ci failed, trying npm install..."; \
+      npm install --legacy-peer-deps; \
+    } && \
+    echo "=== Dependencies installed successfully ===" && \
+    ls -la node_modules/.bin/ | head -20
 
 # Build stage
 FROM base AS builder
 WORKDIR /app
 
 ARG FRONTEND_PATH
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_FLAGSMITH_ENV_KEY
+ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+ARG KEYCLOAK_BASE_URL
+ARG NEXTAUTH_URL
+
+# Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY ${FRONTEND_PATH} .
+COPY --from=deps /app/package.json ./package.json
+
+# Copy all source files
+COPY ${FRONTEND_PATH}/ ./
+
+# Debug: List copied files
+RUN echo "=== Listing copied files ===" && \
+    ls -la && \
+    echo "=== Checking if shared/ exists ===" && \
+    ls -la shared/ 2>/dev/null || echo "WARNING: shared/ directory not found!" && \
+    echo "=== Checking package.json ===" && \
+    cat package.json | grep -E '"name"|"version"|"next"' || true
 
 # Set production environment
 ENV NODE_ENV=production
@@ -28,14 +58,34 @@ ARG NEXT_PUBLIC_FLAGSMITH_ENV_KEY
 ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 ARG KEYCLOAK_BASE_URL
 ARG NEXTAUTH_URL
+ARG NEXT_PUBLIC_ELASTIC_APM_SERVER_URL
+ARG NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN
+ARG NEXT_PUBLIC_DEPLOYMENT_ENV
+ARG NEXT_PUBLIC_PROJECT_VERSION
+ARG NEXT_PUBLIC_TRACING_SAMPLING_RATE
 
 # Pass them as environment variables during build (Next.js will inline them)
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
 ENV NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+ENV NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
+ENV NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
+ENV NEXT_PUBLIC_DEPLOYMENT_ENV=${NEXT_PUBLIC_DEPLOYMENT_ENV}
+ENV NEXT_PUBLIC_PROJECT_VERSION=${NEXT_PUBLIC_PROJECT_VERSION}
+ENV NEXT_PUBLIC_TRACING_SAMPLING_RATE=${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
 
-# Build the application
-RUN npm run build
+# Verify installation and build
+RUN echo "=== Checking Node.js and npm ===" && \
+    node --version && \
+    npm --version && \
+    echo "=== Verifying Next.js installation ===" && \
+    ls -la node_modules/.bin/ && \
+    if [ ! -f "node_modules/.bin/next" ]; then \
+      echo "ERROR: Next.js not found in node_modules!" && \
+      exit 1; \
+    fi && \
+    echo "=== Next.js found, starting build ===" && \
+    npm run build
 
 # Production stage
 FROM base AS runner
