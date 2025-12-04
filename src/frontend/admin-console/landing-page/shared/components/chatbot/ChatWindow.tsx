@@ -103,7 +103,7 @@ export function ChatWindow({
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
             <Package className="w-12 h-12 mb-4 text-gray-400" />
             <p className="text-sm">
-              Hello! I'm your AI assistant.
+              Hello! I&apos;m your AI assistant.
               <br />
               How can I help you today?
             </p>

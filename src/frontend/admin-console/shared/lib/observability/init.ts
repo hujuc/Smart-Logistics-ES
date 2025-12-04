@@ -8,7 +8,6 @@
  */
 
 import { initializeApm } from './apm';
-import { initializeOpenTelemetry } from './otel';
 import { initializeWebVitals } from './web-vitals';
 import type { ObservabilityConfig } from './types';
 
@@ -37,7 +36,7 @@ export function initializeObservability(config: ObservabilityConfig) {
   // Initialize OpenTelemetry (additional instrumentation - optional)
   // Currently disabled due to Next.js compatibility issues
   // Elastic APM RUM provides comprehensive monitoring without it
-  let otel = null;
+  const otel = null;
   // Uncomment below to enable OpenTelemetry if needed:
   // try {
   //   otel = initializeOpenTelemetry(config);

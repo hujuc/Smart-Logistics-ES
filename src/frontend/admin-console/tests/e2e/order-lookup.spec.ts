@@ -205,7 +205,7 @@ const searchAndViewOrder = async (page: Page, searchTerm: string, expectedRef?: 
 test.describe.configure({ mode: "serial" });
 
 // Test data that will be shared across all tests
-let testOrders: OrderResponse[] = [];
+const testOrders: OrderResponse[] = [];
 let testWarehouse: WarehouseResponse;
 
 test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
@@ -245,7 +245,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
                   deletedCount++;
                   console.log(`  ✓ Deleted orphaned order ${order.reference} (ID: ${order.id})`);
                 }
-              } catch (error) {
+              } catch {
                 console.warn(`  ✗ Failed to delete order ${order.id}`);
               }
             }
@@ -275,7 +275,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
                   deletedWhCount++;
                   console.log(`  ✓ Deleted orphaned warehouse ${warehouse.code} (ID: ${warehouse.id})`);
                 }
-              } catch (error) {
+              } catch {
                 console.warn(`  ✗ Failed to delete warehouse ${warehouse.id}`);
               }
             }
