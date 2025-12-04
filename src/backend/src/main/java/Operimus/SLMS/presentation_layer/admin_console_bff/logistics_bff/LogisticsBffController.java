@@ -10,9 +10,9 @@ import Operimus.SLMS.business_layer.user_management_module.dto.PasswordUpdateDTO
 import Operimus.SLMS.business_layer.user_management_module.dto.UpdateUserDTO;
 import Operimus.SLMS.business_layer.user_management_module.dto.UserDTO;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsReportService;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
+import Operimus.SLMS.business_layer.reporting_module.service.ReportStatsService;
+import Operimus.SLMS.business_layer.reporting_module.service.ReportGenerationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +42,8 @@ import java.util.Map;
 public class LogisticsBffController {
 
     private final KeycloakUserService userService;
-    private final LogisticsStatsService statsService;
-    private final LogisticsReportService reportService;
+    private final ReportStatsService statsService;
+    private final ReportGenerationService reportService;
     private final WarehouseService warehouseService;
     private final OrderService orderService;
 
