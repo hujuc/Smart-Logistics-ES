@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getApm, getApmConfig } from '@shared/lib/observability/apm';
 
 export default function TestAPMPage() {
-  const [status, setStatus] = useState<any>({});
+  const [status, setStatus] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     // Check APM status
@@ -59,7 +59,7 @@ export default function TestAPMPage() {
           <li>Open browser DevTools (F12)</li>
           <li>Go to <strong>Console</strong> tab - Look for [APM] and [Test Page] messages</li>
           <li>Go to <strong>Network</strong> tab</li>
-          <li>Filter by "intake" or your Elastic APM URL</li>
+          <li>Filter by &quot;intake&quot; or your Elastic APM URL</li>
           <li>Refresh this page</li>
           <li>You should see POST requests to: <code>/intake/v2/rum/events</code></li>
         </ol>

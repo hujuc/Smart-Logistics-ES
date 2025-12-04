@@ -1,4 +1,4 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service;
+package Operimus.SLMS.business_layer.reporting_module.service;
 
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
@@ -13,7 +13,7 @@ import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.Delive
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Severity;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class LogisticsStatsServiceTest {
+class ReportStatsServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
@@ -47,7 +47,7 @@ class LogisticsStatsServiceTest {
     private DeliveryExceptionRepository deliveryExceptionRepository;
 
     @InjectMocks
-    private LogisticsStatsService logisticsStatsService;
+    private ReportStatsService reportStatsService;
 
     private List<Order> testOrders;
     private List<Warehouse> testWarehouses;
@@ -73,7 +73,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats).isNotNull();
@@ -102,7 +102,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("weekly");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("weekly");
 
         // Then
         assertThat(stats).isNotNull();
@@ -120,7 +120,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("monthly");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("monthly");
 
         // Then
         assertThat(stats).isNotNull();
@@ -138,7 +138,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(new ArrayList<>());
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats).isNotNull();
@@ -156,7 +156,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getTotalShipments().getByStatus()).isNotNull();
@@ -175,7 +175,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getTotalExceptions()).isNotNull();
@@ -194,7 +194,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getTotalWarehouses()).isNotNull();
@@ -212,7 +212,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getActiveDrivers()).isNotNull();
@@ -235,7 +235,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getPendingPickups()).isNotNull();
@@ -254,7 +254,7 @@ class LogisticsStatsServiceTest {
         when(deliveryExceptionRepository.findAll()).thenReturn(testExceptions);
 
         // When
-        LogisticsStatsResponse stats = logisticsStatsService.calculateStats("daily");
+        LogisticsStatsResponse stats = reportStatsService.calculateStats("daily");
 
         // Then
         assertThat(stats.getDeliveredToday()).isNotNull();
