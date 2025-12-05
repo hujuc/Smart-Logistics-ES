@@ -20,8 +20,6 @@ public class NotificationService {
 
     @Transactional
     public void processEvent(NotificationEvent event) {
-        log.info("Processing notification event: {}", event);
-
         Notification notification = Notification.builder()
                 .aggregateId(event.getAggregateId())
                 .aggregateType(event.getAggregateType())
@@ -32,7 +30,6 @@ public class NotificationService {
                 .build();
 
         notificationRepository.save(notification);
-
         sendRealTimeNotification(notification);
     }
 
@@ -52,24 +49,29 @@ public class NotificationService {
         });
     }
 
+    @Transactional
+    public void deleteNotification(Long notificationId) {
+        notificationRepository.deleteById(notificationId);
+    }
+
+    @Transactional
+    public void deleteAllUserNotifications(String customerId) {
+        notificationRepository.deleteByCustomerId(customerId);
+    }
+
     private void sendRealTimeNotification(Notification notification) {
-        log.info("🔔 Sending real-time notification for customer: {}", notification.getCustomerId());
-        
         if (notification.getCustomerId() == null) {
-            log.warn("⚠️ Notification has no customerId, skipping WebSocket send");
             return;
         }
         
         try {
-            // Send to specific user's queue
             messagingTemplate.convertAndSendToUser(
                 notification.getCustomerId(),
                 "/queue/notifications",
                 notification
             );
-            log.info("✅ Notification sent to user: {}", notification.getCustomerId());
         } catch (Exception e) {
-            log.error("❌ Failed to send WebSocket notification: {}", e.getMessage(), e);
+            log.error("Failed to send notification via WebSocket: {}", e.getMessage());
         }
     }
 }

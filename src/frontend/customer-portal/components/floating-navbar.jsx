@@ -3,9 +3,24 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import { useUnreadNotifications } from "../shared/hooks/use-notifications"
 
 export function FloatingNavbar({ navItems }) {
   const pathname = usePathname()
+  const unreadCount = useUnreadNotifications()
+  const [shouldAnimate, setShouldAnimate] = useState(false)
+  const prevCountRef = useRef(unreadCount)
+
+  // Trigger animation when unread count increases
+  useEffect(() => {
+    if (unreadCount > prevCountRef.current) {
+      setShouldAnimate(true)
+      const timer = setTimeout(() => setShouldAnimate(false), 2000) // Stop after 2 seconds
+      return () => clearTimeout(timer)
+    }
+    prevCountRef.current = unreadCount
+  }, [unreadCount])
 
   // Safety check
   if (!navItems || !Array.isArray(navItems)) {
@@ -41,19 +56,31 @@ export function FloatingNavbar({ navItems }) {
           
           return (
             <Link key={item.href} href={item.href}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-14 w-14 rounded-2xl transition-all duration-200 ${
-                  active 
-                    ? "bg-primary text-primary-foreground shadow-md" 
-                    : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
-                }`} 
-                aria-label={item.label}
-                title={item.label}
-              >
-                <Icon className="h-6 w-6" />
-              </Button>
+              <div className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-14 w-14 rounded-2xl transition-all duration-200 ${
+                    active 
+                      ? "bg-primary text-primary-foreground shadow-md" 
+                      : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
+                  }`} 
+                  aria-label={item.label}
+                  title={item.label}
+                >
+                  <Icon className="h-6 w-6" />
+                </Button>
+                {/* Notification badge */}
+                {item.label === "Notifications" && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white animate-in fade-in zoom-in duration-300">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {/* Pulse animation - only when new notification arrives */}
+                    {shouldAnimate && (
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                    )}
+                  </span>
+                )}
+              </div>
             </Link>
           )
         })}

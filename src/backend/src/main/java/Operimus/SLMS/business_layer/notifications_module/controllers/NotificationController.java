@@ -32,6 +32,18 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
+        notificationService.deleteNotification(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/customer/{customerId}")
+    public ResponseEntity<Void> deleteAllUserNotifications(@PathVariable String customerId) {
+        notificationService.deleteAllUserNotifications(customerId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/test")
     public ResponseEntity<Void> triggerTestNotification(@RequestParam String customerId) {
         Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent event = Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()

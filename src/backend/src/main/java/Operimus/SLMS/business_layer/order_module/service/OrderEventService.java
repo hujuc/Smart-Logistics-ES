@@ -31,9 +31,7 @@ public class OrderEventService {
             return;
         }
 
-        String notes = previousStatus == null
-                ? "Order initialized with status %s".formatted(newStatus)
-                : "Order status changed from %s to %s".formatted(previousStatus, newStatus);
+        String notes = getStatusChangeMessage(order, previousStatus, newStatus);
 
         OrderEvent event = OrderEvent.builder()
                 .order(order)
@@ -45,6 +43,18 @@ public class OrderEventService {
 
         // Publish to Kafka
         publishNotificationEvent(order, newStatus, notes);
+    }
+    
+    private String getStatusChangeMessage(Order order, OrderStatus previousStatus, OrderStatus newStatus) {
+        String orderRef = order.getReference();
+        return switch (newStatus) {
+            case CREATED -> "Order %s has been created".formatted(orderRef);
+            case ASSIGNED_TO_SHIPMENT -> "Order %s has been assigned to a shipment".formatted(orderRef);
+            case IN_TRANSIT -> "Order %s is now in transit".formatted(orderRef);
+            case DELIVERED -> "Order %s has been delivered successfully".formatted(orderRef);
+            case CANCELLED -> "Order %s has been cancelled".formatted(orderRef);
+            default -> "Order %s status changed to %s".formatted(orderRef, newStatus);
+        };
     }
 
     private void publishNotificationEvent(Order order, OrderStatus status, String message) {

@@ -26,6 +26,7 @@ import {
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { useUser } from "../../../shared/hooks/use-user"
+import { useNotificationsStore } from "../../../shared/hooks/use-notifications"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -48,6 +49,7 @@ export default function NotificationsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("All")
   const user = useUser()
   const stompClientRef = useRef<Client | null>(null)
+  const { setUnreadCount, incrementUnread, decrementUnread } = useNotificationsStore()
 
   // Fetch initial notifications
   useEffect(() => {
@@ -78,6 +80,9 @@ export default function NotificationsPage() {
             relatedEntity: n.aggregateId
           }))
           setNotifications(mappedNotifications)
+          // Update unread count in store
+          const unread = mappedNotifications.filter(n => n.status === "unread").length
+          setUnreadCount(unread)
         })
         .catch(err => {
           console.error("Failed to fetch notifications:", err)
@@ -90,23 +95,15 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (!user?.username) return
 
-    console.log("🔔 Connecting WebSocket for user:", user.username)
     const socket = new SockJS("/ws-notifications")
     const client = new Client({
       webSocketFactory: () => socket,
-      debug: (str) => console.log(str),
       connectHeaders: {
-        username: user.username  // Send username in STOMP CONNECT frame
+        username: user.username
       },
       onConnect: () => {
-        console.log("✅ Connected to WebSocket")
-        
-        // Subscribe to user-specific queue
-        console.log("📡 Subscribing to: /user/queue/notifications")
         client.subscribe("/user/queue/notifications", (message) => {
-          console.log("🔔 NEW NOTIFICATION RECEIVED (user-specific):", message.body)
           const n = JSON.parse(message.body)
-          
           const newNotification: Notification = {
             id: n.id.toString(),
             type: mapEventTypeToType(n.eventType),
@@ -117,12 +114,11 @@ export default function NotificationsPage() {
             relatedEntity: n.aggregateId
           }
           setNotifications(prev => [newNotification, ...prev])
-          console.log("✅ Notification added for user:", user.username)
+          incrementUnread() // Increment unread count
         })
       },
       onStompError: (frame) => {
-        console.error("Broker reported error: " + frame.headers["message"])
-        console.error("Additional details: " + frame.body)
+        console.error("WebSocket error:", frame.headers["message"])
       }
     })
 
@@ -221,22 +217,39 @@ export default function NotificationsPage() {
         setNotifications(notifications.map(n =>
           n.id === id ? { ...n, status: "read" as NotificationStatus } : n
         ))
+        decrementUnread() // Decrement unread count
       })
       .catch(err => console.error("Failed to mark as read:", err))
   }
 
   const handleMarkAllAsRead = () => {
-    // Ideally backend should support this, but for now we iterate or just update UI
+    const unreadIds = notifications.filter(n => n.status === "unread")
     setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+    setUnreadCount(0) // Reset unread count
   }
 
   const handleDelete = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id))
+    fetch(`/api/notifications/${id}`, { method: "DELETE" })
+      .then(() => {
+        const notification = notifications.find(n => n.id === id)
+        if (notification?.status === "unread") {
+          decrementUnread()
+        }
+        setNotifications(notifications.filter(n => n.id !== id))
+      })
+      .catch(err => console.error("Failed to delete notification:", err))
   }
 
   const handleDeleteAll = () => {
     if (confirm("Are you sure you want to delete all notifications?")) {
-      setNotifications([])
+      if (user?.username) {
+        fetch(`/api/notifications/customer/${user.username}`, { method: "DELETE" })
+          .then(() => {
+            setNotifications([])
+            setUnreadCount(0)
+          })
+          .catch(err => console.error("Failed to delete all notifications:", err))
+      }
     }
   }
 
