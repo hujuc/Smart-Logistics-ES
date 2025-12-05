@@ -1,0 +1,66 @@
+package Operimus.SLMS.business_layer.notifications_module.service;
+
+import Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent;
+import Operimus.SLMS.business_layer.notifications_module.entities.Notification;
+import Operimus.SLMS.business_layer.notifications_module.repository.NotificationRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
+    @Transactional
+    public void processEvent(NotificationEvent event) {
+        log.info("Processing notification event: {}", event);
+
+        Notification notification = Notification.builder()
+                .aggregateId(event.getAggregateId())
+                .aggregateType(event.getAggregateType())
+                .eventType(event.getEventType())
+                .message(event.getMessage())
+                .customerId(event.getCustomerId())
+                .read(false)
+                .build();
+
+        notificationRepository.save(notification);
+
+        sendRealTimeNotification(notification);
+    }
+
+    public List<Notification> getUserNotifications(String customerId) {
+        return notificationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+    }
+
+    public List<Notification> getUnreadUserNotifications(String customerId) {
+        return notificationRepository.findByCustomerIdAndReadFalseOrderByCreatedAtDesc(customerId);
+    }
+
+    @Transactional
+    public void markAsRead(Long notificationId) {
+        notificationRepository.findById(notificationId).ifPresent(notification -> {
+            notification.setRead(true);
+            notificationRepository.save(notification);
+        });
+    }
+
+    private void sendRealTimeNotification(Notification notification) {
+        log.info("🔔 Sending real-time notification for customer: {}", notification.getCustomerId());
+        
+        try {
+            // Broadcast to all clients (filtered by customerId on frontend)
+            messagingTemplate.convertAndSend("/topic/notifications", notification);
+            log.info("✅ Notification broadcasted successfully");
+        } catch (Exception e) {
+            log.error("❌ Failed to send WebSocket notification: {}", e.getMessage(), e);
+        }
+    }
+}

@@ -17,8 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class OrderEventService {
 
+    private final org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final OrderEventRepository orderEventRepository;
     private final OrderRepository orderRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${kafka.topic.order-events}")
+    private String orderEventsTopic;
 
     public void recordStatusChange(
             Order order, OrderStatus previousStatus, OrderStatus newStatus) {
@@ -37,6 +42,31 @@ public class OrderEventService {
                 .build();
 
         orderEventRepository.save(event);
+
+        // Publish to Kafka
+        publishNotificationEvent(order, newStatus, notes);
+    }
+
+    private void publishNotificationEvent(Order order, OrderStatus status, String message) {
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(order.getId().toString())
+                            .aggregateType("ORDER")
+                            .eventType(status.name())
+                            .message(message)
+                            .customerId(order.getCustomerId())
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(orderEventsTopic, order.getId().toString(), payload);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            // In a real system, we might want to use an outbox pattern here
+            System.err.println("Failed to publish order event to Kafka: " + e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)

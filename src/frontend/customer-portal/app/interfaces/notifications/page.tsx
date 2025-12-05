@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -23,6 +23,9 @@ import {
   Mail,
   MailOpen
 } from "lucide-react"
+import { Client } from "@stomp/stompjs"
+import SockJS from "sockjs-client"
+import { useUser } from "../../../shared/hooks/use-user"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -38,69 +41,119 @@ interface Notification {
   relatedEntity?: string // e.g., tracking number, ticket number
 }
 
-// Mock data for static UI
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "success",
-    title: "Delivery Completed",
-    message: "Your package #TRK-2024-001 has been delivered successfully.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    status: "unread",
-    relatedEntity: "TRK-2024-001"
-  },
-  {
-    id: "2",
-    type: "info",
-    title: "Package Update",
-    message: "Your package #TRK-2024-002 is out for delivery.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    status: "read",
-    relatedEntity: "TRK-2024-002"
-  },
-  {
-    id: "3",
-    type: "warning",
-    title: "Delivery Delay",
-    message: "Your package #TRK-2024-003 may experience a slight delay due to weather conditions.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    status: "unread",
-    relatedEntity: "TRK-2024-003"
-  },
-  {
-    id: "4",
-    type: "error",
-    title: "Delivery Exception",
-    message: "Unable to deliver package #TRK-2024-004. Please contact support.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    status: "read",
-    relatedEntity: "TRK-2024-004"
-  },
-  {
-    id: "5",
-    type: "info",
-    title: "Support Ticket Update",
-    message: "Your support ticket #SUP-001 has been assigned to an agent.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-    status: "read",
-    relatedEntity: "SUP-001"
-  },
-  {
-    id: "6",
-    type: "success",
-    title: "Ticket Resolved",
-    message: "Your support ticket #SUP-002 has been resolved.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-    status: "read",
-    relatedEntity: "SUP-002"
-  },
-]
-
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("All")
   const [filterStatus, setFilterStatus] = useState<string>("All")
+  const user = useUser()
+  const stompClientRef = useRef<Client | null>(null)
+
+  // Fetch initial notifications
+  useEffect(() => {
+    if (user?.username) {
+      fetch(`/api/notifications/${user.username}`)
+        .then(async res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`)
+          }
+          const text = await res.text()
+          if (!text) {
+            return []
+          }
+          return JSON.parse(text)
+        })
+        .then(data => {
+          if (!Array.isArray(data)) {
+            console.warn("Invalid data format, expected array:", data)
+            return
+          }
+          const mappedNotifications: Notification[] = data.map((n: any) => ({
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: (n.read ? "read" : "unread") as NotificationStatus,
+            relatedEntity: n.aggregateId
+          }))
+          setNotifications(mappedNotifications)
+        })
+        .catch(err => {
+          console.error("Failed to fetch notifications:", err)
+          setNotifications([])
+        })
+    }
+  }, [user?.username])
+
+  // WebSocket connection
+  useEffect(() => {
+    if (!user?.username) return
+
+    console.log("🔔 Connecting WebSocket for user:", user.username)
+    const socket = new SockJS("/ws-notifications")
+    const client = new Client({
+      webSocketFactory: () => socket,
+      debug: (str) => console.log(str),
+      onConnect: () => {
+        console.log("✅ Connected to WebSocket")
+        
+        // Subscribe to broadcast notifications (filtered by customerId on frontend)
+        console.log("📡 Subscribing to: /topic/notifications")
+        client.subscribe("/topic/notifications", (message) => {
+          console.log("🔔 NEW NOTIFICATION RECEIVED:", message.body)
+          const n = JSON.parse(message.body)
+          
+          // Only add if it's for this user
+          if (n.customerId === user.username) {
+            const newNotification: Notification = {
+              id: n.id.toString(),
+              type: mapEventTypeToType(n.eventType),
+              title: formatTitle(n.eventType),
+              message: n.message,
+              timestamp: new Date(n.createdAt),
+              status: "unread",
+              relatedEntity: n.aggregateId
+            }
+            setNotifications(prev => [newNotification, ...prev])
+            console.log("✅ Notification added for user:", user.username)
+          } else {
+            console.log("⏭️ Skipping notification for different user:", n.customerId)
+          }
+        })
+      },
+      onStompError: (frame) => {
+        console.error("Broker reported error: " + frame.headers["message"])
+        console.error("Additional details: " + frame.body)
+      }
+    })
+
+    client.activate()
+    stompClientRef.current = client
+
+    return () => {
+      client.deactivate()
+    }
+  }, [user?.username])
+
+  const mapEventTypeToType = (eventType: string): NotificationType => {
+    switch (eventType) {
+      case "DELIVERED":
+      case "COMPLETED":
+        return "success"
+      case "DELAYED":
+      case "EXCEPTION":
+        return "error"
+      case "WARNING":
+        return "warning"
+      default:
+        return "info"
+    }
+  }
+
+  const formatTitle = (eventType: string) => {
+    return eventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+  }
 
   // Filter notifications
   const filteredNotifications = notifications.filter((notification) => {
@@ -163,14 +216,19 @@ export default function NotificationsPage() {
     return date.toLocaleDateString()
   }
 
-  // Handler functions (static for now)
+  // Handler functions
   const handleMarkAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, status: "read" as NotificationStatus } : n
-    ))
+    fetch(`/api/notifications/${id}/read`, { method: "PUT" })
+      .then(() => {
+        setNotifications(notifications.map(n =>
+          n.id === id ? { ...n, status: "read" as NotificationStatus } : n
+        ))
+      })
+      .catch(err => console.error("Failed to mark as read:", err))
   }
 
   const handleMarkAllAsRead = () => {
+    // Ideally backend should support this, but for now we iterate or just update UI
     setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
   }
 

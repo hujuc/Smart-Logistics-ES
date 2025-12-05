@@ -146,5 +146,34 @@ public class ShipmentService {
         if (generator != null) {
             generator.generateCarrierDocuments(shipment, orders);
         }
+        
+        // Publish creation event
+        publishNotificationEvent(shipment, "CREATED", "Shipment created with code " + shipment.getShipmentCode());
+    }
+
+    private final org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Value("${kafka.topic.shipment-events}")
+    private String shipmentEventsTopic;
+
+    private void publishNotificationEvent(Shipment shipment, String eventType, String message) {
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(shipment.getId().toString())
+                            .aggregateType("SHIPMENT")
+                            .eventType(eventType)
+                            .message(message)
+                            .customerId(null) // Shipments might not be directly linked to a single customer in this context, or we need to iterate orders
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
+        } catch (Exception e) {
+            log.error("Failed to publish shipment event to Kafka", e);
+        }
     }
 }
