@@ -1,11 +1,11 @@
-package Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service;
+package Operimus.SLMS.business_layer.reporting_module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse;
-import Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.dto.LogisticsStatsResponse.*;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
+import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse.*;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
@@ -19,20 +19,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class LogisticsReportServiceTest {
+class ReportGenerationServiceTest {
 
     @Mock
-    private LogisticsStatsService logisticsStatsService;
+    private ReportStatsService reportStatsService;
 
     @InjectMocks
-    private LogisticsReportService logisticsReportService;
+    private ReportGenerationService reportGenerationService;
 
     @Test
     void generateKPIReport_shouldRenderPdfWithKeySections() throws Exception {
         LogisticsStatsResponse stats = buildStatsResponse();
-        when(logisticsStatsService.calculateStats("weekly")).thenReturn(stats);
+        when(reportStatsService.calculateStats("weekly")).thenReturn(stats);
 
-        byte[] pdfBytes = logisticsReportService.generateKPIReport("weekly");
+        byte[] pdfBytes = reportGenerationService.generateKPIReport("weekly");
 
         assertThat(pdfBytes).isNotEmpty();
         try (PdfDocument pdfDocument = new PdfDocument(new PdfReader(new ByteArrayInputStream(pdfBytes)))) {
@@ -52,10 +52,10 @@ class LogisticsReportServiceTest {
 
     @Test
     void generateKPIReport_shouldWrapExceptionsFromStatsService() {
-        when(logisticsStatsService.calculateStats("daily"))
+        when(reportStatsService.calculateStats("daily"))
                 .thenThrow(new IllegalStateException("stats unavailable"));
 
-        assertThatThrownBy(() -> logisticsReportService.generateKPIReport("daily"))
+        assertThatThrownBy(() -> reportGenerationService.generateKPIReport("daily"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to generate KPI report")
                 .hasCauseInstanceOf(IllegalStateException.class);

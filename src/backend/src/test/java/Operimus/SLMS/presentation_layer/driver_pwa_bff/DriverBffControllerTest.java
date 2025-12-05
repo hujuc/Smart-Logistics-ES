@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,25 +37,25 @@ class DriverBffControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
-    @MockBean
+    @MockitoBean
     private OrderEventService orderEventService;
 
-    @MockBean
+    @MockitoBean
     private ShipmentRepository shipmentRepository;
 
-    @MockBean
+    @MockitoBean
     private OrderRepository orderRepository;
 
-    @MockBean
+    @MockitoBean
     private KeycloakUserService keycloakUserService;
 
-    @MockBean
+    @MockitoBean
     private OrderDocumentService orderDocumentService;
 
-    @MockBean
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     private String driverId;

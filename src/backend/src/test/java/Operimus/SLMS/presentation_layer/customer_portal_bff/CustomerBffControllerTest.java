@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -44,22 +44,22 @@ class CustomerBffControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
-    @MockBean
+    @MockitoBean
     private OrderEventService orderEventService;
 
-    @MockBean
+    @MockitoBean
     private WarehouseService warehouseService;
 
-    @MockBean
+    @MockitoBean
     private DeliveryExceptionService exceptionService;
 
-    @MockBean
+    @MockitoBean
     private OrderDocumentService orderDocumentService;
 
-    @MockBean
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     private String customerId;
