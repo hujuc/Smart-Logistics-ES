@@ -95,31 +95,29 @@ export default function NotificationsPage() {
     const client = new Client({
       webSocketFactory: () => socket,
       debug: (str) => console.log(str),
+      connectHeaders: {
+        username: user.username  // Send username in STOMP CONNECT frame
+      },
       onConnect: () => {
         console.log("✅ Connected to WebSocket")
         
-        // Subscribe to broadcast notifications (filtered by customerId on frontend)
-        console.log("📡 Subscribing to: /topic/notifications")
-        client.subscribe("/topic/notifications", (message) => {
-          console.log("🔔 NEW NOTIFICATION RECEIVED:", message.body)
+        // Subscribe to user-specific queue
+        console.log("📡 Subscribing to: /user/queue/notifications")
+        client.subscribe("/user/queue/notifications", (message) => {
+          console.log("🔔 NEW NOTIFICATION RECEIVED (user-specific):", message.body)
           const n = JSON.parse(message.body)
           
-          // Only add if it's for this user
-          if (n.customerId === user.username) {
-            const newNotification: Notification = {
-              id: n.id.toString(),
-              type: mapEventTypeToType(n.eventType),
-              title: formatTitle(n.eventType),
-              message: n.message,
-              timestamp: new Date(n.createdAt),
-              status: "unread",
-              relatedEntity: n.aggregateId
-            }
-            setNotifications(prev => [newNotification, ...prev])
-            console.log("✅ Notification added for user:", user.username)
-          } else {
-            console.log("⏭️ Skipping notification for different user:", n.customerId)
+          const newNotification: Notification = {
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: "unread",
+            relatedEntity: n.aggregateId
           }
+          setNotifications(prev => [newNotification, ...prev])
+          console.log("✅ Notification added for user:", user.username)
         })
       },
       onStompError: (frame) => {

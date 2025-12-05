@@ -43,8 +43,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                    // Try to extract user from Spring Security context
                     Principal principal = accessor.getUser();
-                    log.info("🔌 WebSocket CONNECT - User: {}", principal != null ? principal.getName() : "ANONYMOUS");
+                    
+                    if (principal == null) {
+                        // Extract from STOMP headers (sent from frontend)
+                        String username = accessor.getFirstNativeHeader("username");
+                        if (username != null) {
+                            principal = () -> username;
+                            accessor.setUser(principal);
+                            log.info("🔌 WebSocket CONNECT - User from header: {}", username);
+                        } else {
+                            log.warn("🔌 WebSocket CONNECT - User: ANONYMOUS (no auth)");
+                        }
+                    } else {
+                        log.info("🔌 WebSocket CONNECT - User from security context: {}", principal.getName());
+                    }
                 }
                 
                 if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {

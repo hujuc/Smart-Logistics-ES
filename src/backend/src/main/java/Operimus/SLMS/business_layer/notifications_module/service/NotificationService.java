@@ -55,10 +55,19 @@ public class NotificationService {
     private void sendRealTimeNotification(Notification notification) {
         log.info("🔔 Sending real-time notification for customer: {}", notification.getCustomerId());
         
+        if (notification.getCustomerId() == null) {
+            log.warn("⚠️ Notification has no customerId, skipping WebSocket send");
+            return;
+        }
+        
         try {
-            // Broadcast to all clients (filtered by customerId on frontend)
-            messagingTemplate.convertAndSend("/topic/notifications", notification);
-            log.info("✅ Notification broadcasted successfully");
+            // Send to specific user's queue
+            messagingTemplate.convertAndSendToUser(
+                notification.getCustomerId(),
+                "/queue/notifications",
+                notification
+            );
+            log.info("✅ Notification sent to user: {}", notification.getCustomerId());
         } catch (Exception e) {
             log.error("❌ Failed to send WebSocket notification: {}", e.getMessage(), e);
         }
