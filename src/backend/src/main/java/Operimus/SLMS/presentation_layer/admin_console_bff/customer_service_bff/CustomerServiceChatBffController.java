@@ -53,11 +53,12 @@ public class CustomerServiceChatBffController {
                 userId, role, request.message().length());
 
         try {
-            // Generate chatbot response with RAG context
+            // Generate chatbot response with RAG context and tool calling
             ChatResponse response = chatbotService.generateResponse(
                     request,
                     FRONTEND,
-                    role
+                    role,
+                    userId  // Pass userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

@@ -149,18 +149,18 @@ build: install
 	@echo "Build complete!"
 
 # Test commands
-test: install
+test:
 	@echo "Running backend tests (unit + integration)..."
-	@cd src/backend && mvn test
+	@cd src/backend && mvn clean test
 	@echo "All tests complete!"
 
 test-unit:
 	@echo "Running backend unit tests only..."
-	@cd src/backend && mvn test -Dtest="**/*Test.java" -DexcludedGroups=real-integration
+	@cd src/backend && mvn clean test -Dtest="**/*Test.java" -DexcludedGroups=real-integration
 
 test-integration:
 	@echo "Running backend integration tests (mocked external APIs)..."
-	@cd src/backend && mvn test -Dtest="**/*IntegrationTest.java"
+	@cd src/backend && mvn clean test -Dtest="**/*IntegrationTest.java"
 
 test-e2e: install
 	@echo "Running frontend e2e tests..."
