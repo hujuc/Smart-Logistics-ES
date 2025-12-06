@@ -68,11 +68,16 @@ clean:
 	@docker container prune -f
 	@echo "Cleanup complete"
 
-clean-volumes:
+clean-volumes-prod:
 	@echo "Removing all containers and volumes..."
 	@cd infra && ./deploy.sh down
 	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
 	@echo "All data removed"
+
+clean-volumes-dev:
+	@echo "Removing all development containers and volumes..."
+	@docker compose -f infra/docker-compose.dev.yml down -v
+	@echo "All development data removed"
 
 restart:
 	@echo "Restarting all services..."
