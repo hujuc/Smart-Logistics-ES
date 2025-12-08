@@ -36,4 +36,15 @@ public class NotificationKafkaConsumer {
             log.error("Error processing shipment event", e);
         }
     }
+
+    @KafkaListener(topics = "${kafka.topic.exception-events:exception-events}", groupId = "${spring.kafka.consumer.group-id}")
+    public void consumeExceptionEvent(String message) {
+        log.info("Received exception event (customer service): {}", message);
+        try {
+            NotificationEvent event = objectMapper.readValue(message, NotificationEvent.class);
+            notificationService.processEvent(event);
+        } catch (Exception e) {
+            log.error("Error processing exception event", e);
+        }
+    }
 }

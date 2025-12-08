@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,10 +22,12 @@ import {
   Trash2,
   Mail,
   MailOpen,
-  MessageSquare,
-  Users,
-  FileText
+  MessageSquare
 } from "lucide-react"
+import { Client } from "@stomp/stompjs"
+import SockJS from "sockjs-client"
+import { useUser } from "../../../../shared/hooks/use-user"
+import { useNotificationsStore } from "../../../../shared/hooks/use-notifications"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -42,113 +44,127 @@ interface Notification {
   actionUrl?: string
 }
 
-// Mock data for static UI - Customer Service-specific notifications
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "warning",
-    title: "High Priority Ticket",
-    message: "Ticket #TKT-789 marked as high priority. Customer requesting immediate assistance.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 10),
-    status: "unread",
-    relatedEntity: "TKT-789",
-    actionUrl: "/interfaces/customer-service/tickets"
-  },
-  {
-    id: "2",
-    type: "error",
-    title: "Escalated Complaint",
-    message: "Customer complaint #CMP-456 has been escalated to management. Requires immediate attention.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    status: "unread",
-    relatedEntity: "CMP-456",
-    actionUrl: "/interfaces/customer-service/tickets"
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Ticket Resolved",
-    message: "Support ticket #TKT-745 has been successfully resolved. Customer satisfaction: 5/5.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60),
-    status: "read",
-    relatedEntity: "TKT-745",
-    actionUrl: "/interfaces/customer-service/tickets"
-  },
-  {
-    id: "4",
-    type: "info",
-    title: "New Ticket Assigned",
-    message: "Support ticket #TKT-892 has been automatically assigned to your queue.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    status: "unread",
-    relatedEntity: "TKT-892",
-    actionUrl: "/interfaces/customer-service/tickets"
-  },
-  {
-    id: "5",
-    type: "warning",
-    title: "SLA Warning",
-    message: "Ticket #TKT-623 is approaching SLA deadline. Response required within 2 hours.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3),
-    status: "read",
-    relatedEntity: "TKT-623",
-    actionUrl: "/interfaces/customer-service/tickets"
-  },
-  {
-    id: "6",
-    type: "info",
-    title: "Customer Feedback Received",
-    message: "New feedback received for order #ORD-2024-1234. Rating: 4/5 stars.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    status: "read",
-    relatedEntity: "ORD-2024-1234",
-    actionUrl: "/interfaces/customer-service/order-lookup"
-  },
-  {
-    id: "7",
-    type: "success",
-    title: "Refund Processed",
-    message: "Refund request for order #ORD-2024-0987 has been successfully processed.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
-    status: "read",
-    relatedEntity: "ORD-2024-0987",
-    actionUrl: "/interfaces/customer-service/order-lookup"
-  },
-  {
-    id: "8",
-    type: "error",
-    title: "Failed Delivery Follow-up",
-    message: "Customer for failed delivery #DEL-2024-555 has not responded to contact attempts.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8),
-    status: "read",
-    relatedEntity: "DEL-2024-555",
-    actionUrl: "/interfaces/customer-service/order-lookup"
-  },
-  {
-    id: "9",
-    type: "info",
-    title: "Weekly Report Available",
-    message: "Customer service weekly performance report is now available for review.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    status: "read",
-    actionUrl: "/interfaces/customer-service/reports"
-  },
-  {
-    id: "10",
-    type: "success",
-    title: "Customer Satisfaction Goal Met",
-    message: "Team achieved 95% customer satisfaction rate this week. Great job!",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    status: "read",
-    actionUrl: "/interfaces/customer-service/reports"
-  },
-]
-
 export default function CustomerServiceNotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("All")
   const [filterStatus, setFilterStatus] = useState<string>("All")
+  const user = useUser()
+  const stompClientRef = useRef<Client | null>(null)
+  const { setUnreadCount, incrementUnread, decrementUnread } = useNotificationsStore()
+
+  // Fetch initial notifications
+  useEffect(() => {
+    if (user?.username) {
+      fetch(`/api/notifications/${user.username}`)
+        .then(async res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`)
+          }
+          const text = await res.text()
+          if (!text) {
+            return []
+          }
+          return JSON.parse(text)
+        })
+        .then(data => {
+          if (!Array.isArray(data)) {
+            console.warn("Invalid data format, expected array:", data)
+            return
+          }
+          const mappedNotifications: Notification[] = data.map((n: any) => ({
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: (n.read ? "read" : "unread") as NotificationStatus,
+            relatedEntity: n.aggregateId,
+            actionUrl: getActionUrl(n.eventType, n.aggregateId)
+          }))
+          setNotifications(mappedNotifications)
+          const unread = mappedNotifications.filter(n => n.status === "unread").length
+          setUnreadCount(unread)
+        })
+        .catch(err => {
+          console.error("Failed to fetch notifications:", err)
+          setNotifications([])
+        })
+    }
+  }, [user?.username, setUnreadCount])
+
+  // WebSocket connection for real-time notifications
+  useEffect(() => {
+    if (!user?.username) return
+
+    const socket = new SockJS("/ws-notifications")
+    const client = new Client({
+      webSocketFactory: () => socket,
+      connectHeaders: {
+        username: user.username
+      },
+      onConnect: () => {
+        console.log("✅ WebSocket connected for Customer Service notifications")
+        client.subscribe("/user/queue/notifications", (message) => {
+          console.log("📬 Received real-time notification:", message.body)
+          const n = JSON.parse(message.body)
+          const newNotification: Notification = {
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: "unread",
+            relatedEntity: n.aggregateId,
+            actionUrl: getActionUrl(n.eventType, n.aggregateId)
+          }
+          setNotifications(prev => [newNotification, ...prev])
+          incrementUnread()
+        })
+      },
+      onStompError: (frame) => {
+        console.error("❌ WebSocket error:", frame.headers["message"])
+      }
+    })
+
+    client.activate()
+    stompClientRef.current = client
+
+    return () => {
+      client.deactivate()
+    }
+  }, [user?.username, incrementUnread])
+
+  const mapEventTypeToType = (eventType: string): NotificationType => {
+    switch (eventType) {
+      case "TICKET_RESOLVED":
+      case "TICKET_CLOSED":
+      case "CUSTOMER_FEEDBACK":
+        return "success"
+      case "SLA_BREACH":
+      case "TICKET_ESCALATED":
+      case "NEW_HIGH_PRIORITY_TICKET":
+        return "error"
+      case "SLA_WARNING":
+        return "warning"
+      case "TICKET_ASSIGNED":
+      case "NEW_TICKET":
+      default:
+        return "info"
+    }
+  }
+
+  const formatTitle = (eventType: string) => {
+    return eventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  const getActionUrl = (eventType: string, aggregateId: string): string => {
+    // For ticket-related notifications, link to the ticket details page
+    if (eventType.includes("TICKET") || eventType.includes("SLA")) {
+      return `/interfaces/customer-service/tickets`
+    }
+    return `/interfaces/customer-service/tickets`
+  }
 
   // Filter notifications
   const filteredNotifications = notifications.filter((notification) => {
@@ -211,144 +227,175 @@ export default function CustomerServiceNotificationsPage() {
     return date.toLocaleDateString()
   }
 
-  // Handler functions (static for now)
+  // Handler functions
   const handleMarkAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, status: "read" as NotificationStatus } : n
-    ))
+    fetch(`/api/notifications/${id}/read`, { method: "PUT" })
+      .then(() => {
+        setNotifications(notifications.map(n =>
+          n.id === id ? { ...n, status: "read" as NotificationStatus } : n
+        ))
+        decrementUnread()
+      })
+      .catch(err => console.error("Failed to mark as read:", err))
   }
 
   const handleMarkAllAsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+    setUnreadCount(0)
   }
 
   const handleDelete = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id))
+    fetch(`/api/notifications/${id}`, { method: "DELETE" })
+      .then(() => {
+        const notification = notifications.find(n => n.id === id)
+        if (notification?.status === "unread") {
+          decrementUnread()
+        }
+        setNotifications(notifications.filter(n => n.id !== id))
+      })
+      .catch(err => console.error("Failed to delete notification:", err))
   }
 
   const handleDeleteAll = () => {
     if (confirm("Are you sure you want to delete all notifications?")) {
-      setNotifications([])
+      if (user?.username) {
+        fetch(`/api/notifications/${user.username}`, { method: "DELETE" })
+          .then(() => {
+            setNotifications([])
+            setUnreadCount(0)
+          })
+          .catch(err => console.error("Failed to delete all notifications:", err))
+      }
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-8 w-8 text-cyan-600" />
-            <h1 className="text-3xl font-bold text-black">Customer Service Notifications</h1>
-          </div>
-          <p className="text-gray-600 mt-1">Support tickets, customer feedback, and service alerts</p>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare className="h-6 w-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-black">Customer Service Notifications</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
-            <Check className="h-4 w-4 mr-2" />
-            Mark All as Read
-          </Button>
-          <Button variant="outline" onClick={handleDeleteAll} disabled={notifications.length === 0}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete All
-          </Button>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[250px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search notifications..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="border border-gray-300 rounded-md px-4 py-2 bg-white text-black"
-        >
-          <option value="All">All Types</option>
-          <option value="info">Info</option>
-          <option value="success">Success</option>
-          <option value="warning">Warning</option>
-          <option value="error">Error</option>
-        </select>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="border border-gray-300 rounded-md px-4 py-2 bg-white text-black"
-        >
-          <option value="All">All Status</option>
-          <option value="unread">Unread</option>
-          <option value="read">Read</option>
-        </select>
+        <p className="text-gray-600">Support tickets, customer feedback, and service alerts</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Bell className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-gray-600">Unread</span>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white border rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Unread</p>
+              <p className="text-2xl font-bold text-black">{unreadCount}</p>
+            </div>
+            <Bell className="h-8 w-8 text-blue-600" />
           </div>
-          <p className="text-2xl font-bold text-black">{unreadCount}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-gray-600">Success</span>
+        
+        <div className="bg-white border rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Success</p>
+              <p className="text-2xl font-bold text-green-600">{successCount}</p>
+            </div>
+            <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <p className="text-2xl font-bold text-black">{successCount}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <span className="text-sm font-medium text-gray-600">Warnings</span>
+
+        <div className="bg-white border rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Warnings</p>
+              <p className="text-2xl font-bold text-yellow-600">{warningCount}</p>
+            </div>
+            <AlertTriangle className="h-8 w-8 text-yellow-600" />
           </div>
-          <p className="text-2xl font-bold text-black">{warningCount}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <XCircle className="h-4 w-4 text-red-600" />
-            <span className="text-sm font-medium text-gray-600">Errors</span>
+
+        <div className="bg-white border rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Errors</p>
+              <p className="text-2xl font-bold text-red-600">{errorCount}</p>
+            </div>
+            <XCircle className="h-8 w-8 text-red-600" />
           </div>
-          <p className="text-2xl font-bold text-black">{errorCount}</p>
         </div>
       </div>
 
-      {/* Notifications Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      {/* Filters and Actions */}
+      <div className="bg-white border rounded-lg shadow-sm mb-6">
+        <div className="p-4 border-b">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search notifications..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-3 py-2 border rounded-md bg-white text-black"
+            >
+              <option value="All">All Types</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+            </select>
+
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 border rounded-md bg-white text-black"
+            >
+              <option value="All">All Status</option>
+              <option value="unread">Unread</option>
+              <option value="read">Read</option>
+            </select>
+
+            <Button onClick={handleMarkAllAsRead} variant="outline" className="whitespace-nowrap">
+              <Check className="h-4 w-4 mr-2" />
+              Mark All as Read
+            </Button>
+
+            <Button onClick={handleDeleteAll} variant="outline" className="whitespace-nowrap text-red-600 hover:text-red-700">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete All
+            </Button>
+          </div>
+        </div>
+
+        {/* Notifications Table */}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead className="w-12">Status</TableHead>
+              <TableHead className="w-12">Type</TableHead>
               <TableHead>Notification</TableHead>
-              <TableHead>Related</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead className="text-center">Mark Read</TableHead>
-              <TableHead className="text-center">Delete</TableHead>
+              <TableHead className="w-32">Related</TableHead>
+              <TableHead className="w-40">Time</TableHead>
+              <TableHead className="w-32">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredNotifications.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                  {notifications.length === 0
-                    ? 'No notifications yet. Customer service alerts will appear here.'
-                    : 'No notifications found matching your filters'}
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  {notifications.length === 0 ? "No notifications yet" : "No notifications match your filters"}
                 </TableCell>
               </TableRow>
             ) : (
               filteredNotifications.map((notification) => (
                 <TableRow
                   key={notification.id}
-                  className={`hover:bg-gray-50 ${notification.status === "unread" ? "bg-blue-50/30" : ""}`}
+                  className={notification.status === "unread" ? "bg-blue-50" : ""}
                 >
                   <TableCell>
                     {notification.status === "unread" ? (
@@ -357,61 +404,81 @@ export default function CustomerServiceNotificationsPage() {
                       <MailOpen className="h-5 w-5 text-gray-400" />
                     )}
                   </TableCell>
+                  <TableCell>{getTypeIcon(notification.type)}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getTypeIcon(notification.type)}
-                      <span className={`px-2 py-1 text-xs rounded-full ${getTypeBadge(notification.type)}`}>
-                        {notification.type}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className={`font-medium text-sm ${notification.status === "unread" ? "text-black" : "text-gray-700"}`}>
-                        {notification.title}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getTypeBadge(notification.type)}`}>
+                          {notification.title}
+                        </span>
+                        {notification.status === "unread" && (
+                          <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-600 line-clamp-1 max-w-md">
-                        {notification.message}
-                      </div>
+                      <p className="text-sm text-gray-700">{notification.message}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     {notification.relatedEntity && (
-                      <span className="px-2 py-1 text-xs rounded-full bg-cyan-100 text-cyan-800 font-mono">
-                        {notification.relatedEntity}
+                      <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        {notification.relatedEntity.substring(0, 8)}
                       </span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
                     {formatTimeAgo(notification.timestamp)}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {notification.status === "unread" && (
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {notification.status === "unread" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          title="Mark as read"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
-                        variant="ghost"
                         size="sm"
-                        onClick={() => handleMarkAsRead(notification.id)}
-                        title="Mark as read"
+                        variant="ghost"
+                        onClick={() => handleDelete(notification.id)}
+                        className="text-red-600 hover:text-red-700"
+                        title="Delete"
                       >
-                        <Check className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(notification.id)}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Legend */}
+      <div className="bg-gray-50 border rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-black mb-2">Notification Types</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-600" />
+            <span className="text-gray-700">New assignments, general info</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <span className="text-gray-700">Resolved tickets, feedback</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <span className="text-gray-700">SLA warnings, escalations</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-red-600" />
+            <span className="text-gray-700">High priority, SLA breach</span>
+          </div>
+        </div>
       </div>
     </div>
   )

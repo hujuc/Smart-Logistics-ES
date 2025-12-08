@@ -32,7 +32,18 @@ public class NotificationService {
                 log.info("👤 Creating notification for logistics manager: {} ({})", manager.getUsername(), manager.getId());
                 createAndSendNotification(event, manager.getUsername());
             }
-        } else {
+        } 
+        // Check if this is a broadcast to all customer service representatives
+        else if ("CUSTOMER_SERVICE_REP".equals(event.getCustomerId())) {
+            log.info("🎯 Detected CUSTOMER_SERVICE_REP broadcast for event: {}", event.getEventType());
+            List<UserRepresentation> csrUsers = keycloakUserService.getUsersByRole("CUSTOMER_SERVICE_REP");
+            log.info("📋 Found {} customer service reps to notify", csrUsers.size());
+            for (UserRepresentation csr : csrUsers) {
+                log.info("👤 Creating notification for CSR: {} ({})", csr.getUsername(), csr.getId());
+                createAndSendNotification(event, csr.getUsername());
+            }
+        } 
+        else {
             createAndSendNotification(event, event.getCustomerId());
         }
     }

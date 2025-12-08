@@ -3,9 +3,11 @@ package Operimus.SLMS.business_layer.notifications_module.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -20,6 +22,7 @@ public class LogisticsManagerNotificationService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final KeycloakUserService userService;
 
     @Value("${kafka.topic.order-events}")
     private String orderEventsTopic;
@@ -32,8 +35,38 @@ public class LogisticsManagerNotificationService {
      */
     public void notifyNewOrderCreated(String orderId, String orderReference, String customerId) {
         log.info("🔔 Notifying logistics managers about new order: {} (ID: {})", orderReference, orderId);
-        String message = String.format("New order %s has been created by customer", orderReference);
+        
+        // Get customer name from Keycloak
+        String customerName = getCustomerName(customerId);
+        String message = String.format("New order %s has been created by %s", orderReference, customerName);
+        
         publishNotificationToLogisticsManagers("ORDER", orderId, "NEW_ORDER_CREATED", message);
+    }
+    
+    /**
+     * Get customer name from Keycloak, fallback to username if name not available
+     */
+    private String getCustomerName(String customerId) {
+        try {
+            UserRepresentation user = userService.getUserById(customerId);
+            
+            // Try to get full name
+            String firstName = user.getFirstName();
+            String lastName = user.getLastName();
+            
+            if (firstName != null && !firstName.isBlank() && lastName != null && !lastName.isBlank()) {
+                return firstName + " " + lastName;
+            } else if (firstName != null && !firstName.isBlank()) {
+                return firstName;
+            } else {
+                // Fallback to username
+                return user.getUsername();
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to fetch customer name for ID {}: {}", customerId, e.getMessage());
+            // Fallback to customer ID
+            return "customer " + customerId;
+        }
     }
 
     /**
