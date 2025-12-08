@@ -77,8 +77,8 @@ Your PR must include:
 ### 3. PR Review
 
 - **Minimum 1 approval required** from team member
-- **All CI checks must pass:**
+- **All CI checks must pass** - See [CI/CD Pipeline](ci-cd-pipeline.md) for details:
   - Build successful
   - Tests passing
   - Linting checks passed
-  - Code coverage 70%
+  - Code coverage ≥70%

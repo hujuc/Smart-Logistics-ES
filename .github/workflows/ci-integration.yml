@@ -141,7 +141,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [admin-console, landing-page, customer-portal]
+        app: [admin-console, customer-portal, driver-pwa, landing-page]
 
     env:
       CI: true
