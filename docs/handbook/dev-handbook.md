@@ -114,12 +114,13 @@ make dev-logs        # View dev logs
 ```bash
 make install         # Install frontend dependencies
 make build           # Build backend + all frontends
-make test            # Run all tests (unit + integration)
-make test-unit       # Run unit tests only (fast)
-make test-integration # Run integration tests (mocked APIs)
-make test-e2e        # Run frontend e2e tests
-make test-real       # Run tests with real services
+make test-ci         # Run unit + mocked integration tests with JaCoCo coverage gate
+make test-backend-integration  # Run CI-safe integration tests (Docker: Keycloak, MinIO, Kafka)
+make test-e2e        # Run frontend e2e tests (Playwright - requires services running via make up)
+make test-real       # [MANUAL] Run tests with real external APIs (Gemini, Pinecone)
 ```
+
+For detailed test organization and CI/CD pipeline documentation, see [CI/CD Pipeline](ci-cd-pipeline.md).
 
 **Cleanup:**
 ```bash
