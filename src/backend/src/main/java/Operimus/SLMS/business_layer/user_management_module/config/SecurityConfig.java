@@ -3,7 +3,7 @@ package Operimus.SLMS.business_layer.user_management_module.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -102,12 +102,10 @@ public class SecurityConfig {
      * 1. Fetch JWK keys from internal Docker network (keycloak:8080)
      * 2. Accept tokens with ANY of the possible issuer variations
      *
-     * Note: @Lazy prevents this bean from connecting to Keycloak during tests.
-     * TestSecurityConfig provides a @Primary mock JwtDecoder, so this lazy bean
-     * is never instantiated in test contexts.
+     * Note: This bean is not active during tests. Tests use TestSecurityConfig.jwtDecoder() instead.
      */
     @Bean
-    @Lazy
+    @Profile("!test")
     public JwtDecoder jwtDecoder() {
         // Use NimbusJwtDecoder with JWK Set URI (internal Docker network)
         NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();

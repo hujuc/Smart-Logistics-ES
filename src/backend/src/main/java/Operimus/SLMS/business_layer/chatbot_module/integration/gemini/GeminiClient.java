@@ -58,6 +58,21 @@ public class GeminiClient {
      * @return The assistant's response text
      */
     public String generateCompletion(String systemPrompt, List<Map<String, String>> messages) {
+        GeminiChatResponse response = generateCompletionWithTools(systemPrompt, messages, null);
+        return response.getText();
+    }
+
+    /**
+     * Generate a chat completion with function calling support.
+     * @param systemPrompt The system prompt to set the assistant's behavior
+     * @param messages List of conversation messages (role + content)
+     * @param toolDefinitions List of tool definitions (null for no tools)
+     * @return The full Gemini response (may contain text or function calls)
+     */
+    public GeminiChatResponse generateCompletionWithTools(
+            String systemPrompt,
+            List<Map<String, String>> messages,
+            List<Operimus.SLMS.business_layer.chatbot_module.dto.ToolDefinition> toolDefinitions) {
         try {
             String model = StringUtils.hasText(properties.model()) ? properties.model() : DEFAULT_CHAT_MODEL;
             String url = String.format(GEMINI_CHAT_URL, model, properties.apiKey());
@@ -93,10 +108,29 @@ public class GeminiClient {
                 }
             }
 
-            // Build request with generation config
+            // Build tool declarations if provided
+            List<GeminiChatRequest.Tool> geminiTools = null;
+            if (toolDefinitions != null && !toolDefinitions.isEmpty()) {
+                List<GeminiChatRequest.FunctionDeclaration> functionDeclarations = new ArrayList<>();
+
+                for (Operimus.SLMS.business_layer.chatbot_module.dto.ToolDefinition toolDef : toolDefinitions) {
+                    Map<String, Object> geminiFormat = toolDef.toGeminiFormat();
+                    functionDeclarations.add(new GeminiChatRequest.FunctionDeclaration(
+                            (String) geminiFormat.get("name"),
+                            (String) geminiFormat.get("description"),
+                            geminiFormat.get("parameters")
+                    ));
+                }
+
+                geminiTools = List.of(new GeminiChatRequest.Tool(functionDeclarations));
+                log.debug("Sending request with {} tool declarations", functionDeclarations.size());
+            }
+
+            // Build request with generation config and tools
             GeminiChatRequest request = new GeminiChatRequest(
                     contents,
-                    new GeminiChatRequest.GenerationConfig(0.7, 2048)
+                    new GeminiChatRequest.GenerationConfig(0.7, 2048),
+                    geminiTools
             );
 
             HttpHeaders headers = new HttpHeaders();
@@ -111,12 +145,12 @@ public class GeminiClient {
                 throw new ExternalServiceException("Gemini API returned an empty response");
             }
 
-            String responseText = response.getText();
-            if (!StringUtils.hasText(responseText)) {
-                throw new ExternalServiceException("Gemini API response did not contain any text output");
+            // Check if response has function calls
+            if (response.hasFunctionCalls()) {
+                log.debug("Response contains {} function calls", response.getFunctionCalls().size());
             }
 
-            return responseText;
+            return response;
 
         } catch (RestClientException ex) {
             log.error("Failed to communicate with Gemini API", ex);
