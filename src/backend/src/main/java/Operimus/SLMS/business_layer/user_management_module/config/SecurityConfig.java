@@ -58,7 +58,7 @@ public class SecurityConfig {
 
     @Bean
     @org.springframework.core.annotation.Order(1)
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.disable()) // Allow CORS for development
@@ -82,7 +82,7 @@ public class SecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
-                    .decoder(jwtDecoder())
+                    .decoder(jwtDecoder)
                     .jwtAuthenticationConverter(jwtAuthenticationConverter())
                 )
             );

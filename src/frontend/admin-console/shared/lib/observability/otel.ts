@@ -20,6 +20,7 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import type { ObservabilityConfig } from './types';
+import { Span } from '@opentelemetry/api';
 
 let tracerProvider: WebTracerProvider | null = null;
 
@@ -34,7 +35,7 @@ class ServiceAttributesSpanProcessor implements SpanProcessor {
     this.attributes = attributes;
   }
 
-  onStart(span: ReadableSpan): void {
+  onStart(span: Span): void {
     // Add service attributes to every span
     Object.entries(this.attributes).forEach(([key, value]) => {
       span.setAttribute(key, value);
