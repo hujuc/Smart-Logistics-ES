@@ -47,6 +47,7 @@ public class OrderService {
     private final OrderEventService orderEventService;
     private final ShipmentRepository shipmentRepository;
     private final KeycloakUserService keycloakUserService;
+    private final Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
 
     @Value("${slms.qr.confirmation-base-url:http://localhost:8080/api/driver}")
     private String qrConfirmationBaseUrl;
@@ -105,6 +106,13 @@ public class OrderService {
         saved.setQrConfirmationUrl(confirmationUrl);
         saved.setQrConfirmedAt(null);
         saved.setQrConfirmedBy(null);
+
+        // Notify logistics managers about new order
+        logisticsManagerNotificationService.notifyNewOrderCreated(
+            saved.getId().toString(), 
+            saved.getReference(), 
+            saved.getCustomerId()
+        );
 
         return mapToResponse(saved);
     }

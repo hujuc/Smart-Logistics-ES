@@ -3,8 +3,10 @@ package Operimus.SLMS.business_layer.notifications_module.service;
 import Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent;
 import Operimus.SLMS.business_layer.notifications_module.entities.Notification;
 import Operimus.SLMS.business_layer.notifications_module.repository.NotificationRepository;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +19,31 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    private final KeycloakUserService keycloakUserService;
 
     @Transactional
     public void processEvent(NotificationEvent event) {
+        // Check if this is a broadcast to all logistics managers
+        if ("LOGISTICS_MANAGER".equals(event.getCustomerId())) {
+            log.info("🎯 Detected LOGISTICS_MANAGER broadcast for event: {}", event.getEventType());
+            List<UserRepresentation> logisticsManagers = keycloakUserService.getUsersByRole("LOGISTICS_MANAGER");
+            log.info("📋 Found {} logistics managers to notify", logisticsManagers.size());
+            for (UserRepresentation manager : logisticsManagers) {
+                log.info("👤 Creating notification for logistics manager: {} ({})", manager.getUsername(), manager.getId());
+                createAndSendNotification(event, manager.getUsername());
+            }
+        } else {
+            createAndSendNotification(event, event.getCustomerId());
+        }
+    }
+
+    private void createAndSendNotification(NotificationEvent event, String customerId) {
         Notification notification = Notification.builder()
                 .aggregateId(event.getAggregateId())
                 .aggregateType(event.getAggregateType())
                 .eventType(event.getEventType())
                 .message(event.getMessage())
-                .customerId(event.getCustomerId())
+                .customerId(customerId)
                 .read(false)
                 .build();
 
