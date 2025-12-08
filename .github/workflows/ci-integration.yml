@@ -1,0 +1,254 @@
+name: CI - Integration & E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ci-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: slms-prod
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+  MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+  MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+  KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+  KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+  KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+  JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  KAFKA_BROKER_HOST: ${{ secrets.KAFKA_BROKER_HOST || 'kafka' }}
+  KAFKA_BROKER_PORT: ${{ secrets.KAFKA_BROKER_PORT || '9092' }}
+  KAFKA_BROKER_EXTERNAL_PORT: ${{ secrets.KAFKA_BROKER_EXTERNAL_PORT || '9094' }}
+  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'localhost' }}
+  KAFKA_ZOOKEEPER_HOST: ${{ secrets.KAFKA_ZOOKEEPER_HOST || 'zookeeper' }}
+  KAFKA_ZOOKEEPER_PORT: ${{ secrets.KAFKA_ZOOKEEPER_PORT || '2181' }}
+  KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092' }}
+  KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
+  KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
+  KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+
+jobs:
+  backend-integration:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+          cache: maven
+
+      - name: Setup SLMS environment
+        uses: ./.github/actions/setup-slms-env
+        with:
+          db-host: postgres
+          db-port: "5432"
+          db-name: ${{ env.DB_NAME }}
+          db-username: ${{ env.DB_USERNAME }}
+          db-password: ${{ env.DB_PASSWORD }}
+          postgres-db: ${{ env.POSTGRES_DB }}
+          postgres-user: ${{ env.POSTGRES_USER }}
+          postgres-password: ${{ env.POSTGRES_PASSWORD }}
+          minio-host: localhost
+          minio-port: "39000"
+          minio-root-user: ${{ env.MINIO_ROOT_USER }}
+          minio-root-password: ${{ env.MINIO_ROOT_PASSWORD }}
+          minio-bucket: ${{ env.MINIO_BUCKET }}
+          kafka-broker-host: ${{ env.KAFKA_BROKER_HOST }}
+          kafka-broker-port: ${{ env.KAFKA_BROKER_PORT }}
+          kafka-broker-external-port: ${{ env.KAFKA_BROKER_EXTERNAL_PORT }}
+          kafka-advertised-host: ${{ env.KAFKA_ADVERTISED_HOST }}
+          kafka-zookeeper-host: ${{ env.KAFKA_ZOOKEEPER_HOST }}
+          kafka-zookeeper-port: ${{ env.KAFKA_ZOOKEEPER_PORT }}
+          kafka-bootstrap-servers: ${{ env.KAFKA_BOOTSTRAP_SERVERS }}
+          kafka-consumer-group-id: ${{ env.KAFKA_CONSUMER_GROUP_ID }}
+          kafka-consumer-auto-offset-reset: ${{ env.KAFKA_CONSUMER_AUTO_OFFSET_RESET }}
+          kafka-security-protocol: ${{ env.KAFKA_SECURITY_PROTOCOL }}
+          keycloak-host: localhost
+          keycloak-port: "28180"
+          keycloak-admin-client-secret: ${{ env.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+          jwt-issuer-uri: http://localhost:28180/realms/slms
+          keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
+          keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
+          nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+
+      - name: Cleanup existing containers
+        run: |
+          docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml down --remove-orphans || true
+          docker system prune -f --volumes || true
+
+      - name: Start test dependencies
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            up -d postgres keycloak minio minio-create-bucket zookeeper kafka
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+
+      - name: Run backend integration tests
+        working-directory: src/backend
+        run: cd ../../ && make test-backend-integration
+        env:
+          KEYCLOAK_HOST: localhost
+          KEYCLOAK_PORT: "28180"
+          MINIO_HOST: localhost
+          MINIO_PORT: "39000"
+          KAFKA_BOOTSTRAP_SERVERS: localhost:39092
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-test-results
+          path: src/backend/target/surefire-reports/
+          if-no-files-found: ignore
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            down -v
+
+  e2e-tests:
+    name: E2E Tests (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin-console, landing-page, customer-portal]
+
+    env:
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
+
+      - name: Install ${{ matrix.app }} dependencies
+        working-directory: src/frontend/${{ matrix.app }}
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: src/frontend/${{ matrix.app }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup SLMS environment
+        uses: ./.github/actions/setup-slms-env
+        with:
+          db-host: postgres
+          db-port: "5432"
+          db-name: ${{ env.DB_NAME }}
+          db-username: ${{ env.DB_USERNAME }}
+          db-password: ${{ env.DB_PASSWORD }}
+          postgres-db: ${{ env.POSTGRES_DB }}
+          postgres-user: ${{ env.POSTGRES_USER }}
+          postgres-password: ${{ env.POSTGRES_PASSWORD }}
+          minio-host: minio
+          minio-port: "9000"
+          minio-root-user: ${{ env.MINIO_ROOT_USER }}
+          minio-root-password: ${{ env.MINIO_ROOT_PASSWORD }}
+          minio-bucket: ${{ env.MINIO_BUCKET }}
+          kafka-broker-host: ${{ env.KAFKA_BROKER_HOST }}
+          kafka-broker-port: ${{ env.KAFKA_BROKER_PORT }}
+          kafka-broker-external-port: ${{ env.KAFKA_BROKER_EXTERNAL_PORT }}
+          kafka-advertised-host: ${{ env.KAFKA_ADVERTISED_HOST }}
+          kafka-zookeeper-host: ${{ env.KAFKA_ZOOKEEPER_HOST }}
+          kafka-zookeeper-port: ${{ env.KAFKA_ZOOKEEPER_PORT }}
+          kafka-bootstrap-servers: ${{ env.KAFKA_BOOTSTRAP_SERVERS }}
+          kafka-consumer-group-id: ${{ env.KAFKA_CONSUMER_GROUP_ID }}
+          kafka-consumer-auto-offset-reset: ${{ env.KAFKA_CONSUMER_AUTO_OFFSET_RESET }}
+          kafka-security-protocol: ${{ env.KAFKA_SECURITY_PROTOCOL }}
+          keycloak-host: keycloak
+          keycloak-port: "8080"
+          keycloak-admin-client-secret: ${{ env.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+          jwt-issuer-uri: ${{ env.JWT_ISSUER_URI }}
+          keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
+          keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
+          nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+
+      - name: Cleanup existing containers
+        run: |
+          docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml down --remove-orphans || true
+          docker system prune -f --volumes || true
+
+      - name: Start SLMS stack for E2E
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            up -d postgres keycloak minio minio-create-bucket backend admin-console landing-page customer-portal nginx
+
+      - name: Wait for services to be ready
+        run: |
+          timeout 300 bash -c '
+            until curl -fsSL http://localhost/ >/dev/null; do
+              echo "Waiting for landing page..."
+              sleep 5
+            done
+            until curl -fsSL http://localhost/admin/ >/dev/null; do
+              echo "Waiting for admin console..."
+              sleep 5
+            done
+          '
+          echo "✅ Services are ready"
+
+      - name: Run E2E tests for ${{ matrix.app }}
+        working-directory: src/frontend/${{ matrix.app }}
+        env:
+          E2E_BASE_URL: http://localhost
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-playwright-report
+          path: src/frontend/${{ matrix.app }}/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-playwright-results
+          path: src/frontend/${{ matrix.app }}/playwright-results
+          if-no-files-found: ignore
+
+      - name: Stop SLMS stack
+        if: always()
+        run: |
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            down -v

@@ -1,0 +1,119 @@
+name: CI - Quality Gate
+
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: ci-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-quality:
+    name: Backend Quality (Unit Tests + Coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: src/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+          cache: maven
+
+      - name: Run backend tests with coverage gate
+        id: test
+        run: cd ../.. && make test-ci
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: src/backend/target/site/jacoco/
+          if-no-files-found: ignore
+
+      - name: Upload Allure test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: src/backend/target/allure-results
+          if-no-files-found: ignore
+
+      - name: Publish JUnit test results
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: src/backend/target/surefire-reports/*.xml
+          check_name: Backend Unit Tests
+          detailed_summary: true
+          fail_on_failure: false
+
+      - name: Post coverage status to PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            ${{ steps.test.outcome == 'success'
+              && '✅ **Quality Gate Passed** - JaCoCo coverage requirements met'
+              || '❌ **Quality Gate Failed** - JaCoCo coverage below threshold' }}
+
+            📊 See the **jacoco-coverage-report** artifact for detailed coverage metrics.
+
+      - name: Enforce quality gate
+        if: always()
+        run: |
+          if [ "${{ steps.test.outcome }}" != "success" ]; then
+            echo "❌ Quality gate failed - coverage threshold not met or tests failed"
+            exit 1
+          fi
+          echo "✅ Quality gate passed"
+
+  frontend-quality:
+    name: Frontend (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin-console, customer-portal, driver-pwa, landing-page]
+
+    defaults:
+      run:
+        working-directory: src/frontend/${{ matrix.app }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/${{ matrix.app }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint --if-present
+
+      - name: Build application
+        run: npm run build
+        env:
+          # Required build-time env vars
+          NEXT_PUBLIC_API_URL: http://localhost/api
+          NEXT_PUBLIC_FLAGSMITH_ENV_KEY: test-key
+          NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: test-token
