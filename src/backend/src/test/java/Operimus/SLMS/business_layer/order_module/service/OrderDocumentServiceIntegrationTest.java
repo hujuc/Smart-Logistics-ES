@@ -38,12 +38,12 @@ import static org.assertj.core.api.Assertions.*;
  * Note: This test uses @SpringBootTest and requires the full application context.
  * Security is mocked via TestSecurityConfig to avoid connecting to Keycloak.
  *
- * Run with: mvn test -Dgroups=real-integration
+ * Run with: mvn test -Dgroups=ci-integration
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
-@Tag("real-integration")
+@Tag("ci-integration")
 class OrderDocumentServiceIntegrationTest {
 
     @Autowired
