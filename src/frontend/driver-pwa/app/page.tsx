@@ -2,17 +2,106 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Truck, Package, MapPin, Clock, Bell, CheckCircle, XCircle } from 'lucide-react';
-import { getDashboard, DashboardResponse, getPendingShipments, acceptShipment, PendingShipment } from '@/lib/api';
+import { getDashboard, DashboardResponse, getPendingShipments, acceptShipment, PendingShipment, getDailySchedule } from '@/lib/api';
 import { useUser } from '@/shared/hooks/use-user';
+import Alert from '@shared/components/Alert';
+import { useAlert } from '@shared/hooks/useAlert';
+import { geocodeAddress, buildAddressString } from '@/lib/geocoding';
+import mapboxgl from 'mapbox-gl';
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
 export default function DriverHome() {
   const user = useUser();
+  const router = useRouter();
+  const { alert, showWarning, showSuccess, showError, closeAlert } = useAlert();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [pendingShipments, setPendingShipments] = useState<PendingShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acceptingShipmentId, setAcceptingShipmentId] = useState<number | null>(null);
+  const [calculatedETA, setCalculatedETA] = useState<string>('--');
+
+  const calculateNextDeliveryETA = async () => {
+    try {
+      const schedule = await getDailySchedule();
+      const pendingDeliveries = schedule.deliveries.filter(d => d.status !== 'DELIVERED');
+
+      if (pendingDeliveries.length === 0) {
+        setCalculatedETA('--');
+        return;
+      }
+
+      const nextDelivery = pendingDeliveries[0];
+
+      // Geocode warehouse (starting point)
+      const warehouseAddress = buildAddressString(
+        nextDelivery.warehouseAddress.addressLine1,
+        nextDelivery.warehouseAddress.addressLine2,
+        nextDelivery.warehouseAddress.city,
+        nextDelivery.warehouseAddress.stateOrProvince,
+        nextDelivery.warehouseAddress.postalCode,
+        nextDelivery.warehouseAddress.country
+      );
+
+      const warehouseCoords = await geocodeAddress(warehouseAddress);
+      if (!warehouseCoords) {
+        console.warn('Failed to geocode warehouse');
+        setCalculatedETA('--');
+        return;
+      }
+
+      // Geocode next delivery address
+      const deliveryAddress = buildAddressString(
+        nextDelivery.address || '',
+        null,
+        nextDelivery.shippingCity || '',
+        nextDelivery.shippingStateOrProvince || '',
+        nextDelivery.shippingPostalCode || '',
+        nextDelivery.shippingCountry || ''
+      );
+
+      const deliveryCoords = await geocodeAddress(deliveryAddress);
+      if (!deliveryCoords) {
+        console.warn('Failed to geocode delivery address');
+        setCalculatedETA('--');
+        return;
+      }
+
+      // Get route and calculate duration using Mapbox Directions API
+      const query = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${warehouseCoords.longitude},${warehouseCoords.latitude};${deliveryCoords.longitude},${deliveryCoords.latitude}?access_token=${mapboxgl.accessToken}`,
+        { method: 'GET' }
+      );
+
+      const json = await query.json();
+      if (json.routes && json.routes.length > 0) {
+        const durationInSeconds = json.routes[0].duration;
+        const totalMinutes = Math.round(durationInSeconds / 60);
+
+        // Format as hours and minutes if over 60 minutes
+        if (totalMinutes >= 60) {
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          setCalculatedETA(minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`);
+        } else {
+          setCalculatedETA(`${totalMinutes} min`);
+        }
+      } else {
+        setCalculatedETA('--');
+      }
+    } catch (error) {
+      console.error('Failed to calculate ETA:', error);
+      setCalculatedETA('--');
+    }
+  };
+
+  // Calculate ETA to next delivery on component mount
+  useEffect(() => {
+    calculateNextDeliveryETA();
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -75,16 +164,27 @@ export default function DriverHome() {
     setAcceptingShipmentId(shipmentId);
     try {
       await acceptShipment(shipmentId);
-      alert('Shipment accepted successfully!');
+
       // Remove from pending list
       setPendingShipments(prev => prev.filter(s => s.id !== shipmentId));
+
       // Refresh dashboard
       const dashData = await getDashboard().catch(() => null);
       if (dashData) setDashboardData(dashData);
+
+      // Recalculate ETA with new deliveries
+      await calculateNextDeliveryETA();
+
+      // Show success message
+      showSuccess('Shipment Accepted', 'Shipment accepted successfully! You can now view it in your daily schedule.');
+
+      // Reload the page after a short delay to ensure fresh data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (err) {
       console.error('Failed to accept shipment:', err);
-      alert('Failed to accept shipment: ' + (err instanceof Error ? err.message : 'Unknown error'));
-    } finally {
+      showError('Accept Failed', 'Failed to accept shipment: ' + (err instanceof Error ? err.message : 'Unknown error'));
       setAcceptingShipmentId(null);
     }
   };
@@ -107,6 +207,24 @@ export default function DriverHome() {
     }
   };
 
+  const handleStartNavigation = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      const schedule = await getDailySchedule();
+      const pendingDeliveries = schedule.deliveries.filter(d => d.status !== 'DELIVERED');
+
+      if (pendingDeliveries.length === 0) {
+        showWarning('No Packages to Deliver', 'You have no packages to deliver at this time.');
+        return;
+      }
+
+      router.push('/interfaces/navigation-optimized');
+    } catch (error) {
+      console.error('Failed to check deliveries:', error);
+      showError('Error', 'Failed to load delivery information. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -120,6 +238,15 @@ export default function DriverHome() {
 
   return (
       <div className="min-h-screen bg-white">
+        {/* Alert Component */}
+        <Alert
+          isOpen={alert.isOpen}
+          onClose={closeAlert}
+          title={alert.title}
+          message={alert.message}
+          type={alert.type}
+        />
+
         {/* Header */}
         <div className="bg-black text-white p-6">
           <div className="flex items-center gap-2 mb-6">
@@ -228,7 +355,7 @@ export default function DriverHome() {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <Clock className="w-8 h-8 text-yellow-600 mb-2" />
-              <p className="text-3xl font-bold text-yellow-700">{todayStats.nextStopETA}</p>
+              <p className="text-3xl font-bold text-yellow-700">{calculatedETA}</p>
               <p className="text-sm text-gray-600">Next Stop ETA</p>
             </div>
           </div>
@@ -251,12 +378,13 @@ export default function DriverHome() {
               </button>
             </Link>
 
-            <Link href="/interfaces/navigation">
-              <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                <Truck className="w-5 h-5" />
-                Start Navigation
-              </button>
-            </Link>
+            <button
+              onClick={handleStartNavigation}
+              className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Truck className="w-5 h-5" />
+              Start Navigation
+            </button>
 
           </div>
 

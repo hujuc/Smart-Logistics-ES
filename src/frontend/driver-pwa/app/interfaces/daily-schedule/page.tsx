@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getDailySchedule } from '@/lib/api';
 import { useUser } from '@/shared/hooks/use-user';
+import { geocodeAddress, buildAddressString } from '@/lib/geocoding';
+import mapboxgl from 'mapbox-gl';
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
 type Delivery = {
   id: number;
@@ -47,13 +51,129 @@ export default function DriverDailySchedule() {
   const [totalPackages, setTotalPackages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [estimatedTime, setEstimatedTime] = useState<string>('--');
+  const [totalDistance, setTotalDistance] = useState<string>('--');
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+
+  // Calculate route statistics (distance and time)
+  const calculateRouteStats = async (scheduleData: any, deliveries: any[]) => {
+    try {
+      setIsCalculatingRoute(true);
+      console.log('📊 Calculating route statistics for', deliveries.length, 'deliveries');
+
+      // Get warehouse location from first delivery
+      const firstDelivery = deliveries[0];
+      const warehouseAddress = buildAddressString(
+        scheduleData.deliveries[0].warehouseAddress.addressLine1,
+        scheduleData.deliveries[0].warehouseAddress.addressLine2,
+        scheduleData.deliveries[0].warehouseAddress.city,
+        scheduleData.deliveries[0].warehouseAddress.stateOrProvince,
+        scheduleData.deliveries[0].warehouseAddress.postalCode,
+        scheduleData.deliveries[0].warehouseAddress.country
+      );
+
+      const warehouseCoords = await geocodeAddress(warehouseAddress);
+      if (!warehouseCoords) {
+        console.warn('⚠️ Failed to geocode warehouse');
+        setIsCalculatingRoute(false);
+        return;
+      }
+
+      // Geocode all delivery addresses
+      const deliveryCoords: Array<[number, number]> = [];
+      for (const delivery of scheduleData.deliveries.filter((d: any) => d.status !== 'DELIVERED')) {
+        const address = buildAddressString(
+          delivery.address || '',
+          null,
+          delivery.shippingCity || '',
+          delivery.shippingStateOrProvince || '',
+          delivery.shippingPostalCode || '',
+          delivery.shippingCountry || ''
+        );
+        const coords = await geocodeAddress(address);
+        if (coords) {
+          deliveryCoords.push([coords.longitude, coords.latitude]);
+        }
+      }
+
+      if (deliveryCoords.length === 0) {
+        console.warn('⚠️ No delivery coordinates found');
+        setIsCalculatingRoute(false);
+        return;
+      }
+
+      // Build coordinates string for Mapbox Directions API
+      const allCoordinates = [
+        [warehouseCoords.longitude, warehouseCoords.latitude],
+        ...deliveryCoords
+      ];
+
+      // Limit to 25 coordinates (Mapbox Directions API limit)
+      const coordsToUse = allCoordinates.slice(0, 25);
+      const coordinatesString = coordsToUse
+        .map(coord => `${coord[0]},${coord[1]}`)
+        .join(';');
+
+      console.log('📍 Calling Mapbox Directions API for', coordsToUse.length, 'waypoints');
+
+      // Call Mapbox Directions API
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinatesString}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Directions API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.routes || data.routes.length === 0) {
+        throw new Error('No route found');
+      }
+
+      const route = data.routes[0];
+      const distanceKm = (route.distance / 1000).toFixed(0);
+      const durationHours = Math.floor(route.duration / 3600);
+      const durationMinutes = Math.round((route.duration % 3600) / 60);
+
+      const timeString = durationHours > 0
+        ? `${durationHours}h ${durationMinutes}min`
+        : `${durationMinutes} min`;
+
+      setTotalDistance(`${distanceKm} km`);
+      setEstimatedTime(timeString);
+
+      console.log('✅ Route calculated:', {
+        distance: `${distanceKm} km`,
+        time: timeString,
+        stops: coordsToUse.length - 1
+      });
+
+    } catch (err) {
+      console.error('❌ Error calculating route:', err);
+      setEstimatedTime('--');
+      setTotalDistance('--');
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchSchedule() {
       try {
         const scheduleData = await getDailySchedule();
 
-        const deliveries: Delivery[] = scheduleData.deliveries.map(d => ({
+        const activeStatuses = [
+          'IN_TRANSIT',
+          'CREATED',
+          'READY_FOR_PICKUP',
+          'COLLECTED',
+          'ASSIGNED_TO_SHIPMENT',
+        ];
+        const pendingDeliveries = scheduleData.deliveries.filter(d =>
+          activeStatuses.includes(d.status)
+        );
+
+        const deliveries: Delivery[] = pendingDeliveries.map(d => ({
           id: d.orderId,
           stopNumber: d.stopNumber,
           customerName: d.customerName || 'Unknown Customer',
@@ -68,8 +188,13 @@ export default function DriverDailySchedule() {
         }));
 
         setDeliveriesData(deliveries);
-        setTotalStops(scheduleData.totalStops);
-        setTotalPackages(scheduleData.totalPackages);
+        setTotalStops(pendingDeliveries.length);
+        setTotalPackages(pendingDeliveries.length);
+
+        // Calculate route distance and time if there are deliveries
+        if (pendingDeliveries.length > 0) {
+          calculateRouteStats(scheduleData, pendingDeliveries);
+        }
       } catch (err) {
         console.error('Failed to fetch daily schedule:', err);
         setError(err instanceof Error ? err.message : 'Failed to load schedule');
@@ -130,8 +255,8 @@ export default function DriverDailySchedule() {
   const deliveryStats = {
     totalStops: totalStops,
     totalPackages: totalPackages,
-    estimatedTime: '23:45',
-    distance: '87 km'
+    estimatedTime: estimatedTime,
+    distance: totalDistance
   };
 
   // Sorting logic
@@ -186,14 +311,15 @@ export default function DriverDailySchedule() {
   };
 
   const handleNavigate = (deliveryId: number) => {
-    router.push(`/interfaces/navigation?deliveryId=${deliveryId}`);
+    // Use optimized navigation by default
+    router.push(`/interfaces/navigation-optimized?deliveryId=${deliveryId}`);
   };
 
   const handleViewMap = () => {
-    // Navigate to first delivery
+    // Navigate to first delivery with optimized route and auto-simulation
     const firstDelivery = sortedDeliveries[0];
     if (firstDelivery) {
-      router.push(`/interfaces/navigation?deliveryId=${firstDelivery.id}`);
+      router.push(`/interfaces/navigation-optimized?deliveryId=${firstDelivery.id}`);
     }
   };
 
@@ -201,7 +327,7 @@ export default function DriverDailySchedule() {
     // Find first pending delivery
     const nextDelivery = sortedDeliveries.find(d => d.status === 'Pending');
     if (nextDelivery) {
-      router.push(`/interfaces/navigation?deliveryId=${nextDelivery.id}`);
+      router.push(`/interfaces/navigation-optimized?deliveryId=${nextDelivery.id}`);
     }
   };
 
@@ -249,54 +375,70 @@ export default function DriverDailySchedule() {
           </div>
         )}
 
-        {/* Route Summary */}
-        <div className="bg-white border-b border-gray-200 p-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <p className="text-gray-600 text-sm">Total Stops</p>
-              <p className="text-2xl font-bold text-black">{deliveryStats.totalStops}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Total Packages</p>
-              <p className="text-2xl font-bold text-black">{deliveryStats.totalPackages}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Est. Time</p>
-              <p className="text-lg font-semibold text-black">{deliveryStats.estimatedTime}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Distance</p>
-              <p className="text-lg font-semibold text-black">{deliveryStats.distance}</p>
-            </div>
-          </div>
+        {/* Route Summary - Only show if there are deliveries */}
+        {sortedDeliveries.length > 0 ? (
+          <>
+            <div className="bg-white border-b border-gray-200 p-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-gray-600 text-sm">Total Stops</p>
+                  <p className="text-2xl font-bold text-black">{deliveryStats.totalStops}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Total Packages</p>
+                  <p className="text-2xl font-bold text-black">{deliveryStats.totalPackages}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Est. Time</p>
+                  {isCalculatingRoute ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-sm text-gray-500">Calculating...</p>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-semibold text-black">{deliveryStats.estimatedTime}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Distance</p>
+                  {isCalculatingRoute ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-sm text-gray-500">Calculating...</p>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-semibold text-black">{deliveryStats.distance}</p>
+                  )}
+                </div>
+              </div>
 
-          <button
-            onClick={handleViewMap}
-            className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
-          >
-            View Map
-          </button>
-        </div>
+              <button
+                onClick={handleViewMap}
+                className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              >
+                Start Navigation
+              </button>
+            </div>
 
-        {/* Sort Options */}
-        <div className="bg-gray-50 border-b border-gray-200 p-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Sort By:</span>
-            <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'route' | 'time' | 'priority')}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            >
-              <option value="route">Route Order</option>
-              <option value="time">Time Window</option>
-              <option value="priority">Priority</option>
-            </select>
-          </div>
-        </div>
+            {/* Sort Options */}
+            <div className="bg-gray-50 border-b border-gray-200 p-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Sort By:</span>
+                <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as 'route' | 'time' | 'priority')}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value="route">Route Order</option>
+                  <option value="time">Time Window</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </div>
+            </div>
 
-        {/* Delivery List */}
-        <div className="p-4 space-y-3">
-          {sortedDeliveries.map((delivery) => (
+            {/* Delivery List */}
+            <div className="p-4 space-y-3">
+              {sortedDeliveries.map((delivery) => (
               <div
                   key={delivery.id}
                   className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
@@ -402,18 +544,38 @@ export default function DriverDailySchedule() {
                   </button>
                 </div>
               </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          /* Empty State - No deliveries */
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="bg-gray-100 rounded-full p-6 mb-4">
+              <Package className="w-16 h-16 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-black mb-2">All Deliveries Completed!</h3>
+            <p className="text-gray-600 mb-6">
+              You have no pending deliveries at this time.
+            </p>
+            <Link href="/">
+              <button className="bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+                Back to Home
+              </button>
+            </Link>
+          </div>
+        )}
 
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <button
-            onClick={handleGoToNextOrder}
-            className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
-          >
-            Go to Next Order
-          </button>
-        </div>
+        {/* Bottom Navigation - Only show if there are deliveries */}
+        {sortedDeliveries.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button
+              onClick={handleGoToNextOrder}
+              className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
+            >
+              Go to Next Order
+            </button>
+          </div>
+        )}
       </div>
   );
 }

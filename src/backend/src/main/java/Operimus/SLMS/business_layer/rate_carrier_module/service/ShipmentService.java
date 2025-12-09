@@ -169,6 +169,7 @@ public class ShipmentService {
         // Update shipment status to ACCEPTED, then to IN_TRANSIT
         shipment.setStatus(ShipmentStatus.ACCEPTED);
         shipment.setStatus(ShipmentStatus.IN_TRANSIT);
+        shipment = shipmentRepository.save(shipment);
 
         // Update all orders in shipment to IN_TRANSIT
         List<Order> orders = orderRepository.findByShipmentId(shipmentId);
@@ -216,6 +217,7 @@ public class ShipmentService {
 
         // Update shipment status to COMPLETED
         shipment.setStatus(ShipmentStatus.COMPLETED);
+        shipment = shipmentRepository.save(shipment);
 
         log.info("[ShipmentService] Shipment {} completed successfully with {} orders",
                 shipmentId, orders.size());
@@ -250,6 +252,7 @@ public class ShipmentService {
 
         // Update shipment status to EXCEPTION
         shipment.setStatus(ShipmentStatus.EXCEPTION);
+        shipment = shipmentRepository.save(shipment);
 
         log.info("[ShipmentService] Shipment {} marked as EXCEPTION", shipmentId);
 

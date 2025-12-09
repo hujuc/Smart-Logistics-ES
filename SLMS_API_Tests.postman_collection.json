@@ -64,6 +64,21 @@
 			"key": "warehouse_id",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "shipment_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "driver_username",
+			"value": "driver",
+			"type": "string"
+		},
+		{
+			"key": "carrier_id",
+			"value": "1",
+			"type": "string"
 		}
 	],
 	"item": [
@@ -154,8 +169,14 @@
 						},
 						"url": {
 							"raw": "{{keycloak_url}}/protocol/openid-connect/token",
-							"host": ["{{keycloak_url}}"],
-							"path": ["protocol", "openid-connect", "token"]
+							"host": [
+								"{{keycloak_url}}"
+							],
+							"path": [
+								"protocol",
+								"openid-connect",
+								"token"
+							]
 						}
 					}
 				},
@@ -219,8 +240,14 @@
 						},
 						"url": {
 							"raw": "{{keycloak_url}}/protocol/openid-connect/token",
-							"host": ["{{keycloak_url}}"],
-							"path": ["protocol", "openid-connect", "token"]
+							"host": [
+								"{{keycloak_url}}"
+							],
+							"path": [
+								"protocol",
+								"openid-connect",
+								"token"
+							]
 						}
 					}
 				}
@@ -265,8 +292,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/users/me",
-							"host": ["{{base_url}}"],
-							"path": ["users", "me"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
 						}
 					}
 				},
@@ -305,8 +337,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/users/register",
-							"host": ["{{base_url}}"],
-							"path": ["users", "register"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
 						}
 					}
 				},
@@ -335,8 +372,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/users/search?query=test",
-							"host": ["{{base_url}}"],
-							"path": ["users", "search"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"search"
+							],
 							"query": [
 								{
 									"key": "query",
@@ -391,8 +433,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							]
 						}
 					}
 				},
@@ -446,8 +493,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/orders",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							]
 						}
 					}
 				},
@@ -495,8 +547,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/orders",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							]
 						}
 					}
 				},
@@ -532,8 +589,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders/{{order_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders", "{{order_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders",
+								"{{order_id}}"
+							]
 						}
 					}
 				},
@@ -572,8 +635,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/orders/{{order_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders", "{{order_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders",
+								"{{order_id}}"
+							]
 						}
 					}
 				},
@@ -603,8 +672,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders/{{order_id}}/collect",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders", "{{order_id}}", "collect"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders",
+								"{{order_id}}",
+								"collect"
+							]
 						}
 					}
 				},
@@ -632,8 +708,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders/{{order_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders", "{{order_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders",
+								"{{order_id}}"
+							]
 						}
 					}
 				}
@@ -676,8 +758,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/warehouses",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "warehouses"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"warehouses"
+							]
 						}
 					}
 				},
@@ -721,8 +808,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/warehouses",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "warehouses"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"warehouses"
+							]
 						}
 					}
 				},
@@ -751,8 +843,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/warehouses/{{warehouse_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "warehouses", "{{warehouse_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"warehouses",
+								"{{warehouse_id}}"
+							]
 						}
 					}
 				},
@@ -790,8 +888,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/warehouses/{{warehouse_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "warehouses", "{{warehouse_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"warehouses",
+								"{{warehouse_id}}"
+							]
 						}
 					}
 				},
@@ -819,8 +923,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/warehouses/{{warehouse_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "warehouses", "{{warehouse_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"warehouses",
+								"{{warehouse_id}}"
+							]
 						}
 					}
 				}
@@ -852,8 +962,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							]
 						}
 					}
 				},
@@ -877,8 +992,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/admin/orders/99999",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders", "99999"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders",
+								"99999"
+							]
 						}
 					}
 				},
@@ -911,8 +1032,167 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/orders",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Shipments",
+			"item": [
+				{
+					"name": "Create Shipment for Driver",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"shipmentCode\": \"SHIP-{{$timestamp}}\",\n  \"carrierId\": 1,\n  \"driverId\": \"{{driver_username}}\",\n  \"orderIds\": [1],\n  \"totalOrders\": 1,\n  \"totalWeight\": 2.5,\n  \"weightUnit\": \"kg\",\n  \"estimatedDeliveryDate\": \"2025-12-31\",\n  \"shippingCost\": 15.50,\n  \"transitTime\": \"2-3 days\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/shipments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"shipments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Shipments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/shipments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"shipments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Shipments by Driver",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/shipments/driver/{{driver_username}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"shipments",
+								"driver",
+								"{{driver_username}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Driver API",
+			"item": [
+				{
+					"name": "Get Pending Shipments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/driver/pending-shipments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"driver",
+								"pending-shipments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Accept Shipment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/driver/shipments/{{shipment_id}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"driver",
+								"shipments",
+								"{{shipment_id}}",
+								"accept"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Daily Schedule",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/driver/daily-schedule",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"driver",
+								"daily-schedule"
+							]
+						}
+					}
+				},
+				{
+					"name": "Complete Order Delivery with POD",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/driver/orders/{{order_id}}/deliver",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"driver",
+								"orders",
+								"{{order_id}}",
+								"deliver"
+							]
 						}
 					}
 				}
@@ -928,8 +1208,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/health",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "health"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"health"
+							]
 						}
 					}
 				},
@@ -967,8 +1252,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions"
+							]
 						}
 					}
 				},
@@ -979,8 +1269,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions",
+								"{{exception_id}}"
+							]
 						}
 					}
 				},
@@ -991,8 +1287,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions"
+							]
 						}
 					}
 				},
@@ -1003,8 +1304,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions?status=OPEN&severity=HIGH",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions"
+							],
 							"query": [
 								{
 									"key": "status",
@@ -1034,8 +1340,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions",
+								"{{exception_id}}"
+							]
 						}
 					}
 				},
@@ -1055,8 +1367,15 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/customer-service/delivery-exceptions/{{exception_id}}/close",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "delivery-exceptions", "{{exception_id}}", "close"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"delivery-exceptions",
+								"{{exception_id}}",
+								"close"
+							]
 						}
 					}
 				},
@@ -1067,8 +1386,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/dashboard/exceptions/summary",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "dashboard", "exceptions", "summary"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"dashboard",
+								"exceptions",
+								"summary"
+							]
 						}
 					}
 				},
@@ -1079,8 +1405,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/dashboard/alerts",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "dashboard", "alerts"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"dashboard",
+								"alerts"
+							]
 						}
 					}
 				},
@@ -1091,8 +1423,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/customer-service/orders/search?query=ORD",
-							"host": ["{{base_url}}"],
-							"path": ["customer-service", "orders", "search"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer-service",
+								"orders",
+								"search"
+							],
 							"query": [
 								{
 									"key": "query",
