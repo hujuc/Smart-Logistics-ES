@@ -2283,74 +2283,277 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 # 10. AI-Powered Chatbot
 
-**Responsible: Henrique Teixeira**
+**Reference:** `docs/handbook/chatbot-module.md`, `docs/adr/0007-chatbot-module-integration.md`
 
-*[4-5 pages with AI integration details]*
+The Smart Logistics Management System incorporates an AI-powered chatbot assistant that provides context-aware, role-specific help to users across all frontend applications. Unlike traditional static documentation, the SLMS chatbot understands the user's role, application context, and current page to deliver highly relevant, personalized assistance.
 
-**User Story**: US19 (All Users)
+The chatbot addresses several critical challenges:
 
-**Reference:** `docs/handbook/chatbot-module.md`, `docs/adr/0007-chatbot-module-integration.md`, Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/chatbot_module/`
+- **Role-Specific Guidance**: Different roles (Logistics Managers, Warehouse Staff, CSRs, Drivers, Customers) require completely different help content
+- **Contextual Relevance**: Help must relate to the user's current page and task
+- **Multi-Frontend Consistency**: Four separate frontend applications need consistent yet application-specific guidance
+- **Multilingual Support**: English and Portuguese content with cultural appropriateness
+- **Conversational Interaction**: Natural language questions with direct, contextual answers
 
-## 10.1 Context-Aware Assistance
+The implementation follows ADR-0007, combining Google Gemini's large language model with Pinecone's vector database to create a Retrieval-Augmented Generation (RAG) system. This architecture grounds responses in actual SLMS documentation while maintaining conversational fluency. The Landing Page chatbot is publicly accessible, while authenticated users receive role-filtered assistance based on Keycloak JWT tokens, maintaining the principle of least privilege.
 
-**Topics to cover:**
-- User role detection
-- Current page/route context
-- Personalized responses based on user type
-- Frontend application detection
+## 10.1 Chatbot Architecture
 
-## 10.2 Role-Based Content Filtering
+The chatbot architecture separates concerns across data storage, semantic search, natural language processing, and business logic orchestration.
 
-**Topics to cover:**
-- Logistics Manager: KPI insights, carrier comparisons
-- Warehouse Staff: Order processing help
-- CSR: Exception resolution guides
-- Driver: Delivery procedures
-- Customer: Tracking, FAQ
+**Google Gemini API Integration**
 
-## 10.3 Frontend-Specific Help
+Gemini serves dual roles: the `gemini-embedding-001` model converts text into 768-dimensional semantic vectors for similarity search, while the `gemini-1.5-flash` model generates conversational responses with temperature 0.7 and 2048 token limit. The GeminiClient component handles all API communication with configured timeouts to ensure reliable, non-blocking operations. The GeminiClient supports function calling through the `generateCompletionWithTools()` method, enabling the chatbot to invoke database access tools for real-time information retrieval.
 
-**Topics to cover:**
-- Admin Console assistance
-- Customer Portal guidance
-- Driver PWA instructions
-- Route-based contextual guidance
-- Help specific to current UI view
+**Pinecone Vector Database**
 
-## 10.4 Multilingual Support
+Pinecone stores help document vectors in a dedicated index (`slms-chatbot`) with 768 dimensions and cosine similarity metric. Documents are organized by locale namespace (en-US, pt-PT) for language-specific queries. Each vector includes metadata (roles, frontends, routes, title, content) enabling filtered semantic search like "vectors similar to question AND role='DRIVER' AND frontend='driver-pwa'". The PineconeClient uses reactive WebClient for non-blocking HTTP communication, supporting vector upsert and query operations.
 
-**Topics to cover:**
-- English and Portuguese
-- Language detection
-- Localized responses
-- Cultural context awareness
+**Backend Service Layer**
 
-## 10.5 Semantic Search with Pinecone
+Six specialized services orchestrate chatbot functionality:
 
-**Topics to cover:**
-- Document embedding (768 dimensions)
-- Vector similarity search
-- Cosine metric for relevance
-- Context retrieval
-- Top-k configuration
+- **ChatbotService**: Coordinates the RAG workflow and tool calling loop, receiving requests from BFF controllers, generating embeddings, querying Pinecone, augmenting prompts, calling Gemini for completion, and orchestrating tool execution across multiple iterations (max 3)
+- **RagService**: Constructs metadata filters for Pinecone queries, extracts relevant chunks, and augments user prompts with context
+- **EmbeddingService**: Abstracts embedding generation, enabling future model migration
+- **DocumentManagementService**: Manages help document lifecycle, coordinating dual storage in PostgreSQL (metadata) and Pinecone (vectors + metadata)
+- **ToolRegistry**: Auto-discovers Tool implementations via Spring component scanning at startup, maintains a thread-safe registry of available tools, and provides filtered tool definitions based on user roles
+- **ToolExecutor**: Validates tool authorization against user roles, validates parameters against tool schemas, executes tools with timeout protection (5-second limit), and returns structured results or error messages
 
-## 10.6 Natural Language Responses via Gemini
+**Data Storage Architecture**
 
-**Topics to cover:**
-- Query understanding
-- Context-aware generation
-- Conversational tone
-- Fallback responses
-- Safety settings
+The chatbot uses dual storage: PostgreSQL stores the AssistantDocument entity (UUID id, chunkId, title, locale, content, createdAt, metadataJson) with collection tables for roles, frontends, and routes filtering dimensions. Pinecone stores the same data as vector embeddings with full metadata including content. The chunkId field links both stores.
 
-## 10.7 Document Management
+Critically, **during RAG queries, content comes directly from Pinecone metadata**—PostgreSQL is not queried in the hot path. When Pinecone returns matching vectors after semantic search, the RagService extracts content from the returned metadata without additional database queries. This design optimizes query performance while Pinecone handles both vector similarity and metadata filtering in a single operation.
 
-**Topics to cover:**
-- Document ingestion pipeline
-- Chunking strategy (500-1000 tokens)
-- Metadata tagging (role, frontend, route)
-- Update and versioning
-- Content filtering
+PostgreSQL serves three purposes: administrative document management (listing, editing, deleting documents), transactional consistency during document creation, and audit trail. The AssistantDocumentRepository provides CRUD operations used by administrators but not during user chat queries.
+
+Document creation synchronously writes to both stores: embedding generation (100-300ms), PostgreSQL insert, and Pinecone upsert. If either fails, the transaction rolls back to prevent inconsistency. This higher creation latency is acceptable since document authoring is infrequent, while query performance remains fast.
+
+**Tool Architecture**
+
+The chatbot extends beyond static documentation through a database access tool system. The Tool interface defines the contract for all tools: `getName()`, `getDescription()`, `getParameters()`, `getAllowedRoles()`, and `execute()`. Seven tool implementations provide real-time database queries:
+
+- **OrderLookupTool**: Retrieve detailed order information by ID or tracking number
+- **OrderStatusTool**: Check current order status and event history
+- **WarehouseInventoryTool**: Query warehouse information, capacity, and active order counts
+- **ShipmentTrackingTool**: Get real-time shipment tracking and carrier information
+- **DeliveryExceptionTool**: List active delivery exceptions with severity and assignment details
+- **UserCountTool**: Count total system users
+- **ShipmentCountTool**: Count total shipments
+
+Each tool is annotated as a Spring `@Component`, enabling automatic discovery by ToolRegistry at application startup. Tools declare their allowed roles through the `getAllowedRoles()` method, forming the basis of the chatbot's authorization system.
+
+## 10.2 RAG Implementation
+
+Retrieval-Augmented Generation (RAG) grounds responses in SLMS documentation rather than relying solely on Gemini's pre-trained knowledge.
+
+**Document Ingestion Pipeline**
+
+Help documents are authored as natural language text (typically markdown) and processed for ingestion.
+
+The EmbeddingService calls Gemini's gemini-embedding-001 to produce 768-dimensional vectors capturing semantic meaning—similar concepts like "shipment tracking" and "order monitoring" produce nearby vectors in high-dimensional space. This computationally expensive operation (100-300ms) occurs once during creation, with embeddings stored for reuse.
+
+The DocumentManagementService coordinates storage: generate embedding, create database entity, save to PostgreSQL, prepare metadata (title, content, locale, roles, frontends, routes), and upsert vector to Pinecone. The transaction rolls back if either database operation fails, maintaining consistency. A DocumentSeederService can automatically populate initial help content on startup when enabled.
+
+**Query Flow**
+
+When a user submits a question, the ChatbotService orchestrates a six-step RAG workflow:
+
+1. **Query Embedding**: The user's question is converted to a 768-dimensional vector using gemini-embedding-001. Questions phrased differently but semantically similar (e.g., "How do I upload proof of delivery?" vs "Where do I submit POD photos?") produce nearby vectors.
+
+2. **Semantic Search with Filtering**: RagService queries Pinecone for top-5 documents, applying metadata filters for frontend, role, and locale. Pinecone executes hybrid search: filter by metadata, compute cosine similarity, return ranked matches. A driver asking about delivery procedures only sees driver-relevant English content, even if warehouse or Portuguese documentation exists.
+
+3. **Context Retrieval and Augmentation**: RagService extracts content from Pinecone metadata and assembles an augmented prompt: "Relevant context:\n[Document 1]\n{content1}\n[Document 2]\n{content2}\n...\n---\nUser question: {message}". This grounds the LLM response in authoritative documentation.
+
+4. **Conversation History Integration**: Previous chat messages (stored client-side) are appended to the prompt, enabling multi-turn dialogues with contextual follow-up questions.
+
+5. **LLM Completion**: A system prompt tailored to frontend and role (customer-portal: "helping customer track orders", driver-pwa: "helping driver with deliveries", admin-console: "helping administrator with operations") is sent to Gemini with augmented context and conversation history. The LLM generates conversational, concise responses (2-3 sentences) using retrieved documentation.
+
+6. **Response Assembly**: ChatbotService packages the LLM response with source document chunk IDs, enabling future citation display and feedback collection.
+
+**[FIGURE 10.1: RAG Query Flow Diagram]**
+
+Sequence diagram showing: User → Frontend → Chat BFF → ChatbotService → (Embedding: EmbeddingService → GeminiClient → Gemini API) → (Retrieval: RagService → PineconeClient → Pinecone with metadata filters) → (Augmentation: RagService assembles context) → (Generation: GeminiClient → Gemini API with augmented prompt) → Response back through layers. Highlight four phases with color coding. Include fallback path for RAG failures.
+
+## 10.3 Security and Access Control
+
+The chatbot integrates with SLMS's security model through role-based access control. Following the Backend-For-Frontend (BFF) pattern described in Section 8, each frontend has a dedicated chat BFF controller that extracts user context from JWT tokens and enforces access rules.
+
+**Public and Authenticated Access**
+
+The Landing Page chatbot endpoint (/api/landing-page/chat) is publicly accessible, returning "ANONYMOUS" for null JWT tokens. Pinecone queries filter for documents tagged with "ANONYMOUS" or empty role sets, providing general information while hiding operational documentation. Authenticated endpoints in Admin Console, Customer Portal, and Driver PWA require valid JWT tokens—BFF controllers extract the primary role and pass it to ChatbotService for filtering.
+
+**Multi-Dimensional Filtering**
+
+Three filtering layers ensure content relevance:
+
+1. **Role Filtering**: Warehouse Staff see order processing help, CSRs see exception handling, Drivers see delivery procedures, Logistics Managers see KPI reports. Multi-role users use their primary role (first in JWT's realm_access.roles array).
+
+2. **Frontend Filtering**: BFF endpoint prefixes determine frontend context (landing-page, driver-pwa, customer-portal, admin-console). A driver using Driver PWA gets mobile-optimized help; the same user in Admin Console gets desktop analytical guidance.
+
+3. **Route Prioritization**: Current page route (e.g., /orders/create, /carriers) is included in chat requests. RagService adds route to metadata filters, boosting contextually relevant documents without excluding others—soft prioritization rather than hard filtering.
+
+This enforces least privilege: users receive only necessary help content, reducing cognitive load, preventing exposure of privileged procedures, and supporting compliance requirements. All interactions are logged with role, frontend, and route context for security auditing and documentation improvement.
+
+**Tool Authorization: Defense-in-Depth**
+
+The chatbot's database access tools implement a three-layer authorization architecture to prevent information leakage:
+
+**Layer 1: LLM-Level Awareness**
+The system prompt includes explicit authorization guidance for the user's current role. Gemini receives definitions for **all** tools in the system (not just those the user can access), along with detailed instructions on which tools the user is authorized to use. When users request information requiring unauthorized tools, the LLM is trained to:
+- Politely explain the access restriction
+- Identify which roles have access to that capability
+- Suggest alternative actions within the user's permissions
+- Avoid attempting to call unauthorized tools
+
+This LLM-level awareness enables helpful, authorization-aware responses like: "Warehouse inventory information is only accessible to warehouse staff and logistics managers. As a customer, I can help you track your orders or check delivery status."
+
+**Layer 2: Execution-Level Enforcement**
+Before executing any tool, ToolExecutor validates the user's role against the tool's `getAllowedRoles()` set. Authorization failures return error messages to the LLM rather than exposing database query results. This enforcement layer protects against:
+- LLM mistakes or prompt injection attempts to bypass restrictions
+- Tools being called with incorrect parameters
+- Execution timeout violations (5-second hard limit per tool)
+
+All authorization checks and tool executions are logged with user context for security auditing.
+
+**Layer 3: Resource-Level Validation**
+Individual tools implement fine-grained authorization checks on specific resources. For example, OrderLookupTool allows CUSTOMER role access but validates that `order.customerId` matches `userContext.userId()` before returning order details. This prevents customers from accessing other customers' orders even if they know the order ID. Similarly, DeliveryExceptionTool filters exceptions to show drivers only those related to their assigned deliveries.
+
+This defense-in-depth approach ensures that authorization failures at any layer prevent information disclosure, while the LLM-level awareness provides superior user experience through contextual explanations rather than cryptic error messages.
+
+## 10.4 Tool Calling System for Database Access
+
+While the RAG system provides contextual help based on static documentation, the tool calling system enables the chatbot to answer questions requiring real-time database queries. This capability transforms the chatbot from a documentation assistant into an intelligent data retrieval interface that can look up specific orders, check warehouse inventory, track shipments, and query delivery exceptions—all within the user's security context.
+
+### 10.4.1 Tool Interface and Implementation
+
+All tools implement the `Tool` interface, which defines five core methods:
+
+```java
+public interface Tool {
+    String getName();                           // Unique identifier (e.g., "order_lookup")
+    String getDescription();                    // Description for LLM to understand when to use this tool
+    List<ToolParameter> getParameters();        // Parameter schema (name, type, required, description)
+    Set<String> getAllowedRoles();              // Roles authorized to use this tool
+    ToolResult execute(Map<String, Object> params, UserContext context);
+}
+```
+
+Each tool is annotated with Spring's `@Component` annotation, enabling automatic discovery during application startup. The ToolRegistry scans the Spring context for all Tool beans and registers them in a thread-safe ConcurrentHashMap, indexed by tool name.
+
+### 10.4.2 Implemented Tools and Capabilities
+
+**OrderLookupTool**
+- **Purpose**: Retrieve comprehensive order information by ID or tracking number
+- **Parameters**: `orderId` (integer, optional) OR `trackingNumber` (string, optional)
+- **Returns**: Full order details including status, customer information, addresses, dimensions, weight, items
+- **Authorization**: CUSTOMER (own orders only), DRIVER, WAREHOUSE_STAFF, CUSTOMER_SERVICE, LOGISTICS_MANAGER
+- **Resource Validation**: Customers can only access orders where `order.customerId` matches their user ID
+- **Use Case**: "What's the status of order #12345?" or "Look up tracking number TRK-ABC123"
+
+**OrderStatusTool**
+- **Purpose**: Check current order status and complete event history
+- **Parameters**: `orderId` (integer, required)
+- **Returns**: Current status enum and chronological list of order events (transitions, timestamps, responsible users)
+- **Authorization**: CUSTOMER (own orders), DRIVER, WAREHOUSE_STAFF, CUSTOMER_SERVICE, LOGISTICS_MANAGER
+- **Use Case**: "Show me the delivery timeline for order #456" or "When was order #789 picked up?"
+
+**WarehouseInventoryTool**
+- **Purpose**: Query warehouse information, capacity, and current utilization
+- **Parameters**: `warehouseId` (integer, optional) - omit to list all warehouses
+- **Returns**: Warehouse details (name, location, capacity), active order count, availability status
+- **Authorization**: WAREHOUSE_STAFF, LOGISTICS_MANAGER
+- **Use Case**: "How many orders are currently in warehouse 3?" or "Show all warehouse locations"
+
+**ShipmentTrackingTool**
+- **Purpose**: Get real-time shipment tracking information from carriers
+- **Parameters**: `shipmentId` (integer, optional) OR `trackingNumber` (string, optional)
+- **Returns**: Carrier information, current location, delivery ETA, tracking events
+- **Authorization**: CUSTOMER (own shipments), DRIVER (assigned), CUSTOMER_SERVICE, LOGISTICS_MANAGER
+- **Use Case**: "Where is my shipment?" or "Track shipment #9876"
+
+**DeliveryExceptionTool**
+- **Purpose**: List and query active delivery exceptions and issues
+- **Parameters**: `orderId` (integer, optional), `severity` (string, optional: LOW, MEDIUM, HIGH, CRITICAL)
+- **Returns**: List of exceptions with type, severity, priority, assignment, resolution status, notes
+- **Authorization**: CUSTOMER (own orders), CUSTOMER_SERVICE, LOGISTICS_MANAGER
+- **Use Case**: "Show all critical delivery exceptions" or "Are there any issues with my order?"
+
+**UserCountTool**
+- **Purpose**: Count total users registered in the system
+- **Parameters**: None
+- **Returns**: Total user count across all roles
+- **Authorization**: LOGISTICS_MANAGER (admin analytics only)
+- **Use Case**: "How many users are in the system?"
+
+**ShipmentCountTool**
+- **Purpose**: Count total shipments processed by the system
+- **Parameters**: None
+- **Returns**: Total shipment count
+- **Authorization**: LOGISTICS_MANAGER (admin analytics only)
+- **Use Case**: "How many shipments have we processed?"
+
+### 10.4.3 Tool Execution Workflow
+
+The tool calling workflow integrates seamlessly with the RAG query flow described in Section 10.2:
+
+1. **Initial Query Processing**: User submits a question like "What's the status of order #12345?" through the chat interface
+
+2. **RAG Context Retrieval**: The system performs standard RAG retrieval to gather relevant documentation context about order tracking
+
+3. **LLM Request with Tool Definitions**: ChatbotService calls `geminiClient.generateCompletionWithTools()`, providing:
+   - System prompt with authorization guidance for the user's role
+   - Augmented user question with RAG context
+   - Conversation history
+   - **All** tool definitions in Gemini's function calling format (not just allowed tools, to enable authorization-aware responses)
+
+4. **LLM Decision**: Gemini analyzes the question and determines:
+   - Does this require database access? (Yes - order status check)
+   - Which tool should I use? (order_status or order_lookup)
+   - What parameters? (orderId: 12345)
+   - Am I authorized? (Checks system prompt authorization guidance)
+
+5. **Tool Call Extraction**: If Gemini's response includes function calls, ChatbotService extracts the `FunctionCall` objects containing tool name and arguments
+
+6. **Authorization and Execution**: For each function call:
+   - ToolExecutor retrieves the tool from ToolRegistry
+   - Validates user role against tool's `getAllowedRoles()` (Layer 2 enforcement)
+   - Validates parameters against tool's parameter schema
+   - Executes tool with 5-second timeout protection
+   - Returns `ToolResult` with success data or error message
+
+7. **Tool Result Integration**: Tool results are added to the conversation history as assistant messages
+
+8. **Iterative Refinement**: ChatbotService calls Gemini again with the conversation history including tool results. Gemini generates a natural language response incorporating the real data: "Order #12345 is currently IN_TRANSIT and was picked up on January 5th. It's expected to arrive on January 8th."
+
+9. **Iteration Control**: The loop continues for up to 3 iterations, allowing multi-step tool usage (e.g., look up order, then check related shipment tracking, then query exceptions)
+
+10. **Final Response**: The assistant's final text response is returned to the user
+
+**Error Handling and Fallbacks**:
+- Authorization failures return helpful messages explaining which roles have access
+- Tool execution timeouts return timeout errors after 5 seconds
+- Database query failures return error messages without exposing internal details
+- If all tools fail, the chatbot falls back to RAG-only responses based on documentation
+
+### 10.4.4 Multi-Iteration Tool Calling
+
+The chatbot supports multi-turn tool usage within a single user question, enabling complex queries like:
+
+**User**: "Show me my most recent order and check if there are any delivery issues"
+
+**Iteration 1**: LLM calls `order_lookup` (with customer ID filter) → Returns Order #12345
+**Iteration 2**: LLM calls `delivery_exception_tool` (with orderId: 12345) → Returns no exceptions
+**Final Response**: "Your most recent order is #12345, currently IN_TRANSIT. There are no delivery issues reported."
+
+This multi-iteration capability is controlled by `MAX_TOOL_ITERATIONS = 3` in ChatbotService, preventing infinite loops while allowing sophisticated query patterns. Each iteration is logged with timing and authorization context for debugging and security auditing.
+
+## 10.5 Configuration and Deployment
+
+The chatbot requires Gemini API keys (for LLM and embeddings) and Pinecone credentials configured via environment variables. Before deployment, a Pinecone index must be created with 768 dimensions and cosine similarity metric. API keys should be managed securely through secret management systems and never committed to version control. The DocumentSeederService can automatically populate initial help content when enabled (chatbot.seeder.enabled=true), though this should be disabled in production after initial deployment to prevent duplicate content creation.
+
+Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gemini charges per million tokens, while Pinecone charges for index hosting and query volume. The chatbot integrates with Spring Boot Actuator health checks for monitoring API availability and alerting on service degradation.
 
 ---
 
