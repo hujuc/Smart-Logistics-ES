@@ -577,150 +577,263 @@
 
 # 4. Data Model
 
-**Responsible: João Roldão**
+The SLMS data model is designed to support the complete logistics workflow from order creation through delivery and exception handling. Built on PostgreSQL 16, the database schema implements approximately 10 tables organized into modular business domains.
 
-*[8-10 pages with schema diagrams]*
+## 4.1 Database Overview
 
-## 4.1 Database Schema Overview
+The system uses a relational database model with PostgreSQL 16 as the primary data store. The schema follows a modular organization aligned with business domains (order management, carrier integration, exception tracking) to maintain clear boundaries and enable independent evolution of each functional area.
 
-**Topics to cover:**
-- PostgreSQL 16 as primary database
-- Relational schema design principles
-- UUID vs Long primary keys (mixed strategy)
-- JSONB usage for flexible data (addresses, metadata)
-- Cross-module reference patterns
-- Referential integrity and foreign keys
+**Core Characteristics:**
 
-**References:**
-- `docs/handbook/data-model.md`
-- `docs/per-sprint/sprint2/data-model-definition/data-model-definition.md`
-- `docs/adr/0002-data-model-definition.md`
-- `docs/adr/0008-data-model-implementation-strategy.md`
+- **No User Management Table:** All user authentication and management is delegated to Keycloak, an external identity provider. The application database stores only Keycloak user identifiers (UUIDs) where needed to track which users performed actions (e.g., which customer placed an order, which driver is assigned to a shipment).
 
-## 4.2 Core Tables by Module
+- **Module-Based Organization:** Tables are grouped into business modules (Order Module, Rate Carrier Module, Visibility Module) that mirror the backend architecture. Modules reference each other through identifier fields rather than database-level foreign key constraints between modules, maintaining independence while enabling necessary relationships.
 
-### 4.2.1 Order Module (4 tables)
+- **Mixed Primary Key Strategy:** High-volume transactional tables (orders, shipments, carriers) use auto-increment Long IDs for performance. Lower-volume tables requiring global uniqueness (delivery exceptions) use UUID primary keys.
 
-**ORDERS:**
-- Primary order tracking table
-- Fields: id, tracking_number, status, customer info, addresses, dimensions, weight
-- Relationships: warehouse_id, carrier_id
-- Status enum transitions
+The database currently implements 10 tables supporting the core logistics workflow, with reserved module namespaces for future extensions (route optimization, notification management).
 
-**ORDER_EVENTS:**
-- Audit trail for order state changes
-- Event timestamp, type, user
-- Complete history tracking
+## 4.2 Core Entities
 
-**WAREHOUSES:**
-- Physical warehouse locations
-- Multi-warehouse support
-- JSONB address storage
+This section describes the main business entities that form the foundation of the SLMS data model. The focus is on their business purpose and role in the logistics workflow.
 
-**OrderStatus Enum:**
-- PENDING, PROCESSING, READY_FOR_PICKUP, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED, EXCEPTION
+### Order
 
-**Reference:** `docs/per-sprint/sprint2/data-model-definition/data-model-definition.md` (Orders section)
+The Order entity represents a customer's shipment request - a package that needs to be delivered from a warehouse to a destination address. Each order tracks:
+- Unique reference number for customer communication
+- Shipping destination (address, contact information)
+- Order status progression (CREATED → READY_FOR_PICKUP → ASSIGNED_TO_SHIPMENT → IN_TRANSIT → DELIVERED)
+- Package dimensions and weight for rate calculation
+- Which warehouse the order originates from
+- Which shipment it's assigned to for carrier execution
+- Customer who placed the order (Keycloak UUID)
+- QR code for driver confirmation workflows
+- Proof of delivery photo captured by driver
 
-### 4.2.2 Rate Carrier Module (2 tables)
+Orders are the central entity in the system - they represent what customers care about: "Where is my package?"
 
-**CARRIERS:**
-- Third-party shipping providers
-- API configuration (endpoint, credentials)
-- Capabilities JSONB
-- Active/inactive status
+### OrderEvent
 
-**SHIPMENTS:**
-- Carrier-assigned shipment records
-- Links orders to carriers
-- Tracking information
-- Rate details
+The OrderEvent entity provides an immutable audit trail of order status transitions. Every time an order changes state (e.g., from CREATED to IN_TRANSIT), a new event is recorded with:
+- The status the order transitioned to
+- Timestamp when the transition occurred
+- Optional notes explaining the transition
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/rate_carrier_module/entities/`
+Events are append-only - they are never updated or deleted. This creates a complete, tamper-proof history of an order's journey through the system, supporting compliance requirements and debugging.
 
-### 4.2.3 Visibility Module (1 table)
+### Warehouse
 
-**DELIVERY_EXCEPTIONS:**
-- Exception tracking and management
-- Type, severity, priority classification
-- Reporter and assignee (CSR)
-- Resolution status and notes
-- SLA tracking
+The Warehouse entity represents physical facilities where orders originate. Each warehouse record includes:
+- Unique code and display name
+- Physical address
+- Whether the warehouse is active and accepting orders
+- Integration tokens for third-party carrier systems (Shippo, ShipStation)
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/visibility_module/exceptions/entities/`
+SLMS supports multi-warehouse operations, allowing the same system to manage shipments from multiple physical locations.
 
-### 4.2.4 Chatbot Module (4+ tables)
+### Carrier
 
-**ASSISTANT_DOCUMENTS:**
-- Help content for AI chatbot
-- Document chunks for vector search
-- Metadata (role, frontend, route filters)
+The Carrier entity represents third-party shipping providers (FedEx, UPS, DHL, etc.) integrated with SLMS. Each carrier record stores:
+- Unique code and name
+- Contact information (support email, phone, website)
+- Integration credentials for ShipEngine and Shippo APIs
+- Service level summary (express, standard delivery options)
+- Whether the carrier is active and available for selection
+- Carrier physical address
 
-**Collection tables:**
-- Role-based filtering collections
-- Frontend-specific collections
-- Route-specific collections
+Carriers are reference data configured by system administrators to enable multi-carrier shipping options.
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/chatbot_module/entities/`
+### Shipment
 
-### 4.2.5 User Management
+The Shipment entity represents the carrier execution of deliveries. When orders are assigned to a carrier and driver for actual delivery, a shipment is created. Each shipment tracks:
+- Unique shipment code
+- Which carrier company is handling the delivery
+- Which driver is assigned (Keycloak UUID)
+- External carrier system IDs (Shippo, ShipStation tracking IDs)
+- Total number of orders in the shipment
+- Aggregate weight and dimensions
+- Shipping cost and estimated delivery date
+- Transit time estimate
 
-**No users table - delegated to Keycloak**
-- External authentication provider
-- User profiles, roles, credentials managed externally
-- JWT tokens for session management
+The separation of Order (customer request) from Shipment (carrier execution) is a key architectural decision explained in Section 4.4.1.
 
-**Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
+### DeliveryException
 
-## 4.3 Entity Relationships
+The DeliveryException entity tracks delivery problems and manages their resolution. Each exception represents a specific issue with an order that requires attention:
+- Which order is affected
+- Problem classification (DAMAGED, LOST, DELAYED, WRONG_ADDRESS, etc.)
+- Severity level (LOW, MEDIUM, HIGH, CRITICAL)
+- Who reported the exception (customer, driver, or system)
+- Current workflow status (OPEN, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED)
+- Who is assigned to resolve it (customer service representative)
+- Resolution notes and outcome
+- SLA deadline and whether it was breached
+- Customer feedback rating and comments
 
-**Topics to cover:**
+Exceptions enable structured problem management with assignment workflows, SLA tracking, and customer feedback loops.
 
-**Key Relationships:**
-- Order → Warehouse (many-to-one)
-- Order → Shipment (one-to-one or one-to-many)
-- Shipment → Carrier (many-to-one)
-- DeliveryException → Order (many-to-one)
-- Order → OrderEvents (one-to-many)
+## 4.3 Business Relationships
 
-**Cross-module patterns:**
-- Avoiding circular dependencies
-- Module boundaries in database
-- Shared entities strategy
+The relationships between entities reflect the logistics workflow and business rules. This section explains how entities relate from a business logic perspective.
 
-**Diagrams to include:**
-- ER diagram (if available)
-- Module interaction diagram
+### Order → Warehouse
+
+**Relationship:** Every order originates from exactly one warehouse.
+
+**Business Logic:** When warehouse staff create an order, they specify which physical facility it's shipping from. This relationship enables:
+- Tracking which warehouse is responsible for preparing the shipment
+- Multi-warehouse operations where different facilities handle different orders
+- Warehouse-level performance metrics (orders processed, average processing time)
+
+The warehouse assignment is mandatory when creating an order and remains fixed - orders don't move between warehouses.
+
+### Order → Shipment
+
+**Relationship:** Orders are assigned to shipments for carrier execution. An order starts without a shipment assignment and receives one when assigned to a carrier and driver.
+
+**Business Logic:** This relationship represents the transition from order preparation to active delivery:
+- Orders are created and documented (labels generated, package prepared)
+- When ready for pickup, warehouse staff assign orders to a shipment
+- The shipment groups one or more orders for delivery by a specific carrier and driver
+- Orders reference their shipment to track carrier execution
+
+This relationship is nullable - not all orders have shipments (e.g., newly created orders, cancelled orders).
+
+### Shipment → Carrier
+
+**Relationship:** Every shipment is executed by exactly one carrier company.
+
+**Business Logic:** When creating a shipment, staff select which carrier (FedEx, UPS, DHL) will handle the delivery. This relationship:
+- Links shipments to carrier configurations (API credentials, service levels)
+- Enables carrier-level analytics (performance comparison, cost analysis)
+- Determines which external carrier API to use for tracking and label generation
+
+Carrier assignment is mandatory when creating a shipment and typically remains fixed, though shipments could potentially be reassigned if carriers refuse pickup.
+
+### OrderEvent → Order
+
+**Relationship:** Each order has many events tracking its status changes over time.
+
+**Business Logic:** As orders progress through their lifecycle, events are created to document each transition:
+- Order created → CREATED event
+- Package prepared → READY_FOR_PICKUP event
+- Assigned to shipment → ASSIGNED_TO_SHIPMENT event
+- Delivered → DELIVERED event
+
+This one-to-many relationship provides complete order history for compliance, debugging, and customer communication ("Your order was picked up at 2pm, out for delivery at 4pm...").
+
+### DeliveryException → Order
+
+**Relationship:** Each exception relates to exactly one order.
+
+**Business Logic:** When delivery problems occur (package damaged, wrong address, failed delivery attempt), exceptions are created and linked to the affected order. This relationship:
+- Connects problem reports to specific customer shipments
+- Enables order-level exception history ("This order had 2 delivery attempts before success")
+- Supports customer service workflows ("What exceptions exist for this customer's orders?")
+
+One order can have multiple exceptions over time (e.g., delayed delivery, then damaged package), creating a one-to-many relationship.
+
+### Cross-Module References
+
+Unlike traditional database designs where all relationships use foreign key constraints, SLMS implements cross-module references through identifier fields. For example:
+- Order stores a `shipmentId` number rather than a database-level foreign key to Shipment
+- DeliveryException stores an `orderId` number rather than a foreign key to Order
+
+**Business Justification:** This pattern maintains module boundaries and independence. Each business domain (order management, carrier integration, exception tracking) can evolve independently without cascading changes to other modules. While this requires manual relationship traversal in code, it provides architectural flexibility as the system grows.
 
 ## 4.4 Key Design Decisions
 
-**Topics to cover:**
+This section examines the most significant architectural decisions in the data model, focusing on business rationale rather than technical implementation details.
 
-**Order vs Shipment Separation:**
-- Internal order concept vs carrier shipment
-- Rationale for separation
-- Flexibility benefits
+### 4.4.1 Order-Shipment Separation
 
-**Keycloak for User Management:**
-- No users table rationale
-- External auth provider benefits
-- JWT-based authorization
+**Decision:** Model customer orders and carrier shipments as separate entities in different modules.
 
-**JSONB for Flexible Data:**
-- Address storage (from/to addresses)
-- Metadata fields
-- Carrier capabilities
-- Performance considerations
+**Business Rationale:**
 
-**UUID Primary Keys:**
-- Global uniqueness
-- Distributed system benefits
-- Migration from Long IDs (if applicable)
+The separation between Order and Shipment reflects two distinct business concepts:
 
-**References:**
-- `docs/adr/0002-data-model-definition.md`
-- `docs/adr/0006-shipment-entity-introduction.md`
-- `docs/handbook/data-model.md`
+- **Order** represents the customer's perspective: "I need this package delivered to this address." Orders are created when customers place shipment requests. They contain customer-facing information (destination address, package contents, delivery instructions) and exist independently of carrier selection.
+
+- **Shipment** represents the carrier's perspective: "We're delivering these packages via this carrier with this driver." Shipments are created when orders are assigned for execution. They contain carrier operational data (which carrier, which driver, what the shipping cost is, external tracking IDs).
+
+**Benefits:**
+
+1. **Customer Independence:** Orders exist before carriers are selected. Customers can create orders, warehouse staff can prepare them, and carrier assignment happens later in the workflow.
+
+2. **Carrier Flexibility:** If a carrier refuses pickup or shipment assignment needs to change, the order data remains intact. Only the shipment relationship changes.
+
+3. **Integration Isolation:** All third-party carrier API integration (ShipEngine, Shippo tracking IDs, carrier-specific metadata) lives in the Shipment entity. This keeps external system coupling separate from core customer order data.
+
+4. **Future Consolidation:** The model supports potential multi-order shipments where one driver delivers multiple customer orders in a single trip, optimizing delivery routes.
+
+This separation aligns with domain-driven design principles: Order and Shipment represent different bounded contexts in the logistics domain.
+
+### 4.4.2 External User Management (Keycloak)
+
+**Decision:** No users table in application database; all user management delegated to Keycloak.
+
+**Business Rationale:**
+
+User authentication and management is a cross-cutting concern that benefits from specialized external systems rather than custom implementation:
+
+**Benefits:**
+- **Security:** Keycloak provides enterprise-grade password management, brute force protection, and account security policies
+- **Feature Richness:** Immediate access to multi-factor authentication, password reset workflows, email verification
+- **Standards Compliance:** OAuth2 and OpenID Connect standard protocols
+- **Reduced Maintenance:** Security updates and patches handled by the Keycloak project rather than internal team
+- **Single Sign-On:** Potential to integrate SLMS with other organizational systems using shared authentication
+
+**Implementation:**
+Application tables store Keycloak user UUIDs where needed:
+- Orders reference customers via `customer_id` (Keycloak UUID)
+- Shipments reference drivers via `driver_id` (Keycloak UUID)
+- Exceptions track reporters and assignees via Keycloak UUIDs
+
+When user details are needed (name, email, role), services query Keycloak's API using the stored UUID.
+
+**Trade-off:**
+This introduces a runtime dependency on Keycloak availability. However, the security and feature benefits far outweigh this operational consideration, and Keycloak's reliability is production-proven.
+
+### 4.4.3 Immutable Audit Trail
+
+**Decision:** Order events are append-only - never updated or deleted.
+
+**Business Rationale:**
+
+OrderEvent provides an audit trail of order status transitions. Making this trail immutable serves several business needs:
+
+**Compliance:** Many industries require tamper-proof audit logs showing exactly when orders changed status and who initiated changes. Immutable events provide this guarantee.
+
+**Debugging:** When investigating delivery problems or customer complaints, a complete chronological history is invaluable. "The order was marked delivered at 5pm, but our driver says they couldn't access the building."
+
+**Customer Communication:** Immutable history enables accurate tracking updates to customers without concern that past events might be modified or deleted.
+
+**Data Integrity:** Events represent historical fact - "this order transitioned to IN_TRANSIT at 2pm on Tuesday." Historical facts should not change.
+
+**Implementation:** The system enforces immutability by:
+- No update timestamp on events (only creation timestamp)
+- Repository layer provides no update or delete methods
+- Service layer only creates new events, never modifies existing ones
+
+If a mistake is recorded, the correction is a new event, maintaining full audit trail: "Incorrectly marked DELIVERED at 3pm, corrected to IN_TRANSIT at 3:15pm."
+
+### 4.4.4 Module Independence Through ID References
+
+**Decision:** Business modules reference each other through identifier fields rather than database-level foreign key constraints.
+
+**Business Rationale:**
+
+While traditional database design encourages comprehensive foreign key constraints, SLMS prioritizes module independence for organizational scalability:
+
+**Team Autonomy:** Different teams can own different modules (order management team, carrier integration team, exception handling team) without coordinating database schema changes.
+
+**Independent Evolution:** Each module's schema can evolve independently. Adding fields to Shipment doesn't require coordinating changes to Order module.
+
+**Deployment Flexibility:** Module boundaries create potential for future service separation if scaling requirements demand it.
+
+**Trade-off:**
+This pattern requires application code to manually maintain referential integrity (ensuring orders reference valid shipments). However, the organizational benefits - team autonomy and independent evolution - justify this technical trade-off as the system and team grow.
 
 ---
 
