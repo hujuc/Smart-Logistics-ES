@@ -1655,55 +1655,383 @@ cd infra
 
 # 8. Security & Authentication
 
-**Responsible: João Roldão**
-
-*[6-8 pages with security implementation details]*
-
 **Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
 
-## 8.1 Authentication & Authorization
+Security is a critical cornerstone of the Smart Logistics Management System (SLMS), given its role in managing sensitive logistics operations across multiple user types and frontend applications. The system requires robust authentication and authorization mechanisms to ensure that users can only access resources and perform actions appropriate to their roles. This section details the comprehensive security architecture implemented in SLMS, with particular focus on the centralized authentication system powered by Keycloak and the Backend-For-Frontend (BFF) security pattern.
 
-**Topics to cover:**
+The SLMS security architecture addresses several key challenges inherent in modern multi-tenant logistics platforms:
 
-**Keycloak OAuth2/OIDC:**
-- OAuth2 authorization code flow
-- OIDC authentication
-- JWT token issuance and validation
-- Token refresh mechanism
+1. **Multi-Role Access Control**: The system serves five distinct user personas—Logistics Managers, Warehouse Staff, Customer Service Representatives, Drivers, and Customers—each requiring different levels of access and different sets of capabilities.
 
-**Role-Based Access Control:**
-- 5 roles: MANAGER, WAREHOUSE, CSR, DRIVER, CUSTOMER
-- Permission mapping per role
-- Endpoint-level authorization
+2. **Multiple Frontend Applications**: With four separate Next.js applications (Landing Page, Admin Console, Customer Portal, and Driver PWA), the system needs unified authentication that works seamlessly across all interfaces while maintaining strict access boundaries.
 
-**Session Management:**
-- Session timeout configuration
-- Concurrent session handling
-- Logout and token invalidation
+3. **Centralized Identity Management**: Rather than implementing custom authentication in each frontend or module, SLMS leverages a dedicated Identity and Access Management (IAM) service to provide enterprise-grade security features including Single Sign-On (SSO), comprehensive audit trails, and standardized token-based authentication.
 
-## 8.2 API Security
+4. **Security at the Edge**: By implementing the BFF pattern, SLMS enforces security at the presentation layer, ensuring that unauthorized requests never reach the business logic layer.
 
-**Topics to cover:**
+The decision to adopt Keycloak as the authentication provider and implement the BFF pattern represents a deliberate architectural choice documented in ADR-0004. This approach provides a future-proof foundation that supports the system's potential evolution toward a microservices architecture while maintaining strong security guarantees today.
 
-**HTTPS Enforcement:**
-- SSL/TLS certificate configuration
-- Redirect HTTP to HTTPS (production)
-- Certificate renewal
+## 8.1 Authentication Architecture
 
-**CORS Configuration:**
-- Allowed origins
-- Allowed methods
-- Credentials handling
+### 8.1.1 Keycloak as Centralized Identity Provider
 
-**Rate Limiting:**
-- Request rate limits per client
-- Burst handling
-- DDoS protection
+SLMS employs Keycloak, an open-source Identity and Access Management solution, as its centralized authentication authority. Keycloak serves as the single source of truth for user credentials, roles, and authentication policies, implementing industry-standard OAuth 2.0 and OpenID Connect (OIDC) protocols.
 
-**Input Validation:**
-- Request validation
-- SQL injection prevention
-- XSS protection
+**Architectural Position and Isolation**
+
+A critical architectural principle in SLMS is that Keycloak operates as an external service that **never communicates directly with frontend applications**. All authentication requests are mediated through the Spring Boot backend, specifically through the Authentication BFF endpoints exposed by the Landing Page BFF controller (`/api/landing-page/auth/**`). This design provides several security advantages:
+
+- **Single Security Boundary**: By routing all authentication through the backend, the system maintains a single, well-defined security perimeter that is easier to monitor, audit, and protect.
+- **Credential Protection**: User credentials never traverse the frontend JavaScript environment, reducing the attack surface for credential theft.
+- **Token Management Control**: The backend has full control over token lifecycle, including secure storage of refresh tokens in HTTP-only cookies that cannot be accessed by client-side JavaScript.
+- **Simplified Frontend Security**: Frontend applications only need to manage access tokens, without requiring knowledge of Keycloak endpoints, realm configuration, or OAuth flows.
+
+**Keycloak Deployment and Configuration**
+
+Keycloak runs as a containerized service within the SLMS Docker Compose environment, exposed on port 8180 in development (`http://localhost:8180`). The system uses a dedicated SLMS realm (`slms`) that encapsulates all user accounts, roles, and client configurations specific to the logistics platform.
+
+Key configuration aspects include:
+
+- **Realm-level Roles**: Five application-specific roles defined at the realm level (detailed in section 8.1.2)
+- **Client Configuration**: A confidential client configured for the Spring Boot backend with client credentials grant support
+- **Token Lifespans**: Access tokens configured for 5-minute expiry (300 seconds) to limit the window of opportunity for token theft, while refresh tokens remain valid for extended periods to support seamless user sessions
+- **Security Policies**: Brute force protection enabled with progressive lockout after failed login attempts
+- **Audit Capabilities**: Comprehensive event logging for all authentication, authorization, and administrative actions
+
+**OAuth 2.0 and OpenID Connect Implementation**
+
+SLMS utilizes the OAuth 2.0 Resource Owner Password Credentials grant type for user authentication. When a user submits credentials through the Landing Page login form:
+
+1. The frontend sends credentials to the backend Authentication BFF (`POST /api/landing-page/auth/login`)
+2. The backend's `AuthService` communicates with Keycloak's token endpoint using the confidential client credentials
+3. Keycloak validates the credentials against its user database
+4. Upon successful authentication, Keycloak issues an access token (JWT) and a refresh token
+5. The backend extracts user information from the JWT payload and returns it to the frontend along with the access token
+6. The refresh token is stored in an HTTP-only cookie for secure token renewal
+
+This approach combines the convenience of password-based authentication for internal logistics users with the security benefits of OAuth 2.0 token-based authorization.
+
+### 8.1.2 User Roles and Permissions
+
+SLMS defines five distinct user roles, each corresponding to a key persona in the logistics ecosystem. These roles are configured as realm-level roles in Keycloak and embedded in JWT access tokens issued to authenticated users.
+
+| **Role** | **User Type** | **Primary Responsibilities** | **Access Level** |
+|----------|---------------|------------------------------|------------------|
+| `LOGISTICS_MANAGER` | Logistics Manager | Oversee all logistics operations, view system-wide KPIs and reports, manage warehouse and staff configurations, monitor carrier performance | Full administrative access to logistics operations |
+| `WAREHOUSE_STAFF` | Warehouse Staff | Register incoming orders, generate shipping labels and documents, manage inventory, confirm carrier pickups, process shipments | Warehouse-specific operations with order modification rights |
+| `CUSTOMER_SERVICE_REP` | Customer Service Representative | Handle customer inquiries, manage delivery exceptions, resolve customer issues, communicate order status updates | Read-only access to orders with write access to exceptions and notifications |
+| `DRIVER` | Delivery Driver | View assigned delivery routes, update delivery status, capture proof-of-delivery, report delivery exceptions | Limited to own assigned deliveries with status update capabilities |
+| `CUSTOMER` | End Customer | Place new orders, track order status, view delivery history, report delivery issues | Limited to own orders and related information |
+
+**Permission Boundaries**
+
+Each role's permissions are enforced at multiple layers:
+
+1. **Frontend Routing**: After authentication, users are redirected to the appropriate frontend application based on their primary role (Logistics Manager, Warehouse Staff, and CSR share the Admin Console; Drivers use the Driver PWA; Customers use the Customer Portal).
+
+2. **API Endpoint Authorization**: Spring Security configuration enforces role requirements at the BFF endpoint level (detailed in section 8.2.2).
+
+3. **Resource Ownership**: BFF controllers implement additional authorization logic to ensure users can only access resources they own or are authorized to view (e.g., customers cannot view other customers' orders).
+
+**Role Assignment and Management**
+
+User roles are assigned during account creation through Keycloak's Admin API, accessed by the Logistics Manager via the Admin Console's user management interface. The `KeycloakUserService` in the backend's User Management Module provides methods for creating users and assigning roles programmatically. Once assigned, roles are immutable during a session but can be modified by administrators, requiring the user to re-authenticate for changes to take effect.
+
+### 8.1.3 Authentication Flow
+
+The authentication flow in SLMS is designed to provide a seamless user experience while maintaining strict security controls. The Landing Page serves as the single entry point for all users, regardless of their role or intended destination.
+
+**Initial Authentication**
+
+The authentication sequence unfolds as follows:
+
+1. **Landing Page Access**: Users navigate to the SLMS landing page (`http://localhost/`), which presents a login form for existing users and a registration option for new customers.
+
+2. **Credential Submission**: When a user submits the login form with username and password, the Landing Page frontend sends a POST request to `/api/landing-page/auth/login` with the credentials in the request body.
+
+3. **Backend-Keycloak Communication**: The Landing Page BFF's `AuthController` receives the request and delegates to `AuthService`, which:
+   - Constructs a token request using OAuth 2.0 password grant
+   - Sends the request to Keycloak's token endpoint with the system's confidential client credentials
+   - Includes the user's username and password in the token request
+
+4. **Token Issuance**: Keycloak validates the credentials and, if correct, returns:
+   - An **access token** (JWT) containing user identity and roles, valid for 5 minutes
+   - A **refresh token** for obtaining new access tokens without re-authentication, valid for 7 days
+
+5. **Token Processing**: The backend `AuthService`:
+   - Decodes the JWT access token to extract user claims (username, email, first name, last name, and roles from the `realm_access.roles` claim)
+   - Returns a `LoginResponse` object containing the access token and user information to the frontend
+   - Stores the refresh token in an HTTP-only cookie named `refresh_token`, making it inaccessible to JavaScript
+
+6. **Frontend Token Storage**: The Landing Page frontend receives the response and:
+   - Stores the access token in both localStorage and a regular cookie for flexible access patterns
+   - Stores the user information (username, email, name, roles) in localStorage
+   - Uses this information for subsequent authenticated requests and UI personalization
+
+---
+
+**[FIGURE 8.1: Authentication Flow Diagram]**
+
+Create a sequence diagram showing the complete authentication flow with the following participants and steps:
+
+**Participants** (left to right):
+1. User (actor)
+2. Landing Page Frontend
+3. AuthController (`/api/landing-page/auth`)
+4. AuthService (Backend)
+5. Keycloak (IAM Service)
+
+**Main Flow - Successful Login**:
+1. User navigates to login page → Landing Page displays login form
+2. User submits credentials (username, password)
+3. Landing Page sends POST to `/api/landing-page/auth/login` with credentials
+4. AuthController delegates to AuthService.login()
+5. AuthService sends POST to Keycloak token endpoint: `/realms/slms/protocol/openid-connect/token` with:
+   - grant_type=password
+   - client_id, client_secret (backend credentials)
+   - username, password (user credentials)
+6. Keycloak validates credentials against user database
+7. **If valid**: Keycloak returns 200 OK with:
+   - access_token (JWT, 5-min expiry)
+   - refresh_token (7-day expiry)
+   - expires_in: 300
+8. AuthService decodes JWT to extract: username, email, firstName, lastName, roles (from realm_access.roles)
+9. AuthService returns LoginResponse to AuthController
+10. AuthController stores refresh_token in HTTP-only cookie (7-day expiry, JavaScript-inaccessible)
+11. AuthController returns 200 OK to Landing Page with: accessToken, user info, roles
+12. Landing Page stores access token in localStorage + cookie, user info in localStorage
+13. Landing Page examines user roles and determines target frontend
+14. **If** LOGISTICS_MANAGER/WAREHOUSE_STAFF/CUSTOMER_SERVICE_REP → Redirect to Admin Console
+15. **Else if** DRIVER → Redirect to Driver PWA
+16. **Else if** CUSTOMER → Redirect to Customer Portal
+
+**Alternative Flow - Invalid Credentials**:
+- After step 6, if credentials invalid:
+- Keycloak returns 401 Unauthorized
+- AuthService throws exception
+- AuthController returns 401 to Landing Page with error message
+- Landing Page displays error to user
+
+**Key Points to Emphasize**:
+- **No Direct Frontend-Keycloak Connection**: All requests go through backend
+- Refresh token in HTTP-only cookie (secure, XSS-protected)
+- Access token in localStorage/cookie (short-lived, 5 minutes)
+- Role-based routing happens client-side after authentication
+
+---
+
+**Role-Based Routing**
+
+After successful authentication, the Landing Page examines the user's roles and redirects them to the appropriate frontend application:
+
+- Users with `LOGISTICS_MANAGER`, `WAREHOUSE_STAFF`, or `CUSTOMER_SERVICE_REP` roles are redirected to the Admin Console
+- Users with the `DRIVER` role are redirected to the Driver PWA
+- Users with the `CUSTOMER` role are redirected to the Customer Portal
+
+This role-based routing ensures users land directly in the interface designed for their workflow, minimizing confusion and improving efficiency.
+
+**Authenticated API Requests**
+
+Once authenticated, all subsequent API requests from frontend applications follow this pattern:
+
+1. The frontend retrieves the access token from localStorage or the cookie
+2. The token is included in the HTTP Authorization header as a Bearer token: `Authorization: Bearer <access_token>`
+3. The Spring Boot backend's Security Filter Chain intercepts the request
+4. The `JwtDecoder` validates the token's signature using Keycloak's public keys (fetched from the JWK Set endpoint)
+5. The decoder verifies the token's expiry time and issuer claim
+6. Upon successful validation, Spring Security extracts roles from the token's `realm_access.roles` claim and constructs a `SecurityContext`
+7. Request processing continues with the authenticated user's context available to controllers and services
+
+**Token Refresh Mechanism**
+
+To provide a seamless user experience without requiring frequent re-authentication, SLMS implements automatic token refresh:
+
+1. When an access token nears expiry or has expired, the frontend detects the 401 Unauthorized response
+2. The frontend sends a request to `/api/landing-page/auth/refresh` without explicit parameters (the refresh token is automatically sent via the HTTP-only cookie)
+3. The backend's `AuthController` extracts the refresh token from the cookie and forwards it to Keycloak's token endpoint using the refresh token grant
+4. Keycloak validates the refresh token and issues a new access token and refresh token pair
+5. The backend returns the new access token to the frontend and updates the refresh token cookie
+6. The frontend retries the original failed request with the new access token
+
+This mechanism allows users to maintain active sessions for up to 7 days without re-entering credentials, while access tokens remain short-lived to limit security exposure.
+
+**Logout Flow**
+
+User-initiated logout follows a clean teardown sequence:
+
+1. The frontend sends a POST request to `/api/landing-page/auth/logout`
+2. The backend extracts the refresh token from the HTTP-only cookie
+3. The backend invokes Keycloak's logout endpoint to revoke the refresh token, invalidating all associated access tokens
+4. The backend clears the refresh token cookie by setting its max age to 0
+5. The frontend clears all stored authentication data (access token and user information from localStorage and cookies)
+6. The user is redirected to the Landing Page login screen
+
+This comprehensive logout ensures no residual session data remains that could be exploited in a shared computer environment.
+
+## 8.2 Backend-For-Frontend (BFF) Security Pattern
+
+The Backend-For-Frontend (BFF) pattern is a cornerstone of SLMS's security architecture. Rather than having frontend applications communicate directly with business layer services, each frontend has a dedicated BFF controller in the Spring Boot backend that serves as its exclusive API gateway.
+
+### 8.2.1 BFF Architecture Overview
+
+**Motivation and Benefits**
+
+The BFF pattern was adopted to address several architectural requirements:
+
+1. **Security Enforcement Point**: By placing BFF controllers between frontends and business logic, the system establishes a clear security boundary where authentication and authorization are enforced before any business logic executes.
+
+2. **Frontend-Specific APIs**: Each BFF controller can tailor its API to the specific needs and workflows of its frontend, providing only the operations and data formats that frontend requires, reducing over-fetching and exposure of sensitive data.
+
+3. **Simplified Frontend Logic**: Frontends don't need to understand complex business layer interactions, multi-service orchestration, or security token management details—they simply call their BFF endpoints with a bearer token.
+
+4. **Audit and Monitoring**: All requests to business logic flow through BFF controllers, providing centralized logging, request tracking, and performance monitoring per frontend application.
+
+5. **Evolution Flexibility**: BFF controllers can evolve independently to support frontend requirements without impacting other frontends or the underlying business layer, supporting parallel development by different teams.
+
+**BFF Controller Structure**
+
+SLMS implements the following BFF controllers, organized by frontend application:
+
+- **Landing Page BFF** (`LandingPageChatBffController`, `AuthController`): Handles authentication operations and public chatbot access
+- **Admin Console BFFs**:
+  - `LogisticsBffController`: Services the Logistics Manager interface
+  - `WarehouseBffController`: Services the Warehouse Staff interface
+  - `CustomerServiceBffController`: Services the Customer Service Representative interface
+- **Driver PWA BFF** (`DriverBffController`): Services the Driver mobile application
+- **Customer Portal BFF** (`CustomerBffController`): Services the Customer web portal
+
+Each BFF controller is annotated with `@RestController` and maps to a role-specific URL prefix (e.g., `/api/logistics/**`, `/api/customer/**`), making the role-based access control explicit in the URL structure.
+
+### 8.2.2 Role-Based Endpoint Access Control
+
+Spring Security enforces role-based access control at the BFF endpoint level through the `SecurityConfig` class, which defines a Security Filter Chain that intercepts all HTTP requests.
+
+**Endpoint-to-Role Mapping**
+
+The security configuration establishes the following access rules:
+
+| **Endpoint Pattern** | **Required Role** | **Served Frontend** | **Typical Operations** |
+|----------------------|-------------------|---------------------|------------------------|
+| `/api/logistics/**` | `LOGISTICS_MANAGER` | Admin Console (Logistics view) | View KPIs, generate reports, manage users, configure warehouses and carriers |
+| `/api/warehouse/**` | `WAREHOUSE_STAFF` | Admin Console (Warehouse view) | Register orders, generate labels, manage inventory, confirm pickups |
+| `/api/customer-service/**` | `CUSTOMER_SERVICE_REP` | Admin Console (CSR view) | Search orders, manage delivery exceptions, send notifications |
+| `/api/driver/**` | `DRIVER` | Driver PWA | View assigned deliveries, update delivery status, upload proof of delivery |
+| `/api/customer/**` | `CUSTOMER` | Customer Portal | Place orders, track shipments, view order history, report issues |
+| `/api/landing-page/auth/**` | Public | Landing Page | Login, register, logout, token refresh |
+| `/api/public/**` | Public | Any | Public resources (health checks, documentation) |
+| `/api/admin/**` | Public (Dev only) | Development tools | Direct access to domain controllers for testing |
+
+**Security Configuration Implementation**
+
+The `filterChain` method in `SecurityConfig` defines these rules declaratively:
+
+- Public endpoints (authentication, health checks) are explicitly permitted without authentication using `permitAll()`
+- Each protected BFF endpoint pattern is matched with a `hasRole()` requirement, specifying the single role authorized to access it
+- Development endpoints (`/api/admin/**`) are configured with `permitAll()` to support testing and debugging, but these endpoints are removed or restricted in production builds
+- A catch-all rule (`anyRequest().authenticated()`) ensures that any endpoint not explicitly configured requires authentication, preventing accidental exposure of unprotected resources
+
+Spring Security's role checking automatically:
+- Extracts the user's roles from the validated JWT token
+- Compares them against the required role for the requested endpoint
+- Returns 403 Forbidden if the user's roles don't match
+- Allows the request to proceed if the user has the required role
+
+**Cross-Role Access Scenarios**
+
+Some users may have multiple roles assigned (e.g., a Logistics Manager who also acts as Warehouse Staff). In such cases, the user can access all endpoints corresponding to any of their assigned roles. The Admin Console frontend adapts its interface to show all features available to the user's combined role set, while the Customer Portal and Driver PWA are designed for single-role use.
+
+---
+
+**[FIGURE 8.2: BFF Access Control Architecture]**
+
+Create an architecture diagram showing the complete BFF security pattern with the following components:
+
+**Layout**: Layered architecture diagram with four main horizontal layers plus external services at bottom
+
+**Layer 1 - Frontend Applications (Top)**:
+- Landing Page (Public Entry Point)
+- Admin Console (Logistics/Warehouse/CSR interfaces)
+- Customer Portal
+- Driver PWA
+- Show all connecting to Nginx with Bearer tokens (except Landing Page which sends credentials)
+
+**Layer 2 - Nginx Reverse Proxy**:
+- Single Nginx component routing to backend
+- Port 80/443
+
+**Layer 3 - Spring Boot Backend - BFF Controllers (Presentation Layer)**:
+- Group BFF endpoints with visual distinction:
+  - `/api/landing-page/auth/**` - AuthController [🔓 PUBLIC]
+  - `/api/logistics/**` - LogisticsBffController [🔒 LOGISTICS_MANAGER]
+  - `/api/warehouse/**` - WarehouseBffController [🔒 WAREHOUSE_STAFF]
+  - `/api/customer-service/**` - CustomerServiceBffController [🔒 CUSTOMER_SERVICE_REP]
+  - `/api/driver/**` - DriverBffController [🔒 DRIVER]
+  - `/api/customer/**` - CustomerBffController [🔒 CUSTOMER]
+  - `/api/public/**` - Public Resources [🔓 PUBLIC]
+  - `/api/admin/**` - Domain Controllers [⚠️ DEV ONLY]
+
+**Security Filter Chain (Between Layer 3 & 4)**:
+- JWT Decoder component (validates token signature, expiry, issuer)
+- Spring Security RBAC component (checks role requirements)
+- Show flow: Request → JWT Validation → Role Check → Allow/Deny (403 Forbidden)
+
+**Layer 4 - Business Layer Services**:
+- Order Module
+- Rate & Carrier Module
+- Reporting Module
+- Visibility Module
+- Notification Module
+- User Management Module
+- Show BFF controllers calling these services after authorization
+
+**External Services (Bottom)**:
+- Keycloak (only connected to AuthController, not frontends)
+
+**Key Visual Elements**:
+- Color code public endpoints (green), role-protected endpoints (red/protected), dev endpoints (orange/warning)
+- Use arrows to show request flow: Frontend → Nginx → BFF → Security Filter → Business Layer
+- Show 403 Forbidden rejection path from RBAC back to frontends
+- Emphasize that Keycloak only connects to backend, never to frontends directly
+
+---
+
+## 8.3 Security Benefits and Trade-offs
+
+The security architecture implemented in SLMS provides significant benefits while introducing certain trade-offs that were carefully considered during design.
+
+**Benefits**
+
+1. **Centralized Authentication**: Keycloak provides a single source of truth for user identity, credentials, and access policies. This centralization simplifies user management, reduces code duplication, and ensures consistent security posture across all frontend applications.
+
+2. **Industry-Standard Protocols**: By using OAuth 2.0 and OpenID Connect, SLMS aligns with widely adopted standards, making the system easier to integrate with external systems, audit for compliance, and maintain with industry-standard security practices.
+
+3. **Single Sign-On Experience**: Users authenticate once at the Landing Page and gain access to all authorized frontend applications without repeated logins. This improves user experience and reduces authentication friction.
+
+4. **Comprehensive Audit Trail**: Keycloak logs all authentication events, failed login attempts, role changes, and administrative actions. These logs support security monitoring, incident response, and compliance reporting.
+
+5. **Defense in Depth**: Multiple security layers—network isolation, token-based authentication, role-based access control, resource ownership verification—work together to prevent unauthorized access even if one layer is compromised.
+
+6. **Future-Proof Architecture**: Keycloak supports advanced features like multi-factor authentication, biometric login, social identity federation, and passwordless authentication. These can be adopted incrementally without redesigning the authentication architecture.
+
+7. **Microservices Readiness**: As an external service accessible to multiple backends, Keycloak naturally supports a future migration to microservices. Each service can validate tokens independently without requiring a shared session store.
+
+**Trade-offs**
+
+1. **External Dependency**: Keycloak becomes a critical infrastructure component. If Keycloak is unavailable, users cannot authenticate (though already-authenticated users can continue working until their access tokens expire). This requires careful deployment, monitoring, and high availability configuration for production.
+
+2. **Network Latency**: Every authentication request involves an additional network hop to Keycloak. While token validation after initial login is fast (using cached public keys), the login flow is slightly slower than a hypothetical internal authentication system. In practice, this latency is negligible (milliseconds) and is offset by the security benefits.
+
+3. **Learning Curve**: Team members must understand OAuth 2.0, JWT tokens, and Keycloak configuration. This represents a steeper learning curve than simple password-based authentication. However, this investment pays off through reduced security implementation effort and access to Keycloak's extensive documentation and community support.
+
+4. **Configuration Complexity**: Keycloak has many configuration options for realms, clients, roles, and security policies. Initial setup requires careful configuration and testing, particularly around token issuers for Docker networking scenarios. Once configured correctly, however, ongoing management is straightforward.
+
+5. **Token Size**: JWT tokens containing user claims and roles are larger than opaque session tokens, increasing network bandwidth for API requests. The impact is minimal (typically a few hundred bytes per request), but it's a consideration for high-traffic APIs.
+
+**Why the Trade-offs Are Worthwhile**
+
+For a multi-frontend enterprise logistics system like SLMS, the benefits of centralized IAM far outweigh the trade-offs. The security guarantees, audit capabilities, and future extensibility provided by Keycloak would require significant engineering effort to replicate with a custom solution. Moreover, custom authentication systems often suffer from security vulnerabilities that mature IAM solutions like Keycloak have already addressed through years of hardening and community scrutiny.
+
+The BFF pattern adds minimal overhead (one layer of method delegation) while providing substantial benefits in security enforcement, frontend-specific API design, and system evolution flexibility. The clear separation between presentation-layer concerns (handled by BFFs) and business logic (handled by domain services) improves code maintainability and testability.
 
 ---
 
