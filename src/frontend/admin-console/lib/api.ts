@@ -141,6 +141,8 @@ export function createAuthHeaders(contentType: string = 'application/json'): Hea
   return headers;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
  * Generic API fetch wrapper
  */
@@ -148,39 +150,64 @@ export async function apiFetch<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...createAuthHeaders(),
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
+  const retries = 3;
+  const delay = 2000;
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
-    console.error('API Error:', {
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      errorData,
-      requestBody: options.body,
-    });
-    throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...createAuthHeaders(),
+          ...options.headers,
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        if (response.status === 204) {
+          return undefined as T;
+        }
+        const contentLength = response.headers.get('content-length');
+        if (contentLength === '0') {
+          return undefined as T;
+        }
+        return response.json();
+      }
+
+      if ([502, 503, 504].includes(response.status) && i < retries - 1) {
+        console.warn(`API call to ${url} failed with status ${response.status}. Retrying in ${delay}ms... (${i + 1}/${retries})`);
+        await sleep(delay);
+        continue;
+      }
+
+      const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+      console.error('API Error:', {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        requestBody: options.body,
+      });
+      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    } catch (error) {
+      if (i < retries - 1) {
+        console.warn(`API call to ${url} failed: ${(error as Error).message}. Retrying in ${delay}ms... (${i + 1}/${retries})`);
+        await sleep(delay);
+        continue;
+      }
+      // rethrow last error
+      const errorData = { error: 'Request failed' };
+      console.error('API Error:', {
+        url,
+        errorData,
+        requestBody: options.body,
+      });
+      throw new Error(errorData.error);
+    }
   }
-
-  // Handle 204 No Content responses (e.g., DELETE operations)
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  // Handle responses with no content
-  const contentLength = response.headers.get('content-length');
-  if (contentLength === '0') {
-    return undefined as T;
-  }
-
-  return response.json();
+  // This should not be reached
+  throw new Error('API request failed after multiple retries.');
 }
 
 /**

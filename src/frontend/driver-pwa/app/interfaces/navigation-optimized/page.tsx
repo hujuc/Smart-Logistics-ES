@@ -649,6 +649,16 @@ function NavigationOptimizedContent() {
         }
     };
 
+    const handleRedirectToDailySchedule = (title: string, message: string) => {
+        // Show success message
+        showSuccess(title, message);
+
+        // Small delay to let user see success message
+        setTimeout(() => {
+            router.push('/interfaces/daily-schedule');
+        }, 1500);
+    };
+
     const handleFinishPOD = async () => {
         if (!currentDelivery || !selectedPhoto) {
             showWarning('Photo Required', 'Please take a photo first');
@@ -683,27 +693,11 @@ function NavigationOptimizedContent() {
             setSelectedPhoto(null);
             setPhotoPreview(null);
 
-            // Show success message
-            showSuccess('Delivery Completed', `Order ${currentDelivery.orderReference || currentDelivery.orderId} has been marked as DELIVERED.`);
+            handleRedirectToDailySchedule(
+                'Delivery Completed',
+                `Order ${currentDelivery.orderReference || currentDelivery.orderId} has been marked as DELIVERED.`
+            );
 
-            // Navigate to next delivery or schedule
-            const deliveryIds = optimizedOrder.length > 0
-                ? optimizedOrder
-                : deliveries.map(d => d.orderId);
-
-            const currentId = currentDelivery.orderId;
-            const currentIndex = deliveryIds.indexOf(currentId);
-
-            // Small delay to let user see success message
-            setTimeout(() => {
-                if (currentIndex !== -1 && currentIndex < deliveryIds.length - 1) {
-                    const nextDeliveryId = deliveryIds[currentIndex + 1];
-                    window.location.href = `/driver/interfaces/navigation-optimized?deliveryId=${nextDeliveryId}`;
-                } else {
-                    // All deliveries completed - go to daily schedule
-                    window.location.href = '/driver/interfaces/daily-schedule';
-                }
-            }, 1500);
         } catch (error) {
             console.error('❌ Failed to complete delivery:', error);
             showError('Delivery Failed', 'Failed to complete delivery: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -752,27 +746,11 @@ function NavigationOptimizedContent() {
             setExceptionDescription('');
             setExceptionType('CUSTOMER_NOT_AVAILABLE');
 
-            // Show success message
-            showSuccess('Exception Reported', `Order ${currentDelivery.orderReference || currentDelivery.orderId} has been flagged for review.`);
+            handleRedirectToDailySchedule(
+                'Exception Reported',
+                `Order ${currentDelivery.orderReference || currentDelivery.orderId} has been flagged for review.`
+            );
 
-            // Navigate to next delivery or schedule
-            const deliveryIds = optimizedOrder.length > 0
-                ? optimizedOrder
-                : deliveries.map(d => d.orderId);
-
-            const currentId = currentDelivery.orderId;
-            const currentIndex = deliveryIds.indexOf(currentId);
-
-            // Small delay to let user see success message
-            setTimeout(() => {
-                if (currentIndex !== -1 && currentIndex < deliveryIds.length - 1) {
-                    const nextDeliveryId = deliveryIds[currentIndex + 1];
-                    window.location.href = `/driver/interfaces/navigation-optimized?deliveryId=${nextDeliveryId}`;
-                } else {
-                    // All deliveries completed/reported - go to daily schedule
-                    window.location.href = '/driver/interfaces/daily-schedule';
-                }
-            }, 1500);
         } catch (error) {
             console.error('❌ Failed to report exception:', error);
             showError('Exception Failed', 'Failed to report exception: ' + (error instanceof Error ? error.message : 'Unknown error'));
