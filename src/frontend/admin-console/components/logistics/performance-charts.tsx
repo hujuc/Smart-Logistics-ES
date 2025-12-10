@@ -7,6 +7,20 @@ interface PerformanceChartsProps {
   stats: LogisticsStats
 }
 
+// Helper function to get time frame label
+const getTimeFrameLabel = (period: string): string => {
+  switch (period.toLowerCase()) {
+    case 'daily':
+      return 'today'
+    case 'weekly':
+      return 'this week'
+    case 'monthly':
+      return 'this month'
+    default:
+      return 'current period'
+  }
+}
+
 const COLORS = {
   primary: '#2962FF',
   secondary: '#00BFA5',
@@ -34,6 +48,8 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function PerformanceCharts({ stats }: PerformanceChartsProps) {
+  const timeFrame = getTimeFrameLabel(stats.period)
+
   // Prepare data for Shipment Status Distribution (Pie Chart)
   const shipmentStatusData = [
     { name: 'Created', value: stats.totalShipments.byStatus.created },
@@ -116,7 +132,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {/* Shipment Status Distribution - Pie Chart */}
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-1">Shipment Status Distribution</h3>
-        <p className="text-xs text-gray-500 mb-3">Source: Total shipments aggregated by status</p>
+        <p className="text-xs text-gray-500 mb-3">Source: Total shipments aggregated by status ({timeFrame})</p>
         {shipmentStatusData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -146,7 +162,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {/* Carrier Performance Comparison - Bar Chart */}
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-1">Carrier Performance Comparison</h3>
-        <p className="text-xs text-gray-500 mb-3">Source: Total shipments distributed across all carriers</p>
+        <p className="text-xs text-gray-500 mb-3">Source: Shipments distributed across carriers ({timeFrame})</p>
         {carrierPerformanceData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={carrierPerformanceData}>
@@ -166,7 +182,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {/* Delivery Time Distribution - Area Chart */}
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-1">Delivery Time Distribution</h3>
-        <p className="text-xs text-gray-500 mb-3">Source: All delivered orders categorized by delivery time ranges</p>
+        <p className="text-xs text-gray-500 mb-3">Source: Delivered orders categorized by delivery time ranges ({timeFrame})</p>
         {deliveryTimeData.some(d => d.count > 0) ? (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={deliveryTimeData}>
@@ -185,7 +201,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {/* On-Time Delivery Performance - Pie Chart */}
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-1">On-Time Delivery Performance</h3>
-        <p className="text-xs text-gray-500 mb-3">Source: Deliveries completed today, classified by on-time status</p>
+        <p className="text-xs text-gray-500 mb-3">Source: Deliveries completed, classified by on-time status ({timeFrame})</p>
         {onTimeDeliveryData.length > 0 ? (
           <>
             <div className="text-center mb-2">
@@ -222,7 +238,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {warehouseOrdersData.length > 0 && (
         <div className="bg-white border rounded-lg p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-1">Warehouse Orders Distribution</h3>
-          <p className="text-xs text-gray-500 mb-3">Source: Orders created today, grouped by warehouse location</p>
+          <p className="text-xs text-gray-500 mb-3">Source: Orders grouped by warehouse location ({timeFrame})</p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={warehouseOrdersData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
@@ -240,7 +256,7 @@ export function PerformanceCharts({ stats }: PerformanceChartsProps) {
       {exceptionTypeData.length > 0 && (
         <div className="bg-white border rounded-lg p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-1">Exception Analysis by Type</h3>
-          <p className="text-xs text-gray-500 mb-3">Source: Total shipping exceptions categorized by exception type</p>
+          <p className="text-xs text-gray-500 mb-3">Source: Shipping exceptions categorized by exception type ({timeFrame})</p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={exceptionTypeData}>
               <CartesianGrid strokeDasharray="3 3" />

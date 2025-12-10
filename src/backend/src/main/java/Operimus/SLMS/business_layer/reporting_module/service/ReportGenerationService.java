@@ -2,20 +2,31 @@ package Operimus.SLMS.business_layer.reporting_module.service;
 
 import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse;
 import Operimus.SLMS.business_layer.reporting_module.dto.LogisticsStatsResponse.*;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtils;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -63,6 +74,9 @@ public class ReportGenerationService {
             addTicketsSection(document, stats.getTotalTickets());
             addWarehousesSection(document, stats.getTotalWarehouses());
             addActiveDriversSection(document, stats.getActiveDrivers());
+
+            // Add performance charts section
+            addPerformanceChartsSection(document, stats);
 
             // Close document
             document.close();
@@ -562,5 +576,389 @@ public class ReportGenerationService {
             return str;
         }
         return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase().replace("_", " ");
+    }
+
+    // ===========================
+    // Performance Charts Section
+    // ===========================
+
+    private void addPerformanceChartsSection(Document document, LogisticsStatsResponse stats) {
+        try {
+            String period = stats.getPeriod();
+            String timeFrame = getTimeFrameLabel(period);
+            String timeFrameLower = getTimeFrameLabel(period).toLowerCase();
+
+            // Check if there's any data to display
+            boolean hasAnyChartData = hasStatusData(stats.getTotalShipments().getByStatus()) ||
+                    (stats.getTotalShipments().getByCarrier() != null && !stats.getTotalShipments().getByCarrier().isEmpty()) ||
+                    hasTimeRangeData(stats.getAverageDeliveryTime().getByTimeRange()) ||
+                    (stats.getDeliveredToday().getOnTimeBreakdown() != null &&
+                     (stats.getDeliveredToday().getOnTimeBreakdown().getOnTime() > 0 ||
+                      stats.getDeliveredToday().getOnTimeBreakdown().getDelayed() > 0)) ||
+                    (stats.getOrdersToday().getByWarehouse() != null && !stats.getOrdersToday().getByWarehouse().isEmpty()) ||
+                    hasExceptionTypeData(stats.getTotalExceptions().getByType()) ||
+                    hasDeliveryTimeData(stats.getInTransitNow().getByDeliveryTime()) ||
+                    hasOverdueData(stats.getPendingPickups().getOverdueBreakdown());
+
+            // Only add the charts section if there's data to display
+            if (!hasAnyChartData) {
+                log.info("No chart data available, skipping Performance Charts section");
+                return;
+            }
+
+            // Add page break and section title
+            document.add(new com.itextpdf.layout.element.AreaBreak(com.itextpdf.layout.properties.AreaBreakType.NEXT_PAGE));
+
+            Paragraph chartsTitle = new Paragraph("Performance Charts")
+                    .setFontSize(20)
+                    .setBold()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(20);
+            document.add(chartsTitle);
+
+            // 1. Shipment Status Distribution (Pie Chart)
+            if (hasStatusData(stats.getTotalShipments().getByStatus())) {
+                byte[] chartImage = createShipmentStatusPieChart(stats.getTotalShipments().getByStatus());
+                addChartToDocument(document, chartImage, "Shipment Status Distribution",
+                    "Source: Total shipments aggregated by status (" + timeFrameLower + ")");
+            }
+
+            // 2. Carrier Performance Comparison (Bar Chart)
+            if (stats.getTotalShipments().getByCarrier() != null && !stats.getTotalShipments().getByCarrier().isEmpty()) {
+                byte[] chartImage = createCarrierPerformanceBarChart(stats.getTotalShipments().getByCarrier());
+                addChartToDocument(document, chartImage, "Carrier Performance Comparison",
+                    "Source: Shipments distributed across carriers (" + timeFrameLower + ")");
+            }
+
+            // 3. Delivery Time Distribution (Bar Chart)
+            if (hasTimeRangeData(stats.getAverageDeliveryTime().getByTimeRange())) {
+                byte[] chartImage = createDeliveryTimeBarChart(stats.getAverageDeliveryTime().getByTimeRange());
+                addChartToDocument(document, chartImage, "Delivery Time Distribution",
+                    "Source: Delivered orders categorized by delivery time ranges (" + timeFrameLower + ")");
+            }
+
+            // 4. On-Time Delivery Performance (Pie Chart)
+            if (stats.getDeliveredToday().getOnTimeBreakdown() != null &&
+                (stats.getDeliveredToday().getOnTimeBreakdown().getOnTime() > 0 ||
+                 stats.getDeliveredToday().getOnTimeBreakdown().getDelayed() > 0)) {
+                byte[] chartImage = createOnTimeDeliveryPieChart(stats.getDeliveredToday().getOnTimeBreakdown());
+                addChartToDocument(document, chartImage, "On-Time Delivery Performance",
+                    "Source: Deliveries completed, classified by on-time status (" + timeFrameLower + ")");
+            }
+
+            // 5. Warehouse Orders Distribution (Bar Chart)
+            if (stats.getOrdersToday().getByWarehouse() != null && !stats.getOrdersToday().getByWarehouse().isEmpty()) {
+                byte[] chartImage = createWarehouseOrdersBarChart(stats.getOrdersToday().getByWarehouse());
+                addChartToDocument(document, chartImage, "Warehouse Orders Distribution",
+                    "Source: Orders grouped by warehouse location (" + timeFrameLower + ")");
+            }
+
+            // 6. Exception Analysis (Bar Chart)
+            if (hasExceptionTypeData(stats.getTotalExceptions().getByType())) {
+                byte[] chartImage = createExceptionAnalysisBarChart(stats.getTotalExceptions().getByType());
+                addChartToDocument(document, chartImage, "Exception Analysis by Type",
+                    "Source: Shipping exceptions categorized by exception type (" + timeFrameLower + ")");
+            }
+
+            // 7. In Transit Delivery Schedule (Bar Chart)
+            if (hasDeliveryTimeData(stats.getInTransitNow().getByDeliveryTime())) {
+                byte[] chartImage = createInTransitScheduleBarChart(stats.getInTransitNow().getByDeliveryTime());
+                addChartToDocument(document, chartImage, "In Transit Delivery Schedule",
+                    "Source: Shipments currently in transit, grouped by expected delivery time");
+            }
+
+            // 8. Pending Pickups Urgency (Pie Chart)
+            if (hasOverdueData(stats.getPendingPickups().getOverdueBreakdown())) {
+                byte[] chartImage = createPendingPickupsUrgencyPieChart(stats.getPendingPickups().getOverdueBreakdown());
+                addChartToDocument(document, chartImage, "Pending Pickups Urgency",
+                    "Source: Shipments awaiting pickup, classified by urgency level");
+            }
+
+        } catch (Exception e) {
+            log.error("Error adding performance charts to report", e);
+            document.add(new Paragraph("Error generating performance charts: " + e.getMessage())
+                    .setFontColor(ColorConstants.RED));
+        }
+    }
+
+    /**
+     * Get human-readable time frame label from period
+     */
+    private String getTimeFrameLabel(String period) {
+        return switch (period.toLowerCase()) {
+            case "daily" -> "Today";
+            case "weekly" -> "This Week";
+            case "monthly" -> "This Month";
+            default -> "Current Period";
+        };
+    }
+
+    private void addChartToDocument(Document document, byte[] chartImage, String title, String source) throws Exception {
+        // Add chart title
+        Paragraph chartTitle = new Paragraph(title)
+                .setFontSize(14)
+                .setBold()
+                .setMarginTop(15)
+                .setMarginBottom(5);
+        document.add(chartTitle);
+
+        // Add source description
+        Paragraph chartSource = new Paragraph(source)
+                .setFontSize(9)
+                .setItalic()
+                .setFontColor(new DeviceRgb(107, 114, 128))
+                .setMarginBottom(10);
+        document.add(chartSource);
+
+        // Add chart image
+        Image img = new Image(ImageDataFactory.create(chartImage));
+        img.setWidth(500);
+        img.setAutoScale(true);
+        img.setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);
+        document.add(img);
+    }
+
+    // Chart generation methods
+    private byte[] createShipmentStatusPieChart(StatusBreakdown status) throws Exception {
+        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+
+        if (status.getCreated() > 0) dataset.setValue("Created", status.getCreated());
+        if (status.getReadyForPickup() > 0) dataset.setValue("Ready for Pickup", status.getReadyForPickup());
+        if (status.getCollected() > 0) dataset.setValue("Collected", status.getCollected());
+        if (status.getInTransit() > 0) dataset.setValue("In Transit", status.getInTransit());
+        if (status.getDelivered() > 0) dataset.setValue("Delivered", status.getDelivered());
+        if (status.getCancelled() > 0) dataset.setValue("Cancelled", status.getCancelled());
+
+        JFreeChart chart = ChartFactory.createPieChart(
+                null,
+                dataset,
+                true,
+                true,
+                false
+        );
+
+        customizePieChart(chart, new Color(41, 98, 255), new Color(0, 191, 165), new Color(0, 200, 83),
+                new Color(255, 179, 0), new Color(2, 136, 209), new Color(211, 47, 47));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createCarrierPerformanceBarChart(List<CarrierBreakdown> carriers) throws Exception {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        for (CarrierBreakdown carrier : carriers) {
+            dataset.addValue(carrier.getCount(), "Deliveries", carrier.getCarrierName());
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null,
+                "Carrier",
+                "Shipments",
+                dataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+        customizeBarChart(chart, new Color(41, 98, 255));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createDeliveryTimeBarChart(TimeRangeBreakdown timeRange) throws Exception {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        dataset.addValue(timeRange.getLessThan24Hours(), "Orders", "< 24h");
+        dataset.addValue(timeRange.getOneToThreeDays(), "Orders", "1-3 Days");
+        dataset.addValue(timeRange.getThreeTo7Days(), "Orders", "3-7 Days");
+        dataset.addValue(timeRange.getMoreThan7Days(), "Orders", "> 7 Days");
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null,
+                "Delivery Time Range",
+                "Order Count",
+                dataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+        customizeBarChart(chart, new Color(0, 191, 165));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createOnTimeDeliveryPieChart(OnTimeBreakdown breakdown) throws Exception {
+        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+
+        if (breakdown.getOnTime() > 0) dataset.setValue("On Time", breakdown.getOnTime());
+        if (breakdown.getDelayed() > 0) dataset.setValue("Delayed", breakdown.getDelayed());
+
+        JFreeChart chart = ChartFactory.createPieChart(
+                null,
+                dataset,
+                true,
+                true,
+                false
+        );
+
+        customizePieChart(chart, new Color(0, 200, 83), new Color(211, 47, 47));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createWarehouseOrdersBarChart(List<WarehouseBreakdown> warehouses) throws Exception {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        for (WarehouseBreakdown wh : warehouses) {
+            dataset.addValue(wh.getCount(), "Orders", wh.getWarehouseName());
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null,
+                "Warehouse",
+                "Orders",
+                dataset,
+                PlotOrientation.HORIZONTAL,
+                true,
+                true,
+                false
+        );
+
+        customizeBarChart(chart, new Color(0, 137, 123));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createExceptionAnalysisBarChart(Map<String, Integer> exceptionTypes) throws Exception {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        for (Map.Entry<String, Integer> entry : exceptionTypes.entrySet()) {
+            if (entry.getValue() > 0) {
+                dataset.addValue(entry.getValue(), "Exceptions", capitalize(entry.getKey()));
+            }
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null,
+                "Exception Type",
+                "Count",
+                dataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+        customizeBarChart(chart, new Color(211, 47, 47));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createInTransitScheduleBarChart(DeliveryTimeBreakdown breakdown) throws Exception {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        dataset.addValue(breakdown.getDeliveringSoon(), "Shipments", "Within 24h");
+        dataset.addValue(breakdown.getDelivering1to3Days(), "Shipments", "1-3 Days");
+        dataset.addValue(breakdown.getDeliveringLater(), "Shipments", "3+ Days");
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                null,
+                "Delivery Schedule",
+                "Shipment Count",
+                dataset,
+                PlotOrientation.HORIZONTAL,
+                true,
+                true,
+                false
+        );
+
+        customizeBarChart(chart, new Color(245, 124, 0));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    private byte[] createPendingPickupsUrgencyPieChart(OverdueBreakdown breakdown) throws Exception {
+        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+
+        if (breakdown.getOverdue() > 0) dataset.setValue("Overdue", breakdown.getOverdue());
+        if (breakdown.getDueSoon() > 0) dataset.setValue("Due Soon", breakdown.getDueSoon());
+        if (breakdown.getOnTime() > 0) dataset.setValue("On Time", breakdown.getOnTime());
+
+        JFreeChart chart = ChartFactory.createPieChart(
+                null,
+                dataset,
+                true,
+                true,
+                false
+        );
+
+        customizePieChart(chart, new Color(211, 47, 47), new Color(255, 179, 0), new Color(0, 200, 83));
+
+        return chartToByteArray(chart, 600, 400);
+    }
+
+    // Helper methods for chart customization
+    private void customizePieChart(JFreeChart chart, Color... colors) {
+        PiePlot plot = (PiePlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlineVisible(false);
+        plot.setShadowPaint(null);
+
+        int colorIndex = 0;
+        for (Object key : plot.getDataset().getKeys()) {
+            if (colorIndex < colors.length) {
+                plot.setSectionPaint((Comparable) key, colors[colorIndex]);
+                colorIndex++;
+            }
+        }
+    }
+
+    private void customizeBarChart(JFreeChart chart, Color barColor) {
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+        plot.getRenderer().setSeriesPaint(0, barColor);
+        chart.setBackgroundPaint(Color.WHITE);
+    }
+
+    private byte[] chartToByteArray(JFreeChart chart, int width, int height) throws Exception {
+        ByteArrayOutputStream chartOutputStream = new ByteArrayOutputStream();
+        ChartUtils.writeChartAsPNG(chartOutputStream, chart, width, height);
+        return chartOutputStream.toByteArray();
+    }
+
+    private boolean hasStatusData(StatusBreakdown status) {
+        if (status == null) return false;
+        return status.getCreated() > 0 || status.getReadyForPickup() > 0 ||
+               status.getCollected() > 0 || status.getInTransit() > 0 ||
+               status.getDelivered() > 0 || status.getCancelled() > 0;
+    }
+
+    private boolean hasTimeRangeData(TimeRangeBreakdown timeRange) {
+        if (timeRange == null) return false;
+        return timeRange.getLessThan24Hours() > 0 || timeRange.getOneToThreeDays() > 0 ||
+               timeRange.getThreeTo7Days() > 0 || timeRange.getMoreThan7Days() > 0;
+    }
+
+    private boolean hasDeliveryTimeData(DeliveryTimeBreakdown breakdown) {
+        if (breakdown == null) return false;
+        return breakdown.getDeliveringSoon() > 0 ||
+               breakdown.getDelivering1to3Days() > 0 ||
+               breakdown.getDeliveringLater() > 0;
+    }
+
+    private boolean hasOverdueData(OverdueBreakdown breakdown) {
+        if (breakdown == null) return false;
+        return breakdown.getOverdue() > 0 ||
+               breakdown.getDueSoon() > 0 ||
+               breakdown.getOnTime() > 0;
+    }
+
+    private boolean hasExceptionTypeData(Map<String, Integer> exceptionTypes) {
+        if (exceptionTypes == null || exceptionTypes.isEmpty()) return false;
+        return exceptionTypes.values().stream().anyMatch(count -> count > 0);
     }
 }
