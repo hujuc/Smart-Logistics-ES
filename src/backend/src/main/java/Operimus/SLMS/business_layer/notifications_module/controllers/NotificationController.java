@@ -43,18 +43,4 @@ public class NotificationController {
         notificationService.deleteAllUserNotifications(customerId);
         return ResponseEntity.ok().build();
     }
-
-    @PostMapping("/test")
-    public ResponseEntity<Void> triggerTestNotification(@RequestParam String customerId) {
-        Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent event = Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
-                .aggregateId("TEST-" + java.util.UUID.randomUUID())
-                .aggregateType("TEST")
-                .eventType("TEST_EVENT")
-                .message("This is a test notification for customer " + customerId)
-                .customerId(customerId)
-                .occurredAt(java.time.OffsetDateTime.now())
-                .build();
-        notificationService.processEvent(event);
-        return ResponseEntity.ok().build();
-    }
 }

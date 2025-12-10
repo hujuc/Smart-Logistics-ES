@@ -93,6 +93,13 @@ public class LogisticsManagerNotificationService {
         publishNotificationToLogisticsManagers("BATCH", batchId, "BATCH_COMPLETED", message);
     }
 
+    /**
+     * Notify logistics managers about daily KPI report
+     */
+    public void notifyDailyKpiReport(String message) {
+        publishNotificationToLogisticsManagers("REPORT", UUID.randomUUID().toString(), "DAILY_KPI_REPORT", message);
+    }
+
     private void publishNotificationToLogisticsManagers(String aggregateType, String aggregateId, String eventType, String message) {
         try {
             log.info("📤 Publishing notification to logistics managers - Type: {}, Event: {}, Message: {}", 
