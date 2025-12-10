@@ -15,7 +15,7 @@ public class NotificationKafkaConsumer {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "${kafka.topic.order-events}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${kafka.topic.order-events}", groupId = "${spring.kafka.consumer.group-id}-notifications")
     public void consumeOrderEvent(String message) {
         log.info("Received order event: {}", message);
         try {
@@ -26,7 +26,7 @@ public class NotificationKafkaConsumer {
         }
     }
 
-    @KafkaListener(topics = "${kafka.topic.shipment-events}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${kafka.topic.shipment-events}", groupId = "${spring.kafka.consumer.group-id}-notifications")
     public void consumeShipmentEvent(String message) {
         log.info("Received shipment event: {}", message);
         try {
@@ -37,7 +37,7 @@ public class NotificationKafkaConsumer {
         }
     }
 
-    @KafkaListener(topics = "${kafka.topic.exception-events:exception-events}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${kafka.topic.exception-events:exception-events}", groupId = "${spring.kafka.consumer.group-id}-notifications")
     public void consumeExceptionEvent(String message) {
         log.info("Received exception event (customer service): {}", message);
         try {

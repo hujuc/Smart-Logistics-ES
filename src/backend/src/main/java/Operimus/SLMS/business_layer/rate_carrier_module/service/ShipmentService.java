@@ -107,6 +107,11 @@ public class ShipmentService {
             orders.size()
         );
 
+        // Notify driver if assigned
+        if (driverId != null && !driverId.isBlank()) {
+            publishDriverAssignmentEvent(saved, driverId, null);
+        }
+
         return saved;
     }
 
