@@ -140,15 +140,6 @@ case "${1:-}" in
     terraform_init
     terraform_smart_deploy  # Use smart deploy instead of always destroying
     compose_up
-    log "Infrastructure available at:"
-    log "  Backend:        http://localhost:8080"
-    log "  Admin Console:  http://localhost:3001"
-    log "  Customer Portal:http://localhost:3002"
-    log "  Driver PWA:     http://localhost:3003"
-    log "  Landing Page:   http://localhost:3004"
-    log "  Keycloak:       http://localhost:8180"
-    log "  MinIO Console:  http://localhost:9001"
-    log "  Nginx:          http://localhost"
     ;;
   down|destroy)
     compose_down

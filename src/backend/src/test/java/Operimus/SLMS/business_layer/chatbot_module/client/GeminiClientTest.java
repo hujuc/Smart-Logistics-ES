@@ -3,8 +3,11 @@ package Operimus.SLMS.business_layer.chatbot_module.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import Operimus.SLMS.business_layer.chatbot_module.dto.ToolDefinition;
+import Operimus.SLMS.business_layer.chatbot_module.dto.ToolParameter;
 import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.GeminiClient;
 import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.GeminiProperties;
+import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.dto.GeminiChatResponse;
 import Operimus.SLMS.business_layer.shared.exception.ExternalServiceException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
@@ -420,5 +423,244 @@ class GeminiClientTest {
 
         assertThatThrownBy(() -> client.generateEmbedding("Test text"))
                 .isInstanceOf(ExternalServiceException.class);
+    }
+
+    // ==================== NEW: Function Calling Tests ====================
+
+    /**
+     * Test that generateCompletionWithTools accepts tool definitions.
+     */
+    @Test
+    void generateCompletionWithTools_shouldAcceptToolDefinitions() {
+        // Given
+        GeminiProperties properties = new GeminiProperties(
+                "test-key",
+                "gemini-1.5-flash",
+                "gemini-embedding-001"
+        );
+
+        GeminiClient client = new GeminiClient(
+                new RestTemplateBuilder(),
+                objectMapper,
+                properties
+        );
+
+        String systemPrompt = "You are a helpful assistant.";
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "user", "content", "Hello!")
+        );
+        List<ToolDefinition> tools = List.of(
+                new ToolDefinition("test_tool", "A test tool", List.of(
+                        ToolParameter.requiredString("param1", "Test parameter")
+                ))
+        );
+
+        // When/Then - Should process tools without NPE
+        assertThatThrownBy(() -> client.generateCompletionWithTools(systemPrompt, messages, tools))
+                .isInstanceOf(ExternalServiceException.class)
+                .hasMessageContaining("Failed to communicate with the Gemini API");
+    }
+
+    /**
+     * Test that null tool list is handled gracefully.
+     */
+    @Test
+    void generateCompletionWithTools_shouldHandleNullTools() {
+        // Given
+        GeminiProperties properties = new GeminiProperties(
+                "test-key",
+                "gemini-1.5-flash",
+                "gemini-embedding-001"
+        );
+
+        GeminiClient client = new GeminiClient(
+                new RestTemplateBuilder(),
+                objectMapper,
+                properties
+        );
+
+        String systemPrompt = "You are a helpful assistant.";
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "user", "content", "Hello!")
+        );
+
+        // When/Then - Should work without tools (regular completion)
+        assertThatThrownBy(() -> client.generateCompletionWithTools(systemPrompt, messages, null))
+                .isInstanceOf(ExternalServiceException.class)
+                .hasMessageContaining("Failed to communicate with the Gemini API");
+    }
+
+    /**
+     * Test that empty tool list is handled gracefully.
+     */
+    @Test
+    void generateCompletionWithTools_shouldHandleEmptyTools() {
+        // Given
+        GeminiProperties properties = new GeminiProperties(
+                "test-key",
+                "gemini-1.5-flash",
+                "gemini-embedding-001"
+        );
+
+        GeminiClient client = new GeminiClient(
+                new RestTemplateBuilder(),
+                objectMapper,
+                properties
+        );
+
+        String systemPrompt = "You are a helpful assistant.";
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "user", "content", "Hello!")
+        );
+        List<ToolDefinition> tools = List.of(); // Empty list
+
+        // When/Then - Should work with empty tool list
+        assertThatThrownBy(() -> client.generateCompletionWithTools(systemPrompt, messages, tools))
+                .isInstanceOf(ExternalServiceException.class)
+                .hasMessageContaining("Failed to communicate with the Gemini API");
+    }
+
+    /**
+     * Test GeminiChatResponse parsing - text response.
+     */
+    @Test
+    void geminiChatResponse_shouldParseTextResponse() {
+        // Given
+        GeminiChatResponse.Part textPart = new GeminiChatResponse.Part("Hello, how can I help?", null);
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(List.of(textPart), "model");
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse response = new GeminiChatResponse(List.of(candidate));
+
+        // When
+        String text = response.getText();
+        boolean hasFunctionCalls = response.hasFunctionCalls();
+
+        // Then
+        assertThat(text).isEqualTo("Hello, how can I help?");
+        assertThat(hasFunctionCalls).isFalse();
+    }
+
+    /**
+     * Test GeminiChatResponse parsing - function call response.
+     */
+    @Test
+    void geminiChatResponse_shouldParseFunctionCall() {
+        // Given
+        GeminiChatResponse.FunctionCall functionCall = new GeminiChatResponse.FunctionCall(
+                "order_status",
+                Map.of("orderId", 123)
+        );
+        GeminiChatResponse.Part functionPart = new GeminiChatResponse.Part(null, functionCall);
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(List.of(functionPart), "model");
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse response = new GeminiChatResponse(List.of(candidate));
+
+        // When
+        boolean hasFunctionCalls = response.hasFunctionCalls();
+        List<GeminiChatResponse.FunctionCall> functionCalls = response.getFunctionCalls();
+
+        // Then
+        assertThat(hasFunctionCalls).isTrue();
+        assertThat(functionCalls).hasSize(1);
+        assertThat(functionCalls.get(0).name()).isEqualTo("order_status");
+        assertThat(functionCalls.get(0).args()).containsEntry("orderId", 123);
+    }
+
+    /**
+     * Test GeminiChatResponse parsing - multiple function calls.
+     */
+    @Test
+    void geminiChatResponse_shouldParseMultipleFunctionCalls() {
+        // Given
+        GeminiChatResponse.FunctionCall call1 = new GeminiChatResponse.FunctionCall(
+                "order_status",
+                Map.of("orderId", 123)
+        );
+        GeminiChatResponse.FunctionCall call2 = new GeminiChatResponse.FunctionCall(
+                "order_lookup",
+                Map.of("orderId", 456)
+        );
+
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(
+                List.of(
+                        new GeminiChatResponse.Part(null, call1),
+                        new GeminiChatResponse.Part(null, call2)
+                ),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse response = new GeminiChatResponse(List.of(candidate));
+
+        // When
+        boolean hasFunctionCalls = response.hasFunctionCalls();
+        List<GeminiChatResponse.FunctionCall> functionCalls = response.getFunctionCalls();
+
+        // Then
+        assertThat(hasFunctionCalls).isTrue();
+        assertThat(functionCalls).hasSize(2);
+        assertThat(functionCalls.get(0).name()).isEqualTo("order_status");
+        assertThat(functionCalls.get(1).name()).isEqualTo("order_lookup");
+    }
+
+    /**
+     * Test GeminiChatResponse parsing - empty response.
+     */
+    @Test
+    void geminiChatResponse_shouldHandleEmptyResponse() {
+        // Given
+        GeminiChatResponse response = new GeminiChatResponse(List.of());
+
+        // When
+        String text = response.getText();
+        boolean hasFunctionCalls = response.hasFunctionCalls();
+        List<GeminiChatResponse.FunctionCall> functionCalls = response.getFunctionCalls();
+
+        // Then
+        assertThat(text).isEmpty();
+        assertThat(hasFunctionCalls).isFalse();
+        assertThat(functionCalls).isEmpty();
+    }
+
+    /**
+     * Test GeminiChatResponse parsing - null candidates.
+     */
+    @Test
+    void geminiChatResponse_shouldHandleNullCandidates() {
+        // Given
+        GeminiChatResponse response = new GeminiChatResponse(null);
+
+        // When
+        String text = response.getText();
+        boolean hasFunctionCalls = response.hasFunctionCalls();
+        List<GeminiChatResponse.FunctionCall> functionCalls = response.getFunctionCalls();
+
+        // Then - Should not throw NPE
+        assertThat(text).isEmpty();
+        assertThat(hasFunctionCalls).isFalse();
+        assertThat(functionCalls).isEmpty();
+    }
+
+    /**
+     * Test function call argument extraction.
+     */
+    @Test
+    void functionCall_shouldExtractArguments() {
+        // Given
+        Map<String, Object> args = Map.of(
+                "orderId", 123,
+                "trackingNumber", "TRK-ABC",
+                "includeDetails", true
+        );
+
+        GeminiChatResponse.FunctionCall functionCall = new GeminiChatResponse.FunctionCall(
+                "order_lookup",
+                args
+        );
+
+        // When/Then
+        assertThat(functionCall.name()).isEqualTo("order_lookup");
+        assertThat(functionCall.args()).containsEntry("orderId", 123);
+        assertThat(functionCall.args()).containsEntry("trackingNumber", "TRK-ABC");
+        assertThat(functionCall.args()).containsEntry("includeDetails", true);
     }
 }

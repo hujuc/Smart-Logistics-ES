@@ -390,7 +390,7 @@ export default function LogisticsPage() {
           )}
 
           {/* Performance Charts View */}
-          {activeTab === "charts" && <PerformanceCharts />}
+          {activeTab === "charts" && <PerformanceCharts stats={stats} />}
         </>
       )}
     </div>

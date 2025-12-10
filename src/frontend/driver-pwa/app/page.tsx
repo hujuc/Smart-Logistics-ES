@@ -106,12 +106,12 @@ export default function DriverHome() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <Link href="/notifications" className="relative">
                 <Bell className="w-6 h-6" />
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                3
-              </span>
-              </div>
+                  2
+                </span>
+              </Link>
               <Link href="/settings">
                 <Settings className="w-6 h-6 hover:text-gray-300 cursor-pointer" />
               </Link>
