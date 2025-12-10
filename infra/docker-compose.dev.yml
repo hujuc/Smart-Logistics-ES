@@ -112,6 +112,7 @@ services:
     working_dir: /app
     volumes:
       - ../src/frontend/admin-console:/app
+      - ../src/frontend/shared:/shared
       - /app/node_modules
     command: npm run dev
     expose:
@@ -148,6 +149,7 @@ services:
     working_dir: /app
     volumes:
       - ../src/frontend/customer-portal:/app
+      - ../src/frontend/shared:/shared
       - /app/node_modules
     command: npm run dev
     expose:
@@ -186,6 +188,7 @@ services:
     working_dir: /app
     volumes:
       - ../src/frontend/driver-pwa:/app
+      - ../src/frontend/shared:/shared
       - /app/node_modules
     command: npm run dev
     expose:
@@ -220,6 +223,7 @@ services:
     working_dir: /app
     volumes:
       - ../src/frontend/landing-page:/app
+      - ../src/frontend/shared:/shared
       - /app/node_modules
     command: npm run dev
     expose:

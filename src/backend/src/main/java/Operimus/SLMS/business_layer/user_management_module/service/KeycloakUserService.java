@@ -261,6 +261,25 @@ public class KeycloakUserService {
         }
     }
 
+    public UserRepresentation getUserByUsername(String username) {
+        try {
+            List<UserRepresentation> users = keycloak.realm(realm).users().searchByUsername(username, true);
+            if (users.isEmpty()) {
+                throw new RuntimeException("User not found: " + username);
+            }
+            UserRepresentation user = users.get(0);
+            // Fetch and set groups for the user
+            var groups = keycloak.realm(realm).users().get(user.getId()).groups();
+            if (groups != null && !groups.isEmpty()) {
+                user.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
+            }
+            return user;
+        } catch (Exception e) {
+            log.error("Error fetching user by username: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch user: " + e.getMessage(), e);
+        }
+    }
+
     public UserRepresentation updateUser(String userId, UpdateUserDTO updateUserDTO) {
         try {
             RealmResource realmResource = keycloak.realm(realm);
