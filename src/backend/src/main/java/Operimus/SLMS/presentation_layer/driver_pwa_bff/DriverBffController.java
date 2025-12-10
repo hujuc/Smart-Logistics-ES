@@ -257,10 +257,9 @@ public class DriverBffController {
 
         // Filter out orders that have active delivery exceptions
         // Active exception statuses: OPEN, ASSIGNED, IN_PROGRESS, ESCALATED
-        List<Order> ordersWithoutActiveExceptions = allOrders.stream()
+        List<Order> ordersWithoutActiveExceptions = new java.util.ArrayList<>(allOrders.stream()
                 .filter(order -> {
-                    List<Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException> exceptions =
-                            deliveryExceptionService.getByOrderId(order.getId());
+                    var exceptions = deliveryExceptionService.getByOrderId(order.getId());
 
                     // Include order only if it has no exceptions or all exceptions are resolved/closed
                     return exceptions.stream().noneMatch(exception ->
@@ -270,10 +269,15 @@ public class DriverBffController {
                             exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
                     );
                 })
-                .toList();
+                .toList());
 
         log.info("Filtered {} orders with active exceptions out of {} total orders",
                 allOrders.size() - ordersWithoutActiveExceptions.size(), allOrders.size());
+
+        // Log order statuses for debugging
+        java.util.Map<OrderStatus, Long> statusCounts = ordersWithoutActiveExceptions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Order::getStatus, java.util.stream.Collectors.counting()));
+        log.info("Order statuses after filtering: {}", statusCounts);
 
         // Sort orders by estimated delivery date and shipping city
         ordersWithoutActiveExceptions.sort(Comparator
@@ -407,23 +411,42 @@ public class DriverBffController {
             allOrders.addAll(shipmentOrders);
         }
 
+        // Filter out orders that have active delivery exceptions
+        // Active exception statuses: OPEN, ASSIGNED, IN_PROGRESS, ESCALATED
+        List<Order> ordersWithoutActiveExceptions = new java.util.ArrayList<>(allOrders.stream()
+                .filter(order -> {
+                    var exceptions = deliveryExceptionService.getByOrderId(order.getId());
+
+                    // Include order only if it has no exceptions or all exceptions are resolved/closed
+                    return exceptions.stream().noneMatch(exception ->
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
+                    );
+                })
+                .toList());
+
+        log.info("Dashboard: Filtered {} orders with active exceptions out of {} total orders",
+                allOrders.size() - ordersWithoutActiveExceptions.size(), allOrders.size());
+
         // Sort orders by estimated delivery date and shipping city
-        allOrders.sort(Comparator
+        ordersWithoutActiveExceptions.sort(Comparator
                 .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         // Calculate statistics
-        long completed = allOrders.stream()
+        long completed = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .count();
 
-        long remaining = allOrders.stream()
+        long remaining = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .count();
 
         // Get next 3 deliveries that are pending
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = allOrders.stream()
+        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .limit(3)
                 .map(order -> DriverDashboardResponse.NextDeliveryPreview.builder()
@@ -436,7 +459,7 @@ public class DriverBffController {
                 .toList();
 
         DriverDashboardResponse.TodayStats stats = DriverDashboardResponse.TodayStats.builder()
-                .totalDeliveries(allOrders.size())
+                .totalDeliveries(ordersWithoutActiveExceptions.size())
                 .completed((int) completed)
                 .remaining((int) remaining)
                 .nextStopETA("15 min") // Placeholder for now
