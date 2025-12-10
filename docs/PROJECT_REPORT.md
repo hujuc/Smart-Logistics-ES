@@ -21,152 +21,94 @@
 
 ## Table of Contents
 
-1. [Executive Summary](#1-executive-summary)
-2. [Introduction](#2-introduction)
-3. [System Architecture](#3-system-architecture)
-4. [Data Model](#4-data-model)
-5. [User Requirements](#5-user-requirements)
-6. [Developer Onboarding](#6-developer-onboarding)
-7. [Production Configuration](#7-production-configuration)
-8. [Security & Authentication](#8-security--authentication)
-9. [Key Features & Modules](#9-key-features--modules)
-10. [AI-Powered Chatbot](#10-ai-powered-chatbot)
-11. [Testing & Quality Assurance](#11-testing--quality-assurance)
-12. [Observability & Monitoring](#12-observability--monitoring)
-13. [Lessons Learned & Future Work](#13-lessons-learned--future-work)
-14. [Conclusion](#14-conclusion)
-15. [Appendices](#15-appendices)
+1. [Introduction](#1-introduction)
+2. [System Architecture](#2-system-architecture)
+3. [Data Model](#3-data-model)
+4. [User Requirements](#4-user-requirements)
+5. [Developer Onboarding](#5-developer-onboarding)
+6. [Production Configuration](#6-production-configuration)
+7. [Security & Authentication](#7-security--authentication)
+8. [Key Features & Modules](#8-key-features--modules)
+9. [AI-Powered Chatbot](#9-ai-powered-chatbot)
+10. [Testing & Quality Assurance](#10-testing--quality-assurance)
+11. [Observability & Monitoring](#11-observability--monitoring)
+12. [Lessons Learned & Future Work](#12-lessons-learned--future-work)
+13. [Conclusion](#13-conclusion)
 
 ---
 
-# 1. Executive Summary
+# 1. Introduction
 
-*[2-3 pages of original content]*
+## 1.1 Project Context
 
-## 1.1 Project Overview
+The exponential growth of e-commerce has transformed logistics into one of the most critical components of business competitiveness. Customers increasingly expect fast, reliable, and transparent deliveries, while companies face rising transportation costs, fragmented carrier networks, and limited visibility across the delivery chain. Traditional logistics management solutions often fail to provide real-time data, carrier performance comparisons, and seamless customer communication. As a result, companies struggle to reduce costs, drivers face inefficient route planning, customer service representatives spend valuable time handling avoidable calls, and customers remain frustrated due to lack of visibility over their orders.
 
-**Topics to cover:**
-- Brief description of SLMS purpose and scope
-- Problem statement: e-commerce logistics challenges
-- Target users: 5 personas across the logistics ecosystem
-- Core value proposition
+The Smart Logistics Management System (SLMS) addresses these challenges by providing a centralized, intelligent platform that integrates multiple actors in the logistics ecosystem: logistics managers, warehouse staff, carriers, customer service representatives, and end customers. By offering real-time insights, automation, and advanced exception handling, SLMS optimizes logistics operations, increases customer satisfaction, and reduces inefficiencies across the supply chain.
 
-**Content placeholder:**
-> The Smart Logistics Management System (SLMS) is a comprehensive platform designed to address critical challenges in modern e-commerce logistics...
+This project was developed as part of the Software Engineering course at the University of Aveiro (DETI) during the 2025/2026 academic year by Group 304, demonstrating the practical application of modern software engineering practices, architecture patterns, and cloud-native technologies in solving real-world business problems.
 
-## 1.2 Key Objectives Achieved
+## 1.2 Objectives & Scope
 
-**Topics to cover:**
-- Real-time order tracking and monitoring
-- Multi-carrier integration (FedEx, UPS, DHL via ShipEngine)
-- Role-based access for 5 user types
-- AI-powered chatbot assistant
-- Comprehensive observability and monitoring
+The primary objective of SLMS is to provide a comprehensive logistics management solution that supports all key roles involved in the shipping and delivery process. The system addresses several core challenges:
 
-## 1.3 System Capabilities Overview
+- **Real-time monitoring and decision-making:** Enable logistics managers to track key performance indicators (KPIs), compare carrier performance, and generate reports for data-driven decision-making
+- **Streamlined warehouse operations:** Support warehouse staff with order registration, automatic label and document generation, and carrier pickup confirmation
+- **Improved customer service efficiency:** Provide customer service representatives with real-time access to order status, delivery exceptions, and tools to resolve issues quickly
+- **Driver empowerment:** Equip carriers with a mobile Progressive Web Application (PWA) to view delivery manifests, receive optimized routes, and record proof of delivery
+- **Customer transparency:** Allow customers to track orders in real time, receive proactive notifications, and report delivery problems directly through a public portal
+- **Structured exception management:** Ensure that delivery problems such as failed attempts, incorrect addresses, or damaged packages are logged, assigned, and resolved systematically
 
-**Topics to cover:**
-- Order management workflow
-- Carrier rate comparison and selection
-- Delivery exception handling
-- Proof of delivery (POD) capture
-- KPI dashboards and reporting
-- Context-aware AI assistance
+The system's scope encompasses 18 user stories addressing 5 distinct user personas (detailed in Section 4), with 12 user stories completed, 5 in progress, and 1 pending. The platform handles the complete order lifecycle from creation through carrier selection, shipment, tracking, exception handling, and final delivery confirmation.
 
-## 1.4 Technology Stack Summary
+## 1.3 System Overview
 
-**Topics to cover:**
-- Backend: Spring Boot 3.5.6 + Java 21
-- Frontend: Next.js 15 + React 19 (4 applications)
-- Database: PostgreSQL 16
-- Infrastructure: Docker, Terraform, Nginx
-- External integrations: Keycloak, MinIO, ShipEngine, Gemini, Pinecone, Elastic APM
+SLMS implements a modular monolith architecture designed to balance development velocity, operational simplicity, and long-term maintainability. The system comprises four distinct frontend applications, each optimized for specific user roles through the Backend-for-Frontend (BFF) pattern:
 
-## 1.5 Team Organization & Methodology
+- **Landing Page:** Public-facing application for unauthenticated order tracking and system information
+- **Admin Console:** Comprehensive administrative interface serving three internal roles—logistics managers, warehouse staff, and customer service representatives—with role-specific dashboards, order management, carrier integration, exception handling, and reporting capabilities
+- **Customer Portal:** Self-service application enabling customers to track their orders, view delivery history, and manage delivery preferences
+- **Driver PWA:** Mobile-optimized Progressive Web Application providing drivers with delivery manifests, route optimization, real-time status updates, and proof of delivery capture
 
-**Topics to cover:**
-- Agile/Scrum approach with defined roles
-- Sprint-based development (4+ sprints documented)
-- Collaborative practices and tools
-- Documentation-driven development
+These frontends interact with a centralized backend organized into eight business modules: Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, Warehouse Management, and AI-Powered Chatbot. Each module encapsulates specific domain logic while maintaining clear boundaries that prevent tight coupling and enable independent evolution (detailed in Section 2).
 
----
+The technology stack combines mature, production-proven technologies with modern capabilities. The backend leverages **Spring Boot 3.5.0** with **Java 21** for application logic, **Spring Data JPA** with **Hibernate** for object-relational mapping, and **PostgreSQL 16** for relational data storage. All four frontend applications are built with **Next.js 15.5.4** and **React 19.1.0**, using **TypeScript** for type safety and **Tailwind CSS** for styling. The infrastructure employs **Docker** for containerization, **Terraform** for infrastructure as code, and **Nginx** as the reverse proxy and load balancer.
 
-# 2. Introduction
+Key external integrations include **Keycloak 26.0** for OAuth 2.0/OpenID Connect authentication and authorization, **ShipEngine API** for multi-carrier integration (FedEx, UPS, DHL), **Google Gemini** for large language model capabilities in the AI chatbot, **Pinecone** for vector database and semantic search, **Elastic APM** for application performance monitoring and distributed tracing, **MinIO** for S3-compatible object storage of shipping documents and proof of delivery photos, **Mapbox** for mapping and routing services in the Driver PWA, and **Flagsmith** for feature flag management. The complete technical stack is detailed in Section 2.3.
 
-*[4-5 pages of original content with references]*
+## 1.4 Development Approach
 
-## 2.1 Background and Motivation
+The project follows an Agile/Scrum methodology with a five-person development team, each member fulfilling a specific role:
 
-**Topics to cover:**
-- E-commerce growth and logistics complexity
-- Traditional logistics pain points:
-  - Lack of real-time visibility
-  - Fragmented carrier networks
-  - Manual processes and inefficiencies
-  - Poor customer communication
-- Market needs analysis
+- **Scrum Master (João Roldão, NMEC 113920):** Sprint coordination and backlog management
+- **Product Owner (Hugo Castro, NMEC 113889):** Requirement prioritization, user story definition
+- **QA Engineer (Hugo Sousa, NMEC 112733):** Testing strategy and quality assurance
+- **Service Analyst (Henrique Teixeira, NMEC 114588):** Requirements analysis and feature specification
+- **DevOps Master (João Varela, NMEC 113780):** Infrastructure management and CI/CD pipeline implementation
 
-**References:**
-- `docs/per-sprint/sprint1/project-specification.md` - Background section
-- `docs/per-sprint/sprint1/requirements.md`
+Development proceeded through multiple sprint cycles, with each sprint delivering incremental functionality. The team employed continuous integration and deployment practices, comprehensive documentation, and regular retrospectives to maintain quality and adapt to evolving requirements. The development workflow and collaboration practices are documented in the project handbook.
 
-**Content guidance:**
-> The exponential growth of e-commerce has transformed logistics into one of the most critical components of business competitiveness. Traditional systems fail to provide...
+## 1.5 Report Organization
 
-## 2.2 Project Objectives
+This report provides comprehensive documentation of the SLMS project, organized to serve different audiences and information needs:
 
-**Topics to cover:**
-- Enable logistics managers to track KPIs and compare carriers
-- Streamline warehouse operations with automation
-- Improve customer service efficiency
-- Empower drivers with mobile tools
-- Provide customer transparency
-- Ensure structured exception management
-- Facilitate system-wide integration
-
-**Reference:** `docs/per-sprint/sprint1/project-specification.md` (Section 2)
-
-## 2.3 Scope and Deliverables
-
-**Topics to cover:**
-- Core functionalities delivered
-- User roles supported (5 personas)
-- System boundaries and out-of-scope items
-- Sprint-based feature delivery
-- 18 user stories (12 completed, 5 in progress, 1 pending)
-
-**References:**
-- `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
-- Sprint planning documents
-
-## 2.4 Team Organization
-
-**Topics to cover:**
-- Role definitions and responsibilities
-  - Scrum Master: Sprint coordination, impediment removal
-  - Product Owner: Backlog management, stakeholder liaison
-  - QA Engineer: Testing strategy, quality gates
-  - Service Analyst: Requirements analysis, user stories
-  - DevOps Master: Infrastructure, CI/CD, deployment
-- Development methodology: Agile/Scrum
-- Sprint planning and execution approach
-- Tools used: Git, GitHub, Docker, Terraform
-
-**Reference:** `docs/handbook/repo-workflow.md`
-
-## 2.5 Report Organization
-
-**Topics to cover:**
-- Brief overview of report structure
-- How to navigate the documentation
-- Key sections for different audiences
+- **Section 2 (System Architecture)** details the architectural decisions, design patterns, and component interactions that structure the system
+- **Section 3 (Data Model)** describes the database schema, entity relationships, and data modeling decisions
+- **Section 4 (User Requirements)** presents the five user personas, usage scenarios, and 18 user stories that drive system functionality
+- **Section 5 (Developer Onboarding)** provides practical guidance for developers setting up local environments and contributing to the codebase
+- **Section 6 (Production Configuration)** covers environment variables, external service configuration, build processes, CI/CD pipelines, and deployment procedures
+- **Section 7 (Security & Authentication)** explains the OAuth 2.0/OIDC integration with Keycloak, role-based access control, and security patterns
+- **Section 8 (Key Features & Modules)** describes the major functional capabilities organized by frontend application
+- **Section 9 (AI-Powered Chatbot)** documents the architecture, RAG implementation, and tool-calling system for context-aware assistance
+- **Section 10 (Testing & Quality Assurance)** outlines the testing strategy, coverage metrics, and quality assurance processes
+- **Section 11 (Observability & Monitoring)** presents the SLI/SLO definitions, monitoring infrastructure, and alerting mechanisms
+- **Section 12 (Lessons Learned & Future Work)** reflects on challenges encountered and potential future enhancements
+- **Section 13 (Conclusion)** summarizes achievements and contributions
 
 ---
 
-# 3. System Architecture
+# 2. System Architecture
 
-## 3.1 Architectural Overview
+## 2.1 Architectural Overview
 
 The Smart Logistics Management System (SLMS) employs a modular monolith architecture designed to balance development velocity, operational simplicity, and long-term maintainability. This architectural approach organizes the system into well-defined, loosely coupled modules within a single deployable application, while maintaining clear boundaries between different functional domains.
 
@@ -218,11 +160,11 @@ The system deploys as containerized services orchestrated through Docker Compose
 
 External managed services provide specialized capabilities: Shippo for multi-carrier shipping integration, Google Gemini for AI chatbot functionality, Pinecone for vector search, Elastic APM for observability, Mapbox for mapping and routing, and Flagsmith for feature flag management. This hybrid approach balances operational simplicity for core infrastructure with leveraging managed services for complex, specialized functionality.
 
-## 3.2 Logic Architecture
+## 2.2 Logic Architecture
 
 The logic architecture of SLMS organizes functionality into distinct layers, with the business layer at its core containing eight specialized modules that encapsulate domain logic. These modules interact with a presentation layer that implements the Backend-for-Frontend pattern, and a data access layer that manages persistence through PostgreSQL.
 
-### 3.2.1 Backend Modules
+### 2.2.1 Backend Modules
 
 The backend comprises eight specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
 
@@ -240,7 +182,7 @@ The backend comprises eight specialized modules, each encapsulating a distinct d
 
 **Reporting Module:** Transforms operational data into business intelligence for logistics managers. Calculates KPIs (on-time delivery %, average duration, cost per package, carrier performance, exception rates), generates real-time dashboards, enables time-series analysis for pattern identification, and supports custom ad-hoc reports. Uses pre-calculated aggregates and caching to avoid impacting transactional performance.
 
-### 3.2.2 Frontend Applications
+### 2.2.2 Frontend Applications
 
 SLMS implements four separate Next.js applications rather than a single monolithic frontend. This separation enables each application to optimize for its specific user persona's workflows, security requirements, and device constraints without compromising other user experiences. All frontends share Next.js 15, React 19, and TypeScript but diverge in features and interface complexity.
 
@@ -254,7 +196,7 @@ SLMS implements four separate Next.js applications rather than a single monolith
 
 **Driver PWA (Delivery drivers):** Mobile Progressive Web App for field operations with offline-first design. Displays optimized delivery manifests with turn-by-turn navigation (Mapbox integration), captures proof of delivery (photos, signatures), and reports delivery exceptions. Service workers cache route data for offline access, with automatic sync when connectivity returns. Optimized for mobile constraints: large touch targets, minimal typing, battery efficiency.
 
-### 3.2.3 BFF Pattern Implementation
+### 2.2.3 BFF Pattern Implementation
 
 The Backend-for-Frontend (BFF) pattern provides dedicated API layers tailored to each frontend's specific requirements rather than exposing a single generic API to all clients. Four distinct BFF controllers in the presentation layer align with the four frontend applications.
 
@@ -262,7 +204,7 @@ Each BFF orchestrates calls to multiple business modules, aggregating data into 
 
 The BFF layer enforces frontend-specific security boundaries. The Customer Portal BFF verifies order ownership before returning data, preventing customers from accessing others' information. The Admin Console BFF implements role-specific endpoint authorization. The Driver PWA BFF validates shipment assignments. Each BFF optimizes for its frontend's constraints: the Driver PWA BFF minimizes payload sizes for mobile bandwidth, while the Admin Console BFF prioritizes comprehensive data over size.
 
-## 3.3 Technical Stack
+## 2.3 Technical Stack
 
 The SLMS technical stack combines mature, production-proven technologies with selective adoption of modern capabilities where they provide clear value. This section provides a concise overview of the technologies employed across backend, frontend, infrastructure, and external services.
 
@@ -330,11 +272,11 @@ This technology stack balances proven stability with modern capabilities, priori
 
 ---
 
-# 4. Data Model
+# 3. Data Model
 
 The SLMS data model is designed to support the complete logistics workflow from order creation through delivery and exception handling. Built on PostgreSQL 16, the database schema implements approximately 10 tables organized into modular business domains.
 
-## 4.1 Database Overview
+## 3.1 Database Overview
 
 The system uses a relational database model with PostgreSQL 16 as the primary data store. The schema follows a modular organization aligned with business domains (order management, carrier integration, exception tracking) to maintain clear boundaries and enable independent evolution of each functional area.
 
@@ -348,7 +290,7 @@ The system uses a relational database model with PostgreSQL 16 as the primary da
 
 The database currently implements 10 tables supporting the core logistics workflow, with reserved module namespaces for future extensions (route optimization, notification management).
 
-## 4.2 Core Entities
+## 3.2 Core Entities
 
 This section describes the main business entities that form the foundation of the SLMS data model. The focus is on their business purpose and role in the logistics workflow.
 
@@ -410,7 +352,7 @@ The Shipment entity represents the carrier execution of deliveries. When orders 
 - Shipping cost and estimated delivery date
 - Transit time estimate
 
-The separation of Order (customer request) from Shipment (carrier execution) is a key architectural decision explained in Section 4.4.1.
+The separation of Order (customer request) from Shipment (carrier execution) is a key architectural decision explained in Section 3.4.1.
 
 ### DeliveryException
 
@@ -427,7 +369,7 @@ The DeliveryException entity tracks delivery problems and manages their resoluti
 
 Exceptions enable structured problem management with assignment workflows, SLA tracking, and customer feedback loops.
 
-## 4.3 Business Relationships
+## 3.3 Business Relationships
 
 The relationships between entities reflect the logistics workflow and business rules. This section explains how entities relate from a business logic perspective.
 
@@ -496,11 +438,11 @@ Unlike traditional database designs where all relationships use foreign key cons
 
 **Business Justification:** This pattern maintains module boundaries and independence. Each business domain (order management, carrier integration, exception tracking) can evolve independently without cascading changes to other modules. While this requires manual relationship traversal in code, it provides architectural flexibility as the system grows.
 
-## 4.4 Key Design Decisions
+## 3.4 Key Design Decisions
 
 This section examines the most significant architectural decisions in the data model, focusing on business rationale rather than technical implementation details.
 
-### 4.4.1 Order-Shipment Separation
+### 3.4.1 Order-Shipment Separation
 
 **Decision:** Model customer orders and carrier shipments as separate entities in different modules.
 
@@ -524,7 +466,7 @@ The separation between Order and Shipment reflects two distinct business concept
 
 This separation aligns with domain-driven design principles: Order and Shipment represent different bounded contexts in the logistics domain.
 
-### 4.4.2 External User Management (Keycloak)
+### 3.4.2 External User Management (Keycloak)
 
 **Decision:** No users table in application database; all user management delegated to Keycloak.
 
@@ -550,7 +492,7 @@ When user details are needed (name, email, role), services query Keycloak's API 
 **Trade-off:**
 This introduces a runtime dependency on Keycloak availability. However, the security and feature benefits far outweigh this operational consideration, and Keycloak's reliability is production-proven.
 
-### 4.4.3 Immutable Audit Trail
+### 3.4.3 Immutable Audit Trail
 
 **Decision:** Order events are append-only - never updated or deleted.
 
@@ -573,7 +515,7 @@ OrderEvent provides an audit trail of order status transitions. Making this trai
 
 If a mistake is recorded, the correction is a new event, maintaining full audit trail: "Incorrectly marked DELIVERED at 3pm, corrected to IN_TRANSIT at 3:15pm."
 
-### 4.4.4 Module Independence Through ID References
+### 3.4.4 Module Independence Through ID References
 
 **Decision:** Business modules reference each other through identifier fields rather than database-level foreign key constraints.
 
@@ -592,17 +534,17 @@ This pattern requires application code to manually maintain referential integrit
 
 ---
 
-# 5. User Requirements
+# 4. User Requirements
 
 **Responsible: Hugo Castro**
 
 *[10-12 pages with persona images and scenarios]*
 
-## 5.1 Personas
+## 4.1 Personas
 
 **Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
 
-### 5.1.1 João Ferreira - Logistics Manager
+### 4.1.1 João Ferreira - Logistics Manager
 
 **Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/joaoFerreira.png`
 
@@ -613,7 +555,7 @@ This pattern requires application code to manually maintain referential integrit
 - Frustrations: Lack of real-time data, manual carrier comparison
 - How he uses SLMS: KPI monitoring, strategy optimization, report exports
 
-### 5.1.2 Ana Martins - Warehouse Staff
+### 4.1.2 Ana Martins - Warehouse Staff
 
 **Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/anaMartins.png`
 
@@ -624,7 +566,7 @@ This pattern requires application code to manually maintain referential integrit
 - Frustrations: Manual processes, carrier-specific systems
 - How she uses SLMS: Order registration, label generation, pickup updates
 
-### 5.1.3 Rita Lopes - Customer Service Representative
+### 4.1.3 Rita Lopes - Customer Service Representative
 
 **Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/ritaLopes.png`
 
@@ -635,7 +577,7 @@ This pattern requires application code to manually maintain referential integrit
 - Frustrations: No real-time info, manual carrier contact
 - How she uses SLMS: Status checks, exception management, customer feedback
 
-### 5.1.4 Carlos Silva - Driver/Carrier
+### 4.1.4 Carlos Silva - Driver/Carrier
 
 **Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/carlosSilva.png`
 
@@ -646,7 +588,7 @@ This pattern requires application code to manually maintain referential integrit
 - Frustrations: Poor route planning, difficult status updates
 - How he uses SLMS: Mobile manifest, optimized routes, POD capture
 
-### 5.1.5 Mariana Costa - Customer
+### 4.1.5 Mariana Costa - Customer
 
 **Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/marianaCosta.png`
 
@@ -657,7 +599,7 @@ This pattern requires application code to manually maintain referential integrit
 - Frustrations: Lack of visibility, poor communication
 - How she uses SLMS: Order tracking, notifications, problem reporting
 
-## 5.2 Usage Scenarios
+## 4.2 Usage Scenarios
 
 **Topics to cover:**
 - 18+ detailed scenarios across all personas
@@ -674,7 +616,7 @@ This pattern requires application code to manually maintain referential integrit
 
 **Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (Scenarios section)
 
-## 5.3 User Stories
+## 4.3 User Stories
 
 **Topics to cover:**
 
@@ -713,7 +655,7 @@ This pattern requires application code to manually maintain referential integrit
 
 **Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (User Stories section)
 
-## 5.4 Feature Prioritization
+## 4.4 Feature Prioritization
 
 **Topics to cover:**
 - Completed: 12 stories (67%)
@@ -733,7 +675,7 @@ This pattern requires application code to manually maintain referential integrit
 - `docs/per-sprint/sprint1/epic-&-sprint-planning.md`
 - Sprint documentation in `docs/per-sprint/`
 
-## 5.5 Use Case Diagrams
+## 4.5 Use Case Diagrams
 
 **Diagrams to include:**
 - `docs/per-sprint/sprint2/use-case-diagrams/slms.png` (overall system)
@@ -745,7 +687,7 @@ This pattern requires application code to manually maintain referential integrit
 
 ---
 
-# 6. Developer Onboarding
+# 5. Developer Onboarding
 
 **Responsible: Hugo Castro**
 
@@ -753,7 +695,7 @@ This pattern requires application code to manually maintain referential integrit
 
 **Reference:** `docs/handbook/dev-handbook.md`
 
-## 6.1 Prerequisites
+## 5.1 Prerequisites
 
 **Topics to cover:**
 - Java 21 (OpenJDK or Oracle)
@@ -769,7 +711,7 @@ This pattern requires application code to manually maintain referential integrit
 - 20GB free disk space
 - Linux/macOS/Windows with WSL2
 
-## 6.2 Initial Environment Setup
+## 5.2 Initial Environment Setup
 
 **Topics to cover:**
 
@@ -815,7 +757,7 @@ make status
 
 **Reference:** `docs/handbook/dev-handbook.md` (Getting Started section)
 
-## 6.3 Project Structure Walkthrough
+## 5.3 Project Structure Walkthrough
 
 **Topics to cover:**
 
@@ -851,7 +793,7 @@ make status
 - `/docs/per-sprint` - Sprint artifacts
 - `/docs/architecture` - Diagrams and models
 
-## 6.4 Common Development Commands
+## 5.4 Common Development Commands
 
 **Topics to cover:**
 
@@ -901,7 +843,7 @@ npm run test                   # Run tests
 
 **Reference:** `Makefile` in repository root
 
-## 6.5 Development Workflow
+## 5.5 Development Workflow
 
 **Topics to cover:**
 
@@ -936,7 +878,7 @@ npm run test                   # Run tests
 
 **Reference:** `docs/handbook/repo-workflow.md`
 
-## 6.6 Testing Strategy
+## 5.6 Testing Strategy
 
 **Topics to cover:**
 
@@ -983,7 +925,7 @@ npm run test:e2e          # E2E tests
 
 **Reference:** `docs/handbook/dev-handbook.md`, `Makefile`
 
-## 6.7 Troubleshooting Guide
+## 5.7 Troubleshooting Guide
 
 **Topics to cover:**
 
@@ -1024,17 +966,17 @@ npm run test:e2e          # E2E tests
 
 ---
 
-# 7. Production Configuration
+# 6. Production Configuration
 
 **Responsible: João Varela**
 
 *[10-12 pages with configuration examples]*
 
-## 7.1 Environment Variables
+## 6.1 Environment Variables
 
 **Reference:** `src/backend/.env.example`, `infra/.env.example`
 
-### 7.1.1 Backend Configuration
+### 6.1.1 Backend Configuration
 
 **Database Configuration:**
 ```properties
@@ -1078,7 +1020,7 @@ ELASTIC_APM_SERVICE_NAME=slms-backend
 ELASTIC_APM_ENVIRONMENT=production
 ```
 
-### 7.1.2 Infrastructure Configuration
+### 6.1.2 Infrastructure Configuration
 
 **PostgreSQL:**
 ```properties
@@ -1107,9 +1049,9 @@ BACKEND_PORT=8080
 NODE_ENV=production
 ```
 
-## 7.2 External Services Configuration
+## 6.2 External Services Configuration
 
-### 7.2.1 Keycloak Setup
+### 6.2.1 Keycloak Setup
 
 **Topics to cover:**
 
@@ -1148,7 +1090,7 @@ NODE_ENV=production
 
 **Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
 
-### 7.2.2 MinIO Setup
+### 6.2.2 MinIO Setup
 
 **Topics to cover:**
 
@@ -1167,7 +1109,7 @@ NODE_ENV=production
 - External endpoint (if needed)
 - SSL/TLS configuration
 
-### 7.2.3 ShipEngine Integration
+### 6.2.3 ShipEngine Integration
 
 **Topics to cover:**
 
@@ -1193,7 +1135,7 @@ NODE_ENV=production
 
 **Reference:** `docs/per-sprint/sprint1/carrier-shipping-apis-investigation.md`, `docs/per-sprint/sprint3/carrier-module-readme.md`
 
-### 7.2.4 AI Services Configuration
+### 6.2.4 AI Services Configuration
 
 **Google Gemini:**
 - Obtain API key from Google AI Studio
@@ -1212,9 +1154,9 @@ NODE_ENV=production
 
 **Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/chatbot_module/`
 
-## 7.3 Build Process
+## 6.3 Build Process
 
-### 7.3.1 Backend Build
+### 6.3.1 Backend Build
 
 **Topics to cover:**
 
@@ -1235,7 +1177,7 @@ cd src/backend
 - Dependency management
 - Resource filtering
 
-### 7.3.2 Frontend Builds
+### 6.3.2 Frontend Builds
 
 **Topics to cover:**
 
@@ -1259,11 +1201,11 @@ npm run build
 - Code splitting
 - Bundle size optimization
 
-## 7.4 Deployment Pipeline (CI/CD)
+## 6.4 Deployment Pipeline (CI/CD)
 
 **Reference:** `.github/workflows/build.yml`, `.github/workflows/deploy.yml`
 
-### 7.4.1 Continuous Integration (build.yml)
+### 6.4.1Continuous Integration (build.yml)
 
 **Topics to cover:**
 
@@ -1284,7 +1226,7 @@ npm run build
 - Code coverage threshold
 - No critical security vulnerabilities
 
-### 7.4.2 Continuous Deployment (deploy.yml)
+### 6.4.2 Continuous Deployment (deploy.yml)
 
 **Topics to cover:**
 
@@ -1309,11 +1251,11 @@ npm run build
 
 **Reference:** `.github/workflows/` directory
 
-## 7.5 Infrastructure as Code (Terraform)
+## 6.5 Infrastructure as Code (Terraform)
 
 **Reference:** `infra/terraform/` directory, `infra/README.md`
 
-### 7.5.1 Resources Managed
+### 6.5.1 Resources Managed
 
 **Topics to cover:**
 
@@ -1330,7 +1272,7 @@ npm run build
 - Health checks
 - Restart policies
 
-### 7.5.2 Terraform Variables
+### 6.5.2 Terraform Variables
 
 **Topics to cover:**
 
@@ -1349,7 +1291,7 @@ npm run build
 - Using Terraform variables
 - Secret management best practices
 
-### 7.5.3 Terraform Commands
+### 6.5.3 Terraform Commands
 
 ```bash
 cd infra/terraform
@@ -1359,11 +1301,11 @@ terraform apply
 terraform destroy
 ```
 
-## 7.6 AWS Deployment
+## 6.6 AWS Deployment
 
 **Reference:** `docs/per-sprint/sprint4/aws-deployment-guide.md`
 
-### 7.6.1 EC2 Setup
+### 6.6.1 EC2 Setup
 
 **Topics to cover:**
 
@@ -1386,7 +1328,7 @@ terraform destroy
 - Associate with EC2 instance
 - DNS configuration
 
-### 7.6.2 Deployment Steps
+### 6.6.2 Deployment Steps
 
 **Topics to cover:**
 
@@ -1409,7 +1351,7 @@ cd infra
 - Terraform execution
 - Service startup
 
-### 7.6.3 Post-Deployment Verification
+### 6.6.3 Post-Deployment Verification
 
 **Topics to cover:**
 
@@ -1431,9 +1373,9 @@ make logs
 docker compose -f infra/docker-compose.yaml logs -f
 ```
 
-## 7.7 Database Management
+## 6.7 Database Management
 
-### 7.7.1 Backup System
+### 6.7.1 Backup System
 
 **Topics to cover:**
 
@@ -1453,7 +1395,7 @@ cd infra
 - Test restoration process
 - Backup integrity checks
 
-### 7.7.2 Migration Strategy
+### 6.7.2 Migration Strategy
 
 **Topics to cover:**
 
@@ -1470,7 +1412,7 @@ cd infra
 - Handling data transformations
 - Migration scripts for major changes
 
-## 7.8 Secrets Management
+## 6.8 Secrets Management
 
 **Topics to cover:**
 
@@ -1489,7 +1431,7 @@ cd infra
 - Secure storage
 - Rotation policy
 
-## 7.9 Scaling Considerations
+## 6.9 Scaling Considerations
 
 **Topics to cover:**
 
@@ -1521,7 +1463,7 @@ cd infra
 
 ---
 
-# 8. Security & Authentication
+# 7. Security & Authentication
 
 **Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
 
@@ -1539,9 +1481,9 @@ The SLMS security architecture addresses several key challenges inherent in mode
 
 The decision to adopt Keycloak as the authentication provider and implement the BFF pattern represents a deliberate architectural choice documented in ADR-0004. This approach provides a future-proof foundation that supports the system's potential evolution toward a microservices architecture while maintaining strong security guarantees today.
 
-## 8.1 Authentication Architecture
+## 7.1 Authentication Architecture
 
-### 8.1.1 Keycloak as Centralized Identity Provider
+### 7.1.1 Keycloak as Centralized Identity Provider
 
 SLMS employs Keycloak, an open-source Identity and Access Management solution, as its centralized authentication authority. Keycloak serves as the single source of truth for user credentials, roles, and authentication policies, implementing industry-standard OAuth 2.0 and OpenID Connect (OIDC) protocols.
 
@@ -1579,7 +1521,7 @@ SLMS utilizes the OAuth 2.0 Resource Owner Password Credentials grant type for u
 
 This approach combines the convenience of password-based authentication for internal logistics users with the security benefits of OAuth 2.0 token-based authorization.
 
-### 8.1.2 User Roles and Permissions
+### 7.1.2 User Roles and Permissions
 
 SLMS defines five distinct user roles, each corresponding to a key persona in the logistics ecosystem. These roles are configured as realm-level roles in Keycloak and embedded in JWT access tokens issued to authenticated users.
 
@@ -1605,7 +1547,7 @@ Each role's permissions are enforced at multiple layers:
 
 User roles are assigned during account creation through Keycloak's Admin API, accessed by the Logistics Manager via the Admin Console's user management interface. The `KeycloakUserService` in the backend's User Management Module provides methods for creating users and assigning roles programmatically. Once assigned, roles are immutable during a session but can be modified by administrators, requiring the user to re-authenticate for changes to take effect.
 
-### 8.1.3 Authentication Flow
+### 7.1.3 Authentication Flow
 
 The authentication flow in SLMS is designed to provide a seamless user experience while maintaining strict security controls. The Landing Page serves as the single entry point for all users, regardless of their role or intended destination.
 
@@ -1736,11 +1678,11 @@ User-initiated logout follows a clean teardown sequence:
 
 This comprehensive logout ensures no residual session data remains that could be exploited in a shared computer environment.
 
-## 8.2 Backend-For-Frontend (BFF) Security Pattern
+## 7.2 Backend-For-Frontend (BFF) Security Pattern
 
 The Backend-For-Frontend (BFF) pattern is a cornerstone of SLMS's security architecture. Rather than having frontend applications communicate directly with business layer services, each frontend has a dedicated BFF controller in the Spring Boot backend that serves as its exclusive API gateway.
 
-### 8.2.1 BFF Architecture Overview
+### 7.2.1 BFF Architecture Overview
 
 **Motivation and Benefits**
 
@@ -1770,7 +1712,7 @@ SLMS implements the following BFF controllers, organized by frontend application
 
 Each BFF controller is annotated with `@RestController` and maps to a role-specific URL prefix (e.g., `/api/logistics/**`, `/api/customer/**`), making the role-based access control explicit in the URL structure.
 
-### 8.2.2 Role-Based Endpoint Access Control
+### 7.2.2 Role-Based Endpoint Access Control
 
 Spring Security enforces role-based access control at the BFF endpoint level through the `SecurityConfig` class, which defines a Security Filter Chain that intercepts all HTTP requests.
 
@@ -1863,7 +1805,7 @@ Create an architecture diagram showing the complete BFF security pattern with th
 
 ---
 
-## 8.3 Security Benefits and Trade-offs
+## 7.3 Security Benefits and Trade-offs
 
 The security architecture implemented in SLMS provides significant benefits while introducing certain trade-offs that were carefully considered during design.
 
@@ -1903,17 +1845,17 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 ---
 
-# 9. Key Features & Modules
+# 8. Key Features & Modules
 
 **Responsible: Henrique Teixeira**
 
 *[8-10 pages organized by frontend application and user stories]*
 
-## 9.1 Admin Console Features
+## 8.1 Admin Console Features
 
 **User Stories**: US1-US3 (Logistics Manager), US4-US6 (Warehouse Staff), US7-US9 (Customer Service Representative)
 
-### 9.1.1 Logistics Manager Dashboard (US1-US3)
+### 8.1.1 Logistics Manager Dashboard (US1-US3)
 
 **Topics to cover:**
 
@@ -1943,7 +1885,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/reporting_module/`
 
-### 9.1.2 Warehouse Operations (US4-US6)
+### 8.1.2 Warehouse Operations (US4-US6)
 
 **Topics to cover:**
 
@@ -1979,7 +1921,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/order_module/`
 
-### 9.1.3 Customer Service Tools (US7-US9)
+### 8.1.3 Customer Service Tools (US7-US9)
 
 **Topics to cover:**
 
@@ -2007,11 +1949,11 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/visibility_module/`
 
-## 9.2 Driver PWA Features
+## 8.2 Driver PWA Features
 
 **User Stories**: US10-US13 (Driver/Carrier)
 
-### 9.2.1 Delivery Manifest View (US10)
+### 8.2.1 Delivery Manifest View (US10)
 
 **Topics to cover:**
 - List of deliveries for the day
@@ -2020,7 +1962,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 - Customer addresses
 - Mobile-optimized interface
 
-### 9.2.2 Route Optimization (US11)
+### 8.2.2 Route Optimization (US11)
 
 **Topics to cover:**
 - Route planning support
@@ -2028,7 +1970,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 - Optimized delivery sequence
 - Navigation integration
 
-### 9.2.3 Proof of Delivery Capture (US12)
+### 8.2.3 Proof of Delivery Capture (US12)
 
 **Topics to cover:**
 
@@ -2055,7 +1997,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Reference:** `docs/per-sprint/sprint4/shipment-documents-guide.md`
 
-### 9.2.4 Exception Reporting (US13)
+### 8.2.4 Exception Reporting (US13)
 
 **Topics to cover:**
 - Driver-initiated exception reporting
@@ -2066,11 +2008,11 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Backend modules**: Route, Order, Visibility
 
-## 9.3 Customer Portal Features
+## 8.3 Customer Portal Features
 
 **User Stories**: US14-US15, US17-US18 (Customer)
 
-### 9.3.1 Account Management (US14-US15)
+### 8.3.1 Account Management (US14-US15)
 
 **Topics to cover:**
 - Account creation (US14)
@@ -2079,7 +2021,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 - Delivery preferences
 - Notification preferences
 
-### 9.3.2 Order Tracking (US17)
+### 8.3.2 Order Tracking (US17)
 
 **Topics to cover:**
 - Real-time order tracking
@@ -2089,7 +2031,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 - Estimated delivery time
 - Order history
 
-### 9.3.3 Issue Reporting (US18)
+### 8.3.3 Issue Reporting (US18)
 
 **Topics to cover:**
 - Customer-initiated issue reporting
@@ -2100,9 +2042,9 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 **Backend modules**: User Management, Order, Visibility
 
-## 9.4 Shared Backend Services
+## 8.4 Shared Backend Services
 
-### 9.4.1 Carrier Integration & Rate Management
+### 8.4.1 Carrier Integration & Rate Management
 
 **Topics to cover:**
 
@@ -2137,7 +2079,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 - `docs/per-sprint/sprint1/carrier-shipping-apis-investigation.md`
 - Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/rate_carrier_module/`
 
-### 9.4.2 Notification System
+### 8.4.2 Notification System
 
 **Topics to cover:**
 - Email and SMS notifications
@@ -2149,7 +2091,7 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 ---
 
-# 10. AI-Powered Chatbot
+# 9. AI-Powered Chatbot
 
 **Reference:** `docs/handbook/chatbot-module.md`, `docs/adr/0007-chatbot-module-integration.md`
 
@@ -2165,7 +2107,7 @@ The chatbot addresses several critical challenges:
 
 The implementation follows ADR-0007, combining Google Gemini's large language model with Pinecone's vector database to create a Retrieval-Augmented Generation (RAG) system. This architecture grounds responses in actual SLMS documentation while maintaining conversational fluency. The Landing Page chatbot is publicly accessible, while authenticated users receive role-filtered assistance based on Keycloak JWT tokens, maintaining the principle of least privilege.
 
-## 10.1 Chatbot Architecture
+## 9.1 Chatbot Architecture
 
 The chatbot architecture separates concerns across data storage, semantic search, natural language processing, and business logic orchestration.
 
@@ -2212,7 +2154,7 @@ The chatbot extends beyond static documentation through a database access tool s
 
 Each tool is annotated as a Spring `@Component`, enabling automatic discovery by ToolRegistry at application startup. Tools declare their allowed roles through the `getAllowedRoles()` method, forming the basis of the chatbot's authorization system.
 
-## 10.2 RAG Implementation
+## 9.2 RAG Implementation
 
 Retrieval-Augmented Generation (RAG) grounds responses in SLMS documentation rather than relying solely on Gemini's pre-trained knowledge.
 
@@ -2244,9 +2186,9 @@ When a user submits a question, the ChatbotService orchestrates a six-step RAG w
 
 Sequence diagram showing: User → Frontend → Chat BFF → ChatbotService → (Embedding: EmbeddingService → GeminiClient → Gemini API) → (Retrieval: RagService → PineconeClient → Pinecone with metadata filters) → (Augmentation: RagService assembles context) → (Generation: GeminiClient → Gemini API with augmented prompt) → Response back through layers. Highlight four phases with color coding. Include fallback path for RAG failures.
 
-## 10.3 Security and Access Control
+## 9.3 Security and Access Control
 
-The chatbot integrates with SLMS's security model through role-based access control. Following the Backend-For-Frontend (BFF) pattern described in Section 8, each frontend has a dedicated chat BFF controller that extracts user context from JWT tokens and enforces access rules.
+The chatbot integrates with SLMS's security model through role-based access control. Following the Backend-For-Frontend (BFF) pattern described in Section 7, each frontend has a dedicated chat BFF controller that extracts user context from JWT tokens and enforces access rules.
 
 **Public and Authenticated Access**
 
@@ -2290,11 +2232,11 @@ Individual tools implement fine-grained authorization checks on specific resourc
 
 This defense-in-depth approach ensures that authorization failures at any layer prevent information disclosure, while the LLM-level awareness provides superior user experience through contextual explanations rather than cryptic error messages.
 
-## 10.4 Tool Calling System for Database Access
+## 9.4 Tool Calling System for Database Access
 
 While the RAG system provides contextual help based on static documentation, the tool calling system enables the chatbot to answer questions requiring real-time database queries. This capability transforms the chatbot from a documentation assistant into an intelligent data retrieval interface that can look up specific orders, check warehouse inventory, track shipments, and query delivery exceptions—all within the user's security context.
 
-### 10.4.1 Tool Interface and Implementation
+### 9.4.1 Tool Interface and Implementation
 
 All tools implement the `Tool` interface, which defines five core methods:
 
@@ -2310,7 +2252,7 @@ public interface Tool {
 
 Each tool is annotated with Spring's `@Component` annotation, enabling automatic discovery during application startup. The ToolRegistry scans the Spring context for all Tool beans and registers them in a thread-safe ConcurrentHashMap, indexed by tool name.
 
-### 10.4.2 Implemented Tools and Capabilities
+### 9.4.2 Implemented Tools and Capabilities
 
 **OrderLookupTool**
 - **Purpose**: Retrieve comprehensive order information by ID or tracking number
@@ -2362,9 +2304,9 @@ Each tool is annotated with Spring's `@Component` annotation, enabling automatic
 - **Authorization**: LOGISTICS_MANAGER (admin analytics only)
 - **Use Case**: "How many shipments have we processed?"
 
-### 10.4.3 Tool Execution Workflow
+### 9.4.3 Tool Execution Workflow
 
-The tool calling workflow integrates seamlessly with the RAG query flow described in Section 10.2:
+The tool calling workflow integrates seamlessly with the RAG query flow described in Section 9.2:
 
 1. **Initial Query Processing**: User submits a question like "What's the status of order #12345?" through the chat interface
 
@@ -2405,7 +2347,7 @@ The tool calling workflow integrates seamlessly with the RAG query flow describe
 - Database query failures return error messages without exposing internal details
 - If all tools fail, the chatbot falls back to RAG-only responses based on documentation
 
-### 10.4.4 Multi-Iteration Tool Calling
+### 9.4.4 Multi-Iteration Tool Calling
 
 The chatbot supports multi-turn tool usage within a single user question, enabling complex queries like:
 
@@ -2417,7 +2359,7 @@ The chatbot supports multi-turn tool usage within a single user question, enabli
 
 This multi-iteration capability is controlled by `MAX_TOOL_ITERATIONS = 3` in ChatbotService, preventing infinite loops while allowing sophisticated query patterns. Each iteration is logged with timing and authorization context for debugging and security auditing.
 
-## 10.5 Configuration and Deployment
+## 9.5 Configuration and Deployment
 
 The chatbot requires Gemini API keys (for LLM and embeddings) and Pinecone credentials configured via environment variables. Before deployment, a Pinecone index must be created with 768 dimensions and cosine similarity metric. API keys should be managed securely through secret management systems and never committed to version control. The DocumentSeederService can automatically populate initial help content when enabled (chatbot.seeder.enabled=true), though this should be disabled in production after initial deployment to prevent duplicate content creation.
 
@@ -2425,7 +2367,7 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 
 ---
 
-# 11. Testing & Quality Assurance
+# 10. Testing & Quality Assurance
 
 **Responsible: Hugo Sousa**
 
@@ -2433,7 +2375,7 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 
 **Reference:** `docs/per-sprint/sprint2/qa-manual-update/qa-manual.md`
 
-## 11.1 Testing Strategy
+## 10.1 Testing Strategy
 
 **Topics to cover:**
 
@@ -2452,9 +2394,9 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 - Fast feedback loop
 - Quality gates
 
-## 11.2 Test Coverage
+## 10.2 Test Coverage
 
-### 11.2.1 Backend Testing
+### 10.2.1 Backend Testing
 
 **Topics to cover:**
 
@@ -2499,7 +2441,7 @@ class OrderServiceTest {
 }
 ```
 
-### 11.2.2 Frontend Testing
+### 10.2.2 Frontend Testing
 
 **Topics to cover:**
 
@@ -2514,7 +2456,7 @@ class OrderServiceTest {
 - Navigation
 - State management
 
-### 11.2.3 Integration Testing
+### 10.2.3 Integration Testing
 
 **Topics to cover:**
 
@@ -2533,7 +2475,7 @@ class OrderServiceTest {
 - Cross-module interactions
 - BFF integration with services
 
-### 11.2.4 E2E Testing
+### 10.2.4 E2E Testing
 
 **Topics to cover:**
 
@@ -2548,7 +2490,7 @@ class OrderServiceTest {
 - Critical paths
 - Error scenarios
 
-### 11.2.5 Real Integration Tests
+### 10.2.5 Real Integration Tests
 
 **Topics to cover:**
 
@@ -2568,7 +2510,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 **Tagged with `@Tag("real-integration")`**
 
-## 11.3 Coverage Requirements
+## 10.3 Coverage Requirements
 
 **Topics to cover:**
 
@@ -2589,7 +2531,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Configuration classes
 - Main application class
 
-## 11.4 QA Manual
+## 10.4 QA Manual
 
 **Reference:** `docs/per-sprint/sprint2/qa-manual-update/qa-manual.md`
 
@@ -2616,7 +2558,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Edge case discovery
 - Usability testing
 
-## 11.5 CI/CD Validation
+## 10.5 CI/CD Validation
 
 **Topics to cover:**
 
@@ -2644,7 +2586,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 ---
 
-# 12. Observability & Monitoring
+# 11. Observability & Monitoring
 
 **Responsible: Henrique Teixeira**
 
@@ -2652,7 +2594,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 **Reference:** `docs/handbook/observability.md`, `docs/per-sprint/sprint4/observability.md`, `docs/adr/0005-observability-monitoring-strategy.md`
 
-## 12.1 Service Level Indicators (SLIs)
+## 11.1 Service Level Indicators (SLIs)
 
 **Topics to cover:**
 
@@ -2664,7 +2606,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 | **Error Rate** | % of failed requests | <1% | 24 hours |
 | **Data Integrity** | % successful DB ops | ≥99.99% | 24 hours |
 
-## 12.2 Service Level Objectives (SLOs)
+## 11.2 Service Level Objectives (SLOs)
 
 **Topics to cover:**
 
@@ -2678,7 +2620,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Budget consumption tracking
 - Response to budget exhaustion
 
-## 12.3 Monitoring Stack
+## 11.3 Monitoring Stack
 
 **Topics to cover:**
 
@@ -2708,7 +2650,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 **Reference:** `docs/per-sprint/sprint4/health-checks-implementation.md`
 
-## 12.4 Alerting
+## 11.4 Alerting
 
 **Topics to cover:**
 
@@ -2729,11 +2671,11 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 ---
 
-# 13. Lessons Learned & Future Work
+# 12. Lessons Learned & Future Work
 
 *[3-4 pages of critical reflection]*
 
-## 13.1 Architectural Decisions
+## 12.1 Architectural Decisions
 
 **Topics to cover:**
 
@@ -2759,7 +2701,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Evolution over sprints
 - Migration challenges
 
-## 13.2 Technical Challenges
+## 12.2 Technical Challenges
 
 **Topics to cover:**
 
@@ -2791,7 +2733,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Document chunking strategy
 - Embedding model selection
 
-## 13.3 Development Process
+## 12.3 Development Process
 
 **Topics to cover:**
 
@@ -2818,7 +2760,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Sprint documentation value
 - Onboarding improvements
 
-## 13.4 Future Enhancements
+## 12.4 Future Enhancements
 
 **Topics to cover:**
 
@@ -2869,11 +2811,11 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 ---
 
-# 14. Conclusion
+# 13. Conclusion
 
 *[2-3 pages of synthesis and reflection]*
 
-## 14.1 Project Achievements Summary
+## 13.1 Project Achievements Summary
 
 **Topics to cover:**
 
@@ -2900,7 +2842,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Architecture Decision Records
 - Developer handbook
 
-## 14.2 Technical Contributions
+## 13.2 Technical Contributions
 
 **Topics to cover:**
 
@@ -2928,7 +2870,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Onboarding guide
 - Sprint artifacts
 
-## 14.3 Academic Learning Outcomes
+## 13.3 Academic Learning Outcomes
 
 **Topics to cover:**
 
@@ -2957,7 +2899,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Performance optimization
 - Error handling
 
-## 14.4 Industry Relevance
+## 13.4 Industry Relevance
 
 **Topics to cover:**
 
@@ -2979,7 +2921,7 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Security best practices
 - Documentation for handoff
 
-## 14.5 Final Remarks
+## 13.5 Final Remarks
 
 **Topics to cover:**
 
