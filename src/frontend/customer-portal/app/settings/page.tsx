@@ -41,10 +41,100 @@ export default function SettingsPage() {
     setError(null)
 
     try {
-      // TODO: Implement API call to save settings
-      // For now, just show success message
+      // Get access token
+      const accessToken = localStorage.getItem('access_token') || document.cookie
+        .split('; ')
+        .find(row => row.startsWith('access_token='))
+        ?.split('=')[1]
+
+      if (!accessToken) {
+        throw new Error('Not authenticated. Please log in again.')
+      }
+
+      // First, get current user info to retrieve user ID
+      const meResponse = await fetch('/api/users/me', {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!meResponse.ok) {
+        throw new Error('Failed to fetch user information')
+      }
+
+      const meData = await meResponse.json()
+      const username = meData.username
+
+      if (!username) {
+        throw new Error("Username not found")
+      }
+
+      // Search for user by username to get the actual Keycloak UUID
+      const searchResponse = await fetch(`/api/users/search?query=${encodeURIComponent(username)}`, {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!searchResponse.ok) {
+        throw new Error('Failed to search for user')
+      }
+
+      const searchResults = await searchResponse.json()
+      if (!searchResults || searchResults.length === 0) {
+        throw new Error('User not found')
+      }
+
+      const userId = searchResults[0].id
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
+      // Split full name into first and last name
+      const nameParts = settings.fullName.trim().split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: settings.email,
+          firstName: firstName,
+          lastName: lastName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to update profile')
+      }
+
+      // Update user data in localStorage
+      if (user) {
+        const updatedUser = {
+          ...user,
+          firstName: firstName,
+          lastName: lastName,
+          email: settings.email,
+        }
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
+
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+
+      // Reload the page to fetch updated user data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings")
     } finally {
