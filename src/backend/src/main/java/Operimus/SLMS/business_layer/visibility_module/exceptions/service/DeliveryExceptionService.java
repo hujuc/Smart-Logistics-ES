@@ -31,6 +31,7 @@ public class DeliveryExceptionService {
     private final DeliveryExceptionRepository exceptionRepository;
     private final OrderRepository orderRepository;
     private final OrderEventService orderEventService;
+    private final Operimus.SLMS.business_layer.notifications_module.service.CustomerServiceNotificationService customerServiceNotificationService;
 
     /**
      * Create a new delivery exception
@@ -60,6 +61,17 @@ public class DeliveryExceptionService {
 
         DeliveryException saved = exceptionRepository.save(exception);
         log.info("Created delivery exception with ID: {}", saved.getId());
+
+        // Send notifications for high priority tickets
+        if (saved.getPriority() == Priority.HIGH || saved.getPriority() == Priority.CRITICAL) {
+            String ticketNumber = "TKT-" + saved.getId().toString().substring(0, 8);
+            customerServiceNotificationService.notifyNewHighPriorityTicket(
+                saved.getId().toString(),
+                ticketNumber,
+                saved.getPriority().toString(),
+                saved.getDescription()
+            );
+        }
 
         return mapToResponse(saved);
     }
@@ -102,6 +114,10 @@ public class DeliveryExceptionService {
         log.info("Updating delivery exception: {}", id);
 
         DeliveryException exception = findByIdOrThrow(id);
+        
+        // Track if assignment changed
+        UUID previousAssignee = exception.getAssignedTo();
+        boolean wasAssigned = false;
 
         if (request.getStatus() != null) {
             exception.setStatus(request.getStatus());
@@ -115,6 +131,25 @@ public class DeliveryExceptionService {
                 if (exception.getSlaDeadline() != null && 
                     LocalDateTime.now().isAfter(exception.getSlaDeadline())) {
                     exception.setSlaBreached(true);
+                    
+                    // Notify SLA breach
+                    String ticketNumber = "TKT-" + exception.getId().toString().substring(0, 8);
+                    customerServiceNotificationService.notifySlaBreached(
+                        exception.getId().toString(),
+                        ticketNumber,
+                        exception.getAssignedTo() != null ? exception.getAssignedTo().toString() : null
+                    );
+                }
+                
+                // Notify resolution
+                if (request.getStatus() == ExceptionStatus.RESOLVED && exception.getAssignedTo() != null) {
+                    String ticketNumber = "TKT-" + exception.getId().toString().substring(0, 8);
+                    customerServiceNotificationService.notifyTicketResolved(
+                        exception.getId().toString(),
+                        ticketNumber,
+                        exception.getAssignedTo().toString(),
+                        exception.getCustomerId() != null ? exception.getCustomerId().toString() : "Customer"
+                    );
                 }
             }
         }
@@ -128,6 +163,7 @@ public class DeliveryExceptionService {
             if (exception.getStatus() == ExceptionStatus.OPEN) {
                 exception.setStatus(ExceptionStatus.ASSIGNED);
             }
+            wasAssigned = (previousAssignee == null || !previousAssignee.equals(request.getAssignedTo()));
         }
 
         if (request.getResolutionNotes() != null) {
@@ -144,6 +180,17 @@ public class DeliveryExceptionService {
 
         DeliveryException updated = exceptionRepository.save(exception);
         log.info("Updated delivery exception: {}", id);
+
+        // Send notification if ticket was newly assigned
+        if (wasAssigned && updated.getAssignedTo() != null) {
+            String ticketNumber = "TKT-" + updated.getId().toString().substring(0, 8);
+            customerServiceNotificationService.notifyTicketAssigned(
+                updated.getId().toString(),
+                ticketNumber,
+                updated.getAssignedTo().toString(),
+                updated.getCustomerId() != null ? updated.getCustomerId().toString() : "Customer"
+            );
+        }
 
         return mapToResponse(updated);
     }

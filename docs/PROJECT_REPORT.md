@@ -2419,60 +2419,53 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 
 **Responsible: Hugo Sousa**
 
-*[5-6 pages with testing approach]*
-
-**Reference:** `docs/per-sprint/sprint2/qa-manual-update/qa-manual.md`
-
-## 10.1 Testing Strategy
+## 11.1 Testing Strategy
 
 **Topics to cover:**
 
 **Test Pyramid Approach:**
-- Many unit tests (base)
-- Fewer integration tests (middle)
-- Few E2E tests (top)
+We adhere to the standard test pyramid to ensure a balanced and efficient testing strategy:
+- **Base (Unit Tests):** The majority of our tests are unit tests (Backend), ensuring individual components work in isolation.
+- **Middle (Integration Tests):** We verify that different modules and services interact correctly, using Testcontainers and mocks.
+- **Top (E2E Tests):** A selective set of End-to-End tests covers critical user flows to guarantee the system works as a whole.
 
-**Test-Driven Development:**
-- Write tests first (when applicable)
-- Red-Green-Refactor cycle
-- Living documentation
+**Test-Driven Development (TDD):**
+While not strictly enforced for every feature, we encouraged a TDD mindset:
+- **Red-Green-Refactor:** Developers often wrote failing tests for service logic before implementing the solution.
+- **Living Documentation:** Our Cucumber BDD tests serve as executable documentation of the system's behavior.
 
 **Continuous Testing:**
-- Tests run on every commit
-- Fast feedback loop
-- Quality gates
+- **Commit Hooks:** Linting runs locally before commits.
+- **Fast Feedback:** Unit tests run on every push to feature branches.
+- **Quality Gates:** The CI pipeline enforces passing tests and coverage thresholds before merging.
 
 ## 10.2 Test Coverage
 
-### 10.2.1 Backend Testing
+### 11.2.1 Backend Testing
 
 **Topics to cover:**
 
 **JUnit 5 + Mockito:**
-- Unit test framework
-- Mocking external dependencies
-- Parameterized tests
-- Test lifecycle
+We use **JUnit 5** as our primary testing framework and **Mockito** to isolate the system under test.
+- **Mocking:** External dependencies (Repositories, APIs) are mocked to test business logic purely.
+- **Parameterized Tests:** We use `@ParameterizedTest` to verify multiple inputs for validation logic.
 
 **Service Layer Testing:**
-- Business logic validation
-- Mocked repositories
-- Edge case handling
+- **Business Logic:** Services are tested extensively to ensure all business rules (e.g., rate calculation, status transitions) are correct.
+- **Edge Cases:** We explicitly test null inputs, boundary values, and exception scenarios.
 
 **Controller Testing:**
-- MockMvc for API testing
-- Request/response validation
-- Authentication testing
-- Error handling
+- **MockMvc:** We use `MockMvc` to test REST endpoints without starting the full server.
+- **Validation:** Verifies that `@Valid` annotations trigger 400 Bad Request responses.
+- **Auth:** Tests security rules (e.g., 401/403 for unauthorized access).
 
 **Repository Testing:**
-- Database integration tests
-- Query validation
-- Transaction behavior
+- **Data Integrity:** We verify custom JPQL queries and complex mappings.
+- **Transactions:** Tests run in transactions and roll back automatically to keep the DB clean.
 
 **Example test structure:**
 ```java
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
@@ -2481,156 +2474,148 @@ class OrderServiceTest {
     private OrderService orderService;
 
     @Test
-    void shouldCreateOrder() {
+    void shouldCreateOrder_WhenValidRequest() {
         // Arrange
+        OrderRequest request = new OrderRequest(...);
+        when(orderRepository.save(any())).thenReturn(new Order(...));
+
         // Act
+        OrderResponse response = orderService.createOrder(request);
+
         // Assert
+        assertNotNull(response);
+        verify(orderRepository).save(any());
     }
 }
 ```
 
 ### 10.2.2 Frontend Testing
 
-**Topics to cover:**
-
-**Jest + React Testing Library:**
-- Component unit tests
-- User interaction testing
-- Snapshot testing
+**Testing Framework Strategy:**
+Unlike the backend, we prioritize **End-to-End (E2E)** testing over unit testing for the frontend to ensure realistic user interactions.
+- **Playwright:** Our primary tool for verifying frontend behavior.
+- **ESLint:** Used for static analysis to catch syntax and style errors early.
 
 **Test Examples:**
-- Form validation
-- API integration (mocked)
-- Navigation
-- State management
+- **Form Validation:** E2E tests verify that invalid inputs show error messages.
+- **Navigation:** Tests ensure clicking links routes to the correct pages.
+- **State Management:** Verifies that UI updates correctly after user actions (e.g., badge counts incrementing).
 
-### 10.2.3 Integration Testing
+### 11.2.3 Integration Testing
 
 **Topics to cover:**
 
 **Mocked External APIs:**
-- ShipEngine mock responses
-- Gemini mock responses
-- Pinecone mock responses
-- WireMock or similar
+To ensure stability and speed, we mock external services during standard integration tests:
+- **ShipEngine:** Mocked responses for rate quotes and label generation.
+- **Gemini:** Mocked AI responses to avoid credit usage and latency.
+- **MockWebServer:** Used to simulate these HTTP responses reliably.
 
 **Database Integration:**
-- Testcontainers for PostgreSQL
-- Test data setup
-- Transaction rollback
+- **Testcontainers:** We use Docker containers to spin up a real **PostgreSQL** instance for integration tests, ensuring exact parity with production.
+- **Data Setup:** Each test starts with a known data state.
 
 **Module Integration:**
-- Cross-module interactions
-- BFF integration with services
+- **BFF Testing:** We verify that the Backend-for-Frontend correctly aggregates data from multiple internal services before sending it to the client.
 
-### 10.2.4 E2E Testing
+### 11.2.4 E2E Testing
 
 **Topics to cover:**
 
 **Playwright:**
-- Browser automation
-- User flow testing
-- Cross-browser support
-- Visual regression
+We use **Playwright** for robust browser automation.
+- **Cross-Browser:** Tests run on Chromium, Firefox, and WebKit.
+- **Visual Regression:** We capture screenshots to detect unintended UI changes.
+- **Tracing:** Failed tests produce trace files for easy debugging.
 
 **Test Scenarios:**
-- Complete user workflows
-- Critical paths
-- Error scenarios
+- **Critical Paths:** "Happy path" flows like "Create Order -> Assign Carrier -> Print Label".
+- **Error Scenarios:** Verifying error pages and toast notifications appear when the backend fails.
 
-### 10.2.5 Real Integration Tests
+### 11.2.5 Real Integration Tests
 
 **Topics to cover:**
 
 **Actual Service Integration:**
-- Requires API keys
-- Real Gemini API calls
-- Real Pinecone queries
-- Real MinIO storage
-- Real Keycloak authentication
+We have a dedicated profile for testing with *real* external services:
+- **Real APIs:** Calls actual ShipEngine and Gemini endpoints.
+- **Real Storage:** Uploads files to a real MinIO instance.
+- **Authentication:** Authenticates against a live Keycloak instance.
 
 **Test Execution:**
+These tests are tagged and run separately to avoid costs/side effects:
 ```bash
 make test-real
 # OR
 docker exec slms-backend-dev ./mvnw test -Preal-integration
 ```
 
-**Tagged with `@Tag("real-integration")`**
-
-## 10.3 Coverage Requirements
+## 11.3 Coverage Requirements
 
 **Topics to cover:**
 
 **Target: 70% code coverage**
+We enforce a strict quality gate:
+- **Line Coverage:** Must be >= 70%.
+- **Branch Coverage:** Monitored to ensure complex logic is tested.
 
 **JaCoCo Reports:**
-- Line coverage
-- Branch coverage
-- Method coverage
-- Coverage report location: `target/site/jacoco/`
+- **Generation:** JaCoCo runs during the Maven build.
+- **Report Location:** `target/site/jacoco/index.html`.
+- **Visualization:** The report highlights covered (green) and missed (red) lines.
 
 **Coverage Gates in CI:**
-- Build fails if coverage drops below threshold
-- Enforce coverage on new code
+- **Build Failure:** The GitHub Actions pipeline fails immediately if coverage drops below 70%.
+- **PR Feedback:** A bot comments on the PR with the coverage summary.
 
 **Exclusions:**
-- DTOs
-- Configuration classes
-- Main application class
+We exclude boilerplate code that doesn't contain business logic:
+- **DTOs:** Data Transfer Objects (getters/setters).
+- **Configuration:** Spring `@Configuration` classes.
+- **Main Class:** `SlmsApplication.java`.
 
 ## 10.4 QA Manual
 
 **Reference:** `docs/per-sprint/sprint2/qa-manual-update/qa-manual.md`
 
-**Topics to cover:**
-
 **Manual Test Scenarios:**
-- Organized by persona
-- Step-by-step instructions
-- Expected results
-- Pass/fail criteria
+- **Persona-Based:** Tests are grouped by user role (e.g., "Logistics Manager Scenarios").
+- **Structured:** Each test has "Pre-conditions", "Steps", and "Expected Result".
+- **Pass/Fail:** Results are recorded manually during release validation.
 
 **Acceptance Criteria Validation:**
-- Each user story has test scenarios
-- Verify acceptance criteria met
-- Edge cases documented
+- **User Stories:** Every User Story in the backlog has corresponding manual test cases.
+- **Verification:** The QA Engineer verifies these before closing a story.
 
 **Regression Testing:**
-- Test suite for major features
-- Run before releases
-- Automated where possible
+- **Release Check:** A core set of manual tests is executed before any production deployment.
+- **Smoke Tests:** Quick checks to ensure the system is up and critical paths work.
 
 **Exploratory Testing:**
-- Unscripted testing
-- Edge case discovery
-- Usability testing
+- **Ad-hoc:** We perform unscripted testing to find edge cases.
+- **Usability:** Verifying the UX feels natural and responsive.
 
-## 10.5 CI/CD Validation
+## 11.5 CI/CD Validation
 
 **Topics to cover:**
 
 **Automated Test Execution:**
-- Unit tests on every commit
-- Integration tests on PR
-- E2E tests before merge
+- **Unit/Integration:** Run on every commit to `develop` and `main`.
+- **E2E:** Run on Pull Requests to ensure no regressions in user flows.
 
 **Build Verification:**
-- Clean build required
-- No compilation warnings (target)
-- Dependency vulnerability scanning
+- **Clean Build:** The code must compile without errors.
+- **Linting:** Frontend code must pass ESLint checks.
 
 **Health Check Validation:**
-- Post-deployment health checks
-- Endpoint availability
-- Service connectivity
+- **Actuator:** We check `/actuator/health` after deployment.
+- **Dependencies:** Verifies DB, Kafka, and MinIO connectivity.
 
 **Pre-Deployment Checks:**
-- All tests pass
-- Coverage threshold met
-- No critical issues
+- **All Green:** Deployment only proceeds if all tests pass and coverage is met.
+- **Security:** Basic vulnerability scanning of dependencies.
 
-**Reference:** `.github/workflows/build.yml`
+**Reference:** `.github/workflows/ci-quality.yml`, `.github/workflows/ci-integration.yml`
 
 ---
 

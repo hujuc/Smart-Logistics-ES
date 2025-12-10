@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -26,6 +26,10 @@ import {
   Warehouse,
   QrCode
 } from "lucide-react"
+import { Client } from "@stomp/stompjs"
+import SockJS from "sockjs-client"
+import { useUser } from "../../../../shared/hooks/use-user"
+import { useNotificationsStore } from "../../../../shared/hooks/use-notifications"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -42,89 +46,132 @@ interface Notification {
   actionUrl?: string
 }
 
-// Mock data for static UI - Warehouse-specific notifications
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "warning",
-    title: "Low Stock Alert",
-    message: "Warehouse A is running low on packaging materials. Current stock: 15 units.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    status: "unread",
-    relatedEntity: "Warehouse A",
-    actionUrl: "/interfaces/warehouse"
-  },
-  {
-    id: "2",
-    type: "error",
-    title: "Scanner Malfunction",
-    message: "QR Scanner #SC-003 is reporting errors. Immediate attention required.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 45),
-    status: "unread",
-    relatedEntity: "SC-003",
-    actionUrl: "/interfaces/warehouse/qr-scanner"
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Shipment Prepared",
-    message: "Batch #BATCH-2024-089 has been successfully prepared and is ready for pickup.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60),
-    status: "read",
-    relatedEntity: "BATCH-2024-089",
-    actionUrl: "/interfaces/warehouse"
-  },
-  {
-    id: "4",
-    type: "warning",
-    title: "Maintenance Due",
-    message: "Forklift #FL-007 requires scheduled maintenance. Last service: 180 days ago.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    status: "unread",
-    relatedEntity: "FL-007"
-  },
-  {
-    id: "5",
-    type: "info",
-    title: "New Carrier Rate",
-    message: "Updated shipping rates available for FedEx. Review rates in carrier comparison.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    status: "read",
-    actionUrl: "/interfaces/warehouse/carrier-comparison"
-  },
-  {
-    id: "6",
-    type: "success",
-    title: "Inventory Count Complete",
-    message: "Monthly inventory count for Zone B completed. All items accounted for.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
-    status: "read",
-    relatedEntity: "Zone B"
-  },
-  {
-    id: "7",
-    type: "error",
-    title: "Package Damaged",
-    message: "Package #PKG-2024-5678 reported damaged during handling. Incident report required.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8),
-    status: "read",
-    relatedEntity: "PKG-2024-5678"
-  },
-  {
-    id: "8",
-    type: "info",
-    title: "New Package Received",
-    message: "45 new packages received and checked into the warehouse system.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    status: "read"
-  },
-]
-
 export default function WarehouseNotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("All")
   const [filterStatus, setFilterStatus] = useState<string>("All")
+  const user = useUser()
+  const stompClientRef = useRef<Client | null>(null)
+  const { setUnreadCount, incrementUnread, decrementUnread } = useNotificationsStore()
+
+  // Fetch initial notifications
+  useEffect(() => {
+    if (user?.username) {
+      fetch(`/api/notifications/${user.username}`)
+        .then(async res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`)
+          }
+          const text = await res.text()
+          if (!text) {
+            return []
+          }
+          return JSON.parse(text)
+        })
+        .then(data => {
+          if (!Array.isArray(data)) {
+            console.warn("Invalid data format, expected array:", data)
+            return
+          }
+          const mappedNotifications: Notification[] = data.map((n: any) => ({
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: (n.read ? "read" : "unread") as NotificationStatus,
+            relatedEntity: n.aggregateId,
+            actionUrl: getActionUrl(n.eventType, n.aggregateId)
+          }))
+          setNotifications(mappedNotifications)
+          const unread = mappedNotifications.filter(n => n.status === "unread").length
+          setUnreadCount(unread)
+        })
+        .catch(err => {
+          console.error("Failed to fetch notifications:", err)
+          setNotifications([])
+        })
+    }
+  }, [user?.username, setUnreadCount])
+
+  // WebSocket connection for real-time notifications
+  useEffect(() => {
+    if (!user?.username) return
+
+    const socket = new SockJS("/ws-notifications")
+    const client = new Client({
+      webSocketFactory: () => socket,
+      connectHeaders: {
+        username: user.username
+      },
+      onConnect: () => {
+        console.log("✅ WebSocket connected for Warehouse notifications")
+        client.subscribe("/user/queue/notifications", (message) => {
+          console.log("📬 Received real-time notification:", message.body)
+          const n = JSON.parse(message.body)
+          const newNotification: Notification = {
+            id: n.id.toString(),
+            type: mapEventTypeToType(n.eventType),
+            title: formatTitle(n.eventType),
+            message: n.message,
+            timestamp: new Date(n.createdAt),
+            status: "unread",
+            relatedEntity: n.aggregateId,
+            actionUrl: getActionUrl(n.eventType, n.aggregateId)
+          }
+          setNotifications(prev => [newNotification, ...prev])
+          incrementUnread()
+        })
+      },
+      onStompError: (frame) => {
+        console.error("❌ WebSocket error:", frame.headers["message"])
+      }
+    })
+
+    client.activate()
+    stompClientRef.current = client
+
+    return () => {
+      client.deactivate()
+    }
+  }, [user?.username, incrementUnread])
+
+  const mapEventTypeToType = (eventType: string): NotificationType => {
+    switch (eventType) {
+      case "SHIPMENT_PREPARED":
+      case "INVENTORY_COUNT_COMPLETE":
+      case "NEW_PACKAGE_RECEIVED":
+        return "success"
+      case "SCANNER_MALFUNCTION":
+      case "PACKAGE_DAMAGED":
+        return "error"
+      case "LOW_STOCK_ALERT":
+      case "MAINTENANCE_DUE":
+        return "warning"
+      case "NEW_CARRIER_RATE":
+      default:
+        return "info"
+    }
+  }
+
+  const formatTitle = (eventType: string) => {
+    return eventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  const getActionUrl = (eventType: string, aggregateId: string): string => {
+    // Map event types to appropriate URLs
+    if (eventType.includes("SCANNER")) {
+      return `/interfaces/warehouse/qr-scanner`
+    }
+    if (eventType.includes("CARRIER")) {
+      return `/interfaces/warehouse/carrier-comparison`
+    }
+    if (eventType.includes("PACKAGE")) {
+      return `/interfaces/warehouse/package/${aggregateId}`
+    }
+    return `/interfaces/warehouse`
+  }
 
   // Filter notifications
   const filteredNotifications = notifications.filter((notification) => {
@@ -187,24 +234,45 @@ export default function WarehouseNotificationsPage() {
     return date.toLocaleDateString()
   }
 
-  // Handler functions (static for now)
+  // Handler functions
   const handleMarkAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, status: "read" as NotificationStatus } : n
-    ))
+    fetch(`/api/notifications/${id}/read`, { method: "PUT" })
+      .then(() => {
+        setNotifications(notifications.map(n =>
+          n.id === id ? { ...n, status: "read" as NotificationStatus } : n
+        ))
+        decrementUnread()
+      })
+      .catch(err => console.error("Failed to mark as read:", err))
   }
 
   const handleMarkAllAsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+    setUnreadCount(0)
   }
 
   const handleDelete = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id))
+    fetch(`/api/notifications/${id}`, { method: "DELETE" })
+      .then(() => {
+        const notification = notifications.find(n => n.id === id)
+        if (notification?.status === "unread") {
+          decrementUnread()
+        }
+        setNotifications(notifications.filter(n => n.id !== id))
+      })
+      .catch(err => console.error("Failed to delete notification:", err))
   }
 
   const handleDeleteAll = () => {
     if (confirm("Are you sure you want to delete all notifications?")) {
-      setNotifications([])
+      if (user?.username) {
+        fetch(`/api/notifications/${user.username}`, { method: "DELETE" })
+          .then(() => {
+            setNotifications([])
+            setUnreadCount(0)
+          })
+          .catch(err => console.error("Failed to delete all notifications:", err))
+      }
     }
   }
 

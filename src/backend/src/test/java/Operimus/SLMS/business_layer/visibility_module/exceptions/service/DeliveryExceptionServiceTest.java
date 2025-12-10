@@ -31,6 +31,9 @@ class DeliveryExceptionServiceTest {
     @InjectMocks
     private DeliveryExceptionService exceptionService;
 
+    @Mock
+    private Operimus.SLMS.business_layer.notifications_module.service.CustomerServiceNotificationService customerServiceNotificationService;
+
     private DeliveryException testException;
     private UUID testExceptionId;
     private UUID testCustomerId;
@@ -136,6 +139,7 @@ class DeliveryExceptionServiceTest {
 
         when(exceptionRepository.save(any(DeliveryException.class))).thenAnswer(invocation -> {
             DeliveryException saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID()); // Set ID to avoid NullPointerException
             assertThat(saved.getSlaDeadline()).isBetween(
                     LocalDateTime.now().plusHours(23),
                     LocalDateTime.now().plusHours(25)

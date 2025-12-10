@@ -40,6 +40,15 @@ class ShipmentServiceTest {
     @Autowired
     private WarehouseRepository warehouseRepository;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+
     private Carrier carrier;
     private Warehouse warehouse;
     private Order order1;
