@@ -73,7 +73,7 @@ These frontends interact with a centralized backend organized into eight busines
 
 The technology stack combines mature, production-proven technologies with modern capabilities. The backend leverages **Spring Boot 3.5.0** with **Java 21** for application logic, **Spring Data JPA** with **Hibernate** for object-relational mapping, and **PostgreSQL 16** for relational data storage. All four frontend applications are built with **Next.js 15.5.4** and **React 19.1.0**, using **TypeScript** for type safety and **Tailwind CSS** for styling. The infrastructure employs **Docker** for containerization, **Terraform** for infrastructure as code, and **Nginx** as the reverse proxy and load balancer.
 
-Key external integrations include **Keycloak 26.0** for OAuth 2.0/OpenID Connect authentication and authorization, **ShipEngine API** for multi-carrier integration (FedEx, UPS, DHL), **Google Gemini** for large language model capabilities in the AI chatbot, **Pinecone** for vector database and semantic search, **Elastic APM** for application performance monitoring and distributed tracing, **MinIO** for S3-compatible object storage of shipping documents and proof of delivery photos, **Mapbox** for mapping and routing services in the Driver PWA, and **Flagsmith** for feature flag management. The complete technical stack is detailed in Section 2.3.
+Key external integrations include **Keycloak 26.0** for OAuth 2.0/OpenID Connect authentication and authorization, **ShipEngine and Shippo APIs** for multi-carrier integration (FedEx, UPS, DHL), **Google Gemini** for large language model capabilities in the AI chatbot, **Pinecone** for vector database and semantic search, **Elastic APM** for application performance monitoring and distributed tracing, **MinIO** for S3-compatible object storage of shipping documents and proof of delivery photos, **Mapbox** for mapping and routing services in the Driver PWA, and **Flagsmith** for feature flag management. The complete technical stack is detailed in Section 2.3.
 
 ## 1.4 Development Approach
 
@@ -169,7 +169,7 @@ The backend comprises eight specialized modules, each encapsulating a distinct d
 
 **Order Module:** Manages the complete order lifecycle from creation to delivery. Captures shipment details (package dimensions, destination, special requirements), tracks order status through a state machine (PENDING → READY → ASSIGNED → IN_TRANSIT → DELIVERED), generates shipping documents stored in MinIO, and maintains an immutable audit trail of all order events.
 
-**Rate Carrier Module:** Handles carrier integration and shipment execution through the Shippo API aggregator, supporting FedEx, UPS, and DHL. Provides rate comparison functionality for cost-optimal carrier selection, generates shipping labels with tracking numbers, manages shipment entities containing carrier-specific data, and tracks driver assignments for delivery execution.
+**Rate Carrier Module:** Handles carrier integration and shipment execution through ShipEngine and Shippo API aggregators, supporting FedEx, UPS, and DHL. Provides rate comparison functionality for cost-optimal carrier selection, generates shipping labels with tracking numbers, manages shipment entities containing carrier-specific data, and tracks driver assignments for delivery execution.
 
 **Visibility Module:** Aggregates real-time tracking updates from multiple sources (carrier webhooks, driver app, warehouse staff) into a unified order status view. Manages delivery exception workflow—capturing, categorizing, prioritizing, and routing exceptions to customer service representatives based on severity, workload, and expertise. Integrates with notifications to keep stakeholders informed.
 
@@ -189,9 +189,9 @@ SLMS implements four separate Next.js applications rather than a single monolith
 
 **Landing Page (Public visitors):** Public entry point providing marketing information and unauthenticated order tracking. Enables anyone with a tracking number to check shipment status without creating an account. Routes authenticated users to appropriate applications based on their role (managers to Admin Console, customers to Customer Portal).
 
-**Admin Console (Logistics managers, warehouse staff, customer service):** Unified internal operations interface serving three roles with role-based UI adaptation. Managers access analytics dashboards and carrier configuration; warehouse staff create orders and generate shipping labels; customer service investigates issues and manages delivery exceptions. Consolidation enables cross-functional visibility while maintaining focused interfaces per role.
+**Admin Console (Logistics managers, warehouse staff, customer service):** Unified internal operations interface serving three roles with role-based UI adaptation. Managers access analytics dashboards and carrier configuration; warehouse staff process and prepare orders, generating shipping labels and documentation; customer service investigates issues and manages delivery exceptions. Consolidation enables cross-functional visibility while maintaining focused interfaces per role.
 
-**Customer Portal (End customers):** Self-service interface for order tracking, delivery preference management, and issue reporting. Prioritizes simplicity and responsive design for infrequent users across all devices. Implements strict data isolation ensuring customers only access their own orders. Provides real-time tracking updates and direct exception reporting to reduce customer service load.
+**Customer Portal (End customers):** Self-service interface for order creation, tracking, delivery preference management, and issue reporting. Prioritizes simplicity and responsive design for infrequent users across all devices. Implements strict data isolation ensuring customers only access their own orders. Provides real-time tracking updates and direct exception reporting to reduce customer service load.
 
 **Driver PWA (Delivery drivers):** Mobile Progressive Web App for field operations with offline-first design. Displays optimized delivery manifests with turn-by-turn navigation (Mapbox integration), captures proof of delivery (photos, signatures), and reports delivery exceptions. Service workers cache route data for offline access, with automatic sync when connectivity returns. Optimized for mobile constraints: large touch targets, minimal typing, battery efficiency.
 
@@ -255,7 +255,7 @@ The SLMS technical stack combines mature, production-proven technologies with se
 
 **MinIO** implements S3-compatible object storage for documents and images. Shipping labels, packing slips, customs declarations, and proof of delivery photos store in MinIO buckets, accessible through standard S3 APIs.
 
-**Shippo API** aggregates carrier integrations, providing unified access to FedEx, UPS, and DHL services. The API supports rate requests, label generation, and tracking webhooks, abstracting carrier-specific details.
+**ShipEngine and Shippo APIs** aggregate carrier integrations, providing unified access to FedEx, UPS, and DHL services. These APIs support rate requests, label generation, and tracking webhooks, abstracting carrier-specific details.
 
 **Google Gemini** provides large language model capabilities for the chatbot. The API handles natural language understanding, response generation, and text embedding (768-dimensional vectors) for semantic search.
 
@@ -376,7 +376,7 @@ The relationships between entities reflect the logistics workflow and business r
 
 **Relationship:** Every order originates from exactly one warehouse.
 
-**Business Logic:** When warehouse staff create an order, they specify which physical facility it's shipping from. This relationship enables:
+**Business Logic:** When customers create an order, they (or the system) specify which physical facility it's shipping from. This relationship enables:
 - Tracking which warehouse is responsible for preparing the shipment
 - Multi-warehouse operations where different facilities handle different orders
 - Warehouse-level performance metrics (orders processed, average processing time)
@@ -1082,8 +1082,8 @@ The six-sprint development timeline strategically sequenced feature delivery to 
 
 **Technical Achievements:**
 - Order Management module (create, read, update order lifecycle)
-- Warehouse Staff interface (order creation, label generation, pickup confirmation)
-- Customer Portal foundation (authentication, basic order creation)
+- Warehouse Staff interface (order processing, label generation, pickup confirmation)
+- Customer Portal foundation (authentication, order creation)
 - Keycloak realm configuration with role-based access control
 - PDF generation for shipping labels (Apache PDFBox)
 
@@ -1345,10 +1345,10 @@ The Customer diagram details Mariana Costa's self-service capabilities through t
 The **US14 (Create Account)** and **US15 (Login to Portal)** use cases are fully delegated to Keycloak, aligning with the external user management architectural decision (Section 3.4.2). The SLMS backend only stores customer UUIDs rather than managing authentication credentials directly. This design ensures secure, industry-standard authentication while maintaining separation of concerns.
 
 **Order Management Capabilities:**
-**US13 (Create New Order)** represents a Sprint 6 addition to the customer portal, enabling self-service order creation. Previously, orders could only be created by warehouse staff. This enhancement reduces warehouse workload and empowers customers with autonomy over their shipping needs. The "Fill Order Details" sub-use case includes validation for shipping addresses, warehouse selection, and tracking number generation.
+**US13 (Create New Order)** represents a Sprint 6 addition to the customer portal, enabling self-service order creation. This enhancement empowers customers with autonomy over their shipping needs and provides a streamlined interface for order submission. The "Fill Order Details" sub-use case includes validation for shipping addresses, warehouse selection, and tracking number generation.
 
 **Notification Mechanism:**
-**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and triggers emails/SMS when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation (either through US13 or warehouse-created orders).
+**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and triggers emails/SMS when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation through US13.
 
 **Integration with CSR Workflows:**
 **US17 (Report Delivery Issue)** creates a direct communication channel to the Customer Service Module. When customers submit issues, the "Register Exception and Notify CSR" sub-use case creates DeliveryException records visible in Rita's exception management dashboard (**US8: Manage Customer-Reported Issues**), enabling prompt follow-up and ensuring no customer issues are overlooked.
@@ -2682,7 +2682,7 @@ SLMS defines five distinct user roles, each corresponding to a key persona in th
 | **Role** | **User Type** | **Primary Responsibilities** | **Access Level** |
 |----------|---------------|------------------------------|------------------|
 | `LOGISTICS_MANAGER` | Logistics Manager | Oversee all logistics operations, view system-wide KPIs and reports, manage warehouse and staff configurations, monitor carrier performance | Full administrative access to logistics operations |
-| `WAREHOUSE_STAFF` | Warehouse Staff | Register incoming orders, generate shipping labels and documents, manage inventory, confirm carrier pickups, process shipments | Warehouse-specific operations with order modification rights |
+| `WAREHOUSE_STAFF` | Warehouse Staff | Process incoming orders, generate shipping labels and documents, manage inventory, confirm carrier pickups, prepare shipments for dispatch | Warehouse-specific operations with order modification rights |
 | `CUSTOMER_SERVICE_REP` | Customer Service Representative | Handle customer inquiries, manage delivery exceptions, resolve customer issues, communicate order status updates | Read-only access to orders with write access to exceptions and notifications |
 | `DRIVER` | Delivery Driver | View assigned delivery routes, update delivery status, capture proof-of-delivery, report delivery exceptions | Limited to own assigned deliveries with status update capabilities |
 | `CUSTOMER` | End Customer | Place new orders, track order status, view delivery history, report delivery issues | Limited to own orders and related information |
@@ -2877,7 +2877,7 @@ The security configuration establishes the following access rules:
 | **Endpoint Pattern** | **Required Role** | **Served Frontend** | **Typical Operations** |
 |----------------------|-------------------|---------------------|------------------------|
 | `/api/logistics/**` | `LOGISTICS_MANAGER` | Admin Console (Logistics view) | View KPIs, generate reports, manage users, configure warehouses and carriers |
-| `/api/warehouse/**` | `WAREHOUSE_STAFF` | Admin Console (Warehouse view) | Register orders, generate labels, manage inventory, confirm pickups |
+| `/api/warehouse/**` | `WAREHOUSE_STAFF` | Admin Console (Warehouse view) | Process orders, generate labels, manage inventory, confirm pickups |
 | `/api/customer-service/**` | `CUSTOMER_SERVICE_REP` | Admin Console (CSR view) | Search orders, manage delivery exceptions, send notifications |
 | `/api/driver/**` | `DRIVER` | Driver PWA | View assigned deliveries, update delivery status, upload proof of delivery |
 | `/api/customer/**` | `CUSTOMER` | Customer Portal | Place orders, track shipments, view order history, report issues |
@@ -4286,7 +4286,7 @@ This architecture ensures operational excellence, rapid incident response, and c
 
 The Smart Logistics Management System (SLMS) represents a comprehensive solution to the challenges faced by modern logistics operations in an increasingly competitive e-commerce landscape. The platform successfully delivers a complete order-to-delivery lifecycle management system that serves five distinct user personas through four specialized frontend applications, supported by a modular backend architecture and extensive external service integrations.
 
-From a functional perspective, the system addresses the core requirements established at project inception. The platform supports **18 user stories** spanning the needs of logistics managers, warehouse staff, customer service representatives, carriers, and end customers. These user stories translate into concrete capabilities: logistics managers can compare carrier performance metrics and generate operational reports; warehouse staff can register orders and generate shipping documentation with automated label creation; customer service representatives can track orders in real time and resolve delivery exceptions systematically; drivers receive optimized delivery manifests through a mobile Progressive Web Application with proof-of-delivery capture; and customers can track their shipments, view delivery history, and report problems through a self-service portal.
+From a functional perspective, the system addresses the core requirements established at project inception. The platform supports **18 user stories** spanning the needs of logistics managers, warehouse staff, customer service representatives, carriers, and end customers. These user stories translate into concrete capabilities: logistics managers can compare carrier performance metrics and generate operational reports; warehouse staff can process orders and generate shipping documentation with automated label creation; customer service representatives can track orders in real time and resolve delivery exceptions systematically; drivers receive optimized delivery manifests through a mobile Progressive Web Application with proof-of-delivery capture; and customers can create and track their shipments, view delivery history, and report problems through a self-service portal.
 
 The **multi-carrier integration** through ShipEngine API enables the system to compare rates and transit times across FedEx, UPS, and DHL, providing logistics managers with data-driven decision-making capabilities. The **AI-powered chatbot** delivers context-aware assistance across all frontend applications, combining large language model capabilities from Google Gemini with semantic search through Pinecone's vector database. The chatbot understands user roles, current application context, and navigation state to provide relevant answers from the comprehensive documentation repository, while also executing database queries through a structured tool-calling system when users need real-time operational data.
 
