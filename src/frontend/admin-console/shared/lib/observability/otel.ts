@@ -28,17 +28,13 @@ let tracerProvider: WebTracerProvider | null = null;
  * This is the browser-compatible way to add resource attributes
  */
 class ServiceAttributesSpanProcessor implements SpanProcessor {
-  private attributes: Record<string, string>;
-
-  constructor(attributes: Record<string, string>) {
-    this.attributes = attributes;
+  constructor(_attributes: Record<string, string>) {
+    // Service attributes are added via Resource in the TracerProvider configuration
   }
 
-  onStart(span: ReadableSpan): void {
-    // Add service attributes to every span
-    Object.entries(this.attributes).forEach(([key, value]) => {
-      span.setAttribute(key, value);
-    });
+  onStart(_span: ReadableSpan): void {
+    // Note: ReadableSpan is read-only, attributes should be set during span creation
+    // Service attributes are added via Resource in the TracerProvider configuration
   }
 
   onEnd(_span: ReadableSpan): void {

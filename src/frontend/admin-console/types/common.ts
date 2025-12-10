@@ -80,6 +80,7 @@ export interface Order {
     carrierId?: number;
     carrierCode?: string;
     carrierName?: string;
+    customerId?: string;  // Customer ID from Keycloak
     shippoShipmentId: string;
     shippoTransactionId: string;
     shipstationOrderId: string;

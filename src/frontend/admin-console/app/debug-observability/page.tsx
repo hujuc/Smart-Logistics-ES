@@ -37,7 +37,6 @@ export default function DebugObservabilityPage() {
         onClick={() => {
           console.log('Testing APM error capture...');
           try {
-            // @ts-expect-error - Intentionally throwing test error
             throw new Error('Test error from debug page');
           } catch (err) {
             console.error('Caught test error:', err);
