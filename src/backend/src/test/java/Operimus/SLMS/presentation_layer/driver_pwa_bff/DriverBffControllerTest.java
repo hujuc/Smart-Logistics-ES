@@ -7,7 +7,9 @@ import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
+import Operimus.SLMS.business_layer.rate_carrier_module.service.ShipmentService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +56,12 @@ class DriverBffControllerTest {
 
     @MockitoBean
     private OrderDocumentService orderDocumentService;
+
+    @MockitoBean
+    private ShipmentService shipmentService;
+
+    @MockitoBean
+    private DeliveryExceptionService deliveryExceptionService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
