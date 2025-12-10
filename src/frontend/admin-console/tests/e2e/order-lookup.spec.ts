@@ -219,13 +219,15 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
       // 1. Login so Keycloak token gets stored
       await loginAsWarehouse(page);
 
-      // Wait for navigation to complete after login
-      await page.waitForURL(/\/admin/, { timeout: 10000 });
-
-      // 2. Extract token from cookies (more reliable than localStorage)
-      const cookies = await context.cookies();
-      const tokenCookie = cookies.find(c => c.name === 'access_token');
-      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
+      // 2. Wait for token to be available (polling, no redirect dependency)
+      let token: string | null = null;
+      for (let i = 0; i < 20; i++) {
+        const cookies = await context.cookies();
+        const tokenCookie = cookies.find(c => c.name === 'access_token');
+        token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
+        if (token) break;
+        await page.waitForTimeout(500);
+      }
 
       if (token) {
         // Get all orders to find orphaned ones
@@ -301,17 +303,35 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     try {
       await loginAsWarehouse(setupPage);
 
-      // Wait for navigation to complete after login
-      await setupPage.waitForURL(/\/admin/, { timeout: 10000 });
+      // Wait for token to be available (don't rely on redirect)
+      // Token gets set during login callback, so wait for it to appear
+      let setupToken: string | null = null;
+      const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds
 
-      // Extract token from cookies (more reliable than localStorage)
-      const cookies = await setupPage.context().cookies();
-      const tokenCookie = cookies.find(c => c.name === 'access_token');
-      const setupToken = tokenCookie?.value || await setupPage.evaluate(() => localStorage.getItem('access_token'));
+      for (let i = 0; i < maxAttempts; i++) {
+        // Try cookies first
+        const cookies = await setupPage.context().cookies();
+        const tokenCookie = cookies.find(c => c.name === 'access_token');
+        if (tokenCookie?.value) {
+          setupToken = tokenCookie.value;
+          break;
+        }
+
+        // Fallback to localStorage
+        const localToken = await setupPage.evaluate(() => localStorage.getItem('access_token'));
+        if (localToken) {
+          setupToken = localToken;
+          break;
+        }
+
+        // Wait before next attempt
+        await setupPage.waitForTimeout(500);
+      }
 
       if (!setupToken) {
-        console.error('Available cookies:', cookies.map(c => c.name));
+        console.error('Available cookies:', (await setupPage.context().cookies()).map(c => c.name));
         console.error('localStorage access_token:', await setupPage.evaluate(() => localStorage.getItem('access_token')));
+        console.error('Current URL:', setupPage.url());
         throw new Error("Could not get authentication token for test setup");
       }
 
@@ -366,13 +386,15 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
       // 1. Login so Keycloak token gets stored
       await loginAsWarehouse(page);
 
-      // Wait for navigation to complete after login
-      await page.waitForURL(/\/admin/, { timeout: 10000 });
-
-      // 2. Extract token from cookies (more reliable than localStorage)
-      const cookies = await page.context().cookies();
-      const tokenCookie = cookies.find(c => c.name === 'access_token');
-      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
+      // 2. Wait for token to be available (polling, no redirect dependency)
+      let token: string | null = null;
+      for (let i = 0; i < 20; i++) {
+        const cookies = await page.context().cookies();
+        const tokenCookie = cookies.find(c => c.name === 'access_token');
+        token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
+        if (token) break;
+        await page.waitForTimeout(500);
+      }
 
       if (!token) {
         throw new Error("Could not read Keycloak token from browser session");
