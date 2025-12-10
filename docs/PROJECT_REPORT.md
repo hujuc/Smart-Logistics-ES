@@ -52,7 +52,7 @@ This project was developed as part of the Software Engineering course at the Uni
 The primary objective of SLMS is to provide a comprehensive logistics management solution that supports all key roles involved in the shipping and delivery process. The system addresses several core challenges:
 
 - **Real-time monitoring and decision-making:** Enable logistics managers to track key performance indicators (KPIs), compare carrier performance, and generate reports for data-driven decision-making
-- **Streamlined warehouse operations:** Support warehouse staff with order registration, automatic label and document generation, and carrier pickup confirmation
+- **Streamlined warehouse operations:** Support warehouse staff with shipment registration, automatic label and document generation, and carrier pickup confirmation
 - **Improved customer service efficiency:** Provide customer service representatives with real-time access to order status, delivery exceptions, and tools to resolve issues quickly
 - **Driver empowerment:** Equip carriers with a mobile Progressive Web Application (PWA) to view delivery manifests, receive optimized routes, and record proof of delivery
 - **Customer transparency:** Allow customers to track orders in real time, receive proactive notifications, and report delivery problems directly through a public portal
@@ -534,8 +534,6 @@ This pattern requires application code to manually maintain referential integrit
 ---
 
 # 4. User Requirements
-
-**Responsible: Hugo Castro**
 
 ## 4.1 Personas
 
@@ -1388,8 +1386,6 @@ The table below provides complete traceability between user stories (Section 4.3
 
 
 # 5. Developer Onboarding
-
-**Responsible: Hugo Castro**
 
 **Reference:** `docs/handbook/dev-handbook.md`
 
@@ -2312,8 +2308,6 @@ make up             # Fresh start
 ---
 
 # 6. Production Configuration
-
-**Responsible: João Varela**
 
 Production configuration ensures the Smart Logistics Management System is reproducible across laptops, CI runners, and the AWS EC2 host that runs the live stack. All runtimes are containerized, and configuration is centralized in `.env`/`terraform.tfvars` so that Terraform can build the application images while Docker Compose provisions the supporting services (Keycloak, MinIO, Kafka, Nginx). `infra/deploy.sh` orchestrates both layers, guaranteeing that the same artefacts and health checks are exercised locally and in the self-hosted GitHub Actions runner.
 
@@ -3763,9 +3757,7 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 
 # 10. Testing & Quality Assurance
 
-**Responsible: Hugo Sousa**
-
-## 11.1 Testing Strategy
+## 10.1 Testing Strategy
 
 **Topics to cover:**
 
@@ -3787,7 +3779,7 @@ While not strictly enforced for every feature, we encouraged a TDD mindset:
 
 ## 10.2 Test Coverage
 
-### 11.2.1 Backend Testing
+### 10.2.1 Backend Testing
 
 **Topics to cover:**
 
@@ -3847,7 +3839,7 @@ Unlike the backend, we prioritize **End-to-End (E2E)** testing over unit testing
 - **Navigation:** Tests ensure clicking links routes to the correct pages.
 - **State Management:** Verifies that UI updates correctly after user actions (e.g., badge counts incrementing).
 
-### 11.2.3 Integration Testing
+### 10.2.3 Integration Testing
 
 **Topics to cover:**
 
@@ -3864,7 +3856,7 @@ To ensure stability and speed, we mock external services during standard integra
 **Module Integration:**
 - **BFF Testing:** We verify that the Backend-for-Frontend correctly aggregates data from multiple internal services before sending it to the client.
 
-### 11.2.4 E2E Testing
+### 10.2.4 E2E Testing
 
 **Topics to cover:**
 
@@ -3878,7 +3870,7 @@ We use **Playwright** for robust browser automation.
 - **Critical Paths:** "Happy path" flows like "Create Order -> Assign Carrier -> Print Label".
 - **Error Scenarios:** Verifying error pages and toast notifications appear when the backend fails.
 
-### 11.2.5 Real Integration Tests
+### 10.2.5 Real Integration Tests
 
 **Topics to cover:**
 
@@ -3896,7 +3888,7 @@ make test-real
 docker exec slms-backend-dev ./mvnw test -Preal-integration
 ```
 
-## 11.3 Coverage Requirements
+## 10.3 Coverage Requirements
 
 **Topics to cover:**
 
@@ -3941,7 +3933,7 @@ We exclude boilerplate code that doesn't contain business logic:
 - **Ad-hoc:** We perform unscripted testing to find edge cases.
 - **Usability:** Verifying the UX feels natural and responsive.
 
-## 11.5 CI/CD Validation
+## 10.5 CI/CD Validation
 
 **Topics to cover:**
 
@@ -4360,7 +4352,7 @@ The project employs **Architecture Decision Records (ADRs)** to document signifi
 
 The **developer handbook** provides practical onboarding guidance covering environment prerequisites, initial setup procedures, project structure walkthrough, common development commands, testing strategy, and troubleshooting guides. This living documentation evolved throughout the project as the team encountered and resolved setup issues, capturing institutional knowledge that reduces onboarding friction for new contributors.
 
-## 12.5 Final Remarks
+## 12.3 Final Remarks
 
 The Smart Logistics Management System project successfully demonstrates the application of modern software engineering practices to solve real-world logistics challenges. The delivered platform provides comprehensive functionality serving five distinct user personas through specialized frontend applications, supported by a well-architected backend system with extensive external service integrations.
 
