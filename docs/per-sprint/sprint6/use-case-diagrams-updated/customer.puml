@@ -1,0 +1,63 @@
+@startuml customerUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Customer" as Customer
+
+rectangle "SLMS Tracking Portal" {
+  usecase "US13: Create New Order" as UC_CreateOrder
+  usecase "Access Order Creation Form" as UC_AccessOrderForm
+  usecase "Fill Order Details" as UC_FillDetails
+  usecase "Submit Order" as UC_SubmitOrder
+
+  usecase "US14: Create Account" as UC_CreateAccount
+  usecase "Open Registration Page" as UC_OpenRegPage
+  usecase "Complete Registration" as UC_CompleteReg
+  usecase "Redirect to Customer Portal" as UC_AccessPortal
+
+  usecase "US15: Login to Portal" as UC_Login
+  usecase "Access Login Page" as UC_AccessLogin
+  usecase "Authenticate User" as UC_Authenticate
+
+  usecase "US16: Receive Automatic Notifications" as UC_ReceiveNotifications
+  usecase "Detect Shipment Status Change" as UC_DetectStatusChange
+  usecase "Send Email/SMS Notification" as UC_SendNotification
+
+  usecase "US17: Report Delivery Issue" as UC_ReportIssue
+  usecase "Open Order Details" as UC_OpenDetails
+  usecase "Submit Delivery Issue Form" as UC_SubmitIssue
+  usecase "Register Exception and Notify CSR" as UC_NotifyCSR
+}
+
+' Main interactions
+Customer --> UC_CreateOrder
+Customer --> UC_CreateAccount
+Customer --> UC_Login
+Customer --> UC_ReceiveNotifications
+Customer --> UC_ReportIssue
+
+' Includes / subflows
+UC_CreateOrder ..> UC_AccessOrderForm : <<include>>
+UC_CreateOrder ..> UC_FillDetails : <<include>>
+UC_CreateOrder ..> UC_SubmitOrder : <<include>>
+
+UC_CreateAccount ..> UC_OpenRegPage : <<include>>
+UC_CreateAccount ..> UC_CompleteReg : <<include>>
+UC_CreateAccount ..> UC_AccessPortal : <<include>>
+
+UC_Login ..> UC_AccessLogin : <<include>>
+UC_Login ..> UC_Authenticate : <<include>>
+
+UC_ReceiveNotifications ..> UC_DetectStatusChange : <<include>>
+UC_ReceiveNotifications ..> UC_SendNotification : <<include>>
+
+UC_ReportIssue ..> UC_OpenDetails : <<include>>
+UC_ReportIssue ..> UC_SubmitIssue : <<include>>
+UC_ReportIssue ..> UC_NotifyCSR : <<include>>
+
+@enduml
