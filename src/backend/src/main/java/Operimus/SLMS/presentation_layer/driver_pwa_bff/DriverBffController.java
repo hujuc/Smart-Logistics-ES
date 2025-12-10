@@ -255,13 +255,33 @@ public class DriverBffController {
             allOrders.addAll(shipmentOrders);
         }
 
+        // Filter out orders that have active delivery exceptions
+        // Active exception statuses: OPEN, ASSIGNED, IN_PROGRESS, ESCALATED
+        List<Order> ordersWithoutActiveExceptions = allOrders.stream()
+                .filter(order -> {
+                    List<Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException> exceptions =
+                            deliveryExceptionService.getByOrderId(order.getId());
+
+                    // Include order only if it has no exceptions or all exceptions are resolved/closed
+                    return exceptions.stream().noneMatch(exception ->
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
+                    );
+                })
+                .toList();
+
+        log.info("Filtered {} orders with active exceptions out of {} total orders",
+                allOrders.size() - ordersWithoutActiveExceptions.size(), allOrders.size());
+
         // Sort orders by estimated delivery date and shipping city
-        allOrders.sort(Comparator
+        ordersWithoutActiveExceptions.sort(Comparator
                 .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DailyScheduleDeliveryResponse> deliveries = allOrders.stream()
+        List<DailyScheduleDeliveryResponse> deliveries = ordersWithoutActiveExceptions.stream()
                 .map(order -> DailyScheduleDeliveryResponse.builder()
                         .orderId(order.getId())
                         .orderReference(order.getReference())
@@ -298,8 +318,8 @@ public class DriverBffController {
         DailyScheduleResponse response = DailyScheduleResponse.builder()
                 .shipmentCode(firstShipment.getShipmentCode())
                 .shipmentId(firstShipment.getId())
-                .totalStops(allOrders.size())
-                .totalPackages(allOrders.size()) // Assuming 1 package per order for now
+                .totalStops(ordersWithoutActiveExceptions.size())
+                .totalPackages(ordersWithoutActiveExceptions.size()) // Assuming 1 package per order for now
                 .totalWeight(totalWeight)
                 .weightUnit(firstShipment.getWeightUnit())
                 .deliveries(deliveries)

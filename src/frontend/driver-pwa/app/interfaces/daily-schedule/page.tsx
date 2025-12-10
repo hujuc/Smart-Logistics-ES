@@ -565,17 +565,6 @@ export default function DriverDailySchedule() {
           </div>
         )}
 
-        {/* Bottom Navigation - Only show if there are deliveries */}
-        {sortedDeliveries.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-            <button
-              onClick={handleGoToNextOrder}
-              className="w-full bg-black text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
-            >
-              Go to Next Order
-            </button>
-          </div>
-        )}
       </div>
   );
 }
