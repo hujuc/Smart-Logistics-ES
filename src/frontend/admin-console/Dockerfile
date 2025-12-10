@@ -27,6 +27,8 @@ ENV NEXT_PUBLIC_TRACING_SAMPLING_RATE=$NEXT_PUBLIC_TRACING_SAMPLING_RATE
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Copy shared components from parent directory
+COPY ../shared ../shared
 
 RUN npm run build
 
