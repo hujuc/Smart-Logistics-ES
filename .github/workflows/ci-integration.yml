@@ -111,7 +111,7 @@ jobs:
           timeout 60 bash -c 'until docker exec slms-postgres-ci pg_isready -U slms; do sleep 2; done'
           
           echo "Waiting for Keycloak..."
-          timeout 120 bash -c 'until curl -f http://localhost:28180/health/ready 2>/dev/null; do sleep 2; done'
+          timeout 180 bash -c 'until curl -f http://localhost:28180/realms/slms 2>/dev/null | grep -q "realm"; do sleep 3; done'
           
           echo "Waiting for MinIO..."
           timeout 60 bash -c 'until curl -f http://localhost:39000/minio/health/live 2>/dev/null; do sleep 2; done'
@@ -120,8 +120,8 @@ jobs:
           timeout 60 bash -c 'until docker exec slms-kafka-ci kafka-broker-api-versions --bootstrap-server localhost:9092 2>/dev/null; do sleep 2; done'
           
           echo "All services are ready!"
-          echo "Waiting additional 10 seconds for Keycloak realm import..."
-          sleep 10
+          echo "Waiting additional 5 seconds for stability..."
+          sleep 5
 
       - name: Run backend integration tests
         working-directory: src/backend
@@ -227,9 +227,9 @@ jobs:
       - name: Wait for services to be ready
         run: |
           echo "Waiting for Keycloak..."
-          timeout 120 bash -c 'until curl -f http://localhost:28180/health/ready 2>/dev/null; do sleep 2; done'
-          echo "Waiting additional 10 seconds for Keycloak realm import..."
-          sleep 10
+          timeout 180 bash -c 'until curl -f http://localhost:28180/realms/slms 2>/dev/null | grep -q "realm"; do sleep 3; done'
+          echo "Waiting additional 5 seconds for stability..."
+          sleep 5
           
           echo "Waiting for landing page..."
           timeout 300 bash -c 'until curl -fsSL http://localhost/ > /dev/null; do sleep 5; done'
