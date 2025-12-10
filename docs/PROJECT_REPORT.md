@@ -1847,247 +1847,481 @@ The BFF pattern adds minimal overhead (one layer of method delegation) while pro
 
 # 8. Key Features & Modules
 
-**Responsible: Henrique Teixeira**
-
-*[8-10 pages organized by frontend application and user stories]*
+The SLMS platform delivers comprehensive logistics functionality through four distinct frontend applications, each optimized for specific user workflows, supported by eight specialized backend modules. This section details the key features implemented across the system, organized by frontend application with clear mappings to the 18 user stories that drive development priorities.
 
 ## 8.1 Admin Console Features
 
-**User Stories**: US1-US3 (Logistics Manager), US4-US6 (Warehouse Staff), US7-US9 (Customer Service Representative)
+The Admin Console serves as the unified operations interface for three internal user roles: Logistics Managers, Warehouse Staff, and Customer Service Representatives. The interface adapts dynamically based on the authenticated user's role, exposing relevant features while hiding unauthorized capabilities.
 
 ### 8.1.1 Logistics Manager Dashboard (US1-US3)
 
-**Topics to cover:**
+**KPI Monitoring Dashboard (US1: Daily Monitoring of KPIs)**
 
-**KPI Monitoring (US1):**
-- Real-time metrics dashboard
-- Orders per day/week/month
-- On-time delivery percentage
-- Average delivery time
-- Exception rate
-- Trend visualization
+The Logistics Manager dashboard provides real-time visibility into operational performance through a comprehensive KPI monitoring interface. The dashboard displays critical metrics through interactive cards organized in a responsive masonry grid layout that adapts to screen size and user preferences.
 
-**Carrier Performance Comparison (US2):**
-- Cost comparison across carriers
-- Delivery time analysis
-- Reliability metrics
-- Service level comparison
-- On-time delivery rates per carrier
+Key performance indicators include:
+- **Orders Today**: Total orders received with breakdown by warehouse location and current status (pending, in transit, delivered)
+- **Pending Pickups**: Orders ready for carrier collection, classified by urgency (Overdue requiring immediate attention, Due Soon within next 4 hours, On Time with buffer remaining)
+- **In Transit Now**: Active deliveries currently en route with forecasted delivery times based on carrier estimated transit duration
+- **Delivered Today**: Successfully completed deliveries with on-time performance calculation (percentage meeting original estimated delivery date)
+- **Total Shipments**: Aggregate shipment count with status distribution across pending, assigned, picked up, in transit, and delivered states
+- **Average Cost/Shipment**: Mean shipping cost across all carriers with currency formatting and trend indicator showing week-over-week change
+- **Average Delivery Time**: Mean duration from order creation to delivery completion, segmented into time range buckets (same-day, 1-2 days, 3-5 days, 5+ days) for distribution analysis
+- **Total Exceptions**: Count of delivery problems requiring resolution, categorized by exception type (recipient absent, wrong address, damaged package, carrier delay) and severity level (Low, Medium, High, Critical)
 
-**Report Generation (US3):**
-- PDF export
-- Excel/CSV export
-- Custom date ranges
-- Scheduled reports
-- Custom KPI selections
+Each KPI card supports expandable detail views revealing underlying data, trend charts showing daily/weekly/monthly patterns, and drill-down navigation to related functional areas. The dashboard refreshes automatically every 30 seconds to maintain real-time accuracy, with manual refresh capability for immediate updates.
 
-**Backend modules**: Reporting, Rate Carrier
+**Carrier Performance Comparison (US2: Carrier Comparison for New Shipments)**
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/reporting_module/`
+The carrier comparison feature enables logistics managers to evaluate shipping options across multiple carriers based on cost, transit time, and historical performance metrics. When processing new orders, managers access the carrier comparison interface to request rate quotes simultaneously from integrated carriers (FedEx, UPS, DHL via Shippo and ShipEngine APIs).
+
+The system displays quote results in a comparative table showing:
+- Shipping cost estimates with currency conversion where applicable
+- Transit time ranges (minimum and maximum expected days)
+- Service level descriptions (express overnight, standard ground, economy)
+- Carrier reliability scores based on historical on-time delivery percentage
+- Recent performance trends for each carrier (improving, stable, declining)
+
+Managers can sort comparisons by cost (ascending to find cheapest option), speed (ascending to find fastest delivery), or reliability score (descending to prioritize dependable carriers). Once a carrier is selected, the system automatically assigns the order to that carrier's shipment queue and generates the appropriate shipping label.
+
+Beyond immediate rate comparison for individual orders, the interface provides historical carrier performance analysis. Managers can query performance metrics over custom date ranges, comparing carriers across dimensions including average cost per package, mean delivery time, on-time delivery rate (percentage of shipments delivered by estimated date), and exception frequency (delivery problems per 100 shipments). This data-driven comparison supports strategic carrier relationship decisions and contract negotiations.
+
+**Report Generation & Export (US3: Generating Performance Reports)**
+
+The reporting system transforms operational data into actionable business intelligence through customizable report generation. Logistics managers access pre-built report templates and create ad-hoc reports based on specific analytical needs.
+
+Standard report types include:
+- **Performance Reports**: Comprehensive operational metrics including order volumes, on-time delivery rates, average costs, and delivery times, aggregated by time period (daily, weekly, monthly) and optionally segmented by warehouse or carrier
+- **Cost Analysis Reports**: Financial breakdowns showing total shipping spend, cost per package by carrier, cost trends over time, and cost variance analysis comparing budgeted versus actual spending
+- **Exception Analysis Reports**: Detailed examination of delivery problems including exception frequency by type, mean time to resolution, CSR workload distribution, and customer satisfaction ratings for resolved issues
+
+Report generation supports flexible date range selection with preset options (last 7 days, last 30 days, last quarter, year-to-date, custom range). Managers can export reports in multiple formats:
+- **PDF**: Formatted documents with executive summary, charts, and detailed tables, suitable for presentations and stakeholder distribution
+- **Excel (XLSX)**: Structured spreadsheets with raw data tables enabling further analysis, pivot tables, and custom calculations
+- **CSV**: Machine-readable format for import into business intelligence tools or data warehouses
+
+The system maintains a report history, allowing managers to access previously generated reports without re-running expensive queries. Report scheduling functionality enables automatic generation and email delivery on recurring schedules (daily at 8 AM, weekly on Monday mornings, monthly on the 1st), ensuring stakeholders receive timely updates without manual intervention.
 
 ### 8.1.2 Warehouse Operations (US4-US6)
 
-**Topics to cover:**
+**Order Registration & Processing (US4: Processing a New Order)**
 
-**Order Registration and Processing (US4):**
-- Customer/warehouse order intake
-- Order validation
-- Tracking number generation
-- Database persistence
-- Multi-warehouse support
-- Order assignment to warehouse
+The order registration interface provides warehouse staff with streamlined order intake capabilities supporting both customer-initiated online orders and manual entry for phone or walk-in orders. The order creation workflow guides staff through comprehensive data capture while validating inputs to prevent errors that could cause downstream delivery problems.
 
-**Label and Document Generation (US5):**
-- Shipping labels (PDF)
-- Packing slips
-- Commercial invoices
-- QR code generation for tracking
-- Print queue management
-- Batch printing support
+The order form collects:
+- **Customer Information**: Name, phone number, email address for delivery notifications and customer service contact
+- **Shipping Address**: Complete destination including street address (line 1 and optional line 2), city, state/province, postal code, and country selection from validated list
+- **Warehouse Assignment**: Selection of originating warehouse from active facility list, determining which warehouse is responsible for preparing and releasing the shipment
+- **Package Details**: Description of contents, package dimensions (length, width, height in cm), weight (kg), and optional special handling flags (fragile, refrigerated, hazardous materials)
 
-**Carrier Pickup Confirmation (US6):**
-- Pickup scheduling
-- Pickup confirmation
-- Status update to PICKED_UP
-- Order lifecycle tracking
+The system performs real-time address validation as staff enters shipping details, flagging potential issues like invalid postal codes, missing required fields, or ambiguous street addresses requiring clarification. Upon successful validation, the system generates a unique order reference number (format: ORD-YYYY-NNNN) and tracking number (format: TRK-XXXXXXXXXX) for customer communication.
 
-**Warehouse-Specific Views:**
-- Dashboard for warehouse staff
-- Order filtering by warehouse
-- Performance metrics
-- Picking and packing workflow
+The order table interface displays all orders with filtering by status (pending, ready for dispatch, assigned to carrier, in transit, delivered), search by order reference or customer name, and sorting by creation date or priority level. Quick action buttons enable common operations: view order details, generate shipping label, assign to carrier, or update order status.
 
-**Backend modules**: Order, Rate Carrier
+Warehouse-specific views filter orders to show only those assigned to the staff member's warehouse, preventing cross-warehouse visibility and focusing attention on relevant workload. The dashboard displays quick statistics: total packages awaiting label generation, orders ready for carrier dispatch, and packages currently in local facility.
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/order_module/`
+**Shipping Label & Document Generation (US5: Generating Shipping Labels)**
+
+Document generation services automate the creation of shipping labels, packing slips, and commercial invoices required for order fulfillment and carrier pickup. Warehouse staff trigger document generation through the order detail view, with the system producing carrier-compliant documents based on order data and selected shipping service.
+
+The shipping label generation process:
+1. Retrieves order and shipment details from database (destination address, package dimensions, weight, service level)
+2. Calls carrier API (Shippo or ShipEngine) to generate label with carrier-specific formatting and tracking barcode
+3. Downloads PDF label from carrier API response
+4. Stores PDF in MinIO object storage with reference URL saved in order record
+5. Presents download link to warehouse staff for immediate printing
+
+Shipping labels include all carrier-required elements: sender and recipient addresses, tracking barcode (Code 128 or QR code depending on carrier), service level indicator, package weight, special handling symbols (if applicable), and carrier logo and branding. Labels conform to thermal printer specifications (4x6 inch format) for direct printing on warehouse label printers.
+
+Packing slip generation produces internal documents listing order contents, customer information, and special instructions. These documents accompany packages during warehouse picking and packing operations, ensuring correct items are included and special handling requirements are communicated to warehouse and driver staff.
+
+QR codes generated for order tracking enable quick status updates through mobile device scanning. Warehouse staff and drivers scan QR codes at key checkpoints (packing complete, ready for pickup, loaded on delivery vehicle, delivered) to automatically update order status without manual data entry.
+
+Batch document generation supports high-volume warehouse operations, allowing staff to select multiple orders and generate all labels simultaneously for efficient processing during peak periods.
+
+**Carrier Pickup Confirmation (US6: Confirming Carrier Pickup)**
+
+The pickup confirmation workflow enables warehouse staff to record when carriers collect shipments from the facility, triggering status updates and customer notifications. When drivers arrive for scheduled pickups, warehouse staff access the pickup confirmation interface displaying orders ready for that carrier.
+
+The confirmation process:
+1. Display list of orders assigned to carrier with pending pickup status
+2. Optionally scan package QR codes to verify correct packages are being released
+3. Record pickup timestamp and driver identifier (name or employee number)
+4. Update order status to PICKED_UP in database
+5. Trigger notification to customers informing them shipment has left the warehouse and is now in carrier possession
+
+The system creates a collection record documenting the pickup event, including the count of packages released, warehouse staff member who confirmed pickup, and carrier driver who accepted custody. This audit trail supports dispute resolution if packages are later reported missing or if carrier billing discrepancies arise.
+
+Integration with carrier pickup schedules displays expected pickup times for each carrier (e.g., FedEx daily pickup at 3 PM, UPS on-demand pickup requested), helping warehouse staff prepare shipments in advance and ensuring packages meet carrier cutoff times for intended service levels.
 
 ### 8.1.3 Customer Service Tools (US7-US9)
 
-**Topics to cover:**
+**Order Status Lookup (US7: Quick Order Status Lookup)**
 
-**Order Status Lookup (US7):**
-- Quick order search by tracking number
-- Real-time status information
-- Order history and events
-- Customer details view
+Customer service representatives require fast, comprehensive access to order information to respond to customer inquiries efficiently. The unified search interface enables CSRs to locate orders through multiple identifier types: order reference number (ORD-YYYY-NNNN), tracking number (TRK-XXXXXXXXXX), or support ticket number for ongoing issues.
 
-**Delivery Exception Handling (US8):**
-- Exception reporting (driver/customer initiated)
-- Exception categorization (type, severity, priority)
-- CSR assignment workflow
-- SLA tracking (response time, resolution time)
-- Resolution history and notes
-- Escalation procedures
+Search results display:
+- **Current Order Status**: Real-time state (pending, assigned to carrier, in transit, out for delivery, delivered) with timestamp of last status update
+- **Order Timeline**: Complete event history showing status transitions with timestamps, responsible user identifiers, and optional status change notes
+- **Customer Information**: Name, phone, email, shipping address for direct customer contact if clarification needed
+- **Carrier Details**: Assigned carrier name, tracking number for carrier's website, and link to external carrier tracking page for additional detail
+- **Delivery Estimate**: Expected delivery date based on carrier transit time calculation and current shipment location
 
-**Customer Notification Management (US9):**
-- Email and SMS notifications
-- Notification templates
-- Event-driven alerts
-- Customer communication log
+The interface provides direct action buttons for common CSR tasks: create delivery exception if customer reports problem, send status update notification to customer, escalate to supervisor for complex issues, or add internal notes to order record documenting customer interaction.
 
-**Backend modules**: Visibility, Notification, Order
+Real-time status information ensures CSRs provide customers with accurate, current data rather than outdated information. The system automatically refreshes order details every 60 seconds when the order detail view is open, capturing carrier tracking updates and internal status changes without manual refresh.
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/visibility_module/`
+**Delivery Exception Management (US8: Resolving a Delivery Issue)**
+
+Delivery exceptions represent problems requiring CSR intervention to resolve and complete delivery. Exceptions originate from multiple sources: driver-reported issues during delivery attempts, customer-reported problems through portal or support tickets, or system-detected anomalies (shipment delayed beyond SLA threshold, tracking updates indicating failed delivery attempts).
+
+The exception management interface displays all active exceptions with filtering by:
+- **Status**: Open (newly reported, unassigned), Assigned (CSR assigned but resolution in progress), In Progress (CSR actively working on resolution), Resolved (problem fixed, pending closure), Closed (customer confirmed resolution)
+- **Priority**: System-calculated based on exception type severity, customer tier, and time since creation (Low, Medium, High, Critical)
+- **Exception Type**: Recipient absent, incorrect/insufficient address, damaged package, lost package, carrier delay, refused delivery, other
+
+Each exception record contains:
+- Detailed problem description from reporter (driver notes, customer explanation, system alert message)
+- Associated order and shipment identifiers for full context
+- Timestamp when exception was created
+- Current assignee (CSR responsible for resolution) or unassigned status
+- Resolution notes documenting actions taken (contacted customer, arranged redelivery, issued refund, filed carrier claim)
+- SLA deadline calculated from exception creation time plus target resolution time based on severity (Critical: 2 hours, High: 4 hours, Medium: 24 hours, Low: 48 hours)
+- SLA breach indicator flagging exceptions exceeding target resolution time
+
+CSRs resolve exceptions through guided workflows:
+1. Review exception details and order history
+2. Contact customer via phone or email to clarify problem and discuss resolution options
+3. Coordinate with carrier if redelivery needed, address correction required, or carrier error suspected
+4. Update exception status with detailed resolution notes
+5. Verify customer satisfaction before marking resolved
+6. Close exception after customer confirmation or elapsed validation period
+
+The system tracks resolution time metrics for performance monitoring, identifying CSRs requiring additional training or workflow bottlenecks causing delays. Customer feedback on resolution quality (satisfaction rating 1-5 stars, optional comments) informs continuous improvement efforts.
+
+**Support Ticket Management (US9: Handling Customer-Reported Issues)**
+
+Beyond delivery exceptions, customers may report general issues or inquiries through support tickets. The ticket management system provides CSRs with a comprehensive interface for tracking and resolving customer contacts across multiple categories: delivery questions, billing disputes, account management, general inquiries.
+
+The tickets page displays all tickets with advanced filtering capabilities:
+- **Status**: Open, In Progress, Escalated (requires supervisor intervention), Resolved, Closed
+- **Priority**: High (urgent customer issue requiring immediate attention), Medium (important but not time-critical), Low (general question or minor issue)
+- **Category**: Delivery tracking, billing question, account management, technical support, feedback/complaint
+- **Assignee**: Filter to view tickets assigned to specific CSRs or team
+
+Feature flags control ticket visibility modes:
+- **All Tickets View**: CSRs see all tickets in the system, enabling team collaboration and workload balancing when colleagues are unavailable
+- **My Tickets View**: CSRs see only tickets assigned to them, reducing cognitive load and focusing attention on individual responsibility
+
+The ticket table supports multi-column sorting (priority descending, then creation date ascending to surface old high-priority tickets first), search by ticket number, customer name, or problem description keywords, and bulk actions for efficient processing (assign multiple tickets to CSR, update status in batch, add tags for categorization).
+
+Ticket detail view provides complete interaction history: customer's original issue description, all CSR responses and internal notes, status change timeline, and resolution outcome. CSRs compose responses with rich text formatting for clarity, attach relevant documents or screenshots, and reference related orders or exceptions for complete context.
 
 ## 8.2 Driver PWA Features
 
-**User Stories**: US10-US13 (Driver/Carrier)
+The Driver Progressive Web Application (PWA) delivers mobile-optimized delivery management functionality designed for field operations. The PWA architecture enables offline capability, background synchronization, and native-app-like performance while avoiding app store distribution complexity.
 
-### 8.2.1 Delivery Manifest View (US10)
+### 8.2.1 Delivery Manifest View (US10: View Delivery Manifest)
 
-**Topics to cover:**
-- List of deliveries for the day
-- Route sequence
-- Order details per delivery
-- Customer addresses
-- Mobile-optimized interface
+The daily delivery manifest provides drivers with a comprehensive overview of assigned deliveries for the current day. Upon loading the manifest view, drivers see:
+- **Total Stops**: Count of distinct delivery addresses requiring visits
+- **Total Packages**: Aggregate package count across all deliveries (multiple packages may deliver to single address)
+- **Route Summary**: High-level route information including estimated total distance and projected completion time
 
-### 8.2.2 Route Optimization (US11)
+The delivery stop list displays each destination with essential information:
+- **Customer Name**: Recipient expecting delivery
+- **Delivery Address**: Complete street address, city, postal code formatted for quick recognition
+- **Contact Information**: Phone number for customer contact if access issues arise
+- **Package Count**: Number of packages to deliver at this stop
+- **Package Weight**: Total weight to assist with vehicle loading and delivery prioritization
+- **Special Instructions**: Customer-provided delivery notes (gate code, "leave at side door", "signature required", "ring doorbell")
+- **Priority Indicator**: Visual flag for time-sensitive or high-value deliveries requiring careful handling
+- **Time Window**: Customer-specified delivery window if applicable (e.g., "deliver between 2-4 PM")
 
-**Topics to cover:**
-- Route planning support
-- Route-based driver assignment
-- Optimized delivery sequence
-- Navigation integration
+Drivers can expand each stop to view detailed order information, including individual package tracking numbers, dimensions, and order reference numbers for verification. The interface supports sorting by route sequence (optimized delivery order), time window (urgent deliveries first), or priority level (high-value packages requiring extra care).
 
-### 8.2.3 Proof of Delivery Capture (US12)
+Mobile optimization ensures usability during field operations: large touch targets for easy selection while wearing gloves, high-contrast display readable in bright sunlight, and minimal data usage through efficient API calls and aggressive caching. The manifest view loads quickly even on slower cellular networks, prioritizing critical information and lazy-loading detailed package data as needed.
 
-**Topics to cover:**
+### 8.2.2 Route Optimization (US11: Route Optimization)
 
-**Photo Capture:**
-- Mobile camera integration
-- Image compression
-- Multiple photo support
+Route optimization transforms the delivery manifest into an efficient, turn-by-turn navigation plan minimizing travel time and fuel consumption. The system integrates Mapbox Optimization API to calculate the most efficient delivery sequence considering current traffic conditions, delivery time windows, and geographic clustering.
 
-**Digital Signature Collection:**
-- Canvas-based signature capture
-- Signature image generation
-- Recipient name input
+The optimization process:
+1. **Current Location Detection**: Uses browser Geolocation API to determine driver's starting position (default to warehouse location if permission denied)
+2. **Destination Waypoint Extraction**: Converts delivery addresses to geographic coordinates (latitude, longitude) through Mapbox geocoding
+3. **Route Calculation**: Submits driver location and delivery waypoints (up to 12 stops) to Mapbox Optimization API, which returns optimized delivery sequence minimizing total travel time considering real-time traffic
+4. **Route Presentation**: Displays optimized route on interactive map with numbered markers indicating delivery order and line path showing driving route between stops
 
-**Real-Time Status Updates:**
-- Status change to DELIVERED
-- Timestamp recording
-- Location capture (if available)
+Drivers view:
+- **Turn-by-Turn Directions**: Step-by-step navigation instructions for reaching each delivery address
+- **Estimated Time of Arrival (ETA)**: Projected arrival time at each stop based on current time, traffic conditions, and driving speed
+- **Distance to Next Stop**: Remaining distance in km helping drivers anticipate next delivery
+- **Total Route Duration**: Estimated time to complete all deliveries on manifest
 
-**MinIO Storage Integration:**
-- Upload POD images to MinIO
-- Secure storage
-- Retrieval for CSR and customer view
-- Retention policy
+The navigation interface updates continuously, recalculating ETA as drivers progress through deliveries and traffic conditions change. If drivers complete deliveries out of suggested sequence (customer availability constraints, access restrictions), the system re-optimizes remaining route dynamically.
 
-**Reference:** `docs/per-sprint/sprint4/shipment-documents-guide.md`
+Real-time location tracking enables route progress monitoring, with the system watching driver position using Geolocation API watchPosition() method. As drivers approach delivery locations, the interface highlights the next stop and provides advance notification ("Approaching 123 Main Street in 2 minutes") to prepare for delivery.
 
-### 8.2.4 Exception Reporting (US13)
+### 8.2.3 Proof of Delivery Capture (US12: Proof of Delivery Capture)
 
-**Topics to cover:**
-- Driver-initiated exception reporting
-- Automatic exception detection
-- Failed delivery documentation
-- Issue type selection
-- Photo evidence upload
+Proof of delivery (POD) documentation provides verified confirmation that packages reached intended recipients, protecting carriers from false delivery claims and enabling customer service to confirm successful completion.
 
-**Backend modules**: Route, Order, Visibility
+Drivers capture POD through multiple methods:
+- **Digital Signature**: Touch-optimized canvas interface enables recipients to sign directly on mobile device screen using finger or stylus. Signatures are captured as PNG images and compressed for efficient transmission over cellular networks.
+- **Delivery Photo**: Mobile camera integration allows drivers to photograph packages after delivery (package at doorstep, in secure location, handed to recipient). The system supports multiple photos per delivery if multiple packages or different placement locations require documentation.
+- **Delivery Notes**: Text input for additional context (delivered to neighbor at recipient request, left in mail room, handed to receptionist John at building entrance). Notes provide qualitative complement to visual POD.
+- **Recipient Name Capture**: Input field for recipient name when signature collected, linking the signature to specific individual rather than anonymous confirmation
+
+The POD capture workflow:
+1. Driver selects delivered stop from manifest
+2. POD modal displays with signature canvas, photo upload button, and notes field
+3. Driver captures signature (required), optionally adds photos and notes
+4. System validates signature is not empty (prevents accidental blank signatures)
+5. Images are compressed to reduce file size while maintaining legibility
+6. POD data uploads to backend API with delivery status update
+7. Backend saves images to MinIO object storage and updates order status to DELIVERED
+8. System records delivery timestamp and driver location (if geolocation available)
+
+The system enforces proximity validation, confirming driver's GPS location is within reasonable distance of delivery address (within 200 meters) before accepting delivery completion. This prevents fraudulent delivery confirmations where drivers mark packages delivered without actually completing delivery.
+
+POD images store securely in MinIO with retention policies ensuring compliance with data retention requirements while minimizing storage costs. Customer service representatives and customers can retrieve POD documentation through authenticated requests, viewing proof when delivery disputes arise or customers want confirmation of successful delivery.
+
+### 8.2.4 Exception Reporting (US13: Exception Reporting)
+
+Delivery problems identified during delivery attempts require structured reporting to ensure appropriate resolution workflows engage. The driver exception reporting interface enables field staff to document issues encountered during delivery execution.
+
+Exception types drivers can report include:
+- **Recipient Absent**: No one available at delivery address to receive package requiring signature or secure handoff
+- **Wrong Address**: Address on shipping label is incorrect, incomplete, or does not match physical location (customer provided wrong address, address formatting error)
+- **Damaged Package**: Package sustained damage during transit or delivery process (water damage, crushed box, leaking contents)
+- **Access Issues**: Cannot reach delivery location (gated community with no gate code, business closed during delivery attempt, hazardous road conditions preventing safe access)
+- **Other**: Catch-all for problems not fitting standard categories, with required text description
+
+The exception reporting workflow:
+1. Driver encounters delivery problem preventing successful completion
+2. Accesses exception reporting modal from POD interface
+3. Selects exception type from categorized list
+4. Enters detailed description explaining specific circumstances (e.g., "Recipient not home, no secure location to leave package, neighbor refused to accept")
+5. Optionally attaches photos documenting problem (locked gate, damaged package, incorrect address signage)
+6. Submits exception report
+
+The system creates a delivery exception record linked to the order, automatically assigns it to customer service queue based on exception type routing rules, and updates order status to reflect delivery problem. Customers receive automatic notification that delivery was attempted but could not be completed, along with instructions for resolution (reschedule delivery, provide corrected address, contact customer service).
+
+Exception reporting creates accountability trail, documenting driver diligence in attempting delivery and providing customer service with context for resolution. The system tracks exception frequency by driver and by delivery route, identifying problem addresses (frequent access issues suggesting address database correction needed) and driver training opportunities (recurring damaged package reports indicating handling improvement needed).
 
 ## 8.3 Customer Portal Features
 
-**User Stories**: US14-US15, US17-US18 (Customer)
+The Customer Portal provides end customers with self-service capabilities for order tracking, account management, and issue reporting, reducing customer service contact volume while improving customer experience through transparency and control.
 
 ### 8.3.1 Account Management (US14-US15)
 
-**Topics to cover:**
-- Account creation (US14)
-- Secure login (US15)
-- Profile management
-- Delivery preferences
-- Notification preferences
+**Account Creation (US14: Creating an Account)**
 
-### 8.3.2 Order Tracking (US17)
+New customers access the Customer Portal through the Landing Page, clicking "Create Account" to initiate registration. The system redirects users to Keycloak's registration interface, which handles account creation outside the SLMS application database.
 
-**Topics to cover:**
-- Real-time order tracking
-- Tracking by order number
-- Delivery status updates
-- Delivery notifications
-- Estimated delivery time
-- Order history
+The registration workflow:
+1. User provides email address (serves as unique username), password (meeting strength requirements), and basic profile information (first name, last name)
+2. Keycloak validates email format, checks for duplicate accounts, and enforces password complexity rules
+3. Upon successful validation, Keycloak creates user account and sends email verification link
+4. User clicks verification link to confirm email ownership
+5. Keycloak activates account and assigns CUSTOMER role
+6. User can now log in to Customer Portal using email and password
 
-### 8.3.3 Issue Reporting (US18)
+This delegated registration approach leverages Keycloak's robust identity management capabilities including password encryption, account lockout policies, and email verification workflows, avoiding custom authentication implementation.
 
-**Topics to cover:**
-- Customer-initiated issue reporting
-- Delivery problem documentation
-- Communication with customer service
-- Issue status tracking
-- Resolution feedback
+**Secure Login (US15: Logging In)**
 
-**Backend modules**: User Management, Order, Visibility
+Authenticated access to the Customer Portal protects sensitive order information and personal data from unauthorized access. Login follows OAuth 2.0/OpenID Connect standards:
+1. User enters credentials (email, password) on Landing Page login form
+2. Landing Page sends credentials to backend authentication API
+3. Backend forwards credentials to Keycloak token endpoint using password grant flow
+4. Keycloak validates credentials and returns JWT access token (5-minute expiry) and refresh token (7-day expiry)
+5. Backend returns access token to frontend and stores refresh token in HTTP-only cookie
+6. Frontend stores access token in localStorage for API requests
+7. User is redirected to Customer Portal with authenticated session
+
+JWT tokens contain user claims including unique user identifier, email, roles, and profile information. All subsequent API requests include the access token in Authorization header, enabling backend to verify user identity and enforce authorization rules.
+
+Session management provides seamless user experience: when access tokens near expiry, the frontend automatically requests token refresh using the HTTP-only refresh token cookie. This process happens transparently without requiring users to log in again, maintaining active sessions for up to 7 days (refresh token lifetime).
+
+Secure logout follows clean teardown: frontend calls backend logout endpoint, backend revokes refresh token at Keycloak, frontend clears access token from localStorage, and user is redirected to Landing Page.
+
+### 8.3.2 Order Management
+
+**New Order Creation**
+
+Customers with accounts can create new orders directly through the Customer Portal, initiating shipments without contacting warehouse staff or customer service. The order creation form guides customers through required information:
+- **Warehouse Selection**: Choose originating warehouse from available active facilities (customers typically select nearest geographic warehouse unless specific facility required)
+- **Shipping Address**: Complete destination address including street address (two lines for apartment numbers, suite identifiers), city, state/province, postal code, country
+- **Contact Information**: Phone number and email for delivery notifications and customer service contact (pre-filled from account profile, editable for specific order)
+- **Package Description**: Brief description of contents for reference and carrier documentation
+- **Special Instructions**: Optional delivery instructions (gate code, preferred delivery time, "leave at side door")
+
+The system validates address format during entry, flagging potential errors (invalid postal code format, missing required city name) before order submission. Address preview displays formatted address for customer review before final confirmation.
+
+Upon successful order creation, the system generates order reference number and tracking number, displays confirmation screen with tracking link, and sends email confirmation with order details. The order enters warehouse processing queue, following the same fulfillment workflow as orders created by warehouse staff.
+
+### 8.3.3 Real-Time Tracking & Notifications (US16-US17)
+
+**Order Tracking (US16-US17: Real-time Tracking and Automatic Notifications)**
+
+Real-time order tracking provides customers with transparent visibility into shipment status and location without contacting customer service. The tracking interface supports two access modes:
+- **Authenticated Tracking**: Logged-in customers view all their orders with complete history
+- **Public Tracking**: Anyone with tracking number can check status without account login
+
+Tracking information displayed includes:
+- **Current Status**: Real-time shipment state (Order Created, Ready for Pickup, In Transit, Out for Delivery, Delivered)
+- **Status History**: Complete timeline showing all status transitions with timestamps and location information when available
+- **Expected Delivery Date**: Estimated delivery date calculated from carrier transit time and current shipment progress
+- **Carrier Information**: Assigned carrier name and tracking number for carrier website lookup if more detailed tracking needed
+- **Delivery Location**: Current shipment location if carrier provides intermediate tracking updates (in transit to distribution center, out for delivery in destination city)
+
+The tracking interface automatically refreshes status information every 60 seconds when actively viewed, ensuring customers see current information without manual refresh. Backend aggregates tracking data from multiple sources: internal SLMS order status updates, carrier webhook notifications, and driver status updates from the PWA.
+
+**Notification System**
+
+Proactive notifications keep customers informed of shipment progress without requiring manual tracking checks. The event-driven notification system sends email and SMS messages when key milestones occur:
+- **Order Confirmation**: Sent immediately when order created, confirming receipt and providing tracking number
+- **Shipment Pickup**: Sent when carrier collects package from warehouse, indicating delivery process has begun
+- **In Transit**: Sent when shipment departs origin facility and is en route to destination
+- **Out for Delivery**: Sent morning of delivery day, notifying customer to expect delivery
+- **Delivered**: Sent immediately upon successful delivery, confirming completion
+- **Delivery Exception**: Sent when delivery problem occurs, explaining issue and next steps
+
+Customers control notification preferences through portal settings, enabling or disabling specific notification types and selecting preferred delivery channels (email only, SMS only, both). The system respects these preferences while ensuring critical notifications (delivery exceptions requiring customer action) are always delivered.
+
+Notification templates support multi-language content based on customer account language preference, with English and Portuguese translations ensuring culturally appropriate communication.
+
+### 8.3.4 Issue Reporting (US18: Issue Reporting)
+
+**Problem Reporting Interface**
+
+When delivery problems occur, customers report issues directly through the Customer Portal rather than calling customer service, creating structured exception records that route to appropriate resolution workflows.
+
+The issue reporting form allows customers to:
+- Select affected order from their order history
+- Choose problem category: Package not received, package damaged, wrong items delivered, delivery attempted but customer not notified, other issue
+- Provide detailed description of problem explaining specific circumstances
+- Upload photos documenting issue (damaged package, incorrect items, failed delivery notice)
+- Submit report for customer service review
+
+Upon submission, the system creates delivery exception record with customer as reporter, sends confirmation email acknowledging report receipt, assigns exception to customer service queue, and provides ticket number for reference.
+
+**Support Ticket Tracking**
+
+Customers track issue resolution through the Support Tickets page displaying all tickets they've created. The interface shows:
+- Ticket number for reference in customer service interactions
+- Issue description summary
+- Current status (Open, In Progress, Resolved, Closed)
+- Creation date and last update timestamp
+- Assigned customer service representative if available
+- Resolution notes when CSR provides updates
+
+Customers can view detailed ticket history showing all CSR responses, status changes, and resolution actions taken. When CSRs request additional information, customers receive notification and can reply through ticket detail view, maintaining complete communication thread in single location.
+
+Feature flags control the ticket list display mode (card view with visual priority indicators versus compact table view maximizing information density), enabling user interface experimentation without code deployment.
 
 ## 8.4 Shared Backend Services
 
-### 8.4.1 Carrier Integration & Rate Management
+While frontend applications provide user-facing interfaces, eight specialized backend modules deliver the business logic, data management, and external integrations that power SLMS functionality.
 
-**Topics to cover:**
+### 8.4.1 Order Module
 
-**ShipEngine API Integration:**
-- REST API client implementation
-- Authentication and rate limiting
-- Error handling and retries
+The Order Module manages the complete order lifecycle from initial creation through final delivery confirmation. Core responsibilities include order CRUD operations (create, read, update, delete), status state machine enforcement ensuring valid status transitions, order event tracking maintaining immutable audit trail of all status changes, and integration with other modules for carrier assignment, tracking updates, and exception handling.
 
-**Rate Comparison:**
-- Request rates from multiple carriers (FedEx, UPS, DHL)
-- Service level comparison
-- Cost optimization
-- Delivery time estimation
+The status state machine defines valid order progressions: PENDING (newly created, awaiting warehouse processing) → READY (package prepared, label generated, awaiting carrier pickup) → ASSIGNED (assigned to carrier shipment for delivery) → IN_TRANSIT (carrier has custody, en route to destination) → DELIVERED (successfully delivered to recipient). The system prevents invalid transitions (cannot move from PENDING directly to DELIVERED) while allowing valid status updates triggered by warehouse staff, drivers, or carrier webhooks.
 
-**Shipment Creation:**
-- Shipment registration with carrier
-- Label retrieval
-- Tracking number assignment
+Order events create comprehensive audit trails documenting every status change with timestamp, responsible user (warehouse staff who marked ready, driver who delivered), and optional notes explaining the transition. This event history supports compliance requirements, customer service inquiries, and dispute resolution.
 
-**Real-Time Tracking:**
-- Webhook integration for status changes
-- Event aggregation
-- Status synchronization
+Warehouse management capabilities enable multi-warehouse operations where different facilities process orders independently. Each order references its originating warehouse, enabling warehouse-filtered views for staff and warehouse-level performance metrics for managers.
 
-**Carrier Performance Monitoring:**
-- On-time delivery rates
-- Cost per shipment
-- Exception rates
+Document generation services integrate with carrier APIs to produce shipping labels, packing slips, and commercial invoices. These documents are generated as PDFs, stored in MinIO object storage, and linked to orders for easy retrieval by warehouse staff, drivers, and customer service.
 
-**Reference:**
-- `docs/per-sprint/sprint3/carrier-module-readme.md`
-- `docs/per-sprint/sprint1/carrier-shipping-apis-investigation.md`
-- Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/rate_carrier_module/`
+### 8.4.2 Visibility Module
 
-### 8.4.2 Notification System
+The Visibility Module aggregates shipment tracking information from multiple sources (carrier webhooks, driver app status updates, warehouse staff confirmations) into unified order visibility. This module also manages delivery exception lifecycle from creation through resolution.
 
-**Topics to cover:**
-- Email and SMS notifications
-- Notification templates
-- Event-driven alerts
-- Scheduled notifications
+Real-time tracking aggregation receives status updates from carriers via webhook callbacks, merges them with internal status changes from SLMS users, and provides a consistent tracking timeline view to customers and customer service. The module handles carrier-specific tracking event formats, normalizing them into SLMS standard status codes for consistent presentation.
 
-**Backend module**: Notification
+Delivery exception management encompasses exception creation (driver-reported, customer-reported, system-detected), categorization by type (recipient absent, damaged, lost, delayed, wrong address), severity assignment based on business impact and customer tier, CSR assignment routing based on exception category and workload distribution, SLA tracking with deadlines calculated from severity and creation time, and resolution workflow ensuring customer satisfaction before closure.
+
+Exception analytics identify systemic problems: frequently failing delivery addresses indicating database corrections needed, carrier-specific reliability issues informing contract negotiations, and CSR performance metrics revealing training opportunities.
+
+The module integrates tightly with the Notification Module, triggering stakeholder alerts when status changes occur or exceptions require attention. Customer service representatives receive real-time exception assignments, managers get SLA breach warnings, and customers receive delivery attempt failure notifications.
+
+### 8.4.3 Rate & Carrier Module
+
+The Rate & Carrier Module handles all interactions with third-party shipping carriers through Shippo and ShipEngine API aggregators. Multi-carrier integration abstracts carrier-specific API differences, providing SLMS with unified interfaces for rate requests, label generation, and tracking, while supporting FedEx, UPS, and DHL through aggregator partnerships.
+
+Real-time shipping rate calculation requests quotes from multiple carriers simultaneously for given package dimensions, weight, origin, and destination. The module receives responses containing cost estimates and transit time ranges, formats them for comparison presentation, and enables logistics managers to select cost-optimal or speed-optimal carriers based on business priorities.
+
+Label generation integrates with selected carriers to produce compliant shipping labels formatted for thermal printer output. The module submits shipment creation requests to carrier APIs, receives PDF label documents in response, stores labels in MinIO object storage, and records tracking numbers in shipment records for customer and CSR reference.
+
+Carrier performance monitoring tracks on-time delivery rates (percentage of shipments delivered by estimated date), average delivery time (mean days from pickup to delivery), cost per shipment (mean shipping cost), and exception rates (delivery problems per 100 shipments). This data populates the carrier performance comparison dashboard, informing carrier selection decisions and supporting contract negotiations with performance-based pricing.
+
+Address validation services leverage carrier API capabilities to verify shipping addresses before label generation, catching common errors (invalid postal codes, missing apartment numbers, incorrect city names) that would cause delivery failures. Early validation prevents wasted shipping costs and customer dissatisfaction.
+
+Webhook integration registers callback URLs with carrier APIs to receive tracking updates automatically. When carriers scan packages at distribution centers or deliver to customers, webhooks notify SLMS immediately, enabling real-time tracking updates without polling carrier systems.
+
+### 8.4.4 Reporting Module
+
+The Reporting Module transforms operational data into business intelligence through KPI aggregation, report template management, and scheduled report generation. Statistical analysis calculates key metrics including total orders, deliveries per time period, on-time delivery percentage, average delivery time, cost per shipment, exception frequency, and warehouse/carrier-specific performance breakdowns.
+
+Report templates define standard report formats: performance reports showing operational metrics over time, cost analysis reports breaking down shipping spend by carrier and service level, exception reports detailing delivery problems and resolution performance, and custom reports supporting ad-hoc analytical queries for specific business questions.
+
+Export functionality produces reports in PDF format for executive distribution and presentation, Excel/CSV formats for further analysis in business intelligence tools, and scheduled delivery via email to ensure stakeholders receive timely updates without manual generation requests.
+
+Real-time dashboard data provision supports the Logistics Manager dashboard, executing queries to retrieve current KPI values, calculating trend indicators showing week-over-week performance changes, and formatting results for frontend display. Caching strategies prevent excessive database load from frequent dashboard refreshes.
+
+### 8.4.5 User Management Module
+
+The User Management Module bridges SLMS application logic with Keycloak identity and access management. While Keycloak stores user credentials and profile information, this module handles JWT token validation for every API request, role extraction from token claims for authorization decisions, and enforcement of role-based access control across all backend operations.
+
+Role-based access control defines five distinct roles with specific permissions: LOGISTICS_MANAGER (full system access, reporting, analytics), WAREHOUSE_STAFF (order processing, label generation, pickup confirmation), CUSTOMER_SERVICE_REP (order lookup, exception management, customer communication), DRIVER (delivery manifest, POD capture, exception reporting), CUSTOMER (own order tracking, issue reporting).
+
+The module validates user authorization before executing sensitive operations, preventing customers from accessing other customers' orders, restricting warehouse operations to warehouse staff, and limiting report generation to managers.
+
+### 8.4.6 Notification Module
+
+The Notification Module implements event-driven communication with users across multiple channels. Kafka message consumption subscribes to order status change events, delivery exception creation events, and scheduled notification triggers, transforming them into user-facing communications.
+
+Multi-channel delivery sends email notifications formatted with HTML templates and SMS messages with concise, text-only format. Notification templates support multi-language content (English, Portuguese) with culturally appropriate phrasing and delivery tracking and retry logic ensures reliable delivery even when email servers or SMS gateways experience temporary failures.
+
+User channel preference management respects customer-configured notification settings, enabling or disabling specific notification types, and selecting preferred delivery channels while ensuring critical alerts (delivery exceptions requiring action) always deliver regardless of preferences.
+
+Notification history maintains complete record of all sent notifications, supporting customer service inquiries ("Did customer receive delivery notification?") and compliance requirements for documented communication.
+
+### 8.4.7 Chatbot Module (US19: AI Assistant for Contextual Help)
+
+The Chatbot Module provides AI-powered contextual assistance across all four frontend applications using Google Gemini large language model and Pinecone vector database for semantic search. Role-based content filtering ensures logistics managers see operational documentation, warehouse staff see order processing guidance, customer service sees exception resolution procedures, drivers see delivery instructions, and customers see tracking and issue reporting help.
+
+Frontend and route-based filtering adapts help content to user's current context: different guidance when using Driver PWA versus Customer Portal, and page-aware help shows "How do I create an order?" when on order creation page. Multilingual support provides English and Portuguese content based on user language preference, with culturally appropriate phrasing and examples.
+
+Natural language query processing enables conversational interactions ("Where is my order?", "How do I report a delivery problem?") rather than keyword searching. Database tool calling extends the chatbot beyond static documentation, enabling real-time queries like "What's the status of order 12345?" with actual database lookups executed within user's security context.
+
+The Retrieval-Augmented Generation (RAG) architecture grounds responses in SLMS documentation rather than generic LLM knowledge, ensuring accuracy and consistency with actual system capabilities. For detailed implementation, see Section 9 (AI-Powered Chatbot).
+
+## 8.5 Key External Integrations
+
+### 8.5.1 Carrier APIs
+
+Shippo and ShipEngine APIs aggregate connectivity to multiple carriers (FedEx, UPS, DHL), providing multi-carrier shipping services, real-time rate quoting, shipping label generation, tracking webhook notifications, and address validation. These integrations enable SLMS to offer carrier choice without implementing carrier-specific API clients, reducing integration complexity and maintenance burden.
+
+### 8.5.2 Mapping & Navigation
+
+Mapbox integration powers the Driver PWA's navigation capabilities through interactive map visualization with delivery stop markers and route paths, turn-by-turn directions API calculating optimal routes between stops, optimization API computing efficient delivery sequences minimizing travel time, and geocoding services converting addresses to geographic coordinates for route calculation. Real-time GPS tracking uses browser Geolocation API to monitor driver progress and update ETAs.
+
+### 8.5.3 Authentication & Identity
+
+Keycloak provides centralized identity and access management implementing OAuth 2.0 and OpenID Connect protocols for standards-based authentication, JWT token issuance for stateless authorization across services, multi-factor authentication support for enhanced security (configurable per tenant), and comprehensive audit logging of authentication events and role changes.
+
+### 8.5.4 Feature Management
+
+Flagsmith enables dynamic feature flag management without code deployments, supporting ticket visibility modes (All Tickets versus My Tickets), list view preferences (card view versus table view), experimental feature rollouts (gradual percentage-based activation), and A/B testing for user interface optimizations. Feature flags provide operational flexibility, allowing feature activation or deactivation in response to issues without emergency code changes.
+
+### 8.5.5 AI & Machine Learning
+
+Google Gemini API provides large language model capabilities for the chatbot including natural language understanding for query interpretation, conversational response generation with context awareness, and text embedding generation (768-dimensional vectors) for semantic similarity search. Pinecone vector database stores document embeddings, executing cosine similarity queries to find semantically related help content with metadata filtering (role, frontend, language) for targeted results.
 
 ---
 
@@ -2588,86 +2822,324 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 
 # 11. Observability & Monitoring
 
-**Responsible: Henrique Teixeira**
+The Smart Logistics Management System (SLMS) implements a comprehensive observability infrastructure built on Elastic APM, providing end-to-end visibility from browser interactions to database queries. This section details the monitoring architecture, service level objectives, health checking mechanisms, and alerting strategies that ensure system reliability and performance.
 
-*[6-8 pages with observability strategy]*
+## 11.1 Elastic APM Integration
 
-**Reference:** `docs/handbook/observability.md`, `docs/per-sprint/sprint4/observability.md`, `docs/adr/0005-observability-monitoring-strategy.md`
+### 11.1.1 Backend Java Agent Configuration
 
-## 11.1 Service Level Indicators (SLIs)
+SLMS employs the Elastic APM Java agent for automatic instrumentation of the Spring Boot backend application. The agent provides zero-code distributed tracing and performance monitoring without requiring application code changes.
 
-**Topics to cover:**
+**Implementation Approach:**
+The backend integrates the Elastic APM Agent version 1.53.0 as a Maven dependency, which attaches to the JVM at startup and automatically instruments bytecode without code modifications. Configuration is managed through Spring Boot's application properties file, specifying the APM server URL, authentication credentials, service identification, and environment classification (development, staging, production).
 
-| SLI | Definition | Target SLO | Measurement Window |
-|-----|-----------|------------|-------------------|
-| **Availability** | % of successful requests | ≥99.5% | 30 days |
-| **Latency (p95)** | 95th percentile duration | <500ms | 24 hours |
-| **Latency (p99)** | 99th percentile duration | <1500ms | 24 hours |
-| **Error Rate** | % of failed requests | <1% | 24 hours |
-| **Data Integrity** | % successful DB ops | ≥99.99% | 24 hours |
+**Automatic Instrumentation Coverage:**
+The APM agent automatically captures:
+- HTTP requests at Spring Controller level with full request/response details
+- Database queries via JDBC/JPA with sanitized query parameters
+- External API calls to Shippo, ShipEngine, Google Gemini, and Pinecone
+- Kafka message production and consumption with trace correlation
+- JVM metrics including heap memory usage, garbage collection, CPU utilization, and thread pool statistics
+
+**Configuration Strategy:**
+All APM connection details are sourced from environment variables for security and environment-specific flexibility. Key configuration includes the APM server endpoint, secret token for authentication, service name identifier (SLMS), deployment environment tag, application package scope for instrumentation, and trace sampling rate (100% in development, 10% recommended for production to balance visibility with performance overhead).
+
+### 11.1.2 Frontend RUM (Real User Monitoring)
+
+All four SLMS frontend applications integrate the Elastic APM Real User Monitoring (RUM) agent to capture client-side performance metrics and user experience data.
+
+**Implementation Approach:**
+Each frontend application (Admin Console, Customer Portal, Driver PWA, and Landing Page) integrates the Elastic APM RUM JavaScript library (version 5.17.0) through a shared observability module. The RUM agent is initialized at application startup with service-specific configuration including unique service names per frontend, APM server connection details, deployment environment, and application version.
+
+**Configuration Architecture:**
+The RUM agent is configured to enable distributed tracing to the backend API, allowing correlation between frontend user actions and backend operations. Configuration includes distributed tracing origin whitelist (localhost and current domain), transaction sampling rate (100% in development, configurable for production), error throttling limits (20 errors per 30 seconds to prevent alert spam), and trace state propagation for full end-to-end visibility.
+
+**Captured Metrics:**
+The RUM agent automatically captures comprehensive frontend performance data:
+- **Page Load Performance**: Largest Contentful Paint (LCP), First Contentful Paint (FCP), Time to First Byte (TTFB)
+- **Interactivity**: Interaction to Next Paint (INP), First Input Delay (FID)
+- **Visual Stability**: Cumulative Layout Shift (CLS)
+- **Route Changes**: Automatic page view tracking on Next.js navigation
+- **API Calls**: XHR/Fetch request duration, status codes, and failures
+- **JavaScript Errors**: Uncaught exceptions with stack traces and user context
+- **User Sessions**: Session duration, page views per session, and user flow patterns
+
+**Distributed Tracing Integration:**
+The RUM agent automatically injects W3C Trace Context headers (`traceparent`) into all API requests to the backend. This enables seamless correlation between frontend user actions and backend transaction traces, providing complete visibility from browser click through API call to database query.
+
+### 11.1.3 Distributed Tracing Architecture
+
+SLMS implements W3C Trace Context standard for distributed tracing, enabling request correlation across frontend, backend, and external services.
+
+**Trace Propagation Flow:**
+1. User initiates action in browser (e.g., creates order)
+2. Frontend RUM agent generates trace ID and span ID
+3. HTTP request to backend includes `traceparent` header with trace context
+4. Backend APM agent extracts trace context and continues the trace
+5. Backend service calls (database, Shippo API) inherit the trace context
+6. All operations appear in Elastic APM as a single distributed trace
+
+**Trace Sampling Strategy:**
+- **Development/Staging**: 100% sampling rate for complete debugging visibility
+- **Production**: 10% sampling rate recommended to reduce overhead and cost while maintaining statistical representation
+- Sample decisions propagate through entire trace (head-based sampling)
+- Critical transactions can be force-sampled regardless of rate
 
 ## 11.2 Service Level Objectives (SLOs)
 
-**Topics to cover:**
+### 11.2.1 SLI/SLO Definitions
 
-**Detailed targets per endpoint type:**
-- Read endpoints: <200ms p95
-- Write endpoints: <500ms p95
-- Complex queries: <1000ms p95
+SLMS defines Service Level Indicators (SLIs) and Service Level Objectives (SLOs) to quantify system reliability and performance expectations. These metrics guide operational decisions and prioritize engineering efforts.
 
-**Error Budget:**
-- Calculation methodology
-- Budget consumption tracking
-- Response to budget exhaustion
+**1. Availability SLI**
+- **Definition**: Percentage of HTTP requests that complete successfully (non-5xx responses)
+- **Measurement**: Calculated at both Nginx reverse proxy and backend API layers
+- **Formula**: `(Total Requests - 5xx Responses) / Total Requests × 100`
+- **Weighted Endpoints**: Order creation, shipment tracking, and authentication endpoints receive higher weight
+- **SLO Target**: ≥ 99.5% over 30-day rolling window
+- **Error Budget**: 3.6 hours of downtime per month (0.5% of 720 hours)
 
-## 11.3 Monitoring Stack
+**2. Latency SLI**
+- **Definition**: Percentage of requests completing within latency threshold
+- **Measurement**: From Nginx request receipt to first byte of response (TTFB)
+- **SLO Targets**:
+  - P95 latency < 500ms for 95% of requests
+  - P99 latency < 1500ms for 99% of requests
+- **Per-Endpoint Targets** (P95 | P99):
+  - `GET /api/orders`: 250ms | 400ms
+  - `GET /api/orders/{id}`: 150ms | 250ms
+  - `POST /api/orders`: 400ms | 700ms
+  - `GET /api/tracking/{id}`: 300ms | 500ms
+  - `POST /api/routes/optimize`: 1000ms | 2000ms
+- **Measurement Window**: 24-hour rolling window
 
-**Topics to cover:**
+**3. Error Rate SLI**
+- **Definition**: Percentage of failed business transactions
+- **Included Errors**: 500, 502, 503, 504 (server errors) + 400, 409, 422 (critical client errors)
+- **Excluded Errors**: 401, 403, 404, 429 (expected authorization/not found errors)
+- **SLO Target**: < 1% error rate over 24-hour rolling window
+- **Error Budget**: 1% of total transactions
 
-**Elastic APM:**
-- Backend instrumentation (Spring Boot)
-- Frontend instrumentation (Next.js)
-- Automatic tracing
-- Performance metrics
+**4. Core Web Vitals SLI** (Frontend)
+- **Largest Contentful Paint (LCP)**: < 2.5 seconds (good threshold)
+- **Interaction to Next Paint (INP)**: < 200ms (good threshold)
+- **Cumulative Layout Shift (CLS)**: < 0.1 (good threshold)
+- **First Contentful Paint (FCP)**: < 1.8 seconds
+- **Time to First Byte (TTFB)**: < 800ms
 
-**Structured Logging:**
-- JSON format
-- Correlation IDs
-- Log levels and filtering
-- Centralized log aggregation
+### 11.2.2 Error Budget Policy
 
-**Health Check Endpoints:**
-- `/actuator/health`
-- Component health indicators
-- Database connectivity
-- External service checks
+Error budgets define how much unreliability is acceptable while still meeting SLOs. The remaining error budget influences operational decisions.
 
-**Performance Metrics:**
-- Request rate
-- Response time distribution
-- Error rate
-- Throughput
+**Error Budget States:**
 
-**Reference:** `docs/per-sprint/sprint4/health-checks-implementation.md`
+| State | Remaining Budget | Policy |
+|-------|------------------|--------|
+| **Healthy** | > 50% | Normal deployment velocity, experimentation encouraged, new feature development |
+| **Warning** | 20-50% | Increased caution, enhanced testing before deployments, stability improvements prioritized |
+| **Exhausted** | < 20% | Feature freeze, deployments limited to critical fixes and reliability improvements |
 
-## 11.4 Alerting
+**Error Budget Calculation Example:**
+- **Availability SLO**: 99.5% over 30 days (720 hours)
+- **Error Budget**: 0.5% = 3.6 hours of downtime allowed
+- If 2 hours of downtime have occurred: **Remaining budget = 44% (1.6 hours left)**
+- **State**: Warning - increased caution for deployments
 
-**Topics to cover:**
+## 11.3 Health Checks & Monitoring
 
-**Alert Types:**
-- SLO breach notifications
-- Critical error alerts (5xx errors)
-- Capacity warnings (CPU, memory, disk)
-- External service failures
+### 11.3.1 Application Health Endpoints
 
-**Alert Channels:**
-- Email notifications
-- Slack integration
-- PagerDuty (if applicable)
+SLMS exposes comprehensive health check endpoints via Spring Boot Actuator, enabling automated health monitoring and Kubernetes-style liveness/readiness probes.
 
-**Alert Thresholds:**
-- Based on SLO definitions
-- Actionable vs informational
+**Actuator Configuration:**
+The Spring Boot Actuator is configured to expose several management endpoints including health, info, metrics, prometheus, and environment details. Health endpoint details are enabled to show component-level status, and Kubernetes-style liveness/readiness probes are activated for container orchestration support.
+
+**Primary Health Endpoints:**
+
+**1. Overall Health** - `GET /actuator/health`
+
+Returns comprehensive health status showing the overall system state ("UP" or "DOWN") along with individual component health including database connectivity (PostgreSQL validation query), disk space availability (total, free, threshold), external service status (Gemini AI API, Pinecone vector database), liveness and readiness states, and basic ping check. Each component includes relevant details such as database type, available disk space, and API connection success.
+
+**2. Liveness Probe** - `GET /actuator/health/liveness`
+
+Kubernetes-compatible liveness probe endpoint that determines if the application's internal state is healthy. Returns "UP" status when the application is running normally. If this probe fails (status "DOWN"), it indicates the application internal state is broken (e.g., deadlock, unrecoverable error), and Kubernetes should restart the pod.
+
+**3. Readiness Probe** - `GET /actuator/health/readiness`
+
+Kubernetes-compatible readiness probe endpoint that determines if the application can accept traffic. Returns "UP" when all dependencies are available. Failure conditions include database connection lost or critical external APIs unreachable. When this probe fails, Kubernetes removes the pod from the service load balancer routing until health is restored.
+
+### 11.3.2 Custom Health Indicators
+
+SLMS implements custom health indicators for external service dependencies beyond standard Spring Boot checks.
+
+**1. Gemini Health Indicator:**
+- **Purpose**: Verify Google Gemini AI API connectivity
+- **Test Method**: Generate embeddings for test text (lightweight operation)
+- **Success Criteria**: Embedding generation returns 768-dimensional vector
+- **Included in**: `/actuator/health` response as `gemini` component
+- **Configuration Required**: Gemini API key must be set
+- **Failure Impact**: Chatbot functionality degraded, but system remains operational
+
+**2. Pinecone Health Indicator:**
+- **Purpose**: Verify Pinecone vector database connectivity
+- **Test Method**: Execute dummy vector similarity query
+- **Success Criteria**: Query completes and returns index metadata
+- **Included in**: `/actuator/health` response as `pinecone` component
+- **Configuration Required**: Pinecone API key and index name configured
+- **Failure Impact**: Chatbot semantic search unavailable, fallback to keyword search
+
+### 11.3.3 Infrastructure Health Monitoring
+
+All SLMS infrastructure components define Docker health checks for automated monitoring and restart policies.
+
+**Docker Compose Health Check Configuration:**
+
+All infrastructure services define Docker health checks for automated monitoring and restart policies:
+
+**1. Backend Application:**
+Health check uses HTTP request to the Actuator health endpoint. Runs every 30 seconds with 10-second timeout, allowing 3 consecutive failures before marking unhealthy. Includes 60-second startup grace period for application initialization.
+
+**2. PostgreSQL Database:**
+Health check uses PostgreSQL's `pg_isready` utility to verify database accepts connections. Checks every 10 seconds with 5-second timeout, allowing 5 retries before marking unhealthy.
+
+**3. Keycloak Authentication:**
+Health check uses TCP socket test on Keycloak's HTTP port. Runs every 15 seconds with 5-second timeout, allowing 10 retries. Includes 90-second startup grace period for Keycloak initialization and configuration import.
+
+**4. MinIO Object Storage:**
+Health check uses HTTP request to MinIO's built-in health endpoint. Runs every 15 seconds with 10-second timeout, allowing 3 retries before marking unhealthy.
+
+**Health Check Testing Script:**
+Automated verification script tests Docker container health status for all services, HTTP endpoint accessibility for backend and frontends, infrastructure service connectivity (PostgreSQL via `pg_isready`, Keycloak, MinIO), and Actuator endpoints (health, metrics, prometheus).
+
+## 11.4 Logging Infrastructure
+
+### 11.4.1 Structured JSON Logging
+
+SLMS implements structured logging using Logback with Logstash JSON encoder, enabling efficient log aggregation and analysis in Elasticsearch.
+
+**Logging Architecture:**
+The backend implements structured JSON logging using Logback with the Logstash JSON Encoder (version 8.0). This approach transforms traditional text logs into structured JSON format, enabling efficient indexing and querying in Elasticsearch.
+
+**JSON Log Configuration:**
+Logback is configured with a JSON console appender that uses the Logstash encoder. The encoder includes providers for timestamp, log message, logger name, thread name, log level, stack trace formatting, and Mapped Diagnostic Context (MDC) for trace correlation. Stack traces are shortened for readability with configurable depth limits (30 levels), maximum length (2048 characters), and root cause displayed first for faster debugging.
+
+**Structured Log Format:**
+Each log entry is formatted as a JSON object containing timestamp, log message, logger class name, log level (INFO, WARN, ERROR), thread identifier, service name, deployment environment, and distributed tracing identifiers (trace_id, span_id, trace_flags) automatically injected by the Elastic APM agent for correlation with APM traces.
+
+### 11.4.2 Log Levels and Configuration
+
+**Application Log Levels:**
+The application configures different log levels for various components to balance diagnostic detail with log volume. The root logger operates at INFO level for general system messages. SLMS application code logs at DEBUG level for detailed operational visibility. Spring framework components (web, security) log at INFO level to avoid excessive framework noise. Hibernate SQL logging is enabled at DEBUG level to capture all database queries, with bind parameter values logged at TRACE level for maximum diagnostic detail. Observability libraries (OpenTelemetry, Micrometer) log at INFO level to track instrumentation activity without overwhelming logs.
+
+**Log Level Guidelines:**
+- **TRACE**: Very detailed diagnostic information, typically SQL bind parameters and low-level operations
+- **DEBUG**: Detailed information for debugging including method entries and business logic flow
+- **INFO**: General informational messages about normal application operations (order created, shipment processed)
+- **WARN**: Potentially harmful situations such as deprecated API usage or fallback activation
+- **ERROR**: Error events that still allow the application to continue running
+- **FATAL**: Very severe errors causing application termination (rarely used in modern Spring Boot applications)
+
+### 11.4.3 Trace Correlation
+
+Logs are automatically correlated with distributed traces through Mapped Diagnostic Context (MDC) keys injected by the Elastic APM agent. This enables seamless navigation from logs to traces and vice versa in Kibana.
+
+**MDC Trace Identifiers:**
+The APM agent automatically injects three key fields into every log entry:
+- `trace_id`: OpenTelemetry trace identifier that links all operations in a distributed transaction (from frontend click to database query)
+- `span_id`: Span identifier for the specific operation within a trace (e.g., specific controller method or database call)
+- `trace_flags`: Sampling flag indicating whether the trace is being captured (sampled) or not
+
+**Console Log Format (Development):**
+In development mode, logs are formatted as human-readable text with timestamp, thread name, log level, logger class name, trace identifiers in brackets, and the log message. This format makes local debugging easier while still including trace correlation information.
+
+**Trace Correlation Workflow:**
+When investigating an issue, engineers can click on a trace_id in Kibana Logs to jump directly to the corresponding APM trace, seeing the complete request flow. Conversely, when examining a slow trace in APM, clicking through to logs shows all log messages generated during that transaction, providing full diagnostic context.
+
+## 11.5 Alerting & Incident Response
+
+### 11.5.1 Alert Level Definitions
+
+SLMS defines three alert severity levels with corresponding response expectations and notification channels.
+
+**P0 - Critical (Page Immediately)**
+- **Trigger Conditions**:
+  - API availability < 99% in last 5 minutes
+  - Error rate > 5% in last 5 minutes
+  - Database connection pool exhausted
+  - All health checks failing (system-wide outage)
+- **Response Time**: Immediate (within 5 minutes)
+- **Notification**: Email
+- **Impact**: Customer-facing functionality severely degraded
+
+**P1 - High (Alert During Business Hours)**
+- **Trigger Conditions**:
+  - API availability < 99.5% in last 15 minutes
+  - P99 latency > 2000ms for 10 consecutive minutes
+  - Error rate > 2% in last 10 minutes
+  - Critical external service (Shippo, Keycloak) unavailable
+- **Response Time**: 30 minutes during business hours, 2 hours off-hours
+- **Notification**: Emai
+- **Impact**: Degraded performance affecting user experience
+
+**P2 - Medium (Create Ticket)**
+- **Trigger Conditions**:
+  - Error budget approaching exhaustion (< 20% remaining)
+  - P95 latency > 800ms for 30 consecutive minutes
+  - Elevated 4xx error rate (non-critical client errors)
+  - Non-critical external service degraded
+- **Response Time**: Next business day
+- **Notification**: Email
+- **Impact**: Minor performance degradation, no immediate customer impact
+
+### 11.5.2 Alert Configuration
+
+Alerts are configured in the Elastic Cloud console through Kibana's Observability interface. Configuration involves navigating to Kibana Alerts section, creating alert rules with APM queries (e.g., error rate threshold), defining notification actions (email), and setting alert evaluation intervals and delays. Alert rules specify conditions (error rate > 5% for last 5 minutes), queries filtering relevant events (transaction.result:error AND service.name:SLMS), thresholds for triggering (count of errors / count of total transactions > 0.05), evaluation intervals (every 1 minute), and notification channels.
+
+## 11.5 Dashboard & Visualization
+
+### 11.5.1 Elastic APM Dashboards
+
+SLMS leverages pre-built Elastic APM dashboards in Kibana for real-time monitoring:
+
+**1. Service Overview Dashboard**
+- Transaction throughput (requests per minute)
+- Latency distribution (P50, P75, P95, P99)
+- Error rate percentage and total error count
+- Apdex score (Application Performance Index)
+- Most impacted endpoints by error count and latency
+
+**2. Distributed Tracing Dashboard**
+- Trace waterfall visualization showing request flow
+- Service dependencies and communication patterns
+- External service call latency breakdown
+- Database query performance within traces
+
+**3. JVM Metrics Dashboard**
+- Heap memory usage over time
+- Garbage collection frequency and pause times
+- CPU utilization percentage
+- Thread count and thread pool saturation
+
+**4. Frontend RUM Dashboard** (per application)
+- Core Web Vitals trends (LCP, INP, CLS)
+- Page load time distribution
+- Most viewed pages and route transitions
+- JavaScript error frequency and types
+- User session duration and navigation flows
+
+---
+
+## Summary
+
+The SLMS observability infrastructure provides comprehensive monitoring across all system layers:
+- **Elastic APM** for distributed tracing from browser to database
+- **Clear SLI/SLO definitions** with 99.5% availability and <500ms P95 latency targets
+- **Robust health checking** via Spring Boot Actuator and Docker health checks
+- **Structured JSON logging** with automatic trace correlation
+- **Three-tier alerting** (P0/P1/P2) with defined response procedures
+- **Pre-built dashboards** in Kibana for real-time visibility
+
+This architecture ensures operational excellence, rapid incident response, and continuous performance optimization aligned with business objectives.
 
 ---
 
