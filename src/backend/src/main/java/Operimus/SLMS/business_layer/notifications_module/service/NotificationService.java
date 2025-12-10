@@ -42,7 +42,17 @@ public class NotificationService {
                 log.info("👤 Creating notification for CSR: {} ({})", csr.getUsername(), csr.getId());
                 createAndSendNotification(event, csr.getUsername());
             }
-        } 
+        }
+        // Check if this is a broadcast to all warehouse staff
+        else if ("WAREHOUSE_STAFF".equals(event.getCustomerId())) {
+            log.info("🎯 Detected WAREHOUSE_STAFF broadcast for event: {}", event.getEventType());
+            List<UserRepresentation> warehouseUsers = keycloakUserService.getUsersByRole("WAREHOUSE_STAFF");
+            log.info("📋 Found {} warehouse staff to notify", warehouseUsers.size());
+            for (UserRepresentation staff : warehouseUsers) {
+                log.info("👤 Creating notification for warehouse staff: {} ({})", staff.getUsername(), staff.getId());
+                createAndSendNotification(event, staff.getUsername());
+            }
+        }
         else {
             createAndSendNotification(event, event.getCustomerId());
         }
