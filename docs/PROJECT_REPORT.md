@@ -177,7 +177,7 @@ The backend comprises eight specialized modules, each encapsulating a distinct d
 
 **User Management Module:** Bridges application logic with Keycloak authentication. Validates JWT tokens on every request, extracting user identity and roles (LOGISTICS_MANAGER, WAREHOUSE_STAFF, CUSTOMER_SERVICE, DRIVER, CUSTOMER) for authorization decisions. Enforces role-based access control across all modules and handles token refresh for seamless user experience.
 
-**Notification Module:** Event-driven communication system built on Kafka. Subscribes to events from other modules (order status changes, exceptions, deliveries) and transforms them into user notifications via email and SMS. Maintains multi-language templates, respects user channel preferences, implements delivery tracking and retry logic, and prioritizes critical alerts.
+**Notification Module:** Event-driven communication system built on Kafka. Subscribes to events from other modules (order status changes, exceptions, deliveries) and displays them as in-app notifications accessible through the notifications tab in each frontend. Maintains notification history, supports real-time updates, and prioritizes critical alerts for immediate user attention.
 
 **Reporting Module:** Transforms operational data into business intelligence for logistics managers. Calculates KPIs (on-time delivery %, average duration, cost per package, carrier performance, exception rates), generates real-time dashboards, enables time-series analysis for pattern identification, and supports custom ad-hoc reports. Uses pre-calculated aggregates and caching to avoid impacting transactional performance.
 
@@ -705,8 +705,8 @@ This section presents detailed usage scenarios that illustrate how each persona 
 
 #### Scenario 17: Receiving automatic notifications
 - Context: Mariana’s order moves through different shipping stages (shipped, out for delivery, failed attempt).  
-- Action: SLMS automatically sends her notifications (via email or SMS) whenever there is a relevant update.  
-- Expected result: Mariana feels informed and confident, always knowing what is happening with her order.  
+- Action: SLMS automatically creates in-app notifications in her notifications tab whenever there is a relevant update.  
+- Expected result: Mariana feels informed and confident, always knowing what is happening with her order through the notifications panel.  
 
 #### Scenario 18: Reporting a delivery issue
 - Context: Mariana notices a problem with her order (e.g., wrong address, impossible delivery time, damaged package).  
@@ -921,7 +921,7 @@ Acceptance Criteria
 - Receive shipment updates  
    - Given that my order status changes (e.g. shipped, out for delivery, failed attempt)  
    - When the event occurs  
-   - Then the SLMS must send me an automatic notification (email or SMS)  
+   - Then the SLMS must send me an automatic notification
 
 #### US17 – “Reporting a delivery issue”
 As a Customer I want to report delivery issues through the tracking portal so that I can notify support and get faster resolutions.  
@@ -1047,7 +1047,7 @@ The SLMS feature set was organized into seven epics, each representing a distinc
 **E6 - Notifications & Alerts (Priority: Medium - Sprint 5-6)**
 - **User Stories:** US16 (automatic notifications), US8 (customer-reported issues)
 - **Business Rationale:** Proactive communication enhances customer experience but represents a "nice-to-have" rather than "must-have" for initial system viability. Notification infrastructure benefits from mature order workflows to avoid alert fatigue.
-- **Technical Dependencies:** E1 (order events), E3 (status transitions), email/SMS gateway integration
+- **Technical Dependencies:** E1 (order events), E3 (status transitions), notification storage and display system
 
 **E8 - AI & Advanced Features (Priority: Low - Sprint 4-6)**
 - **User Stories:** US18 (AI assistant)
@@ -1329,7 +1329,7 @@ The Customer diagram details Mariana Costa's self-service capabilities through t
 - **US13: Create New Order** - Self-service order creation through the customer portal
 - **US14: Create Account** - Self-registration through Keycloak-managed account creation
 - **US15: Login to Portal** - Secure authentication for order access
-- **US16: Receive Automatic Notifications** - Passive receipt of email/SMS alerts on order status changes
+- **US16: Receive Automatic Notifications** - Passive receipt of in-app notifications on order status changes
 - **US17: Report Delivery Issue** - Submit problems directly to customer service through integrated issue reporting
 
 **Use Case Relationships:**
@@ -1338,7 +1338,7 @@ The Customer diagram details Mariana Costa's self-service capabilities through t
 - **US13 (Create New Order)** includes **Access Order Creation Form**, **Fill Order Details**, and **Submit Order** - complete order creation workflow from form access to submission
 - **US14 (Create Account)** includes **Open Registration Page**, **Complete Registration**, and **Redirect to Customer Portal** - multi-step registration flow
 - **US15 (Login to Portal)** includes **Access Login Page** and **Authenticate User** - Keycloak OAuth2 authentication
-- **US16 (Receive Notifications)** includes **Detect Shipment Status Change** and **Send Email/SMS Notification** - automated notification pipeline
+- **US16 (Receive Notifications)** includes **Detect Shipment Status Change** and **Display In-App Notification** - automated notification pipeline
 - **US17 (Report Issue)** includes **Open Order Details**, **Submit Delivery Issue Form**, and **Register Exception and Notify CSR** - issue creation and CSR notification
 
 **Authentication Architecture:**
@@ -1348,7 +1348,7 @@ The **US14 (Create Account)** and **US15 (Login to Portal)** use cases are fully
 **US13 (Create New Order)** represents a Sprint 6 addition to the customer portal, enabling self-service order creation. This enhancement empowers customers with autonomy over their shipping needs and provides a streamlined interface for order submission. The "Fill Order Details" sub-use case includes validation for shipping addresses, warehouse selection, and tracking number generation.
 
 **Notification Mechanism:**
-**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and triggers emails/SMS when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation through US13.
+**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and displays in-app notifications when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation through US13.
 
 **Integration with CSR Workflows:**
 **US17 (Report Delivery Issue)** creates a direct communication channel to the Customer Service Module. When customers submit issues, the "Register Exception and Notify CSR" sub-use case creates DeliveryException records visible in Rita's exception management dashboard (**US8: Manage Customer-Reported Issues**), enabling prompt follow-up and ensuring no customer issues are overlooked.
