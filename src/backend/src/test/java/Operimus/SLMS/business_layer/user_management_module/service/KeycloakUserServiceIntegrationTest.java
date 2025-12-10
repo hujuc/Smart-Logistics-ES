@@ -31,13 +31,13 @@ import static org.assertj.core.api.Assertions.*;
  * 3. Create, read, search, and delete users
  * 4. Assign and verify roles
  *
- * Run with: mvn test -Dgroups=real-integration
+ * Run with: mvn test -Dgroups=ci-integration
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("real-integration")
+@Tag("ci-integration")
 class KeycloakUserServiceIntegrationTest {
 
     @Autowired

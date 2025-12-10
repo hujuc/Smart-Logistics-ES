@@ -20,6 +20,7 @@ import { UserInteractionInstrumentation } from '@opentelemetry/instrumentation-u
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request';
 import type { ObservabilityConfig } from './types';
+import { Span } from '@opentelemetry/api';
 
 let tracerProvider: WebTracerProvider | null = null;
 
@@ -28,13 +29,17 @@ let tracerProvider: WebTracerProvider | null = null;
  * This is the browser-compatible way to add resource attributes
  */
 class ServiceAttributesSpanProcessor implements SpanProcessor {
-  constructor(_attributes: Record<string, string>) {
-    // Service attributes are added via Resource in the TracerProvider configuration
+  private attributes: Record<string, string>;
+
+  constructor(attributes: Record<string, string>) {
+    this.attributes = attributes;
   }
 
-  onStart(_span: ReadableSpan): void {
-    // Note: ReadableSpan is read-only, attributes should be set during span creation
-    // Service attributes are added via Resource in the TracerProvider configuration
+  onStart(span: Span): void {
+    // Add service attributes to every span
+    Object.entries(this.attributes).forEach(([key, value]) => {
+      span.setAttribute(key, value);
+    });
   }
 
   onEnd(_span: ReadableSpan): void {
