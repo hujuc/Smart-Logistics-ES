@@ -137,25 +137,59 @@ const loginAsCSR = async (page: Page) => {
  * Helper to perform Warehouse Manager login via landing page
  */
 const loginAsWarehouse = async (page: Page) => {
+  console.log("🔐 Starting login flow...");
+
   // Start from landing page
   await page.goto("/");
+  console.log(`  ✓ Navigated to landing page: ${page.url()}`);
+
+  // Wait for page to load
+  await page.waitForLoadState('domcontentloaded');
 
   // Click on Login button
-  await page.getByRole("button", { name: /login/i }).first().click();
+  const loginButton = page.getByRole("button", { name: /login/i }).first();
+  const loginButtonVisible = await loginButton.isVisible({ timeout: 5000 }).catch(() => false);
+
+  if (!loginButtonVisible) {
+    console.error(`  ✗ Login button not found! Current URL: ${page.url()}`);
+    console.error(`  Page title: ${await page.title()}`);
+    throw new Error("Login button not visible on landing page");
+  }
+
+  await loginButton.click();
+  console.log("  ✓ Clicked login button");
 
   // Wait for Keycloak login page
-  await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
+  try {
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
+    console.log(`  ✓ Keycloak login page loaded: ${page.url()}`);
+  } catch (error) {
+    console.error(`  ✗ Keycloak login page did not load! Current URL: ${page.url()}`);
+    console.error(`  Page title: ${await page.title()}`);
+    throw new Error("Keycloak login page did not appear");
+  }
 
   // Fill credentials
   await page.getByLabel(/username/i).fill("warehouse");
   await page.getByLabel(/password/i).fill("warehouse");
+  console.log("  ✓ Filled credentials");
 
   // Click login button
   await page.getByRole("button", { name: /^login$/i }).last().click();
+  console.log("  ✓ Clicked Keycloak login button");
 
-  // Wait for login to complete
-  await page.waitForLoadState('networkidle');
+  // Wait for login to complete - check for redirect
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
   await page.waitForTimeout(2000);
+
+  const finalUrl = page.url();
+  console.log(`  ✓ Login flow completed. Final URL: ${finalUrl}`);
+
+  // Check if we're still on landing page (login failed)
+  if (finalUrl === 'http://localhost/' || finalUrl.endsWith('localhost/')) {
+    console.error("  ✗ WARNING: Still on landing page after login - authentication may have failed");
+    console.error(`  Page title: ${await page.title()}`);
+  }
 };
 
 /**

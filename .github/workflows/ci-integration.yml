@@ -149,6 +149,7 @@ jobs:
             -f infra/docker-compose.ci.yml \
             down -v
 
+  # E2E tests - debugging authentication issues with detailed logging
   e2e-tests:
     name: E2E Tests (${{ matrix.app }})
     runs-on: ubuntu-latest
