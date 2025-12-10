@@ -2,28 +2,26 @@
 
 ## Summary of Changes
 
-This document reflects adjustments made to the user stories for Sprint 6 based on time constraints and implemented features that were missing documentation.
+This document reflects adjustments made to the user stories for Sprint 6 based on time constraints and implemented features.
 
 ### Changes Made
 
 1. **Removed US16** - "Real-time order tracking" (21 story points)
    - Reason: Out of scope due to time constraints
-   - The customer portal provides tracking functionality, but full real-time tracking with live location updates was deemed too complex for the current timeline
+   - The customer portal provides basic tracking functionality, but full real-time GPS tracking with live location updates was deemed too complex for the current timeline
 
-2. **Renumbered User Stories**
-   - US17 → US16: "Receiving automatic notifications" (13 points)
-   - US18 → US17: "Reporting a delivery issue" (8 points)
-
-3. **Added US18** - "AI Assistant for contextual help" (13 story points)
+2. **Added US18** - "AI Assistant for contextual help" (13 story points)
    - Reason: Chatbot functionality is already implemented (Sprint 4) but was missing formal user story documentation
    - Adds comprehensive AI assistance across all user roles and frontends
 
-4. **Removed Keycloak registration confirmation email** from US14 acceptance criteria
+3. **Removed Keycloak registration confirmation email** from US14 acceptance criteria
    - Reason: Handled by Keycloak, out of scope for SLMS user stories
 
+4. **Renumbered User Stories** to maintain sequential numbering after US16 removal
+
 ### Impact
-- **Net stories:** 18 (removed 1, added 1)
-- **Net story points:** -8 (removed 21, added 13)
+- **Total stories:** 18 (removed 1, added 1)
+- **Net story points:** -8 (removed 21 from US16, added 13 for US18)
 - **Status:** 12 completed, 5 in progress, 1 new (chatbot documentation)
 
 ---
@@ -73,16 +71,7 @@ As a Logistics Manager I want to export reports so that I can share logistics pe
 
 ### Ana Martins (Warehouse Staff)
 
-#### US4 – "Processing a new order" (5) ✅ COMPLETED
-As Warehouse Staff I want to register new orders in the system so that I can prepare them for shipment.
-
-**Acceptance Criteria**
-- **Register order details**
-  - *Given* that a new order arrives at the warehouse
-  - *When* I enter order information (destination, weight, dimensions, carrier) into the SLMS
-  - *Then* the system must save the order as ready for shipment
-
-#### US5 – "Generating shipping labels and documents" (3) ✅ COMPLETED
+#### US4 – "Generating shipping labels and documents" (3) ✅ COMPLETED
 As Warehouse Staff I want to generate labels and shipping documents so that I ensure each order is ready for dispatch.
 
 **Acceptance Criteria**
@@ -91,7 +80,7 @@ As Warehouse Staff I want to generate labels and shipping documents so that I en
   - *When* I select an order
   - *Then* the system must generate the shipping label, packing slip and shipping manifest for the carrier
 
-#### US6 – "Confirming carrier pickup" (3) ✅ COMPLETED
+#### US5 – "Confirming carrier pickup" (3) ✅ COMPLETED
 As Warehouse Staff I want to confirm carrier pickups in order to keep the system updated.
 
 **Acceptance Criteria**
@@ -174,7 +163,7 @@ As a Driver I want to record proof of delivery so that I am able to validate tha
 **Acceptance Criteria**
 - **Register POD**
   - *Given* that I have delivered a package
-  - *When* I collect a signature or take a delivery photo
+  - *When* I take a delivery photo
   - *Then* the SLMS must update the order as "delivered" in real time
 
 #### US13 – "Reporting delivery exceptions" (5) 🔄 IN PROGRESS
@@ -190,7 +179,27 @@ As a Driver I want to report delivery exceptions so that I can keep the system u
 
 ### Mariana Costa (Customer)
 
-#### US14 – "Creating an Account through the Landing Page" (5) ✅ COMPLETED
+#### US4 – "Creating a new order" (5) ✅ COMPLETED
+As a Customer I want to create a new order through the customer portal so that I can request shipment of my packages.
+
+**Acceptance Criteria**
+- **Access order creation**
+  - *Given* that I am logged into the SLMS customer portal
+  - *When* I navigate to "Create Order" or "/interfaces/new-order"
+  - *Then* the system must display an order creation form
+
+- **Fill order details**
+  - *Given* that I am on the order creation page
+  - *When* I enter order information (reference, description, shipping address, warehouse selection, tracking number)
+  - *Then* the system must validate my input and show any errors
+
+- **Submit order**
+  - *Given* that I have filled all required fields
+  - *When* I click "Create Order"
+  - *Then* the system must create the order, associate it with my customer ID, and redirect me to order history
+
+#### US5 – "Creating an Account through the Landing Page" (5) ✅ COMPLETED
+
 As a Customer I want to create an account through the SLMS landing page so that I can access my delivery history and track my orders.
 
 **Acceptance Criteria**
@@ -209,7 +218,7 @@ As a Customer I want to create an account through the SLMS landing page so that 
   - *When* I return to the customer portal
   - *Then* I can log in with my new credentials
 
-#### US15 – "Logging In through the Landing Page" (3) ✅ COMPLETED
+#### US6 – "Logging In through the Landing Page" (3) ✅ COMPLETED
 As a Customer I want to log in through the SLMS landing page so that I can securely access my order tracking portal.
 
 **Acceptance Criteria**
@@ -228,11 +237,7 @@ As a Customer I want to log in through the SLMS landing page so that I can secur
   - *When* I close the browser or my session expires
   - *Then* I must log in again to regain access
 
-#### ~~US16 – "Real-time order tracking" (21)~~ ❌ REMOVED
-**Reason:** Out of scope due to time constraints. Basic tracking functionality exists in customer portal, but full real-time GPS tracking with live location updates was deemed too complex for current sprint timeline.
-
-#### US16 – "Receiving automatic notifications" (13) 🔄 IN PROGRESS
-**Previously US17**
+#### US7 – "Receiving automatic notifications" (13) 🔄 IN PROGRESS
 
 As a Customer I want to receive notifications about my order so that I can stay informed.
 
@@ -242,9 +247,7 @@ As a Customer I want to receive notifications about my order so that I can stay 
   - *When* the event occurs
   - *Then* the SLMS must send me an automatic notification (email or SMS)
 
-#### US17 – "Reporting a delivery issue" (8) ✅ COMPLETED
-**Previously US18**
-
+#### US8 – "Reporting a delivery issue" (8) ✅ COMPLETED
 As a Customer I want to report delivery issues through the tracking portal so that I can notify support and get faster resolutions.
 
 **Acceptance Criteria**
@@ -315,22 +318,22 @@ As a SLMS User I want to access an AI assistant so that I can get instant contex
 - US1: Daily KPI monitoring (João)
 - US2: Carrier comparison (João)
 - US3: Performance reports (João)
-- US4: Processing new order (Ana)
-- US5: Generating labels (Ana)
-- US6: Confirming pickup (Ana)
+- US4: Creating new order (Mariana)
+- US4: Generating labels (Ana)
+- US5: Confirming pickup (Ana)
 - US7: Quick order status lookup (Rita)
 - US8: Resolving delivery issue (Rita)
 - US12: Recording POD (Carlos)
-- US14: Creating account (Mariana)
-- US15: Logging in (Mariana)
-- US17: Reporting delivery issue (Mariana)
+- US5: Creating account (Mariana)
+- US6: Logging in (Mariana)
+- US8: Reporting delivery issue (Mariana)
 
 ### In Progress Stories (5)
 - US9: Handling customer-reported issues (Rita)
 - US10: Viewing delivery manifest (Carlos)
 - US11: Optimized delivery routes (Carlos)
 - US13: Reporting delivery exceptions (Carlos)
-- US16: Receiving notifications (Mariana)
+- US7: Receiving notifications (Mariana)
 
 ### New/Pending Stories (1)
 - US18: AI Assistant for contextual help (All Users)
