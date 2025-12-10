@@ -602,63 +602,388 @@ Mariana's primary objectives as a customer center on visibility, reliability, co
 
 Traditional e-commerce logistics experiences present significant pain points that undermine Mariana's confidence and satisfaction. The lack of transparency in package tracking creates uncertainty and anxiety, particularly for time-sensitive or valuable purchases. When issues arise, the burden of initiating contact with the retailer or carrier to obtain information or resolve problems represents an unacceptable friction point in the customer experience. These frustrations reflect a fundamental misalignment between customer expectations shaped by leading e-commerce platforms and the capabilities of traditional logistics systems.
 
-The SLMS customer portal empowers Mariana with self-service capabilities and proactive communication that address these pain points comprehensively. She can create new orders directly through the customer portal, entering all necessary shipment details including destination addresses and warehouse selection, with the system automatically associating orders with her customer account for security and tracking purposes. She accesses the public tracking portal where she is able to see her full order history, where she can search for a specific order by entering its unique tracking number, immediately viewing her order's current location, transit history, and estimated delivery date without requiring assistance. The system delivers automatic notifications at critical milestones, including shipment confirmation, out-for-delivery status, and delivery completion, as well as proactive alerts regarding any exceptions or delays. When Mariana identifies issues such as incorrect delivery addresses, scheduling conflicts, or package damage, she reports them directly through the portal's integrated issue reporting functionality, which creates tracked exceptions visible to customer service representatives. Through these capabilities, SLMS transforms Mariana's experience from passive waiting and reactive problem-solving to active monitoring and confident engagement with the delivery process, ultimately enhancing satisfaction and building brand loyalty.
+The SLMS customer portal empowers Mariana with self-service capabilities and proactive communication that address these pain points comprehensively. She can create new orders directly through the customer portal, entering all necessary shipment details including destination addresses and warehouse selection, with the system automatically associating orders with her customer account for security and tracking purposes. She accesses the public tracking portal where she is able to see her full order history, where she can search for a specific order by entering its unique tracking number, immediately viewing her order's current location, transit history, and estimated delivery date without requiring assistance. The system delivers automatic notifications at critical milestones, including shipment confirmation, out-for-delivery status, and delivery completion. When Mariana identifies issues such as incorrect delivery addresses, scheduling conflicts, or package damage, she reports them directly through the portal's integrated issue reporting functionality, which creates tracked exceptions visible to customer service representatives. Through these capabilities, SLMS transforms Mariana's experience from passive waiting and reactive problem-solving to active monitoring and confident engagement with the delivery process, ultimately enhancing satisfaction and building brand loyalty.
 
 ## 4.2 Usage Scenarios
 
-**Topics to cover:**
-- 18+ detailed scenarios across all personas
-- Realistic workflow examples
-- Step-by-step interactions
-- Expected outcomes
+This section presents detailed usage scenarios that illustrate how each persona interacts with the SLMS platform to accomplish their respective objectives. These scenarios are grounded in realistic workflows and demonstrate the system's capabilities across the complete logistics lifecycle, from strategic management through operational execution to customer-facing service delivery. Each scenario provides contextual background, describes the specific actions taken within the system, and articulates the expected outcomes that address the persona's goals and pain points.
 
-**Scenarios to highlight:**
-1. João: Weekly KPI review and carrier performance analysis
-2. Ana: Processing a new order from intake to carrier pickup
-3. Rita: Resolving a delivery exception reported by customer
-4. Carlos: Completing delivery route with POD capture
-5. Mariana: Tracking order and reporting a delivery issue
+**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
 
-**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (Scenarios section)
+### 4.2.1 João Ferreira (Logistics Manager) Scenarios
+
+#### Scenario 1: Daily monitoring of KPIs
+- Context: João starts his day by reviewing the performance of the previous day’s transportation operations.  
+- Action: He accesses the SLMS dashboard to check KPIs such as on-time delivery rates, cost per shipment, and carrier performance.  
+- Expected result: He quickly identifies failures or areas for improvement, enabling immediate adjustments to the logistics strategy.  
+
+#### Scenario 2: Carrier comparison for new shipments
+- Context: The company needs to ship a large volume of orders to another city. João must select the most efficient and cost-effective carrier.  
+- Action: He accesses the SLMS carrier integration module, compares prices and transit times, and selects the best option.  
+- Expected result: João makes an informed decision, reducing costs and improving delivery times.  
+
+#### Scenario 3: Performance reporting for management
+- Context: João needs to present a logistics performance report to the company’s management.  
+- Action: He exports detailed SLMS reports, including costs, delivery rates, and carrier performance.  
+- Expected result: Management receives clear and reliable data, enabling strategic decisions about operational improvements.  
+
+---
+
+### 4.2.2 Ana Martins (Warehouse Staff) Scenarios
+
+#### Scenario 4: Processing a new order
+- Context: A new order arrives at the warehouse for shipping.  
+- Action: Ana registers the order in SLMS, entering all required details (destination, weight, dimensions, assigned carrier).  
+- Expected result: The order is correctly registered in the system and ready for shipment preparation.  
+
+#### Scenario 5: Generating shipping labels and documents
+- Context: Ana needs to prepare several orders for dispatch at the end of the day.  
+- Action: She uses SLMS to automatically generate shipping labels, transport guides, and manifests for each carrier.  
+- Expected result: Each order leaves the warehouse with the correct documentation, reducing errors in the shipping process.  
+
+#### Scenario 6: Confirming carrier pickup
+- Context: The carrier arrives at the warehouse to pick up orders.  
+- Action: After the pickup, Ana updates SLMS to mark the orders as collected.  
+- Expected result: The system records the pickup time, keeping information updated for both internal teams and customers.  
+
+---
+
+### 4.2.3 Rita Lopes (Customer Service Representative) Scenarios
+
+#### Scenario 7: Quick order status check
+- Context: A customer contacts support to ask about their order status.  
+- Action: Rita searches for the order number in SLMS and accesses the real-time status.  
+- Expected result: She immediately informs the customer of the order’s location and estimated delivery date.  
+
+#### Scenario 8: Resolving a delivery issue
+- Context: A customer calls to report that they did not receive their order on time after being notified by SLMS about a delivery problem.  
+- Action: Rita checks the exception reported by the driver (e.g., recipient absent, incorrect address, carrier delay), explains the details to the customer over the phone, makes the necessary updates to the order, records the resolution in SLMS, and closes the issue.  
+- Expected result: The customer receives a clear explanation and immediate solution. SLMS is updated with the resolution, avoiding manual steps from the customer’s side.  
+
+#### Scenario 9: Handling a customer-reported issue
+- Context: A customer reports a delivery issue through the SLMS public portal.  
+- Action: Rita receives a notification in SLMS with the issue details (e.g., incorrect address, damaged package). She reviews the exception in the system, contacts the customer to clarify the situation, and records the resolution in SLMS, closing the exception.  
+- Expected result: The issue reported by the customer is promptly addressed and registered in SLMS, ensuring transparent follow-up and efficient resolution.  
+
+---
+
+### 4.2.4 Carlos Silva (Driver/Carrier) Scenarios
+
+#### Scenario 10: Checking delivery manifest
+- Context: Carlos starts his shift and needs to know which packages he has to deliver.  
+- Action: He opens the SLMS mobile app and checks the manifest with his daily deliveries.  
+- Expected result: Carlos has a clear and organized view of packages, destinations, and priorities.  
+
+#### Scenario 11: Receiving optimized delivery routes
+- Context: Carlos must deliver multiple packages along an urban route with many stops.  
+- Action: He uses SLMS to receive an optimized route with the best delivery sequence.  
+- Expected result: Reduced travel time and fuel consumption, completing deliveries more quickly.  
+
+#### Scenario 12: Recording proof of delivery (POD)
+- Context: Carlos delivers a package to a customer.  
+- Action: In SLMS, he records the delivery with either a customer’s digital signature or a photo of the package at the location.  
+- Expected result: The delivery is validated in real time, visible to both the customer and the company.  
+
+#### Scenario 13: Reporting a delivery exception
+- Context: Carlos attempts to deliver a package but the recipient is absent.  
+- Action: He updates SLMS with the reason for the failed delivery (e.g., recipient not at home) and marks the package as an exception.  
+- Expected result: The information is immediately available to both customer support and the customer.  
+
+---
+
+### 4.2.5 Mariana Costa (Customer) Scenarios
+
+#### Scenario 14: Creating an Account through the Landing Page
+- Context: Mariana visits the company’s website for the first time and wants to create an account to track her orders.  
+- Action: She accesses the SLMS landing page, clicks “Create Account,” and is redirected to the registration screen managed by Keycloak.  
+- Expected result: Mariana successfully registers (using email and password) and receives a confirmation email. Her account is now active and linked to the customer portal.
+
+#### Scenario 15: Logging In through the Landing Page
+- Context: Mariana already has an account and wants to log in to view her order status.  
+- Action: She accesses the SLMS landing page and selects “Login,” being redirected to the Keycloak authentication screen.  
+- Expected result: Mariana successfully logs in and is automatically redirected to the customer portal, where she can check her active and past deliveries.  
+
+#### Scenario 16: Real-time order tracking
+- Context: Mariana made an online purchase and wants to know where her package is.  
+- Action: She accesses the SLMS public portal, enters her tracking number, and views the updated delivery status.  
+- Expected result: Mariana sees the current location and estimated delivery date without needing to contact the store.  
+
+#### Scenario 17: Receiving automatic notifications
+- Context: Mariana’s order moves through different shipping stages (shipped, out for delivery, failed attempt).  
+- Action: SLMS automatically sends her notifications (via email or SMS) whenever there is a relevant update.  
+- Expected result: Mariana feels informed and confident, always knowing what is happening with her order.  
+
+#### Scenario 18: Reporting a delivery issue
+- Context: Mariana notices a problem with her order (e.g., wrong address, impossible delivery time, damaged package).  
+- Action: She accesses the SLMS public portal, enters her tracking number, selects “Report a problem,” and describes the issue. The report is sent to Customer Service.  
+- Expected result: The problem is registered in SLMS as an open exception, visible to the support team, who can contact Mariana and resolve it more quickly.  
+
 
 ## 4.3 User Stories
+This section reflects the Sprint 6 updates to the backlog, including the removal of US16 (real-time GPS tracking due to scope constraints) and the addition of the AI Assistant user story (US18) applicable across all frontends and roles. Status markers indicate current completion.
 
-**Topics to cover:**
+### João Ferreira (Logistics Manager)
 
-**Complete list of 18 user stories with acceptance criteria:**
+#### US1 – “Daily monitoring of KPIs”
+As a Logistics Manager I want to access a dashboard with transportation KPIs so that I can monitor performance.  
 
-**Logistics Manager (3 stories):**
-- US1: KPI monitoring dashboard
-- US2: Carrier performance comparison
-- US3: Custom report generation
+Acceptance Criteria
+- View daily KPIs  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I open the dashboard  
+   - Then the system must show me KPIs such as on-time delivery rate, shipping costs and carrier performance  
 
-**Warehouse Staff (3 stories):**
-- US4: Order registration and processing
-- US5: Automated label and document generation
-- US6: Carrier pickup confirmation
+#### US2 – “Carrier comparison for new shipments”
+As a Logistics Manager I want to compare available carriers so that I can select the best option for new shipments.  
 
-**Customer Service Representative (3 stories):**
-- US7: Order status lookup
-- US8: Delivery exception resolution
-- US9: Customer notification management
+Acceptance Criteria
+- Access carrier comparison  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I open the carrier integration module  
+   - Then the system must display shipping costs and transit times for each carrier  
+- Select the optimal carrier  
+   - Given that I am reviewing the carrier list  
+   - When I choose one carrier  
+   - Then the system must assign that carrier to the shipment  
 
-**Driver (4 stories):**
-- US10: View delivery manifest
-- US11: Route optimization
-- US12: Proof of delivery capture
-- US13: Exception reporting
+#### US3 – “Generating performance reports”
+As a Logistics Manager I want to export reports so that I can share logistics performance with management.  
 
-**Customer (4 stories):**
-- US14: Account creation
-- US15: Secure login
-- US16: Real-time order tracking (removed/modified)
-- US17: Delivery notifications
-- US18: Issue reporting
+Acceptance Criteria
+- Generate performance reports  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I select the reporting option  
+   - Then the system must generate detailed reports with costs, on-time delivery rate and carrier performance  
+- Export reports  
+   - Given that the report is generated  
+   - When I click on export  
+   - Then the system must allow me to download it in formats such as PDF or Excel  
 
-**All Users (1 story):**
-- US19: AI Assistant for contextual help
+---
 
-**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (User Stories section)
+### Ana Martins (Warehouse Staff)
+
+#### US4 – “Generating shipping labels and documents”
+As Warehouse Staff I want to generate labels and shipping documents so that I ensure each order is ready for dispatch.  
+
+Acceptance Criteria
+- Generate labels and documents  
+   - Given that I am logged into the SLMS as Warehouse Staff  
+   - When I select an order  
+   - Then the system must generate the shipping label, packing slip and shipping manifest for the carrier  
+
+#### US5 – “Confirming carrier pickup”
+As Warehouse Staff I want to confirm carrier pickups in order to keep the system updated.  
+
+Acceptance Criteria
+- Confirm pickup  
+   - Given that the carrier has collected the packages  
+   - When I update the SLMS  
+   - Then the system must mark the orders as “collected”  
+
+---
+
+### Rita Lopes (Customer Service Representative)
+
+#### US6 – “Quick order status lookup”
+As a Customer Service Representative I want to check the status of an order so that I can provide fast answers to customers.  
+
+Acceptance Criteria
+- Search for order status  
+   - Given that a customer contacts support  
+   - When I search the order number in the SLMS  
+   - Then the system must display the latest real-time status  
+
+#### US7 – “Resolving a delivery issue”
+As a Customer Service Representative I want to view delivery exceptions so that I can provide clear explanations and resolutions to customers.  
+
+Acceptance Criteria
+- Identify delivery issues  
+   - Given that I am logged into the SLMS as Customer Service  
+   - When I search for an order with a reported exception  
+   - Then the system must display the exception details (e.g. recipient absent, incorrect address, carrier delay)  
+- Provide resolution to customer  
+   - Given that I am handling a customer call about an exception  
+   - When I explain the details and propose a solution  
+   - Then the customer must receive clear information about the next steps  
+- Close exception  
+   - Given that the customer has been informed and the issue addressed  
+   - When I update the SLMS with resolution notes  
+   - Then the system must mark the exception as closed and keep the resolution history available for future reference  
+
+#### US8 – “Handling customer-reported issues”
+As a Customer Service Representative I want to receive notifications of problems reported by customers so that I can follow up and resolve them quickly.  
+
+Acceptance Criteria
+- Receive notification  
+   - Given that a customer has reported a problem  
+   - When the SLMS registers it  
+   - Then I must receive a notification with the order details and the issue description  
+- Follow up with customer  
+   - Given that I received a notification of a customer-reported problem  
+   - When I contact the customer or update the order  
+   - Then the SLMS must allow me to log resolution notes and close the exception  
+
+---
+
+### Carlos Silva (Driver / Carrier)
+
+#### US9 – “Viewing delivery manifest”
+As a Driver I want to view my delivery manifest so that I know all packages I need to deliver.  
+
+Acceptance Criteria
+- Access delivery manifest  
+   - Given that I am logged into the SLMS mobile app  
+   - When I open my daily schedule  
+   - Then the system must show a list of packages with addresses and priorities  
+
+#### US10 – “Receiving optimized delivery routes”
+As a Driver I want to receive optimized delivery routes so that I can complete deliveries more efficiently.  
+
+Acceptance Criteria
+- Receive route planning  
+   - Given that I am logged into the SLMS mobile app  
+   - When I request my route  
+   - Then the system must provide me with the optimal delivery sequence  
+
+#### US11 – “Recording proof of delivery (POD)”
+As a Driver I want to record proof of delivery so that I am able to validate that the package was delivered.  
+
+Acceptance Criteria
+- Register POD  
+   - Given that I have delivered a package  
+   - When I take a delivery photo  
+   - Then the SLMS must update the order as “delivered” in real time  
+
+#### US12 – “Reporting delivery exceptions”
+As a Driver I want to report delivery exceptions so that I can keep the system updated when delivery fails.  
+
+Acceptance Criteria
+- Report failed delivery  
+   - Given that I cannot deliver a package  
+   - When I select a reason (e.g. recipient absent) in the mobile app  
+   - Then the system must update the order status as “exception”  
+
+---
+
+### Mariana Costa (Customer)
+
+#### US13 – “Creating a new order”
+As a Customer I want to create a new order through the customer portal so that I can request shipment of my packages.  
+
+Acceptance Criteria
+- Access order creation  
+   - Given that I am logged into the SLMS customer portal  
+   - When I navigate to “Create Order” or “/interfaces/new-order”  
+   - Then the system must display an order creation form  
+- Fill order details  
+   - Given that I am on the order creation page  
+   - When I enter order information (reference, description, shipping address, warehouse selection, tracking number)  
+   - Then the system must validate my input and show any errors  
+- Submit order  
+   - Given that I have filled all required fields  
+   - When I click “Create Order”  
+   - Then the system must create the order, associate it with my customer ID, and redirect me to order history  
+
+#### US14 – “Creating an Account through the Landing Page”
+As a Customer I want to create an account through the SLMS landing page so that I can access my delivery history and track my orders.  
+
+Acceptance Criteria
+- Access registration page  
+   - Given that I am on the SLMS landing page  
+   - When I click on “Create Account”  
+   - Then I must be redirected to the Keycloak registration screen  
+- Complete registration  
+   - Given that I enter valid registration details (name, email, password)  
+   - When I submit the form  
+   - Then my account must be created  
+- Access customer portal  
+   - Given that my registration is complete  
+   - When I return to the customer portal  
+   - Then I can log in with my new credentials  
+
+#### US15 – “Logging In through the Landing Page”
+As a Customer I want to log in through the SLMS landing page so that I can securely access my order tracking portal.  
+
+Acceptance Criteria
+- Access login page  
+   - Given that I am on the SLMS landing page  
+   - When I click on “Login”  
+   - Then I am redirected to the Keycloak authentication page  
+- Successful authentication  
+   - Given that I enter valid credentials or choose a social login option  
+   - When I log in successfully  
+   - Then I am redirected to my customer dashboard  
+- Session management  
+   - Given that I am logged in  
+   - When I close the browser or my session expires  
+   - Then I must log in again to regain access  
+
+#### US16 – “Receiving automatic notifications”
+As a Customer I want to receive notifications about my order so that I can stay informed.  
+
+Acceptance Criteria
+- Receive shipment updates  
+   - Given that my order status changes (e.g. shipped, out for delivery, failed attempt)  
+   - When the event occurs  
+   - Then the SLMS must send me an automatic notification (email or SMS)  
+
+#### US17 – “Reporting a delivery issue”
+As a Customer I want to report delivery issues through the tracking portal so that I can notify support and get faster resolutions.  
+
+Acceptance Criteria
+- Access report option  
+   - Given that I am in the SLMS customer portal with my tracking number  
+   - When I open my order details  
+   - Then the system must display an option to “Report a problem”  
+- Submit problem details  
+   - Given that I have identified a problem with my order  
+   - When I select the “Report a problem” option and enter details (e.g. wrong address, damaged package, unavailable at delivery time)  
+   - Then the SLMS must register the issue as an open exception linked to my order  
+- Notify customer service  
+   - Given that I have submitted a problem report  
+   - When the exception is created  
+   - Then the SLMS must notify a Customer Service Representative so that they can follow up with me  
+
+---
+
+### All Users (Cross-Role)
+
+#### US18 – “AI Assistant for contextual help”
+As a SLMS User I want to access an AI assistant so that I can get instant contextual help based on my role and current page.  
+
+Acceptance Criteria
+- Access chatbot interface  
+   - Given that I am logged into any SLMS frontend (admin-console, customer-portal, driver-pwa, landing-page)  
+   - When I click on the chat widget icon  
+   - Then the system must open an interactive chat interface  
+- Receive role-based responses  
+   - Given that I am asking a question in the chatbot  
+   - When the system processes my query  
+   - Then I must only receive answers based on content authorized for my role (e.g., warehouse staff don't see manager-only information)  
+- Get contextual help  
+   - Given that I am on a specific page or route (e.g., /orders, /carriers, /tracking)  
+   - When I ask a question  
+   - Then the system must prioritize content relevant to my current page context  
+- Multilingual support  
+   - Given that I have set my language preference to Portuguese or English  
+   - When I interact with the chatbot  
+   - Then the system must provide responses in my preferred language  
+- Natural language interaction  
+   - Given that I ask a question in conversational language  
+   - When the chatbot processes my query  
+   - Then I must receive a natural language response (not just keyword matches or static answers)  
+- Semantic search capability  
+   - Given that I ask a question using different words than the documentation  
+   - When the system searches for relevant content  
+   - Then it must find semantically similar content (meaning-based, not just keyword-based)  
+
+Technical Notes
+- Backend: Gemini API for LLM, Pinecone for vector database  
+- Database: AssistantDocument entity with role/frontend/route filtering  
+- Frontend: Chat widget component integrated in all 4 frontends  
+- See ADR-0007 and Chatbot Module Handbook for implementation details  
+
 
 ## 4.4 Feature Prioritization
 
