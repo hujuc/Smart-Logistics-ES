@@ -58,7 +58,7 @@ The primary objective of SLMS is to provide a comprehensive logistics management
 - **Customer transparency:** Allow customers to track orders in real time, receive proactive notifications, and report delivery problems directly through a public portal
 - **Structured exception management:** Ensure that delivery problems such as failed attempts, incorrect addresses, or damaged packages are logged, assigned, and resolved systematically
 
-The system's scope encompasses 18 user stories addressing 5 distinct user personas (detailed in Section 4), with 12 user stories completed, 5 in progress, and 1 pending. The platform handles the complete order lifecycle from creation through carrier selection, shipment, tracking, exception handling, and final delivery confirmation.
+The system's scope encompasses 18 user stories addressing 5 distinct user personas (detailed in Section 4), all of which have been successfully completed. The platform handles the complete order lifecycle from creation through carrier selection, shipment, tracking, exception handling, and final delivery confirmation.
 
 ## 1.3 System Overview
 
@@ -1068,7 +1068,7 @@ The six-sprint development timeline strategically sequenced feature delivery to 
 - Development environment configuration (Docker Compose, Terraform)
 - Initial KPI dashboard stub (US1 - partial)
 
-**Rationale:** Investing in infrastructure, architecture, and tooling early prevents technical debt accumulation and enables parallel development in subsequent sprints. Architecture Decision Records (ADRs) documented key choices (Order-Shipment separation, external user management, module independence) to guide implementation consistency. Early technology validation (Spring Boot 3.x, Next.js 14, Terraform) reduced integration risks in later sprints.
+**Rationale:** Investing in infrastructure, architecture, and tooling early prevents technical debt accumulation and enables parallel development in subsequent sprints. Architecture Decision Records (ADRs) documented key choices (Order-Shipment separation, external user management, module independence) to guide implementation consistency. Early technology validation (Spring Boot 3.x, Next.js 15, Terraform) reduced integration risks in later sprints.
 
 #### Sprint 2 (15 Oct - 28 Oct): First MVP - Order Management Core
 **Objective:** Deliver minimally functional order processing workflow
