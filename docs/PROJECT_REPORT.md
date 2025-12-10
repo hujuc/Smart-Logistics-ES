@@ -166,412 +166,167 @@
 
 # 3. System Architecture
 
-**Responsible: João Roldão**
-
-*[15-20 pages with diagrams and references]*
-
 ## 3.1 Architectural Overview
 
-**Topics to cover:**
-- High-level system architecture
-- Modular monolith rationale vs microservices
-- BFF (Backend-for-Frontend) pattern
-- Clear separation of concerns
-- Scalability considerations
+The Smart Logistics Management System (SLMS) employs a modular monolith architecture designed to balance development velocity, operational simplicity, and long-term maintainability. This architectural approach organizes the system into well-defined, loosely coupled modules within a single deployable application, while maintaining clear boundaries between different functional domains.
 
-**References:**
-- `docs/adr/0001-initial-system-architecture.md`
-- `docs/handbook/dev-handbook.md` (Architecture Overview section)
+![SLMS Architecture Diagram](handbook/Architecture_SLMS.png)
 
-**Diagrams to include:**
-- `docs/per-sprint/sprint2/architecture-update-security-&-auth/logic-architecture.png`
-- `docs/per-sprint/sprint2/architecture-update-security-&-auth/instalation-architecture.png`
+**Figure 3.1:** Overall SLMS Architecture showing Frontend, Backend, Persistence Layer, and External Integrations
+
+### Architectural Philosophy
+
+The decision to adopt a modular monolith rather than a microservices architecture stemmed from careful consideration of the project's context: a development team of five engineers building a comprehensive logistics platform under time constraints. While microservices offer attractive benefits such as independent scaling and technology diversity, they introduce significant operational complexity that would have diverted effort from delivering business value. The modular monolith provides a pragmatic middle ground—offering many of the organizational benefits of microservices while avoiding the overhead of distributed systems management.
+
+At its core, the architecture establishes clear module boundaries around business capabilities. Each module owns its domain logic, data access patterns, and internal workflows, communicating with other modules through well-defined interfaces. This separation of concerns ensures that changes within one module—such as modifications to the order management logic—do not ripple unpredictably through the carrier integration or notification systems. The boundaries are enforced through package structure and dependency management, preventing tight coupling between modules while allowing them to collaborate when necessary.
+
+### Modular Monolith Design
+
+The backend application comprises eight distinct business modules, each encapsulating a specific domain within the logistics workflow. The Order Module manages the complete lifecycle of shipment orders from creation through delivery. The Rate Carrier Module handles interactions with shipping carriers and manages the physical shipment entities. The Visibility Module provides real-time tracking and exception management capabilities. Supporting these core logistics functions, the User Management Module integrates with the authentication system, while the Notification Module handles asynchronous communication with users. The Reporting Module generates performance metrics and dashboards for management oversight, and the Chatbot Module is for providing AI-powered assistance to users across all frontends.
+
+This modular organization delivers several key advantages. Each module can evolve independently—teams can refactor the internal implementation of rate calculation without touching order management code. The clear boundaries make the codebase more understandable, as developers can reason about each module's responsibilities without needing to understand the entire system. Testing becomes more focused, as unit and integration tests can target specific modules. The architecture also preserves future flexibility: if operational needs change and independent scaling becomes necessary, well-defined module boundaries provide natural seams for extracting microservices.
+
+### Backend-for-Frontend Pattern
+
+Complementing the modular backend, the system implements the Backend-for-Frontend (BFF) pattern to optimize interactions between the business logic layer and the four distinct frontend applications. Each frontend—the Landing Page, Admin Console, Customer Portal, and Driver PWA—has unique requirements for data structure, aggregation, and security context. Rather than forcing all frontends to consume a single generic API, the BFF pattern provides each frontend with a dedicated backend layer that aggregates and transforms data specifically for that client's needs.
+
+The Admin Console BFF, for instance, serves three different internal user roles (logistics managers, warehouse staff, and customer service representatives) through a unified interface. It combines data from multiple business modules—pulling order details from the Order Module, carrier information from the Rate Carrier Module, and exception data from the Visibility Module—and presents them in aggregated views optimized for administrative dashboards. The Customer Portal BFF, by contrast, focuses exclusively on customer-facing data: order tracking information, delivery status updates, and self-service capabilities. It enforces strict data isolation, ensuring customers can only access their own orders while providing a simplified API surface tailored to the customer experience.
+
+The Driver PWA BFF serves the unique needs of mobile delivery drivers. It provides delivery manifests, route information, and real-time status update capabilities, all optimized for the constraints of mobile networks and intermittent connectivity. The BFF aggregates shipment details, destination addresses, and proof-of-delivery requirements into compact payloads designed for efficient transmission over cellular networks. Finally, the Landing Page BFF handles public-facing endpoints such as order tracking lookups that don't require authentication, implementing appropriate rate limiting and caching strategies.
+
+This pattern delivers significant benefits beyond simple API convenience. Security becomes more robust, as each BFF can enforce role-specific authorization rules and data access controls appropriate to its frontend. The BFFs serve as a security boundary, preventing frontends from directly accessing backend business logic and ensuring all requests flow through a controlled layer that validates permissions. Performance optimizes naturally, as each BFF can tailor its responses—pre-aggregating data that would otherwise require multiple round trips, implementing frontend-specific caching strategies, and minimizing payload sizes for mobile clients. The pattern also isolates frontends from backend complexity, allowing business modules to evolve their internal APIs without breaking frontend applications, as the BFFs can adapt and translate changes.
+
+### Deployment and Scalability
+
+Despite being a monolithic application, the architecture supports operational flexibility through containerization and infrastructure as code. The entire system deploys as a set of Docker containers—one for the Spring Boot backend, four for the Next.js frontend applications, and additional containers for infrastructure services like PostgreSQL, Keycloak, Kafka, and MinIO. This containerized approach ensures consistency across development, testing, and production environments while providing deployment flexibility.
+
+The system scales vertically by allocating additional resources to containers, a straightforward approach that aligns well with the modular monolith's single-process nature. For horizontal scaling, multiple backend instances run behind a load balancer, with session affinity or stateless JWT-based authentication ensuring requests can route to any instance. The database uses connection pooling to manage concurrent access efficiently, while Kafka provides asynchronous processing for operations that don't require immediate completion, such as notification delivery.
+
+The architecture recognizes that different components may have different scaling needs. The frontend applications, being relatively stateless, can scale independently from the backend. Static assets serve through Nginx with appropriate caching headers, reducing load on the application servers. The MinIO object storage scales independently to handle document and image storage growth. This selective scaling capability demonstrates that monolithic architecture doesn't preclude operational sophistication—it simply concentrates scaling decisions on the components that matter most.
+
+### Separation of Concerns
+
+The architecture maintains clear separation between different types of concerns. Business logic resides entirely within the backend modules, isolated from presentation concerns. The modules interact with the database through repository interfaces, abstracting data access patterns and enabling easier testing through mocks. Domain entities remain independent of their persistence mechanism, following clean architecture principles that keep core business rules free from framework dependencies.
+
+Cross-cutting concerns—logging, monitoring, security, and transaction management—are handled through framework-level capabilities rather than being scattered throughout business logic. Spring Boot's autoconfiguration and aspect-oriented programming features provide centralized solutions for these concerns, ensuring consistent application across all modules without duplicating code.
+
+The separation extends to the frontend architecture as well. Each Next.js application maintains its own component library, styling system, and state management, ensuring that changes to the admin interface don't affect the customer portal. Shared utilities and common components are organized in a dedicated shared module, providing code reuse without creating tight coupling between applications.
+
+### Deployment Architecture
+
+The system deploys as containerized services orchestrated through Docker Compose in development and Terraform in production. The infrastructure consists of self-hosted containers for core services—PostgreSQL 16 for data persistence, Keycloak 26.0 for authentication, MinIO for S3-compatible object storage, Apache Kafka for event streaming, and Nginx as reverse proxy—alongside the Spring Boot backend and four Next.js frontend applications. All containers run within a shared Docker network enabling service discovery while maintaining isolation.
+
+External managed services provide specialized capabilities: Shippo for multi-carrier shipping integration, Google Gemini for AI chatbot functionality, Pinecone for vector search, Elastic APM for observability, Mapbox for mapping and routing, and Flagsmith for feature flag management. This hybrid approach balances operational simplicity for core infrastructure with leveraging managed services for complex, specialized functionality.
 
 ## 3.2 Logic Architecture
 
+The logic architecture of SLMS organizes functionality into distinct layers, with the business layer at its core containing eight specialized modules that encapsulate domain logic. These modules interact with a presentation layer that implements the Backend-for-Frontend pattern, and a data access layer that manages persistence through PostgreSQL.
+
 ### 3.2.1 Backend Modules
 
-**Topics to cover:**
+The backend comprises eight specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
 
-**Order Module:**
-- Order creation, registration, and lifecycle management
-- Document generation (labels, packing slips)
-- Warehouse association
-- Order events and audit trail
-- Status transitions
+**Order Module:** Manages the complete order lifecycle from creation to delivery. Captures shipment details (package dimensions, destination, special requirements), tracks order status through a state machine (PENDING → READY → ASSIGNED → IN_TRANSIT → DELIVERED), generates shipping documents stored in MinIO, and maintains an immutable audit trail of all order events.
 
-**Rate Carrier Module:**
-- ShipEngine API integration
-- Carrier management (FedEx, UPS, DHL)
-- Shipment creation and assignment
-- Rate comparison functionality
-- Address validation
+**Rate Carrier Module:** Handles carrier integration and shipment execution through the Shippo API aggregator, supporting FedEx, UPS, and DHL. Provides rate comparison functionality for cost-optimal carrier selection, generates shipping labels with tracking numbers, manages shipment entities containing carrier-specific data, and tracks driver assignments for delivery execution.
 
-**Visibility Module:**
-- Real-time tracking aggregation
-- Delivery exception management
-- Exception categorization and prioritization
-- CSR assignment workflow
+**Visibility Module:** Aggregates real-time tracking updates from multiple sources (carrier webhooks, driver app, warehouse staff) into a unified order status view. Manages delivery exception workflow—capturing, categorizing, prioritizing, and routing exceptions to customer service representatives based on severity, workload, and expertise. Integrates with notifications to keep stakeholders informed.
 
-**Chatbot Module:**
-- AI-powered assistance using Google Gemini
-- Vector search with Pinecone (768 dimensions, cosine metric)
-- Role-based content filtering
-- Frontend-specific help
-- Route-based contextual guidance
-- Document ingestion and management
+**Chatbot Module:** Provides AI-powered contextual assistance using Google Gemini (LLM), Pinecone (vector database for semantic search), and custom tool calling for real-time database queries. Filters help content by user role, frontend application, current page route, and language preference. Tools enable the AI to answer questions like "What's the status of my order?" with actual database data, enforcing role-based authorization on tool execution.
 
-**User Management Module:**
-- Keycloak integration for authentication
-- OAuth2/OIDC implementation
-- JWT token validation
-- Role-based access control (5 roles)
+**User Management Module:** Bridges application logic with Keycloak authentication. Validates JWT tokens on every request, extracting user identity and roles (LOGISTICS_MANAGER, WAREHOUSE_STAFF, CUSTOMER_SERVICE, DRIVER, CUSTOMER) for authorization decisions. Enforces role-based access control across all modules and handles token refresh for seamless user experience.
 
-**Route Module:**
-- Delivery route optimization
-- Driver assignment
-- Route planning support
+**Notification Module:** Event-driven communication system built on Kafka. Subscribes to events from other modules (order status changes, exceptions, deliveries) and transforms them into user notifications via email and SMS. Maintains multi-language templates, respects user channel preferences, implements delivery tracking and retry logic, and prioritizes critical alerts.
 
-**Notification Module:**
-- Email and SMS notifications
-- Notification templates
-- Event-driven alerts
-
-**Reporting Module:**
-- KPI calculations and dashboards
-- Performance metrics
-- Custom report generation
-
-**References:**
-- `docs/adr/0001-initial-system-architecture.md` (Logic Architecture section)
-- `docs/handbook/dev-handbook.md`
-- Source code: `src/backend/src/main/java/Operimus/SLMS/business_layer/`
+**Reporting Module:** Transforms operational data into business intelligence for logistics managers. Calculates KPIs (on-time delivery %, average duration, cost per package, carrier performance, exception rates), generates real-time dashboards, enables time-series analysis for pattern identification, and supports custom ad-hoc reports. Uses pre-calculated aggregates and caching to avoid impacting transactional performance.
 
 ### 3.2.2 Frontend Applications
 
-**Topics to cover:**
+SLMS implements four separate Next.js applications rather than a single monolithic frontend. This separation enables each application to optimize for its specific user persona's workflows, security requirements, and device constraints without compromising other user experiences. All frontends share Next.js 15, React 19, and TypeScript but diverge in features and interface complexity.
 
-**Landing Page:**
-- Public-facing marketing and information
-- Entry point to SLMS ecosystem
+**Why Four Separate Frontends?** Different user groups have fundamentally different needs that would create complexity if forced into a single application. Internal staff need sophisticated tools on desktop computers; customers need simple tracking on any device; drivers need mobile-optimized interfaces with offline capability. Separate applications allow independent evolution, tailored performance optimization, and appropriate security boundaries.
 
-**Admin Console:**
-- Logistics manager dashboards and KPIs
-- Warehouse staff order processing
-- Customer service representative tools
-- Unified internal operations interface
+**Landing Page (Public visitors):** Public entry point providing marketing information and unauthenticated order tracking. Enables anyone with a tracking number to check shipment status without creating an account. Routes authenticated users to appropriate applications based on their role (managers to Admin Console, customers to Customer Portal).
 
-**Customer Portal:**
-- Order tracking and status lookup
-- Delivery preferences management
-- Issue reporting
-- Self-service capabilities
+**Admin Console (Logistics managers, warehouse staff, customer service):** Unified internal operations interface serving three roles with role-based UI adaptation. Managers access analytics dashboards and carrier configuration; warehouse staff create orders and generate shipping labels; customer service investigates issues and manages delivery exceptions. Consolidation enables cross-functional visibility while maintaining focused interfaces per role.
 
-**Driver PWA:**
-- Delivery manifest view
-- Route navigation
-- Proof of delivery capture (photo + signature)
-- Real-time status updates
-- Offline-capable Progressive Web App
+**Customer Portal (End customers):** Self-service interface for order tracking, delivery preference management, and issue reporting. Prioritizes simplicity and responsive design for infrequent users across all devices. Implements strict data isolation ensuring customers only access their own orders. Provides real-time tracking updates and direct exception reporting to reduce customer service load.
 
-**Reference:** `docs/adr/0001-initial-system-architecture.md` (Frontend Applications section)
+**Driver PWA (Delivery drivers):** Mobile Progressive Web App for field operations with offline-first design. Displays optimized delivery manifests with turn-by-turn navigation (Mapbox integration), captures proof of delivery (photos, signatures), and reports delivery exceptions. Service workers cache route data for offline access, with automatic sync when connectivity returns. Optimized for mobile constraints: large touch targets, minimal typing, battery efficiency.
 
 ### 3.2.3 BFF Pattern Implementation
 
-**Topics to cover:**
-- Backend-for-Frontend rationale
-- API aggregation and composition
-- Security boundary enforcement
-- Client-specific optimizations
-
-## 3.3 Installation/Deployment Architecture
-
-**Topics to cover:**
-
-**Infrastructure Components:**
-- PostgreSQL 16 (primary database)
-- Keycloak (authentication & authorization)
-- MinIO (object storage for documents, POD images)
-- Nginx (reverse proxy and load balancing)
-- Docker + Docker Compose (containerization)
-- Terraform (Infrastructure as Code)
-
-**External Integrations:**
-- ShipEngine API (carrier integration)
-- Google Gemini API (LLM for chatbot)
-- Pinecone (vector database for semantic search)
-- Elastic APM (observability and monitoring)
-
-**Network Architecture:**
-- Docker network: slms-network
-- Service discovery and communication
-- Port mappings and routing
-
-**References:**
-- `infra/README.md`
-- `infra/docker-compose.yaml`
-- `infra/terraform/` directory
-- `docs/adr/0003-architecture-update-db-integration.md`
-
-**Diagrams to include:**
-- Installation architecture diagram
-- Network topology
-
-## 3.4 Component Interactions
-
-**Topics to cover:**
-
-**Critical Flows:**
-
-1. **Order Creation Flow:**
-   - Customer/Warehouse → Admin Console
-   - Order Service → Database
-   - Document generation
-   - Warehouse assignment
-
-2. **Shipment Assignment Flow:**
-   - Rate comparison via ShipEngine
-   - Carrier selection
-   - Shipment creation
-   - Driver assignment
-
-3. **Authentication Flow:**
-   - Frontend → Keycloak
-   - JWT token issuance
-   - Token validation in backend
-   - Role-based authorization
-
-4. **Delivery Exception Flow:**
-   - Exception reporting (driver/customer)
-   - Exception categorization
-   - CSR assignment
-   - Resolution tracking
-
-5. **AI Chatbot Query Flow:**
-   - User query → Backend
-   - Embedding generation
-   - Pinecone semantic search
-   - Context retrieval
-   - Gemini response generation
-   - Role/route filtering
-
-**References:**
-- `docs/adr/0004-architecture-update-security-&-auth.md`
-- API endpoint listings in `docs/per-sprint/sprint2/endpoint-listing/`
-
-## 3.5 Architecture Decision Records (Summary)
-
-**Topics to cover:**
-
-**ADR-0001: Initial System Architecture**
-- Decision: Modular monolith
-- Rationale: Team size, complexity, deployment simplicity
-- Consequences: Single deployable, clear module boundaries
-
-**ADR-0002: Data Model Definition**
-- Initial database schema design
-- Entity relationships
-- Primary key strategy
-
-**ADR-0003: Database Integration**
-- PostgreSQL 16 selection
-- JPA/Hibernate configuration
-- Connection pooling
-
-**ADR-0004: Security & Authentication**
-- Keycloak adoption
-- OAuth2/OIDC implementation
-- JWT token-based auth
-
-**ADR-0005: Observability Monitoring Strategy**
-- Elastic APM selection
-- SLI/SLO definitions
-- Logging, metrics, traces approach
-
-**Reference:** Full ADRs in `docs/adr/` directory
-
-## 3.6 Technical Stack
-
-*[3-4 pages with technology justifications]*
-
-### 3.6.1 Backend
-
-**Topics to cover:**
-
-**Spring Boot 3.5.6 + Java 21:**
-- Modern Java features (records, pattern matching, virtual threads)
-- Spring Boot autoconfiguration
-- Dependency injection
-- Production-ready features (actuator)
-
-**Spring Data JPA:**
-- ORM with Hibernate
-- Repository abstraction
-- Query methods
-- Transaction management
-
-**Spring Security:**
-- OAuth2 resource server
-- JWT token validation
-- Method-level security
-- CORS configuration
-
-**PostgreSQL 16:**
-- Relational database
-- ACID compliance
-- JSONB support
-- Performance and scalability
-
-**Maven:**
-- Dependency management
-- Build lifecycle
-- Multi-module support
-- Plugin ecosystem
-
-**Reference:** `pom.xml` in `src/backend/`
-
-### 3.6.2 Frontend
-
-**Topics to cover:**
-
-**Next.js 15:**
-- Server-side rendering (SSR)
-- Static site generation (SSG)
-- API routes
-- File-based routing
-- Image optimization
-
-**React 19:**
-- Component-based architecture
-- Hooks
-- State management
-- Virtual DOM
-
-**TypeScript:**
-- Type safety
-- Better IDE support
-- Refactoring confidence
-- Documentation via types
-
-**Tailwind CSS:**
-- Utility-first CSS
-- Rapid UI development
-- Consistent design system
-- Small bundle size
-
-**NextAuth.js:**
-- Keycloak integration
-- Session management
-- Client-side auth
-- Protected routes
-
-**UI Component Library:**
-- shadcn/ui or similar
-- Accessible components
-- Customizable theming
-
-**Reference:** `package.json` files in `src/frontend/*/`
-
-### 3.6.3 Infrastructure
-
-**Topics to cover:**
-
-**Docker:**
-- Container runtime
-- Isolation and consistency
-- Multi-stage builds
-- Layer caching
-
-**Docker Compose:**
-- Multi-container orchestration
-- Development environment
-- Service dependencies
-- Volume management
-
-**Terraform:**
-- Infrastructure as Code
-- Declarative configuration
-- State management
-- Provider ecosystem (Docker provider)
-
-**Nginx:**
-- Reverse proxy
-- Load balancing
-- SSL termination
-- Static file serving
-- Path-based routing
-
-**GitHub Actions:**
-- CI/CD automation
-- Workflow definitions
-- Matrix builds
-- Artifact management
-
-**Reference:** `infra/` directory
-
-### 3.6.4 External Services
-
-**Topics to cover:**
-
-**Keycloak:**
-- Identity and access management
-- OAuth2/OIDC provider
-- User federation
-- Admin console
-
-**MinIO:**
-- S3-compatible object storage
-- Document storage
-- Image storage (POD)
-- On-premise alternative to AWS S3
-
-**ShipEngine:**
-- Multi-carrier API platform
-- Rate shopping
-- Label generation
-- Tracking integration
-- Support for FedEx, UPS, DHL
-
-**Google Gemini:**
-- Large Language Model
-- Natural language understanding
-- Response generation
-- Multilingual support
-
-**Pinecone:**
-- Vector database
-- Semantic search
-- High-dimensional vectors
-- Fast similarity search
-- Managed service
-
-**Elastic APM:**
-- Application Performance Monitoring
-- Distributed tracing
-- Metrics collection
-- Log correlation
-- Kibana visualization
-
-## 3.7 Critical Data Flows
-
-**Topics to cover:**
-
-**Order Lifecycle:**
-- PENDING → PROCESSING → READY_FOR_PICKUP → PICKED_UP → IN_TRANSIT → DELIVERED
-- Event tracking at each transition
-- Notification triggers
-
-**Shipment Lifecycle:**
-- Rate request → carrier selection → shipment creation → tracking
-
-**Exception Resolution:**
-- Detection → categorization → assignment → investigation → resolution
-
-**AI Chatbot Context Assembly:**
-- User context (role, frontend, route)
-- Document filtering
-- Semantic search
-- Response generation
+The Backend-for-Frontend (BFF) pattern provides dedicated API layers tailored to each frontend's specific requirements rather than exposing a single generic API to all clients. Four distinct BFF controllers in the presentation layer align with the four frontend applications.
+
+Each BFF orchestrates calls to multiple business modules, aggregating data into optimized responses that eliminate multiple frontend round trips. For example, an order detail request might combine data from Order, Rate Carrier, Visibility, and Reporting modules into a single response. The BFF also transforms data formats (date conversions, restructuring objects) and handles frontend-specific patterns (pagination, sorting, filtering).
+
+The BFF layer enforces frontend-specific security boundaries. The Customer Portal BFF verifies order ownership before returning data, preventing customers from accessing others' information. The Admin Console BFF implements role-specific endpoint authorization. The Driver PWA BFF validates shipment assignments. Each BFF optimizes for its frontend's constraints: the Driver PWA BFF minimizes payload sizes for mobile bandwidth, while the Admin Console BFF prioritizes comprehensive data over size.
+
+## 3.3 Technical Stack
+
+The SLMS technical stack combines mature, production-proven technologies with selective adoption of modern capabilities where they provide clear value. This section provides a concise overview of the technologies employed across backend, frontend, infrastructure, and external services.
+
+### Backend Technologies
+
+**Spring Boot 3.5.0** serves as the application framework, providing dependency injection, autoconfiguration, and production-ready features. **Java 21** brings modern language features including records, pattern matching, and virtual threads. The Spring ecosystem provides comprehensive capabilities out of the box, reducing the amount of custom infrastructure code required.
+
+**Spring Data JPA** with **Hibernate** handles object-relational mapping and data access. Repository interfaces provide CRUD operations without boilerplate code, while the JPA specification ensures portability if database or ORM needs change. Transaction management happens declaratively through annotations, simplifying consistency management.
+
+**Spring Security** implements OAuth 2.0 resource server capabilities, validating JWT tokens and enforcing method-level authorization. The framework integrates seamlessly with Keycloak, extracting user identity and roles from token claims to enable role-based access control throughout the application.
+
+**PostgreSQL 16** (Alpine-based Docker image) provides the relational database foundation. ACID transactions ensure data consistency, foreign key constraints maintain referential integrity, and JSONB columns handle semi-structured data. The database supports the full application data model including orders, shipments, carriers, exceptions, users, and chatbot documents.
+
+**Apache Kafka 7.6.1** and **Zookeeper** provide event streaming capabilities. Kafka enables asynchronous notification delivery and event-driven architecture patterns, decoupling event publishers from consumers while providing durability and replay capabilities.
+
+**Maven** handles dependency management, build lifecycle, and packaging. The POM file declares dependencies on Spring Boot starters, database drivers, testing frameworks, and external service clients, with Maven resolving transitive dependencies and ensuring consistent versions across the build.
+
+### Frontend Technologies
+
+**Next.js 15.5.4** powers all four frontend applications, providing server-side rendering, static site generation, API routes, and file-based routing. The framework optimizes performance through automatic code splitting and image optimization while simplifying deployment and SEO.
+
+**React 19.1.0** implements the component-based UI architecture. Hooks manage component state and lifecycle, while the virtual DOM efficiently updates the browser DOM. All four frontends share React as their foundation while implementing different features and interfaces.
+
+**TypeScript** adds static typing to JavaScript, catching errors at compile time rather than runtime. Type definitions document component props and API contracts, improve IDE autocomplete and refactoring capabilities, and provide confidence when making changes.
+
+**Tailwind CSS** provides utility-first styling, enabling rapid UI development with consistent design tokens. The approach reduces custom CSS, maintains design system consistency, and produces small production bundles through automatic purging of unused styles.
+
+**NextAuth.js** integrates frontend applications with Keycloak authentication. The library handles OAuth 2.0 flows, session management, and token refresh, providing protected route capabilities and user session hooks.
+
+**Elastic APM RUM 5.17.0** instruments frontend applications for real user monitoring. The library tracks page loads, route changes, API calls, JavaScript errors, and Core Web Vitals (LCP, INP, CLS), sending telemetry to Elastic Cloud for analysis.
+
+**Flagsmith** client libraries enable feature flag integration. Frontend applications fetch flag states at initialization and periodically refresh them, using flags to control feature availability without code deployments.
+
+### Infrastructure Technologies
+
+**Docker** provides containerization for all application and infrastructure components. Containers ensure consistency across development and production environments while enabling isolated execution and efficient resource usage.
+
+**Docker Compose** orchestrates the multi-container development environment, defining services, networks, volumes, and dependencies. A single command starts the entire SLMS stack locally, simplifying developer onboarding and testing.
+
+**Terraform** implements infrastructure as code for production deployments. Declarative configuration describes desired infrastructure state, with Terraform handling provisioning and managing the Docker provider for container deployments.
+
+**Nginx 1.27** (Alpine-based) serves as the reverse proxy and load balancer. Path-based routing directs requests to appropriate frontend or backend containers, while the proxy handles connection pooling, request buffering, and static asset serving.
+
+**GitHub Actions** automates CI/CD workflows. Automated builds compile code, run tests, build Docker images, and deploy to environments, ensuring code quality and enabling rapid iteration.
+
+### External Services
+
+**Keycloak 26.0** provides identity and access management through OAuth 2.0 and OpenID Connect protocols. The service manages user credentials, issues JWT tokens, and provides an admin console for user management.
+
+**MinIO** implements S3-compatible object storage for documents and images. Shipping labels, packing slips, customs declarations, and proof of delivery photos store in MinIO buckets, accessible through standard S3 APIs.
+
+**Shippo API** aggregates carrier integrations, providing unified access to FedEx, UPS, and DHL services. The API supports rate requests, label generation, and tracking webhooks, abstracting carrier-specific details.
+
+**Google Gemini** provides large language model capabilities for the chatbot. The API handles natural language understanding, response generation, and text embedding (768-dimensional vectors) for semantic search.
+
+**Pinecone** offers managed vector database services for semantic search. The database stores document embeddings generated by Gemini, supporting cosine similarity queries to find semantically related content.
+
+**Elastic APM** (managed Elastic Cloud instance) provides application performance monitoring and distributed tracing. Both backend Java agent instrumentation and frontend RUM libraries send telemetry for analysis through Kibana dashboards.
+
+**Mapbox** supplies mapping and routing services. APIs provide address geocoding, route calculation with traffic awareness, and turn-by-turn directions. Frontend JavaScript libraries render interactive maps in the Driver PWA.
+
+**Flagsmith** delivers feature flag management as a service. Applications fetch flag states through REST APIs, enabling dynamic feature control without code deployments. Flags support gradual rollouts, A/B testing, and emergency feature toggles.
+
+This technology stack balances proven stability with modern capabilities, prioritizing technologies with strong ecosystems, comprehensive documentation, and active communities. The stack supports current requirements while maintaining flexibility for future evolution.
 
 ---
 
@@ -3248,265 +3003,3 @@ docker exec slms-backend-dev ./mvnw test -Preal-integration
 - Course instructors
 - Team members
 - External service providers (ShipEngine, Google, Pinecone)
-
----
-
-# 15. Appendices
-
-**Responsible: Everyone (Collaborative)**
-
-## Appendix A: API Endpoint Documentation
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/`
-
-**Complete REST API reference organized by role:**
-
-### A.1 Logistics Manager Endpoints
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/logistics-manager-endpoint-listing.md`
-
-**Topics to cover:**
-- KPI dashboard endpoints
-- Carrier comparison endpoints
-- Report generation endpoints
-- Analytics endpoints
-
-### A.2 Warehouse Staff Endpoints
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/warehouse-management-endpoint-listing.md`
-
-**Topics to cover:**
-- Order registration endpoints
-- Label generation endpoints
-- Pickup confirmation endpoints
-- Warehouse-specific endpoints
-
-### A.3 Customer Service Endpoints
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/customer-service-endpoint-listing.md`
-
-**Topics to cover:**
-- Order lookup endpoints
-- Exception management endpoints
-- Customer notification endpoints
-- Resolution tracking endpoints
-
-### A.4 Driver/Carrier Endpoints
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/driver-carrier-endpoint-listing.md`
-
-**Topics to cover:**
-- Delivery manifest endpoints
-- Route endpoints
-- POD upload endpoints
-- Exception reporting endpoints
-
-### A.5 Customer Endpoints
-
-**Reference:** `docs/per-sprint/sprint2/endpoint-listing/customer-endpoint-listing.md`
-
-**Topics to cover:**
-- Order tracking endpoints
-- Notification preference endpoints
-- Issue reporting endpoints
-- Account management endpoints
-
-## Appendix B: Architecture Decision Records
-
-**Reference:** `docs/adr/` directory
-
-**Full ADR documentation:**
-
-### B.1 ADR-0001: Initial System Architecture
-
-**Reference:** `docs/adr/0001-initial-system-architecture.md`
-
-**Summary:**
-- Decision: Modular monolith architecture
-- Context: Multi-role system with carrier integration needs
-- Consequences: Simplified deployment, clear module boundaries
-
-### B.2 ADR-0002: Data Model Definition
-
-**Reference:** `docs/adr/0002-data-model-definition.md`
-
-**Summary:**
-- Initial database schema design
-- Entity relationships
-- Primary key strategy
-
-### B.3 ADR-0003: Architecture Update - DB Integration
-
-**Reference:** `docs/adr/0003-architecture-update-db-integration.md`
-
-**Summary:**
-- PostgreSQL 16 selection
-- JPA/Hibernate configuration
-- Connection pooling strategy
-
-### B.4 ADR-0004: Architecture Update - Security & Auth
-
-**Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
-
-**Summary:**
-- Keycloak adoption for authentication
-- OAuth2/OIDC implementation
-- JWT token-based authorization
-- Role-based access control
-
-### B.5 ADR-0005: Observability Monitoring Strategy
-
-**Reference:** `docs/adr/0005-observability-monitoring-strategy.md`
-
-**Summary:**
-- Elastic APM selection
-- SLI/SLO definitions (availability, latency, error rate)
-- Three pillars: logs, metrics, traces
-- OpenTelemetry instrumentation
-
-### B.6 ADR-0006: Shipment Entity Introduction (if exists)
-
-**Summary:**
-- Separation of Order and Shipment concepts
-- Carrier-specific shipment handling
-
-### B.7 ADR-0007: AI Chatbot Module (if exists)
-
-**Summary:**
-- Gemini for LLM
-- Pinecone for vector search
-- Document ingestion strategy
-
-### B.8 ADR-0008: Data Model Revision (if exists)
-
-**Summary:**
-- Data model updates and improvements
-- Migration strategy
-
-## Appendix C: Database Schema Diagrams
-
-**Reference:** `docs/per-sprint/sprint2/data-model-definition/data-model-definition.md`
-
-**Topics to cover:**
-
-### C.1 Entity-Relationship Diagrams
-
-- Overall ER diagram
-- Module-specific diagrams
-- Relationship cardinalities
-
-### C.2 Table Definitions
-
-**Detailed schema for each table:**
-- Field names and types
-- Constraints (PK, FK, unique, not null)
-- Indexes
-- Sample data
-
-## Appendix D: Deployment Scripts
-
-**Reference:** `Makefile`, `infra/deploy.sh`, `infra/terraform/`
-
-### D.1 Makefile Targets
-
-**Reference:** `Makefile`
-
-**Complete list of make commands:**
-- Production: `up`, `down`, `destroy`, `restart`, `logs`, `status`
-- Development: `dev-up`, `dev-down`, `dev-restart`, `dev-logs`
-- Build: `install`, `build`
-- Test: `test`, `test-unit`, `test-integration`, `test-e2e`, `test-real`
-- Cleanup: `clean`, `clean-volumes`, `hard-prune`
-
-### D.2 Terraform Configurations Overview
-
-**Reference:** `infra/terraform/`
-
-**Key Terraform files:**
-- `main.tf` - Resource definitions
-- `variables.tf` - Input variables
-- `outputs.tf` - Output values
-- `terraform.tfvars.example` - Variable template
-
-### D.3 Docker Compose Files
-
-**Reference:** `infra/docker-compose.yaml`, `infra/docker-compose.dev.yml`
-
-**Service definitions:**
-- Backend
-- Frontends (4 apps)
-- PostgreSQL
-- Keycloak
-- MinIO
-- Nginx
-
-## Appendix E: Configuration Templates
-
-**Reference:** `.env.example` files
-
-### E.1 Backend Environment Template
-
-**Reference:** `src/backend/.env.example`
-
-**Complete .env template with descriptions**
-
-### E.2 Infrastructure Environment Template
-
-**Reference:** `infra/.env.example`
-
-**Infrastructure configuration template**
-
-### E.3 Terraform Variables Template
-
-**Reference:** `infra/terraform/terraform.tfvars.example`
-
-**Terraform variable template**
-
-## Appendix F: Glossary
-
-**Technical Terms:**
-- **ADR** - Architecture Decision Record
-- **APM** - Application Performance Monitoring
-- **BFF** - Backend-for-Frontend
-- **CORS** - Cross-Origin Resource Sharing
-- **CSR** - Customer Service Representative
-- **ER** - Entity-Relationship
-- **IaC** - Infrastructure as Code
-- **JWT** - JSON Web Token
-- **KPI** - Key Performance Indicator
-- **LLM** - Large Language Model
-- **OAuth2** - Open Authorization 2.0
-- **OIDC** - OpenID Connect
-- **ORM** - Object-Relational Mapping
-- **POD** - Proof of Delivery
-- **PWA** - Progressive Web App
-- **RBAC** - Role-Based Access Control
-- **SLA** - Service Level Agreement
-- **SLI** - Service Level Indicator
-- **SLO** - Service Level Objective
-- **SLMS** - Smart Logistics Management System
-- **SSR** - Server-Side Rendering
-- **SSG** - Static Site Generation
-
-**Domain-Specific Terminology:**
-- **Carrier** - Third-party shipping company (FedEx, UPS, DHL)
-- **Delivery Exception** - Problem during delivery requiring resolution
-- **Manifest** - List of deliveries for a driver
-- **Rate Shopping** - Comparing shipping rates across carriers
-- **Shipment** - Carrier-assigned package movement
-- **Tracking Number** - Unique identifier for order/shipment
-- **Warehouse** - Physical location for order processing
-
----
-
-## Document Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-12-03 | Group 304 | Initial report structure |
-
----
-
-**End of Report Structure**
-
-*Note: This document provides a complete structural outline for the SLMS Project Report. Each section contains topic bullets and references to existing documentation. The report should be expanded with detailed content, maintaining academic rigor while leveraging the comprehensive documentation already created by the team.*
