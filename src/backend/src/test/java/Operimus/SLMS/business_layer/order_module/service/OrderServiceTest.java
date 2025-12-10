@@ -63,6 +63,15 @@ class OrderServiceTest {
     @MockitoBean
     private KeycloakUserService keycloakUserService;
 
+    @MockitoBean
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+
+    @MockitoBean
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @MockitoBean
+    private Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+
     private Warehouse warehouse;
 
     @BeforeEach

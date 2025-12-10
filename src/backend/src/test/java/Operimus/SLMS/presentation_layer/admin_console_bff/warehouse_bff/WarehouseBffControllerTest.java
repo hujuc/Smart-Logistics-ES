@@ -55,6 +55,15 @@ class WarehouseBffControllerTest {
     @MockitoBean
     private KeycloakUserService keycloakUserService;
 
+    @MockitoBean
+    private Operimus.SLMS.business_layer.notifications_module.service.WarehouseNotificationService warehouseNotificationService;
+
+    @MockitoBean
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+
+    @MockitoBean
+    private Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+
     // ========================================
     // Health Check Tests
     // ========================================

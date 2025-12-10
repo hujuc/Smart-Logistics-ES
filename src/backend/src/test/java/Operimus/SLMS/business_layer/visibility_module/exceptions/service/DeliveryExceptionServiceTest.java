@@ -31,6 +31,9 @@ class DeliveryExceptionServiceTest {
     @InjectMocks
     private DeliveryExceptionService exceptionService;
 
+    @Mock
+    private Operimus.SLMS.business_layer.notifications_module.service.CustomerServiceNotificationService customerServiceNotificationService;
+
     private DeliveryException testException;
     private UUID testExceptionId;
     private UUID testCustomerId;
