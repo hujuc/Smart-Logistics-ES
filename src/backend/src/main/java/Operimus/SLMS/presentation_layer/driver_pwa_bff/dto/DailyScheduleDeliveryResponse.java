@@ -25,4 +25,21 @@ public class DailyScheduleDeliveryResponse {
     private LocalDate estimatedDeliveryDate;
     private String shippingCity;
     private String shippingPostalCode;
+    private String shippingCountry;
+    private String shippingStateOrProvince;
+    private WarehouseAddressDto warehouseAddress;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class WarehouseAddressDto {
+        private String name;
+        private String addressLine1;
+        private String addressLine2;
+        private String city;
+        private String stateOrProvince;
+        private String country;
+        private String postalCode;
+    }
 }

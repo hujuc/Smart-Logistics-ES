@@ -70,6 +70,16 @@ export async function checkHealth(): Promise<{ status: string; service: string; 
 /**
  * Daily Schedule types
  */
+export interface WarehouseAddress {
+  name: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  stateOrProvince: string;
+  country: string;
+  postalCode: string;
+}
+
 export interface DailyScheduleDelivery {
   orderId: number;
   orderReference: string;
@@ -83,6 +93,9 @@ export interface DailyScheduleDelivery {
   estimatedDeliveryDate: string;
   shippingCity: string;
   shippingPostalCode: string;
+  shippingCountry: string;
+  shippingStateOrProvince: string;
+  warehouseAddress: WarehouseAddress;
 }
 
 export interface DailyScheduleResponse {

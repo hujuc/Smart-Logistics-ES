@@ -152,6 +152,69 @@ public class DriverBffController {
     }
 
     /**
+     * Report a delivery exception
+     *
+     * @param orderId Order identifier
+     * @param exceptionType Type of exception
+     * @param description Description of the exception
+     * @param principal Authenticated driver token
+     * @return Exception details
+     */
+    @PostMapping("/orders/{orderId}/exception")
+    public ResponseEntity<java.util.Map<String, Object>> reportException(
+            @PathVariable Long orderId,
+            @RequestParam("exceptionType") ExceptionType exceptionType,
+            @RequestParam("description") String description,
+            @AuthenticationPrincipal Jwt principal) {
+        String driverId = extractDriverIdentifier(principal);
+        if (!StringUtils.hasText(driverId)) {
+            throw new AccessDeniedException("Driver authentication is required.");
+        }
+
+        log.info("Driver {} reporting exception for order {}: {}", driverId, orderId, exceptionType);
+
+        // Verify the order exists and belongs to the driver's shipment
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (order.getShipmentId() == null) {
+            throw new RuntimeException("Order is not assigned to a shipment");
+        }
+
+        Shipment shipment = shipmentRepository.findById(order.getShipmentId())
+                .orElseThrow(() -> new RuntimeException("Shipment not found"));
+
+        String resolvedDriverId = normalizeDriverIdentifier(driverId);
+        if (!resolvedDriverId.equals(shipment.getDriverId())) {
+            throw new AccessDeniedException("Driver is not assigned to this shipment");
+        }
+
+        // Get the driver's UUID from Keycloak
+        java.util.UUID driverUUID;
+        try {
+            String userId = keycloakUserService.getUserByUsername(resolvedDriverId).getId();
+            driverUUID = java.util.UUID.fromString(userId);
+        } catch (Exception e) {
+            log.warn("Could not resolve driver UUID, using a generated one");
+            driverUUID = java.util.UUID.randomUUID();
+        }
+
+        // Create the exception
+        var exceptionResponse = deliveryExceptionService.createDriverException(
+                orderId, exceptionType, description, driverUUID);
+
+        log.info("Created exception {} for order {}", exceptionResponse.getId(), orderId);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "exceptionId", exceptionResponse.getId().toString(),
+                "orderId", orderId,
+                "type", exceptionType.toString(),
+                "status", exceptionResponse.getStatus().toString(),
+                "message", "Exception reported successfully"
+        ));
+    }
+
+    /**
      * Get the driver's daily schedule
      *
      * @param principal Authenticated driver token
@@ -167,11 +230,16 @@ public class DriverBffController {
 
         log.info("Driver {} requesting daily schedule", driverId);
 
-        // Get all shipments for this driver
+        // Get all shipments for this driver that are IN_TRANSIT (accepted and active)
         List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
+        log.info("Found {} total shipments for driver {}", shipments.size(), driverId);
+        List<Shipment> activeShipments = shipments.stream()
+                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT)
+                .toList();
+        log.info("Found {} IN_TRANSIT shipments for driver {}", activeShipments.size(), driverId);
 
-        if (shipments.isEmpty()) {
-            log.info("No shipments found for driver {}", driverId);
+        if (activeShipments.isEmpty()) {
+            log.info("No active (IN_TRANSIT) shipments found for driver {}", driverId);
             return ResponseEntity.ok(DailyScheduleResponse.builder()
                     .totalStops(0)
                     .totalPackages(0)
@@ -180,17 +248,44 @@ public class DriverBffController {
                     .build());
         }
 
-        // For now, return the first shipment (in future, could filter by date)
-        Shipment shipment = shipments.get(0);
-        List<Order> orders = orderRepository.findByShipmentId(shipment.getId());
+        // Get all orders from all active shipments
+        List<Order> allOrders = new java.util.ArrayList<>();
+        for (Shipment s : activeShipments) {
+            List<Order> shipmentOrders = orderRepository.findByShipmentId(s.getId());
+            allOrders.addAll(shipmentOrders);
+        }
+
+        // Filter out orders that have active delivery exceptions
+        // Active exception statuses: OPEN, ASSIGNED, IN_PROGRESS, ESCALATED
+        List<Order> ordersWithoutActiveExceptions = new java.util.ArrayList<>(allOrders.stream()
+                .filter(order -> {
+                    var exceptions = deliveryExceptionService.getByOrderId(order.getId());
+
+                    // Include order only if it has no exceptions or all exceptions are resolved/closed
+                    return exceptions.stream().noneMatch(exception ->
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
+                    );
+                })
+                .toList());
+
+        log.info("Filtered {} orders with active exceptions out of {} total orders",
+                allOrders.size() - ordersWithoutActiveExceptions.size(), allOrders.size());
+
+        // Log order statuses for debugging
+        java.util.Map<OrderStatus, Long> statusCounts = ordersWithoutActiveExceptions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Order::getStatus, java.util.stream.Collectors.counting()));
+        log.info("Order statuses after filtering: {}", statusCounts);
 
         // Sort orders by estimated delivery date and shipping city
-        orders.sort(Comparator
+        ordersWithoutActiveExceptions.sort(Comparator
                 .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DailyScheduleDeliveryResponse> deliveries = orders.stream()
+        List<DailyScheduleDeliveryResponse> deliveries = ordersWithoutActiveExceptions.stream()
                 .map(order -> DailyScheduleDeliveryResponse.builder()
                         .orderId(order.getId())
                         .orderReference(order.getReference())
@@ -204,16 +299,33 @@ public class DriverBffController {
                         .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
                         .shippingCity(order.getShippingCity())
                         .shippingPostalCode(order.getShippingPostalCode())
+                        .shippingCountry(order.getShippingCountry())
+                        .shippingStateOrProvince(order.getShippingStateOrProvince())
+                        .warehouseAddress(DailyScheduleDeliveryResponse.WarehouseAddressDto.builder()
+                                .name(order.getWarehouse().getName())
+                                .addressLine1(order.getWarehouse().getAddressLine1())
+                                .addressLine2(order.getWarehouse().getAddressLine2())
+                                .city(order.getWarehouse().getCity())
+                                .stateOrProvince(order.getWarehouse().getStateOrProvince())
+                                .country(order.getWarehouse().getCountry())
+                                .postalCode(order.getWarehouse().getPostalCode())
+                                .build())
                         .build())
                 .toList();
 
+        // Use first shipment for summary info (or could aggregate)
+        Shipment firstShipment = activeShipments.get(0);
+        double totalWeight = activeShipments.stream()
+                .mapToDouble(s -> s.getTotalWeight() != null ? s.getTotalWeight() : 0.0)
+                .sum();
+
         DailyScheduleResponse response = DailyScheduleResponse.builder()
-                .shipmentCode(shipment.getShipmentCode())
-                .shipmentId(shipment.getId())
-                .totalStops(orders.size())
-                .totalPackages(orders.size()) // Assuming 1 package per order for now
-                .totalWeight(shipment.getTotalWeight())
-                .weightUnit(shipment.getWeightUnit())
+                .shipmentCode(firstShipment.getShipmentCode())
+                .shipmentId(firstShipment.getId())
+                .totalStops(ordersWithoutActiveExceptions.size())
+                .totalPackages(ordersWithoutActiveExceptions.size()) // Assuming 1 package per order for now
+                .totalWeight(totalWeight)
+                .weightUnit(firstShipment.getWeightUnit())
                 .deliveries(deliveries)
                 .build();
 
@@ -274,8 +386,13 @@ public class DriverBffController {
         // Get all shipments for this driver
         List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
 
-        if (shipments.isEmpty()) {
-            log.info("No shipments found for driver {}", driverId);
+        // Filter for IN_TRANSIT shipments only
+        List<Shipment> activeShipments = shipments.stream()
+                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT)
+                .toList();
+
+        if (activeShipments.isEmpty()) {
+            log.info("No active shipments found for driver {}", driverId);
             return ResponseEntity.ok(DriverDashboardResponse.builder()
                     .todayStats(DriverDashboardResponse.TodayStats.builder()
                             .totalDeliveries(0)
@@ -287,27 +404,49 @@ public class DriverBffController {
                     .build());
         }
 
-        // For now, use the first shipment
-        Shipment shipment = shipments.get(0);
-        List<Order> orders = orderRepository.findByShipmentId(shipment.getId());
+        // Get all orders from all active shipments
+        List<Order> allOrders = new java.util.ArrayList<>();
+        for (Shipment s : activeShipments) {
+            List<Order> shipmentOrders = orderRepository.findByShipmentId(s.getId());
+            allOrders.addAll(shipmentOrders);
+        }
+
+        // Filter out orders that have active delivery exceptions
+        // Active exception statuses: OPEN, ASSIGNED, IN_PROGRESS, ESCALATED
+        List<Order> ordersWithoutActiveExceptions = new java.util.ArrayList<>(allOrders.stream()
+                .filter(order -> {
+                    var exceptions = deliveryExceptionService.getByOrderId(order.getId());
+
+                    // Include order only if it has no exceptions or all exceptions are resolved/closed
+                    return exceptions.stream().noneMatch(exception ->
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
+                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
+                    );
+                })
+                .toList());
+
+        log.info("Dashboard: Filtered {} orders with active exceptions out of {} total orders",
+                allOrders.size() - ordersWithoutActiveExceptions.size(), allOrders.size());
 
         // Sort orders by estimated delivery date and shipping city
-        orders.sort(Comparator
+        ordersWithoutActiveExceptions.sort(Comparator
                 .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         // Calculate statistics
-        long completed = orders.stream()
+        long completed = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .count();
 
-        long remaining = orders.stream()
+        long remaining = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .count();
 
         // Get next 3 deliveries that are pending
         AtomicInteger stopNumber = new AtomicInteger(1);
-        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = orders.stream()
+        List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .limit(3)
                 .map(order -> DriverDashboardResponse.NextDeliveryPreview.builder()
@@ -320,7 +459,7 @@ public class DriverBffController {
                 .toList();
 
         DriverDashboardResponse.TodayStats stats = DriverDashboardResponse.TodayStats.builder()
-                .totalDeliveries(orders.size())
+                .totalDeliveries(ordersWithoutActiveExceptions.size())
                 .completed((int) completed)
                 .remaining((int) remaining)
                 .nextStopETA("15 min") // Placeholder for now

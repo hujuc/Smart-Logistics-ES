@@ -1,0 +1,8 @@
+{
+  "name": "@slms/shared",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "lucide-react": "^0.469.0"
+  }
+}
