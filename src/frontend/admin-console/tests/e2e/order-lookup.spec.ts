@@ -134,61 +134,63 @@ const loginAsCSR = async (page: Page) => {
 };
 
 /**
- * Helper to perform Warehouse Manager login via landing page
+ * Helper to perform Warehouse Manager login via API (more reliable than UI flow)
  */
 const loginAsWarehouse = async (page: Page) => {
-  console.log("🔐 Starting login flow...");
+  console.log("🔐 Starting API-based login flow...");
 
-  // Start from landing page
-  await page.goto("/");
-  console.log(`  ✓ Navigated to landing page: ${page.url()}`);
+  // Login via API instead of UI
+  const API_URL = `${BASE_URL}/api/landing-page`;
 
-  // Wait for page to load
-  await page.waitForLoadState('domcontentloaded');
-
-  // Click on Login button
-  const loginButton = page.getByRole("button", { name: /login/i }).first();
-  const loginButtonVisible = await loginButton.isVisible({ timeout: 5000 }).catch(() => false);
-
-  if (!loginButtonVisible) {
-    console.error(`  ✗ Login button not found! Current URL: ${page.url()}`);
-    console.error(`  Page title: ${await page.title()}`);
-    throw new Error("Login button not visible on landing page");
-  }
-
-  await loginButton.click();
-  console.log("  ✓ Clicked login button");
-
-  // Wait for Keycloak login page
   try {
-    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
-    console.log(`  ✓ Keycloak login page loaded: ${page.url()}`);
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'warehouse',
+        password: 'warehouse',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`  ✗ API login failed: ${response.status} ${response.statusText}`);
+      console.error(`  Error: ${errorText}`);
+      throw new Error(`Login API failed: ${response.status} - ${errorText}`);
+    }
+
+    const loginData = await response.json();
+    console.log(`  ✓ API login successful for user: ${loginData.username}`);
+
+    // Navigate to landing page first
+    await page.goto("/");
+    console.log(`  ✓ Navigated to landing page`);
+
+    // Inject the token into browser storage
+    await page.evaluate((data) => {
+      localStorage.setItem('access_token', data.accessToken);
+      localStorage.setItem('user', JSON.stringify({
+        username: data.username,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        roles: data.roles,
+      }));
+
+      // Also set cookie
+      const expiresInMs = data.expiresIn * 1000;
+      const expiryDate = new Date(Date.now() + expiresInMs);
+      document.cookie = `access_token=${data.accessToken}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+    }, loginData);
+
+    console.log(`  ✓ Token injected into browser storage`);
+    console.log(`  ✓ Login completed successfully`);
+
   } catch (error) {
-    console.error(`  ✗ Keycloak login page did not load! Current URL: ${page.url()}`);
-    console.error(`  Page title: ${await page.title()}`);
-    throw new Error("Keycloak login page did not appear");
-  }
-
-  // Fill credentials
-  await page.getByLabel(/username/i).fill("warehouse");
-  await page.getByLabel(/password/i).fill("warehouse");
-  console.log("  ✓ Filled credentials");
-
-  // Click login button
-  await page.getByRole("button", { name: /^login$/i }).last().click();
-  console.log("  ✓ Clicked Keycloak login button");
-
-  // Wait for login to complete - check for redirect
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
-  await page.waitForTimeout(2000);
-
-  const finalUrl = page.url();
-  console.log(`  ✓ Login flow completed. Final URL: ${finalUrl}`);
-
-  // Check if we're still on landing page (login failed)
-  if (finalUrl === 'http://localhost/' || finalUrl.endsWith('localhost/')) {
-    console.error("  ✗ WARNING: Still on landing page after login - authentication may have failed");
-    console.error(`  Page title: ${await page.title()}`);
+    console.error(`  ✗ Login failed:`, error);
+    throw error;
   }
 };
 
@@ -250,18 +252,13 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     const context = page.context();
 
     try {
-      // 1. Login so Keycloak token gets stored
+      // Login via API to get token
       await loginAsWarehouse(page);
 
-      // 2. Wait for token to be available (polling, no redirect dependency)
-      let token: string | null = null;
-      for (let i = 0; i < 20; i++) {
-        const cookies = await context.cookies();
-        const tokenCookie = cookies.find(c => c.name === 'access_token');
-        token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
-        if (token) break;
-        await page.waitForTimeout(500);
-      }
+      // Token should be available immediately
+      const cookies = await context.cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
 
       if (token) {
         // Get all orders to find orphaned ones
@@ -337,30 +334,10 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     try {
       await loginAsWarehouse(setupPage);
 
-      // Wait for token to be available (don't rely on redirect)
-      // Token gets set during login callback, so wait for it to appear
-      let setupToken: string | null = null;
-      const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds
-
-      for (let i = 0; i < maxAttempts; i++) {
-        // Try cookies first
-        const cookies = await setupPage.context().cookies();
-        const tokenCookie = cookies.find(c => c.name === 'access_token');
-        if (tokenCookie?.value) {
-          setupToken = tokenCookie.value;
-          break;
-        }
-
-        // Fallback to localStorage
-        const localToken = await setupPage.evaluate(() => localStorage.getItem('access_token'));
-        if (localToken) {
-          setupToken = localToken;
-          break;
-        }
-
-        // Wait before next attempt
-        await setupPage.waitForTimeout(500);
-      }
+      // Token should be available immediately after API login
+      const cookies = await setupPage.context().cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const setupToken = tokenCookie?.value || await setupPage.evaluate(() => localStorage.getItem('access_token'));
 
       if (!setupToken) {
         console.error('Available cookies:', (await setupPage.context().cookies()).map(c => c.name));
@@ -368,6 +345,8 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
         console.error('Current URL:', setupPage.url());
         throw new Error("Could not get authentication token for test setup");
       }
+
+      console.log(`✓ Got authentication token (length: ${setupToken.length})`);
 
       // Create a test warehouse
       testWarehouse = await createTestWarehouse(setupToken);
@@ -417,18 +396,13 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     const context = page.context();
 
     try {
-      // 1. Login so Keycloak token gets stored
+      // Login via API to get token
       await loginAsWarehouse(page);
 
-      // 2. Wait for token to be available (polling, no redirect dependency)
-      let token: string | null = null;
-      for (let i = 0; i < 20; i++) {
-        const cookies = await page.context().cookies();
-        const tokenCookie = cookies.find(c => c.name === 'access_token');
-        token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
-        if (token) break;
-        await page.waitForTimeout(500);
-      }
+      // Token should be available immediately
+      const cookies = await page.context().cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
 
       if (!token) {
         throw new Error("Could not read Keycloak token from browser session");
