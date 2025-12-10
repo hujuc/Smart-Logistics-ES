@@ -537,8 +537,6 @@ This pattern requires application code to manually maintain referential integrit
 
 **Responsible: Hugo Castro**
 
-*[10-12 pages with persona images and scenarios]*
-
 ## 4.1 Personas
 
 **Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
@@ -1393,8 +1391,6 @@ The table below provides complete traceability between user stories (Section 4.3
 
 **Responsible: Hugo Castro**
 
-*[8-10 pages with step-by-step instructions]*
-
 **Reference:** `docs/handbook/dev-handbook.md`
 
 ## 5.1 Prerequisites
@@ -1429,94 +1425,42 @@ Before starting development on SLMS, developers must install and configure the r
 
 ## 5.2 Initial Environment Setup
 
-This section provides a step-by-step guide to configure and launch the SLMS development environment on a local machine. The process assumes all prerequisites from Section 5.1 are already installed.
+The complete step-by-step installation and configuration process is documented in the accompanying **SLMS Installation Guide** (PDF document submitted with this report). That guide provides detailed instructions for:
 
-### Step 1: Clone the Repository
+- Cloning the repository and navigating the project structure
+- Configuring environment variables for all services (Keycloak, MinIO, PostgreSQL, external APIs)
+- Starting the development environment with `make up` or `make dev-up`
+- Verifying successful installation and service health
+- Accessing the four frontend applications and backend API
+- Troubleshooting common setup issues (port conflicts, memory limitations, API key errors)
 
-Clone the SLMS repository from GitHub and navigate into the project directory:
+For quick reference, the basic setup workflow is:
 
 ```bash
+# 1. Clone repository
 git clone https://github.com/detiuaveiro/group-project-es2526_304.git
 cd group-project-es2526_304
-```
 
-This downloads the complete codebase including backend, frontends, infrastructure definitions, and documentation.
-
-### Step 2: Configure Environment Variables
-
-The system requires environment variables for external service integration and sensitive configuration. Copy the example environment file and customize it:
-
-```bash
+# 2. Configure environment
 cp infra/.env.example infra/.env
-```
+# Edit infra/.env with required API keys and credentials
 
-Edit `infra/.env` with a text editor to configure:
-
-- **Keycloak:** Admin credentials, realm name, and client configuration for OAuth 2.0 authentication
-- **MinIO:** Access keys and bucket names for S3-compatible object storage
-- **PostgreSQL:** Database name, username, and password
-- **API Keys:** 
-  - **Gemini API Key:** Required for AI chatbot functionality (obtain from Google AI Studio)
-  - **Pinecone API Key:** Required for vector search in chatbot (obtain from Pinecone console)
-  - **ShipEngine API Key:** Required for carrier integration (obtain from ShipEngine dashboard)
-
-The `.env.example` file includes placeholder values and comments explaining each variable. Sensitive values like API keys must never be committed to version control—the `.env` file is excluded via `.gitignore`.
-
-### Step 3: Start the Development Environment
-
-The project provides a simplified development workflow using Make. Start all services with a single command:
-
-```bash
+# 3. Start all services
 make up
-```
 
-This command performs several automated steps:
-
-1. **Network Creation:** Creates the `slms-network` Docker network for inter-container communication
-2. **Infrastructure Provisioning:** Runs Terraform to provision PostgreSQL, Keycloak, MinIO, Kafka, and Nginx containers
-3. **Application Build:** Compiles the Spring Boot backend and builds all four Next.js frontend applications
-4. **Container Start:** Launches all application and infrastructure containers with proper dependency ordering
-
-The first execution takes 5-10 minutes as Docker downloads base images and builds application containers. Subsequent runs are faster as the system reuses existing containers when possible.
-
-**Alternative: Development-Only Mode**
-
-For developers working exclusively on frontend or backend code without infrastructure changes, a lightweight Docker Compose environment is available:
-
-```bash
-make dev-up
-```
-
-This bypasses Terraform and starts services using `docker-compose.dev.yml`, which is faster for rapid iteration cycles.
-
-### Step 4: Verify the Installation
-
-Confirm all services started successfully by checking container health status:
-
-```bash
+# 4. Verify health
 make status
+
+# 5. Access applications
+# Landing Page:     http://localhost/
+# Customer Portal:  http://localhost/customer/
+# Admin Console:    http://localhost/admin/
+# Driver PWA:       http://localhost/driver/
 ```
 
-This displays the running state of all containers. All services should show as "healthy" or "running". If any container shows as "exited" or "unhealthy", inspect logs with `make logs SERVICE=<service-name>`.
+**Note:** The first startup takes 5-10 minutes while Docker downloads images and builds containers. Subsequent runs are significantly faster.
 
-### Step 5: Access the Applications
-
-Once all services are running, access the applications through the Nginx reverse proxy:
-
-- **Landing Page:** http://localhost/
-- **Customer Portal:** http://localhost/customer/
-- **Admin Console:** http://localhost/admin/
-- **Driver PWA:** http://localhost/driver/
-
-The backend API is accessible at http://localhost/api/ and Keycloak at http://localhost/auth/.
-
-### Troubleshooting Common Setup Issues
-
-**Port Conflicts:** If port 80 or other required ports are already in use, the containers will fail to start. Check for conflicting services with `sudo lsof -i :80` (Linux/macOS) and stop them before retrying.
-
-**Out of Memory:** If containers crash or the system becomes unresponsive, Docker may not have sufficient memory allocated. Increase Docker's memory limit to at least 6GB through Docker Desktop settings (Preferences → Resources → Memory).
-
-**API Key Errors:** If the chatbot module fails to start, verify that Gemini and Pinecone API keys are correctly configured in `infra/.env`. Missing or invalid keys prevent the chatbot service from initializing.
+For comprehensive installation instructions, configuration details, and troubleshooting guidance, **refer to the SLMS Installation Guide PDF**.
 
 ## 5.3 Project Structure Walkthrough
 
