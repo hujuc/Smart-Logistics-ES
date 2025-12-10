@@ -1,0 +1,105 @@
+@startuml globalSLMSUseCases
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+skinparam rectangle {
+  BackgroundColor #f2f2f2
+  BorderColor #2b303b
+}
+
+actor "Logistics Manager" as LM
+actor "Warehouse Staff" as WS
+actor "Customer Service Representative" as CSR
+actor "Driver / Carrier" as Driver
+actor "Customer" as Customer
+
+rectangle "Smart Logistics Management System (SLMS)" {
+
+  package "Logistics Management Module" {
+    (US1: Monitor Transportation KPIs) as UC_KPIs
+    (US2: Compare Carriers for Shipment) as UC_Compare
+    (US3: Generate & Export Reports) as UC_Reports
+  }
+
+  package "Warehouse Operations Module" {
+    (US4: Generate Shipping Labels & Documents) as UC_GenerateDocs
+    (US5: Confirm Carrier Pickup) as UC_ConfirmPickup
+  }
+
+  package "Customer Service Module" {
+    (US6: Search Order Status) as UC_SearchStatus
+    (US7: Handle Delivery Exceptions) as UC_HandleExceptions
+    (US8: Manage Customer-Reported Issues) as UC_ManageIssues
+  }
+
+  package "Driver / Carrier Mobile Module" {
+    (US9: View Delivery Manifest) as UC_ViewManifest
+    (US10: Receive Optimized Delivery Route) as UC_ReceiveRoute
+    (US11: Record Proof of Delivery) as UC_RecordPOD
+    (US12: Report Delivery Exception) as UC_ReportException
+  }
+
+  package "Customer Tracking Portal" {
+    (US13: Create New Order) as UC_CreateOrder
+    (US14: Create Account) as UC_CreateAccount
+    (US15: Login to Portal) as UC_Login
+    (US16: Receive Automatic Notifications) as UC_ReceiveNotifications
+    (US17: Report Delivery Issue) as UC_ReportIssue
+  }
+
+  package "Cross-Role Features" {
+    (US18: AI Assistant for Contextual Help) as UC_AIAssistant
+  }
+}
+
+' Logistics Manager interactions
+LM --> UC_KPIs
+LM --> UC_Compare
+LM --> UC_Reports
+
+' Warehouse Staff interactions
+WS --> UC_GenerateDocs
+WS --> UC_ConfirmPickup
+
+' Customer Service interactions
+CSR --> UC_SearchStatus
+CSR --> UC_HandleExceptions
+CSR --> UC_ManageIssues
+
+' Driver / Carrier interactions
+Driver --> UC_ViewManifest
+Driver --> UC_ReceiveRoute
+Driver --> UC_RecordPOD
+Driver --> UC_ReportException
+
+' Customer interactions
+Customer --> UC_CreateOrder
+Customer --> UC_CreateAccount
+Customer --> UC_Login
+Customer --> UC_ReceiveNotifications
+Customer --> UC_ReportIssue
+
+' All users can access AI Assistant
+LM --> UC_AIAssistant
+WS --> UC_AIAssistant
+CSR --> UC_AIAssistant
+Driver --> UC_AIAssistant
+Customer --> UC_AIAssistant
+
+' Cross-module relations
+UC_ReportIssue --> UC_ManageIssues : <<notify CSR>>
+UC_ReportException --> UC_HandleExceptions : <<trigger>>
+
+' Additional cross-module relations
+UC_ConfirmPickup --> UC_ViewManifest : <<generate manifest>>
+UC_RecordPOD --> UC_ReceiveNotifications : <<status update>>
+UC_ReportException --> UC_ManageIssues : <<alert CSR>>
+UC_CreateOrder --> UC_ReceiveNotifications : <<enable tracking>>
+UC_Reports --> UC_HandleExceptions : <<include exception metrics>>
+
+@enduml

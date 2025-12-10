@@ -31,7 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -57,11 +57,20 @@ class OrderServiceTest {
     @Autowired
     private CarrierRepository carrierRepository;
 
-    @MockBean
+    @MockitoBean
     private OrderDocumentService orderDocumentService;
 
-    @MockBean
+    @MockitoBean
     private KeycloakUserService keycloakUserService;
+
+    @MockitoBean
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+
+    @MockitoBean
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @MockitoBean
+    private Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
 
     private Warehouse warehouse;
 
@@ -138,7 +147,7 @@ class OrderServiceTest {
         assertThat(events).hasSize(1);
         OrderEvent event = events.get(0);
         assertThat(event.getEventType()).isEqualTo(OrderStatus.CREATED);
-        assertThat(event.getNotes()).contains("initialized");
+        assertThat(event.getNotes()).contains("has been created");
     }
 
     @Test
@@ -228,7 +237,7 @@ class OrderServiceTest {
         assertThat(events).hasSize(2);
         OrderEvent latest = events.get(1);
         assertThat(latest.getEventType()).isEqualTo(OrderStatus.IN_TRANSIT);
-        assertThat(latest.getNotes()).contains("changed from CREATED to IN_TRANSIT");
+        assertThat(latest.getNotes()).contains("is now in transit");
     }
 
     @Test

@@ -5,6 +5,7 @@ import Operimus.SLMS.business_layer.chatbot_module.dto.ChatRequest;
 import Operimus.SLMS.business_layer.chatbot_module.dto.ChatResponse;
 import Operimus.SLMS.business_layer.chatbot_module.dto.UpsertDocumentRequest;
 import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.GeminiClient;
+import Operimus.SLMS.business_layer.chatbot_module.integration.gemini.dto.GeminiChatResponse;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.PineconeClient;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryResponse;
 import Operimus.SLMS.business_layer.chatbot_module.service.ChatbotService;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -44,10 +45,10 @@ class ChatbotFlowIntegrationTest {
     @Autowired
     private DocumentManagementService documentManagementService;
 
-    @MockBean
+    @MockitoBean
     private GeminiClient geminiClient;
 
-    @MockBean
+    @MockitoBean
     private PineconeClient pineconeClient;
 
     private static final float[] MOCK_EMBEDDING = createMockEmbedding(768);
@@ -93,9 +94,19 @@ class ChatbotFlowIntegrationTest {
                 .thenReturn(List.of(mockMatch));
 
         // Mock Gemini LLM response
-        when(geminiClient.generateCompletion(anyString(), anyList()))
-                .thenReturn("You can track your order by logging into the customer portal and going to 'My Orders'. " +
-                        "There you'll find all your orders with real-time tracking information.");
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part(
+                    "You can track your order by logging into the customer portal and going to 'My Orders'. " +
+                    "There you'll find all your orders with real-time tracking information.",
+                    null
+                )),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse geminiResponse = new GeminiChatResponse(List.of(candidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), anyList(), any()))
+                .thenReturn(geminiResponse);
 
         // When: User asks a question
         ChatRequest userRequest = new ChatRequest(
@@ -156,8 +167,15 @@ class ChatbotFlowIntegrationTest {
             return false;
         }))).thenReturn(List.of(new PineconeQueryResponse.Match("cust-1", 0.9f, customerMetadata)));
 
-        when(geminiClient.generateCompletion(anyString(), anyList()))
-                .thenReturn("Customer-specific response");
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part("Customer-specific response", null)),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse geminiResponse = new GeminiChatResponse(List.of(candidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), anyList(), any()))
+                .thenReturn(geminiResponse);
 
         // When: Customer asks a question
         ChatRequest request = new ChatRequest("Help me", List.of(), "en-US");
@@ -177,12 +195,19 @@ class ChatbotFlowIntegrationTest {
         when(pineconeClient.query(any(), anyInt(), anyMap()))
                 .thenReturn(List.of(new PineconeQueryResponse.Match("doc-1", 0.9f, metadata)));
 
-        when(geminiClient.generateCompletion(anyString(), anyList()))
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part("SLMS is a comprehensive logistics platform.", null)),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse geminiResponse = new GeminiChatResponse(List.of(candidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), anyList(), any()))
                 .thenAnswer(invocation -> {
                     List<Map<String, String>> messages = invocation.getArgument(1);
                     // Verify conversation history is included
                     assertThat(messages).hasSizeGreaterThan(1);
-                    return "SLMS is a comprehensive logistics platform.";
+                    return geminiResponse;
                 });
 
         // When: User has conversation history
@@ -206,8 +231,18 @@ class ChatbotFlowIntegrationTest {
                 .thenThrow(new RuntimeException("Pinecone connection failed"));
 
         // Mock LLM to still work
-        when(geminiClient.generateCompletion(anyString(), anyList()))
-                .thenReturn("I can help you with that, though I don't have specific context right now.");
+        GeminiChatResponse.Content fallbackContent = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part(
+                    "I can help you with that, though I don't have specific context right now.",
+                    null
+                )),
+                "model"
+        );
+        GeminiChatResponse.Candidate fallbackCandidate = new GeminiChatResponse.Candidate(fallbackContent, "STOP");
+        GeminiChatResponse fallbackResponse = new GeminiChatResponse(List.of(fallbackCandidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), anyList(), any()))
+                .thenReturn(fallbackResponse);
 
         // When: User asks a question
         ChatRequest request = new ChatRequest("How do I track my order?", List.of(), "en-US");
@@ -237,8 +272,15 @@ class ChatbotFlowIntegrationTest {
             return false;
         }))).thenReturn(List.of(new PineconeQueryResponse.Match("portal-doc", 0.9f, metadata)));
 
-        when(geminiClient.generateCompletion(anyString(), anyList()))
-                .thenReturn("Response based on customer portal context");
+        GeminiChatResponse.Content content = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part("Response based on customer portal context", null)),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(content, "STOP");
+        GeminiChatResponse geminiResponse = new GeminiChatResponse(List.of(candidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), anyList(), any()))
+                .thenReturn(geminiResponse);
 
         // When: Request from customer portal
         ChatRequest request = new ChatRequest("Help", List.of(), "en-US");
@@ -259,13 +301,20 @@ class ChatbotFlowIntegrationTest {
                 .thenReturn(List.of(new PineconeQueryResponse.Match("doc-1", 0.95f, metadata)));
 
         // Verify the LLM receives augmented prompt
-        when(geminiClient.generateCompletion(anyString(), argThat(messages -> {
+        GeminiChatResponse.Content responseContent = new GeminiChatResponse.Content(
+                List.of(new GeminiChatResponse.Part("Response with context", null)),
+                "model"
+        );
+        GeminiChatResponse.Candidate candidate = new GeminiChatResponse.Candidate(responseContent, "STOP");
+        GeminiChatResponse geminiResponse = new GeminiChatResponse(List.of(candidate));
+
+        when(geminiClient.generateCompletionWithTools(anyString(), argThat(messages -> {
             // Check if the last message contains the augmented context
             if (messages == null || messages.isEmpty()) return false;
             Map<String, String> lastMessage = messages.get(messages.size() - 1);
-            String content = lastMessage.get("content");
-            return content != null && content.contains("SPECIFIC_CONTEXT_CONTENT");
-        }))).thenReturn("Response with context");
+            String messageContent = lastMessage.get("content");
+            return messageContent != null && messageContent.contains("SPECIFIC_CONTEXT_CONTENT");
+        }), any())).thenReturn(geminiResponse);
 
         // When: User asks a question
         ChatRequest request = new ChatRequest("Track order", List.of(), "en-US");

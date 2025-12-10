@@ -16,6 +16,7 @@ public class ShipmentResponse {
 
     private Long id;
     private String shipmentCode;
+    private String status; // PENDING_ACCEPTANCE, ACCEPTED, IN_TRANSIT, COMPLETED, EXCEPTION
 
     // Assignment
     private Long carrierId;

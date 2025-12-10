@@ -52,11 +52,12 @@ public class LandingPageChatBffController {
                 role, request.message().length());
 
         try {
-            // Generate chatbot response with RAG context
+            // Generate chatbot response with RAG context (anonymous - no userId)
             ChatResponse response = chatbotService.generateResponse(
                     request,
                     FRONTEND,
-                    role
+                    role,
+                    null  // Landing page is anonymous, no userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

@@ -2,6 +2,8 @@ package Operimus.SLMS.business_layer.rate_carrier_module.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -43,6 +45,12 @@ public class Shipment {
 
     @Column(name = "driver_id", nullable = false, length = 64)
     private String driverId; // Keycloak driver UUID (required)
+
+    // Shipment status
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    @Builder.Default
+    private ShipmentStatus status = ShipmentStatus.PENDING_ACCEPTANCE;
 
     // Shippo/ShipStation integration fields (moved from Order)
     @Column(name = "shippo_shipment_id", length = 128)

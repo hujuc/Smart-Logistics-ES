@@ -1,0 +1,59 @@
+@startuml driverCarrierUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Driver / Carrier" as Driver
+
+rectangle "SLMS Mobile System" {
+  usecase "Login to Mobile App" as UC_Login
+
+  usecase "US9: View Delivery Manifest" as UC_ViewManifest
+  usecase "Access Daily Schedule" as UC_AccessSchedule
+  usecase "View Delivery Manifest List" as UC_ViewManifestList
+
+  usecase "US10: Receive Optimized Delivery Route" as UC_ReceiveRoute
+  usecase "Request Optimized Route" as UC_RequestRoute
+  usecase "Receive Route & Navigation Links" as UC_GetNavigation
+
+  usecase "US11: Record Proof of Delivery (POD)" as UC_RecordPOD
+  usecase "Capture Signature or Photo" as UC_CapturePOD
+  usecase "Submit Delivery Confirmation" as UC_SubmitDelivery
+
+  usecase "US12: Report Delivery Exception" as UC_ReportException
+  usecase "Select Exception Reason" as UC_SelectReason
+  usecase "Log Exception Details" as UC_LogDetails
+  usecase "Update Order Status to Exception" as UC_UpdateStatus
+}
+
+' Actor interactions
+Driver --> UC_ViewManifest
+Driver --> UC_ReceiveRoute
+Driver --> UC_RecordPOD
+Driver --> UC_ReportException
+
+' Authentication includes
+UC_ViewManifest ..> UC_Login : <<include>>
+UC_ReceiveRoute ..> UC_Login : <<include>>
+UC_RecordPOD ..> UC_Login : <<include>>
+UC_ReportException ..> UC_Login : <<include>>
+
+' Sub-flow includes
+UC_ViewManifest ..> UC_AccessSchedule : <<include>>
+UC_ViewManifest ..> UC_ViewManifestList : <<include>>
+
+UC_ReceiveRoute ..> UC_RequestRoute : <<include>>
+UC_ReceiveRoute ..> UC_GetNavigation : <<include>>
+
+UC_RecordPOD ..> UC_CapturePOD : <<include>>
+UC_RecordPOD ..> UC_SubmitDelivery : <<include>>
+
+UC_ReportException ..> UC_SelectReason : <<include>>
+UC_ReportException ..> UC_LogDetails : <<include>>
+UC_ReportException ..> UC_UpdateStatus : <<include>>
+
+@enduml

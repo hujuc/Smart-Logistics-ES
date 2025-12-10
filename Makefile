@@ -1,4 +1,4 @@
-.PHONY: help up down destroy restart logs status clean clean-volumes rebuild hard-prune dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs test test-ci test-unit test-integration test-integration-minio test-integration-keycloak test-all test-services-up test-services-down
+.PHONY: help up down destroy restart logs status clean clean-volumes rebuild hard-prune dev-up dev-down dev-restart dev-logs test test-ci test-unit test-backend-integration test-e2e test-e2e-ci test-real build install
 
 help:
 	@echo "Production commands (Terraform + Docker Compose):"
@@ -24,10 +24,12 @@ help:
 	@echo ""
 	@echo "Test commands:"
 	@echo "  make test          - Run backend tests (unit + integration)"
+	@echo "  make test-ci       - Run unit + mocked integration tests with JaCoCo coverage gate"
 	@echo "  make test-unit     - Run backend unit tests only (fast)"
-	@echo "  make test-integration - Run backend integration tests (mocked APIs)"
-	@echo "  make test-e2e      - Run frontend e2e tests (Playwright)"
-	@echo "  make test-real     - Run tests with real services (Gemini, MinIO, Keycloak)"
+	@echo "  make test-backend-integration - Run CI-safe integration tests (Docker: Keycloak, MinIO, Kafka)"
+	@echo "  make test-e2e      - Run frontend e2e tests (with install)"
+	@echo "  make test-e2e-ci   - Run frontend e2e tests (CI mode, no install)"
+	@echo "  make test-real     - [LOCAL DEV] Run tests with real external APIs (requires API keys)"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make hard-prune    - Full Docker cleanup (removes everything)"
@@ -68,11 +70,16 @@ clean:
 	@docker container prune -f
 	@echo "Cleanup complete"
 
-clean-volumes:
+clean-volumes-prod:
 	@echo "Removing all containers and volumes..."
 	@cd infra && ./deploy.sh down
 	@docker volume rm $$(docker volume ls -q --filter "name=slms-") 2>/dev/null || true
 	@echo "All data removed"
+
+clean-volumes-dev:
+	@echo "Removing all development containers and volumes..."
+	@docker compose -f infra/docker-compose.dev.yml down -v
+	@echo "All development data removed"
 
 restart:
 	@echo "Restarting all services..."
@@ -130,6 +137,7 @@ install:
 	@echo "Installing Playwright browsers (for e2e tests)..."
 	@cd src/frontend/landing-page && npx playwright install chromium
 	@cd src/frontend/admin-console && npx playwright install chromium
+	@cd src/frontend/customer-portal && npx playwright install chromium
 	@echo "Dependencies installed successfully!"
 	@echo ""
 	@echo "NOTE: If Playwright tests fail due to missing system dependencies,"
@@ -149,26 +157,33 @@ build: install
 	@echo "Build complete!"
 
 # Test commands
-test: install
+test:
 	@echo "Running backend tests (unit + integration)..."
-	@cd src/backend && mvn test
+	@cd src/backend && mvn clean test
 	@echo "All tests complete!"
 
 test-unit:
 	@echo "Running backend unit tests only..."
-	@cd src/backend && mvn test -Dtest="**/*Test.java" -DexcludedGroups=real-integration
-
-test-integration:
-	@echo "Running backend integration tests (mocked external APIs)..."
-	@cd src/backend && mvn test -Dtest="**/*IntegrationTest.java"
+	@cd src/backend && mvn clean test -Dtest="**/*Test.java" -DexcludedGroups=real-integration
 
 test-e2e: install
 	@echo "Running frontend e2e tests..."
-	@cd src/frontend/landing-page && npm run test:e2e || true
-	@cd src/frontend/admin-console && npm run test:e2e || true
-	@cd src/frontend/customer-portal && npm run test:e2e || true
-	@cd src/frontend/driver-pwa && npm run test:e2e || true
+	@cd src/frontend/landing-page && npm run test:e2e
+	@cd src/frontend/admin-console && npm run test:e2e
+	@cd src/frontend/customer-portal && npm run test:e2e
 	@echo "E2E tests complete!"
+
+test-e2e-ci:
+	@echo "Running frontend e2e tests (CI mode - no install)..."
+	@cd src/frontend/landing-page && npm run test:e2e
+	@cd src/frontend/admin-console && npm run test:e2e
+	@cd src/frontend/customer-portal && npm run test:e2e
+	@echo "E2E tests complete!"
+
+test-backend-integration:
+	@echo "Running CI-safe integration tests (requires Keycloak, MinIO, Kafka)..."
+	@cd src/backend && mvn test -Dgroups=ci-integration
+	@echo "CI-safe integration tests complete!"
 
 test-real:
 	@echo "Running tests with real external services..."

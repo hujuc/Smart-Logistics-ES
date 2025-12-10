@@ -11,9 +11,11 @@ import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.O
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = LogisticsBffController.class,
     excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class})
 @AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test")
 class LogisticsBffControllerTest {
 
     @Autowired
@@ -39,43 +42,43 @@ class LogisticsBffControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private KeycloakUserService userService;
 
-    @MockBean
-    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsStatsService statsService;
+    @MockitoBean
+    private Operimus.SLMS.business_layer.reporting_module.service.ReportStatsService statsService;
 
-    @MockBean
-    private Operimus.SLMS.presentation_layer.admin_console_bff.logistics_bff.service.LogisticsReportService reportService;
+    @MockitoBean
+    private Operimus.SLMS.business_layer.reporting_module.service.ReportGenerationService reportService;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.service.WarehouseService warehouseService;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.service.OrderService orderService;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.repository.OrderRepository orderRepository;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.repository.WarehouseRepository warehouseRepository;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.rate_carrier_module.repository.CarrierRepository carrierRepository;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.visibility_module.exceptions.repository.DeliveryExceptionRepository deliveryExceptionRepository;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.service.OrderDocumentService orderDocumentService;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.service.OrderEventService orderEventService;
 
-    @MockBean
+    @MockitoBean
     private Operimus.SLMS.business_layer.order_module.repository.OrderEventRepository orderEventRepository;
 
-    @MockBean
+    @MockitoBean
     private software.amazon.awssdk.services.s3.S3Client s3Client;
 
     @Test

@@ -35,6 +35,12 @@ class OrderEventServiceTest {
     @Autowired
     private WarehouseRepository warehouseRepository;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     private Order order;
 
     @BeforeEach

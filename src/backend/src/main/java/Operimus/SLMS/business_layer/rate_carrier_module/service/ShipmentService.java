@@ -4,14 +4,18 @@ import Operimus.SLMS.business_layer.rate_carrier_module.entities.Carrier;
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
+import Operimus.SLMS.business_layer.rate_carrier_module.entities.ShipmentStatus;
 import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +29,12 @@ public class ShipmentService {
     private final OrderRepository orderRepository;
     private final CarrierService carrierService;
     private final ObjectProvider<ShipmentLabelGenerationService> shipmentLabelGenerationService;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    private final Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+
+    @Value("${kafka.topic.shipment-events}")
+    private String shipmentEventsTopic;
 
     @Transactional
     public Shipment create(String shipmentCode, Long carrierId, String driverId, List<Long> orderIds) {
@@ -91,6 +101,18 @@ public class ShipmentService {
 
         triggerShipmentDocuments(saved, orders);
 
+        // Notify logistics managers about new shipment
+        logisticsManagerNotificationService.notifyNewShipmentCreated(
+            saved.getId().toString(),
+            saved.getShipmentCode(),
+            orders.size()
+        );
+
+        // Notify driver if assigned
+        if (driverId != null && !driverId.isBlank()) {
+            publishDriverAssignmentEvent(saved, driverId, null);
+        }
+
         return saved;
     }
 
@@ -104,7 +126,12 @@ public class ShipmentService {
             throw new IllegalArgumentException("Driver ID cannot be empty");
         }
 
+        String oldDriverId = shipment.getDriverId();
         shipment.setDriverId(newDriverId);
+        
+        // Publish driver assignment event
+        publishDriverAssignmentEvent(shipment, newDriverId, oldDriverId);
+        
         return shipment;
     }
 
@@ -141,10 +168,173 @@ public class ShipmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(id)));
     }
 
+    /**
+     * Driver accepts a shipment, transitioning it to ACCEPTED status and then to IN_TRANSIT.
+     * All orders in the shipment are moved to IN_TRANSIT status.
+     */
+    @Transactional
+    public Shipment acceptShipment(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} accepting shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in PENDING_ACCEPTANCE status
+        if (shipment.getStatus() != ShipmentStatus.PENDING_ACCEPTANCE) {
+            throw new ResourceConflictException(
+                    "Shipment %d cannot be accepted (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update shipment status to ACCEPTED, then to IN_TRANSIT
+        shipment.setStatus(ShipmentStatus.ACCEPTED);
+        shipment.setStatus(ShipmentStatus.IN_TRANSIT);
+        shipment = shipmentRepository.save(shipment);
+
+        // Update all orders in shipment to IN_TRANSIT
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+        for (Order order : orders) {
+            order.setStatus(OrderStatus.IN_TRANSIT);
+        }
+        orderRepository.saveAll(orders);
+
+        log.info("[ShipmentService] Shipment {} accepted and moved to IN_TRANSIT with {} orders",
+                shipmentId, orders.size());
+
+        return shipment;
+    }
+
+    /**
+     * Driver completes delivery successfully.
+     * All orders are marked as DELIVERED and shipment status is set to COMPLETED.
+     */
+    @Transactional
+    public Shipment completeDelivery(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} completing delivery for shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in IN_TRANSIT status
+        if (shipment.getStatus() != ShipmentStatus.IN_TRANSIT) {
+            throw new ResourceConflictException(
+                    "Shipment %d is not in transit (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update all orders to DELIVERED
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+        for (Order order : orders) {
+            order.setStatus(OrderStatus.DELIVERED);
+        }
+        orderRepository.saveAll(orders);
+
+        // Update shipment status to COMPLETED
+        shipment.setStatus(ShipmentStatus.COMPLETED);
+        shipment = shipmentRepository.save(shipment);
+
+        log.info("[ShipmentService] Shipment {} completed successfully with {} orders",
+                shipmentId, orders.size());
+
+        return shipment;
+    }
+
+    /**
+     * Driver reports a delivery exception.
+     * Shipment status is set to EXCEPTION.
+     * Orders remain in IN_TRANSIT status until CSR resolves the exception.
+     */
+    @Transactional
+    public Shipment reportDeliveryException(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} reporting exception for shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in IN_TRANSIT status
+        if (shipment.getStatus() != ShipmentStatus.IN_TRANSIT) {
+            throw new ResourceConflictException(
+                    "Shipment %d is not in transit (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update shipment status to EXCEPTION
+        shipment.setStatus(ShipmentStatus.EXCEPTION);
+        shipment = shipmentRepository.save(shipment);
+
+        log.info("[ShipmentService] Shipment {} marked as EXCEPTION", shipmentId);
+
+        return shipment;
+    }
+
     private void triggerShipmentDocuments(Shipment shipment, List<Order> orders) {
         ShipmentLabelGenerationService generator = shipmentLabelGenerationService.getIfAvailable();
         if (generator != null) {
             generator.generateCarrierDocuments(shipment, orders);
+        }
+        
+        // Publish creation event
+        publishNotificationEvent(shipment, "CREATED", "Shipment created with code " + shipment.getShipmentCode());
+    }
+
+    private void publishDriverAssignmentEvent(Shipment shipment, String newDriverId, String oldDriverId) {
+        String message = String.format("You have been assigned to shipment %s", shipment.getShipmentCode());
+        
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(shipment.getId().toString())
+                            .aggregateType("SHIPMENT")
+                            .eventType("DRIVER_ASSIGNED")
+                            .message(message)
+                            .customerId(newDriverId) // Send notification to the driver
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
+            log.info("Published driver assignment event for shipment {} to driver {}", shipment.getId(), newDriverId);
+        } catch (Exception e) {
+            log.error("Failed to publish driver assignment event to Kafka", e);
+        }
+    }
+
+    private void publishNotificationEvent(Shipment shipment, String eventType, String message) {
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(shipment.getId().toString())
+                            .aggregateType("SHIPMENT")
+                            .eventType(eventType)
+                            .message(message)
+                            .customerId(null) // Shipments might not be directly linked to a single customer in this context, or we need to iterate orders
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
+        } catch (Exception e) {
+            log.error("Failed to publish shipment event to Kafka", e);
         }
     }
 }

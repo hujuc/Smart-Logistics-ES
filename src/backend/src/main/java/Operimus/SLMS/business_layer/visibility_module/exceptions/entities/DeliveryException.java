@@ -126,6 +126,9 @@ public class DeliveryException {
         WRONG_ADDRESS,
         WRONG_ITEM,
         NOT_DELIVERED,
+        CUSTOMER_NOT_AVAILABLE,  // Added for driver-reported exceptions
+        ACCESS_DENIED,           // Added for driver-reported exceptions
+        WEATHER,                 // Added for driver-reported exceptions
         OTHER
     }
 

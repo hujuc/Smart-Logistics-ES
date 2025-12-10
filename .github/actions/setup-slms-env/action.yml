@@ -1,0 +1,433 @@
+name: 'Setup SLMS Environment'
+description: 'Generate .env and terraform.tfvars files for Docker Compose and Terraform deployment'
+
+inputs:
+  # Mode
+  mode:
+    description: 'Mode: ci (basic .env only) or deploy (full .env + terraform.tfvars)'
+    required: true
+    default: 'ci'
+
+  # Database
+  postgres-db:
+    required: true
+  postgres-user:
+    required: true
+  postgres-password:
+    required: true
+  postgres-port:
+    required: false
+    default: '5432'
+  db-host:
+    required: true
+  db-port:
+    required: true
+  db-name:
+    required: true
+  db-username:
+    required: true
+  db-password:
+    required: true
+
+  # Keycloak
+  keycloak-host:
+    required: true
+  keycloak-port:
+    required: true
+  keycloak-realm:
+    required: false
+    default: 'slms'
+  keycloak-admin-client-id:
+    required: false
+    default: 'slms-backend'
+  keycloak-admin-client-secret:
+    required: true
+  keycloak-admin:
+    required: true
+  keycloak-admin-password:
+    required: true
+  jwt-issuer-uri:
+    required: true
+
+  # Keycloak (Additional for deploy mode)
+  kc-db:
+    required: false
+  kc-db-url:
+    required: false
+  kc-hostname:
+    required: false
+  kc-proxy:
+    required: false
+  kc-hostname-port:
+    required: false
+  kc-hostname-strict:
+    required: false
+  kc-http-enabled:
+    required: false
+  kc-proxy-headers:
+    required: false
+  kc-hostname-url:
+    required: false
+  keycloak-client-id:
+    required: false
+  keycloak-client-secret:
+    required: false
+  keycloak-issuer:
+    required: false
+  keycloak-base-url:
+    required: false
+  keycloak-internal-url:
+    required: false
+
+  # MinIO
+  minio-host:
+    required: true
+  minio-port:
+    required: true
+  minio-root-user:
+    required: true
+  minio-root-password:
+    required: true
+  minio-bucket:
+    required: true
+
+  # Kafka
+  kafka-broker-host:
+    required: true
+  kafka-broker-port:
+    required: true
+  kafka-broker-external-port:
+    required: true
+  kafka-advertised-host:
+    required: true
+  kafka-zookeeper-host:
+    required: true
+  kafka-zookeeper-port:
+    required: true
+  kafka-bootstrap-servers:
+    required: true
+  kafka-consumer-group-id:
+    required: true
+  kafka-consumer-auto-offset-reset:
+    required: true
+  kafka-security-protocol:
+    required: true
+
+  # NextAuth
+  nextauth-secret:
+    required: true
+  nextauth-url:
+    required: false
+  next-public-api-url:
+    required: false
+
+  # Application (deploy mode only)
+  backend-port:
+    required: false
+  frontend-port:
+    required: false
+  node-env:
+    required: false
+  next-telemetry-disabled:
+    required: false
+
+  # Feature Flags (deploy mode only)
+  next-public-flagsmith-env-key:
+    required: false
+  next-public-mapbox-access-token:
+    required: false
+
+  # External APIs (deploy mode only)
+  shippo-api-key:
+    required: false
+  shipengine-api-key:
+    required: false
+  public-host:
+    required: false
+  qr-confirmation-base-url:
+    required: false
+
+  # Observability (deploy mode only)
+  elastic-apm-server-url:
+    required: false
+  elastic-apm-secret-token:
+    required: false
+  deployment-env:
+    required: false
+  project-version:
+    required: false
+  tracing-sampling-rate:
+    required: false
+  log-level-root:
+    required: false
+  log-level-app:
+    required: false
+  log-level-web:
+    required: false
+  log-level-security:
+    required: false
+
+  # AI & Vector Database (deploy mode only)
+  gemini-api-key:
+    required: false
+  gemini-model:
+    required: false
+  gemini-embedding-model:
+    required: false
+  pinecone-api-key:
+    required: false
+  pinecone-host:
+    required: false
+  pinecone-index:
+    required: false
+  pinecone-namespace:
+    required: false
+
+  # Frontend Observability (deploy mode only)
+  next-public-elastic-apm-server-url:
+    required: false
+  next-public-elastic-apm-secret-token:
+    required: false
+  next-public-deployment-env:
+    required: false
+  next-public-project-version:
+    required: false
+  next-public-tracing-sampling-rate:
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate infra/.env file
+      shell: bash
+      run: |
+        cat > infra/.env <<'EOF'
+        # Database
+        DB_HOST=${{ inputs.db-host }}
+        DB_PORT=${{ inputs.db-port }}
+        DB_NAME=${{ inputs.db-name }}
+        DB_USERNAME=${{ inputs.db-username }}
+        DB_PASSWORD=${{ inputs.db-password }}
+        POSTGRES_DB=${{ inputs.postgres-db }}
+        POSTGRES_USER=${{ inputs.postgres-user }}
+        POSTGRES_PASSWORD=${{ inputs.postgres-password }}
+
+        # MinIO
+        MINIO_HOST=${{ inputs.minio-host }}
+        MINIO_PORT=${{ inputs.minio-port }}
+        MINIO_ROOT_USER=${{ inputs.minio-root-user }}
+        MINIO_ROOT_PASSWORD=${{ inputs.minio-root-password }}
+        MINIO_BUCKET=${{ inputs.minio-bucket }}
+
+        # Kafka
+        KAFKA_BROKER_HOST=${{ inputs.kafka-broker-host }}
+        KAFKA_BROKER_PORT=${{ inputs.kafka-broker-port }}
+        KAFKA_BROKER_EXTERNAL_PORT=${{ inputs.kafka-broker-external-port }}
+        KAFKA_ADVERTISED_HOST=${{ inputs.kafka-advertised-host }}
+        KAFKA_ZOOKEEPER_HOST=${{ inputs.kafka-zookeeper-host }}
+        KAFKA_ZOOKEEPER_PORT=${{ inputs.kafka-zookeeper-port }}
+        KAFKA_BOOTSTRAP_SERVERS=${{ inputs.kafka-bootstrap-servers }}
+        KAFKA_CONSUMER_GROUP_ID=${{ inputs.kafka-consumer-group-id }}
+        KAFKA_CONSUMER_AUTO_OFFSET_RESET=${{ inputs.kafka-consumer-auto-offset-reset }}
+        KAFKA_SECURITY_PROTOCOL=${{ inputs.kafka-security-protocol }}
+
+        # Keycloak
+        KEYCLOAK_HOST=${{ inputs.keycloak-host }}
+        KEYCLOAK_PORT=${{ inputs.keycloak-port }}
+        KEYCLOAK_REALM=${{ inputs.keycloak-realm }}
+        KEYCLOAK_ADMIN_CLIENT_ID=${{ inputs.keycloak-admin-client-id }}
+        KEYCLOAK_ADMIN_CLIENT_SECRET=${{ inputs.keycloak-admin-client-secret }}
+        JWT_ISSUER_URI=${{ inputs.jwt-issuer-uri }}
+        KEYCLOAK_ADMIN=${{ inputs.keycloak-admin }}
+        KEYCLOAK_ADMIN_PASSWORD=${{ inputs.keycloak-admin-password }}
+
+        # Keycloak Configuration
+        KC_DB=postgres
+        KC_DB_URL=jdbc:postgresql://${{ inputs.db-host }}:${{ inputs.db-port }}/slms
+        KC_DB_USERNAME=${{ inputs.postgres-user }}
+        KC_DB_PASSWORD=${{ inputs.postgres-password }}
+        KC_HOSTNAME_URL=http://${{ inputs.keycloak-host }}:${{ inputs.keycloak-port }}
+        KC_HOSTNAME_ADMIN_URL=http://${{ inputs.keycloak-host }}:${{ inputs.keycloak-port }}
+        KC_HOSTNAME_STRICT=false
+        KC_HOSTNAME_STRICT_BACKCHANNEL=false
+        KC_HOSTNAME=${{ inputs.keycloak-host }}
+        KC_HOSTNAME_PORT=${{ inputs.keycloak-port }}
+        KC_HTTP_ENABLED=true
+        KC_PROXY_HEADERS=xforwarded
+        KC_PROXY=edge
+
+        # Admin Keycloak
+        ADMIN_KEYCLOAK_CLIENT_ID=${{ inputs.keycloak-admin-client-id }}
+        ADMIN_KEYCLOAK_CLIENT_SECRET=${{ inputs.keycloak-admin-client-secret }}
+        ADMIN_KEYCLOAK_ISSUER=${{ inputs.jwt-issuer-uri }}
+
+        # NextAuth
+        NEXTAUTH_URL=http://localhost/admin
+        NEXTAUTH_URL_INTERNAL=http://admin-console:3000/admin
+        NEXTAUTH_SECRET=${{ inputs.nextauth-secret }}
+        AUTH_TRUST_HOST=true
+
+        # Keycloak Client
+        KEYCLOAK_CLIENT_ID=${{ inputs.keycloak-admin-client-id }}
+        KEYCLOAK_CLIENT_SECRET=${{ inputs.keycloak-admin-client-secret }}
+
+        # Application
+        BACKEND_PORT=8080
+        NODE_ENV=production
+        NEXT_TELEMETRY_DISABLED=1
+        SPRING_DEVTOOLS_RESTART_ENABLED=false
+        EOF
+        echo "✅ Generated infra/.env (CI mode)"
+
+    - name: Add deployment-specific vars to .env
+      if: inputs.mode == 'deploy'
+      shell: bash
+      run: |
+        cat >> infra/.env <<'EOF'
+
+        # Deployment-specific vars
+        POSTGRES_PORT=${{ inputs.postgres-port }}
+        KC_DB=${{ inputs.kc-db }}
+        KC_DB_URL=${{ inputs.kc-db-url }}
+        KC_HOSTNAME=${{ inputs.kc-hostname }}
+        KC_PROXY=${{ inputs.kc-proxy }}
+        KC_HOSTNAME_PORT=${{ inputs.kc-hostname-port }}
+        KC_HOSTNAME_STRICT=${{ inputs.kc-hostname-strict }}
+        KC_HTTP_ENABLED=${{ inputs.kc-http-enabled }}
+        KC_PROXY_HEADERS=${{ inputs.kc-proxy-headers }}
+        KC_HOSTNAME_URL=${{ inputs.kc-hostname-url }}
+        KEYCLOAK_CLIENT_ID=${{ inputs.keycloak-client-id }}
+        KEYCLOAK_CLIENT_SECRET=${{ inputs.keycloak-client-secret }}
+        KEYCLOAK_ISSUER=${{ inputs.keycloak-issuer }}
+        KEYCLOAK_BASE_URL=${{ inputs.keycloak-base-url }}
+        KEYCLOAK_INTERNAL_URL=${{ inputs.keycloak-internal-url }}
+
+        # Application
+        BACKEND_PORT=${{ inputs.backend-port }}
+        FRONTEND_PORT=${{ inputs.frontend-port }}
+        NODE_ENV=${{ inputs.node-env }}
+        NEXT_TELEMETRY_DISABLED=${{ inputs.next-telemetry-disabled }}
+
+        # Frontend
+        NEXT_PUBLIC_API_URL=${{ inputs.next-public-api-url }}
+        NEXTAUTH_URL=${{ inputs.nextauth-url }}
+        NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${{ inputs.next-public-flagsmith-env-key }}
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${{ inputs.next-public-mapbox-access-token }}
+
+        # External APIs
+        SHIPPO_API_KEY=${{ inputs.shippo-api-key }}
+        SHIPENGINE_API_KEY=${{ inputs.shipengine-api-key }}
+        SHIPENGINE_BASE_URL=https://api.shipengine.com/v1
+        SHIPPO_BASE_URL=https://api.goshippo.com
+        QR_CONFIRMATION_BASE_URL=${{ inputs.qr-confirmation-base-url }}
+
+        # Observability
+        ELASTIC_APM_SERVER_URL=${{ inputs.elastic-apm-server-url }}
+        ELASTIC_APM_SECRET_TOKEN=${{ inputs.elastic-apm-secret-token }}
+        DEPLOYMENT_ENV=${{ inputs.deployment-env }}
+        PROJECT_VERSION=${{ inputs.project-version }}
+        TRACING_SAMPLING_RATE=${{ inputs.tracing-sampling-rate }}
+        LOG_LEVEL_ROOT=${{ inputs.log-level-root }}
+        LOG_LEVEL_APP=${{ inputs.log-level-app }}
+        LOG_LEVEL_WEB=${{ inputs.log-level-web }}
+        LOG_LEVEL_SECURITY=${{ inputs.log-level-security }}
+
+        # AI & Vector Database
+        GEMINI_API_KEY=${{ inputs.gemini-api-key }}
+        GEMINI_MODEL=${{ inputs.gemini-model }}
+        GEMINI_EMBEDDING_MODEL=${{ inputs.gemini-embedding-model }}
+        PINECONE_API_KEY=${{ inputs.pinecone-api-key }}
+        PINECONE_HOST=${{ inputs.pinecone-host }}
+        PINECONE_INDEX=${{ inputs.pinecone-index }}
+        PINECONE_NAMESPACE=${{ inputs.pinecone-namespace }}
+
+        # MinIO (additional)
+        MINIO_BUCKET_NAME=${{ inputs.minio-bucket }}
+
+        # Frontend Observability
+        NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${{ inputs.next-public-elastic-apm-server-url }}
+        NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${{ inputs.next-public-elastic-apm-secret-token }}
+        NEXT_PUBLIC_DEPLOYMENT_ENV=${{ inputs.next-public-deployment-env }}
+        NEXT_PUBLIC_PROJECT_VERSION=${{ inputs.next-public-project-version }}
+        NEXT_PUBLIC_TRACING_SAMPLING_RATE=${{ inputs.next-public-tracing-sampling-rate }}
+        EOF
+        echo "✅ Added deployment vars to infra/.env"
+
+    - name: Generate terraform.tfvars
+      if: inputs.mode == 'deploy'
+      shell: bash
+      working-directory: infra/terraform
+      run: |
+        cat > terraform.tfvars <<'EOF'
+        # PostgreSQL Configuration
+        postgres_user      = "${{ inputs.postgres-user }}"
+        postgres_password  = "${{ inputs.postgres-password }}"
+        postgres_db        = "${{ inputs.postgres-db }}"
+        postgres_host_port = ${{ inputs.postgres-port }}
+
+        # Keycloak Configuration
+        keycloak_realm               = "${{ inputs.keycloak-realm }}"
+        keycloak_client_id           = "${{ inputs.keycloak-admin-client-id }}"
+        keycloak_client_secret       = "${{ inputs.keycloak-admin-client-secret }}"
+        keycloak_hostname_url        = "${{ inputs.kc-hostname-url }}"
+        keycloak_admin               = "${{ inputs.keycloak-admin }}"
+        keycloak_admin_password      = "${{ inputs.keycloak-admin-password }}"
+
+        # JWT Configuration
+        jwt_issuer_uri      = "${{ inputs.jwt-issuer-uri }}"
+
+        # MinIO Configuration
+        minio_endpoint    = "http://slms-minio-prod:9000"
+        minio_access_key  = "${{ inputs.minio-root-user }}"
+        minio_secret_key  = "${{ inputs.minio-root-password }}"
+        minio_bucket_name = "${{ inputs.minio-bucket }}"
+
+        # External APIs
+        shippo_api_key  = "${{ inputs.shippo-api-key }}"
+        shippo_base_url = "https://api.goshippo.com"
+        shipengine_api_key  = "${{ inputs.shipengine-api-key }}"
+        shipengine_base_url = "https://api.shipengine.com/v1"
+
+        # Docker Network
+        docker_network_name = "slms-network"
+
+        # Public Configuration
+        public_host = "${{ inputs.public-host }}"
+        next_public_api_url = "${{ inputs.next-public-api-url }}"
+        flagsmith_env_key   = "${{ inputs.next-public-flagsmith-env-key }}"
+        mapbox_access_token = "${{ inputs.next-public-mapbox-access-token }}"
+        qr_confirmation_base_url = "${{ inputs.qr-confirmation-base-url }}"
+
+        # Observability
+        elastic_apm_server_url   = "${{ inputs.elastic-apm-server-url }}"
+        elastic_apm_secret_token = "${{ inputs.elastic-apm-secret-token }}"
+        deployment_env           = "${{ inputs.deployment-env }}"
+        project_version          = "${{ inputs.project-version }}"
+        tracing_sampling_rate    = "${{ inputs.tracing-sampling-rate }}"
+        log_level_root           = "${{ inputs.log-level-root }}"
+        log_level_app            = "${{ inputs.log-level-app }}"
+        log_level_web            = "${{ inputs.log-level-web }}"
+        log_level_security       = "${{ inputs.log-level-security }}"
+
+        # AI & Vector Database
+        gemini_api_key          = "${{ inputs.gemini-api-key }}"
+        gemini_model            = "${{ inputs.gemini-model }}"
+        gemini_embedding_model  = "${{ inputs.gemini-embedding-model }}"
+        pinecone_api_key        = "${{ inputs.pinecone-api-key }}"
+        pinecone_host           = "${{ inputs.pinecone-host }}"
+        pinecone_index          = "${{ inputs.pinecone-index }}"
+        pinecone_namespace      = "${{ inputs.pinecone-namespace }}"
+
+        # Kafka
+        kafka_broker_host                = "${{ inputs.kafka-broker-host }}"
+        kafka_broker_port                = "${{ inputs.kafka-broker-port }}"
+        kafka_broker_external_port       = "${{ inputs.kafka-broker-external-port }}"
+        kafka_advertised_host            = "${{ inputs.kafka-advertised-host }}"
+        kafka_zookeeper_host             = "${{ inputs.kafka-zookeeper-host }}"
+        kafka_zookeeper_port             = "${{ inputs.kafka-zookeeper-port }}"
+        kafka_bootstrap_servers          = "${{ inputs.kafka-bootstrap-servers }}"
+        kafka_consumer_group_id          = "${{ inputs.kafka-consumer-group-id }}"
+        kafka_consumer_auto_offset_reset = "${{ inputs.kafka-consumer-auto-offset-reset }}"
+        kafka_security_protocol          = "${{ inputs.kafka-security-protocol }}"
+        EOF
+        echo "✅ Generated infra/terraform/terraform.tfvars"
