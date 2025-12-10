@@ -419,7 +419,7 @@ public class CustomerBffController {
             DeliveryExceptionResponse response = exceptionService.create(request);
             
             log.info("Customer BFF: Successfully created exception {} for customer {} (UUID: {})", 
-                    response.getId(), customerUsername, customerUUID);
+                    response.getId(), customerId, request.getCustomerId());
             
             return ResponseEntity
                     .created(URI.create("/api/customer/delivery-exceptions/" + response.getId()))
