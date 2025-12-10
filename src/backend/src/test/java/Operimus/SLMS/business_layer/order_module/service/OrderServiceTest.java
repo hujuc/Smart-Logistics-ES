@@ -147,7 +147,7 @@ class OrderServiceTest {
         assertThat(events).hasSize(1);
         OrderEvent event = events.get(0);
         assertThat(event.getEventType()).isEqualTo(OrderStatus.CREATED);
-        assertThat(event.getNotes()).contains("initialized");
+        assertThat(event.getNotes()).contains("has been created");
     }
 
     @Test
@@ -237,7 +237,7 @@ class OrderServiceTest {
         assertThat(events).hasSize(2);
         OrderEvent latest = events.get(1);
         assertThat(latest.getEventType()).isEqualTo(OrderStatus.IN_TRANSIT);
-        assertThat(latest.getNotes()).contains("changed from CREATED to IN_TRANSIT");
+        assertThat(latest.getNotes()).contains("is now in transit");
     }
 
     @Test
