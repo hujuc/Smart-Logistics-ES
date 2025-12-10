@@ -6,9 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   User,
-  Bell,
-  Database,
-  Monitor,
   Save,
   CheckCircle2,
   LogOut,
@@ -27,19 +24,6 @@ export default function SettingsPage() {
     fullName: "",
     email: "",
     role: "",
-
-    // Notification Settings
-    emailNotifications: true,
-    pushNotifications: true,
-    scanAlerts: true,
-
-    // Display Settings
-    theme: "light",
-    language: "English",
-
-    // System Settings
-    autoBackup: true,
-    scannerSound: true,
   })
 
   useEffect(() => {
@@ -174,177 +158,6 @@ export default function SettingsPage() {
               placeholder="••••••••"
               className="mt-2"
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Notification Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-            <Bell className="h-6 w-6 text-yellow-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">Notifications</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Email Notifications</p>
-              <p className="text-sm text-gray-600">
-                Receive updates and alerts via email
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.emailNotifications}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    emailNotifications: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Push Notifications</p>
-              <p className="text-sm text-gray-600">
-                Receive push notifications in the browser
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.pushNotifications}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    pushNotifications: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">QR Scan Alerts</p>
-              <p className="text-sm text-gray-600">
-                Get notified when packages are scanned
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.scanAlerts}
-                onChange={(e) =>
-                  setSettings({ ...settings, scanAlerts: e.target.checked })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Display Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Monitor className="h-6 w-6 text-purple-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">Display</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="theme">Theme</Label>
-            <select
-              id="theme"
-              value={settings.theme}
-              onChange={(e) =>
-                setSettings({ ...settings, theme: e.target.value })
-              }
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">Auto</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="language">Language</Label>
-            <select
-              id="language"
-              value={settings.language}
-              onChange={(e) =>
-                setSettings({ ...settings, language: e.target.value })
-              }
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* System Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-            <Database className="h-6 w-6 text-green-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">System</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Auto Backup</p>
-              <p className="text-sm text-gray-600">
-                Automatically backup data daily
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.autoBackup}
-                onChange={(e) =>
-                  setSettings({ ...settings, autoBackup: e.target.checked })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Scanner Sound</p>
-              <p className="text-sm text-gray-600">
-                Play sound when QR code is scanned
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.scannerSound}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    scannerSound: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
           </div>
         </div>
       </div>

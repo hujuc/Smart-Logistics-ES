@@ -4,8 +4,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   User,
-  Bell,
-  Monitor,
   ArrowLeft,
   CheckCircle2,
   LogOut,
@@ -25,15 +23,6 @@ export default function SettingsPage() {
     fullName: "",
     email: "",
     role: "",
-
-    // Notification Settings
-    pushNotifications: true,
-    deliveryAlerts: true,
-    routeUpdates: true,
-
-    // Display Settings
-    theme: "light",
-    language: "English",
   })
 
   useEffect(() => {
@@ -157,100 +146,6 @@ export default function SettingsPage() {
                 disabled
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Notification Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-black rounded-lg flex items-center justify-center">
-              <Bell className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-black">Notifications</h2>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-black text-sm">Push Notifications</p>
-                <p className="text-xs text-gray-600 mt-0.5">Receive push notifications in the app</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.pushNotifications}
-                  onChange={(e) => setSettings({ ...settings, pushNotifications: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-black text-sm">Delivery Alerts</p>
-                <p className="text-xs text-gray-600 mt-0.5">Get notified about delivery updates</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.deliveryAlerts}
-                  onChange={(e) => setSettings({ ...settings, deliveryAlerts: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-black text-sm">Route Updates</p>
-                <p className="text-xs text-gray-600 mt-0.5">Get notified when routes change</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.routeUpdates}
-                  onChange={(e) => setSettings({ ...settings, routeUpdates: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Display Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-black rounded-lg flex items-center justify-center">
-              <Monitor className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-black">Display</h2>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Theme</label>
-              <select
-                value={settings.theme}
-                onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="auto">Auto</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Language</label>
-              <select
-                value={settings.language}
-                onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              >
-                <option value="English">English</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-              </select>
             </div>
           </div>
         </div>
