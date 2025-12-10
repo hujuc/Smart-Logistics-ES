@@ -970,496 +970,311 @@ npm run test:e2e          # E2E tests
 
 **Responsible: João Varela**
 
-*[10-12 pages with configuration examples]*
+Production configuration ensures the Smart Logistics Management System is reproducible across laptops, CI runners, and the AWS EC2 host that runs the live stack. All runtimes are containerized, and configuration is centralized in `.env`/`terraform.tfvars` so that Terraform can build the application images while Docker Compose provisions the supporting services (Keycloak, MinIO, Kafka, Nginx). `infra/deploy.sh` orchestrates both layers, guaranteeing that the same artefacts and health checks are exercised locally and in the self-hosted GitHub Actions runner.
 
 ## 6.1 Environment Variables
 
-**Reference:** `src/backend/.env.example`, `infra/.env.example`
+The project is configuration-first: every service reads settings from environment variables, with sane defaults checked into `src/backend/.env.example` and `infra/.env.example`. CI uses the composite action `.github/actions/setup-slms-env` to generate `.env` and `infra/terraform/terraform.tfvars` from GitHub Secrets, while local developers copy the examples and override only what is necessary.
 
 ### 6.1.1 Backend Configuration
 
-**Database Configuration:**
-```properties
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/slms_db
-SPRING_DATASOURCE_USERNAME=slms_admin
-SPRING_DATASOURCE_PASSWORD=<secure_password>
-SPRING_JPA_HIBERNATE_DDL_AUTO=update
-SPRING_JPA_SHOW_SQL=false
-```
+The Spring Boot application resolves properties from `application.properties`, which maps directly to env vars injected by Terraform (`docker_container.backend`) or by `docker-compose.dev.yml` in development. The most important groups are:
 
-**Keycloak Integration:**
+- **Database:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` build `spring.datasource.url` automatically. Terraform sets `SPRING_DATASOURCE_URL` in production to keep the runtime independent from host port mappings.
+- **OAuth2/Keycloak:** `KEYCLOAK_HOST`, `KEYCLOAK_PORT`, `KEYCLOAK_REALM`, `KEYCLOAK_ADMIN_CLIENT_ID/SECRET`, `JWT_ISSUER_URI`. The issuer must exactly match `KC_HOSTNAME_URL` to avoid invalid token issuer errors when the stack sits behind Nginx.
+- **Object Storage:** `MINIO_HOST`, `MINIO_PORT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`. Both `aws.s3.*` properties and the chatbot document storage use these values.
+- **Kafka:** `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL`, `KAFKA_CONSUMER_GROUP_ID`, `KAFKA_CONSUMER_AUTO_OFFSET_RESET` (defaults to `earliest` for deterministic consumers).
+- **Carrier APIs:** `SHIPPO_API_KEY`, `SHIPENGINE_API_KEY`, `SHIPPO_BASE_URL`, `SHIPENGINE_BASE_URL`. Tests will short-circuit gracefully when the keys are absent.
+- **Observability:** `ELASTIC_APM_SERVER_URL`, `ELASTIC_APM_SECRET_TOKEN`, `DEPLOYMENT_ENV`, `PROJECT_VERSION`, `TRACING_SAMPLING_RATE`, and the log levels (`LOG_LEVEL_ROOT`, `LOG_LEVEL_APP`, `LOG_LEVEL_WEB`, `LOG_LEVEL_SECURITY`).
+- **AI stack:** `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL`, `PINECONE_API_KEY`, `PINECONE_HOST`, `PINECONE_INDEX`, `PINECONE_NAMESPACE`.
+- **Misc:** `QR_CONFIRMATION_BASE_URL` (used by the Driver PWA QR flow) and `chatbot.seeder` toggles for optional knowledge-base seeding during non-production boots.
+
+A production-oriented `.env` for the backend (outside Docker) looks like:
+
 ```properties
-SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8180/realms/slms
-KEYCLOAK_AUTH_SERVER_URL=http://localhost:8180
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=slms
+DB_USERNAME=slms
+DB_PASSWORD=********
+
+KEYCLOAK_HOST=localhost
+KEYCLOAK_PORT=8180
 KEYCLOAK_REALM=slms
-KEYCLOAK_RESOURCE=slms-backend
-KEYCLOAK_CREDENTIALS_SECRET=<client_secret>
+KEYCLOAK_ADMIN_CLIENT_ID=slms-backend
+KEYCLOAK_ADMIN_CLIENT_SECRET=********
+JWT_ISSUER_URI=http://<public-host>:8180/realms/slms
+
+MINIO_HOST=localhost
+MINIO_PORT=9000
+MINIO_ROOT_USER=<access_key>
+MINIO_ROOT_PASSWORD=<secret_key>
+MINIO_BUCKET=slms-documents
+
+SHIPENGINE_API_KEY=<production_key>
+SHIPPO_API_KEY=<production_key>
+ELASTIC_APM_SERVER_URL=https://<elastic-host>:443
+ELASTIC_APM_SECRET_TOKEN=<token>
+DEPLOYMENT_ENV=production
+PROJECT_VERSION=0.0.1
+TRACING_SAMPLING_RATE=0.2
+GEMINI_API_KEY=<google_key>
+PINECONE_API_KEY=<pinecone_key>
+PINECONE_HOST=https://<index>.svc.<region>.pinecone.io
 ```
 
-**MinIO Configuration:**
-```properties
-MINIO_ENDPOINT=http://localhost:9000
-MINIO_ACCESS_KEY=<access_key>
-MINIO_SECRET_KEY=<secret_key>
-MINIO_BUCKET_NAME=slms-documents
-```
-
-**AI Module Configuration:**
-```properties
-GEMINI_API_KEY=<google_gemini_api_key>
-PINECONE_API_KEY=<pinecone_api_key>
-PINECONE_ENVIRONMENT=<pinecone_environment>
-PINECONE_INDEX_NAME=slms-assistant
-```
-
-**Observability:**
-```properties
-ELASTIC_APM_SERVER_URL=<elastic_apm_url>
-ELASTIC_APM_SECRET_TOKEN=<apm_token>
-ELASTIC_APM_SERVICE_NAME=slms-backend
-ELASTIC_APM_ENVIRONMENT=production
-```
+During development `JPA_DDL_AUTO=update` accelerates schema evolution; in production switch to `validate` once a migration tool (Flyway/Liquibase) is introduced to avoid accidental data loss.
 
 ### 6.1.2 Infrastructure Configuration
 
-**PostgreSQL:**
-```properties
-POSTGRES_DB=slms_db
-POSTGRES_USER=slms_admin
-POSTGRES_PASSWORD=<secure_password>
+`infra/.env` feeds both Docker Compose and Terraform. Compose uses it to start Keycloak, MinIO, Kafka, and Nginx; Terraform reads the same values through the `env_file` mechanism in `setup-slms-env` so that app containers are built with identical settings. Critical fields:
+
+- **Database + Keycloak:** `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `KC_DB_URL`, `KC_HOSTNAME_URL`, `KC_PROXY=edge`. `KC_HOSTNAME_URL` must be the publicly reachable URL (including port) so that Keycloak signs tokens with the correct issuer.
+- **Network/ports:** Override `POSTGRES_PORT` or `KAFKA_*_PORT` if those ports are occupied on the host.
+- **Object storage:** `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET_NAME`.
+- **Frontend base URLs (dev only):** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_FLAGSMITH_ENV_KEY`, `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`. Production builds bake these through Terraform instead.
+- **Backup retention:** `MAX_BACKUPS=4` controls how many dumps the backup image keeps (used by `setup-backup.sh`).
+
+Example fragment:
+
+```bash
+POSTGRES_DB=slms
+POSTGRES_USER=slms
+POSTGRES_PASSWORD=********
+KC_HOSTNAME_URL=http://<public-host>:8180
+KC_HTTP_ENABLED=true
+JWT_ISSUER_URI=http://<public-host>:8180/realms/slms
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=********
+MINIO_BUCKET_NAME=slms-documents
+NEXT_PUBLIC_API_URL=http://<public-host>/api
+MAX_BACKUPS=4
 ```
 
-**Keycloak:**
-```properties
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=<admin_password>
-KC_HOSTNAME=localhost
-KC_HTTP_PORT=8180
-```
+### 6.1.3 Frontend Build-Time Variables
 
-**MinIO:**
-```properties
-MINIO_ROOT_USER=<root_user>
-MINIO_ROOT_PASSWORD=<root_password>
-```
+Next.js embeds configuration at build time, so correct values must be provided before `npm run build`. Terraform handles this via the `public_host` variable and build args in `infra/terraform/main.tf`, preventing the "localhost in production" problem described in `docs/per-sprint/sprint4/aws-deployment-guide.md`.
 
-**Backend:**
-```properties
-BACKEND_PORT=8080
-NODE_ENV=production
+- **Admin Console (`/admin`):** `NEXT_PUBLIC_API_URL=http://<host>/api`, `NEXT_PUBLIC_KEYCLOAK_URL=http://<host>:8180`, `NEXT_PUBLIC_KEYCLOAK_REALM=slms`, `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=slms-admin-console`.
+- **Customer Portal (`/customer`):** same API URL, Keycloak realm/client (`slms-customer-portal`), plus `KEYCLOAK_BASE_URL` and `NEXTAUTH_URL=http://<host>/customer` for NextAuth callbacks.
+- **Driver PWA (`/driver`):** `NEXT_PUBLIC_API_URL=http://<host>/api/driver`, `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=slms-driver-pwa`, and `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`.
+- **Landing Page:** `NEXT_PUBLIC_API_URL=http://<host>/api/landing-page`.
+- **Feature flags and RUM:** `NEXT_PUBLIC_FLAGSMITH_ENV_KEY` for the customer portal and `NEXT_PUBLIC_ELASTIC_APM_SERVER_URL/SECRET_TOKEN/DEPLOYMENT_ENV/PROJECT_VERSION/TRACING_SAMPLING_RATE` shared across all apps.
+
+A minimal `infra/terraform/terraform.tfvars` for production hosts:
+
+```hcl
+public_host           = "http://ec2-13-37-232-192.eu-west-3.compute.amazonaws.com/"
+docker_network_name   = "slms-network"
+service_replica_count = 2  # scale to 3+ when CPU is available
+next_public_api_url   = "http://ec2-13-37-232-192.eu-west-3.compute.amazonaws.com/api"
+flagsmith_env_key     = "<prod_flagsmith_key>"
+mapbox_access_token   = "<prod_mapbox_token>"
 ```
 
 ## 6.2 External Services Configuration
 
+External dependencies run as first-class services within the stack to keep development and production behaviour aligned. Keycloak, MinIO, Kafka, and Nginx are provisioned by Docker Compose (`infra/docker-compose.yaml`), while the backend and all frontends consume their endpoints through the shared `slms-network` bridge network.
+
 ### 6.2.1 Keycloak Setup
 
-**Topics to cover:**
+Keycloak 26.0 ships as `slms-keycloak-prod` and imports the preconfigured realm from `infra/keycloak/realm-export.json` on first boot. It uses the Terraform-managed PostgreSQL instance (`slms-postgres-prod`) for persistence, so ensure Terraform applies before or alongside Compose.
 
-**Realm Creation:**
-- Realm name: `slms`
-- Realm settings configuration
-
-**Client Configurations (4 clients):**
-1. `slms-backend` - Backend service
-2. `slms-admin-console` - Admin UI
-3. `slms-customer-portal` - Customer UI
-4. `slms-driver-pwa` - Driver mobile app
-
-**For each client:**
-- Client ID
-- Client secret
-- Valid redirect URIs
-- Web origins
-- Access type (confidential/public)
-
-**Role Mappings:**
-- MANAGER
-- WAREHOUSE
-- CSR
-- DRIVER
-- CUSTOMER
-
-**JWT Token Settings:**
-- Token lifespan
-- Refresh token settings
-- Signature algorithm (RS256)
-
-**Admin Client Credentials:**
-- For programmatic user management
-- Service account roles
-
-**Reference:** `docs/adr/0004-architecture-update-security-&-auth.md`
+1. Configure admin credentials in `infra/.env` (`KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`) and the public issuer in `KC_HOSTNAME_URL`.
+2. Start the stack (`make up` or `cd infra && ./deploy.sh deploy`). Nginx proxies `/auth` and `/realms` to Keycloak on port 80; direct admin access is available at `http://<host>:8180/admin/`.
+3. Clients imported with the realm:
+   - `slms-backend` (confidential) for the Spring Boot resource server
+   - `slms-admin-console` (public) for the Admin Console
+   - `slms-customer-portal` (public) for the Customer Portal
+   - `slms-driver-pwa` (public) for the Driver PWA
+4. Set redirect URIs to the Nginx paths: `http://<host>/admin/*`, `http://<host>/customer/*`, `http://<host>/driver/*`, plus `http://<host>/api/auth/*` for NextAuth.
+5. Realm roles mirror the personas: `LOGISTICS_MANAGER`, `WAREHOUSE_STAFF`, `CUSTOMER_SERVICE_REP`, `DRIVER`, `CUSTOMER`. Tokens embed these roles and are validated by Spring Security using `JWT_ISSUER_URI`.
+6. Harden production by keeping `KC_PROXY=edge`, enabling TLS termination at Nginx, and rotating the client secret stored in GitHub Secrets or `.env`.
 
 ### 6.2.2 MinIO Setup
 
-**Topics to cover:**
+MinIO provides S3-compatible storage for labels, documents, and proof-of-delivery images. The `slms-minio-prod` container exposes the API on `:9000` and the console on `:9001`. On startup, `slms-minio-create-bucket-prod` ensures the bucket defined by `MINIO_BUCKET_NAME` exists.
 
-**Bucket Creation:**
-- Bucket name: `slms-documents`
-- Versioning enabled/disabled
-- Encryption settings
+- Log into the console (`http://<host>:9001`) with `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` to verify the bucket and configure optional retention policies.
+- The backend uses the same credentials through `aws.s3.*` properties; no extra secrets file is required.
+- For production hardening, place MinIO behind TLS (either via Nginx or an upstream ALB) and restrict console access to trusted IPs.
 
-**Access Policies:**
-- Read/write permissions
-- Public vs private buckets
-- CORS configuration
-
-**Endpoint Configuration:**
-- Internal endpoint for backend
-- External endpoint (if needed)
-- SSL/TLS configuration
+Health check: `curl -f http://<host>:9000/minio/health/live`.
 
 ### 6.2.3 ShipEngine Integration
 
-**Topics to cover:**
+Carrier integrations rely on API keys injected through the environment and surfaced to the Rate & Carrier Module:
 
-**API Key Acquisition:**
-- Register at ShipEngine
-- Obtain sandbox/production API key
-- Rate limits and quotas
+1. Obtain sandbox/production keys from ShipEngine and set `SHIPENGINE_API_KEY` (and `SHIPENGINE_BASE_URL` if using a private endpoint).
+2. Terraform propagates the key into the backend containers; the `ShipEngineApiClient` will no-op when no key is present, keeping CI green.
+3. To validate end-to-end, start the stack and run `make test-real` (requires the key) or trigger the rate comparison flows in the Admin Console; generated labels and documents are saved to MinIO.
+4. Webhooks can target Nginx (`http://<host>/api/...`) once exposed; configure them with secret signatures when moving beyond sandbox.
 
-**Carrier Configuration:**
-- Connect carrier accounts (FedEx, UPS, DHL)
-- Configure carrier services
-- Test credentials
-
-**Rate Request Setup:**
-- Rate comparison configuration
-- Service level definitions
-- Package type configurations
-
-**Webhook Configuration:**
-- Webhook endpoint URL
-- Event subscriptions
-- Signature verification
-
-**Reference:** `docs/per-sprint/sprint1/carrier-shipping-apis-investigation.md`, `docs/per-sprint/sprint3/carrier-module-readme.md`
+Reference investigations are documented in `docs/per-sprint/sprint1/carrier-shipping-apis-investigation.md` and `docs/per-sprint/sprint3/carrier-module-readme.md`.
 
 ### 6.2.4 AI Services Configuration
 
-**Google Gemini:**
-- Obtain API key from Google AI Studio
-- Model selection (gemini-pro)
-- Rate limits and quotas
-- Safety settings
+The chatbot module combines Google Gemini for reasoning and Pinecone for retrieval:
 
-**Pinecone:**
-- Create account and project
-- Create index: `slms-assistant`
-  - Dimensions: 768 (matches embedding model)
-  - Metric: cosine
-  - Pod type selection
-- Obtain API key and environment
-- Document ingestion process
+- Create a Gemini API key and set `GEMINI_API_KEY`, selecting `GEMINI_MODEL=gemini-2.0-flash` and `GEMINI_EMBEDDING_MODEL=text-embedding-004`.
+- In Pinecone, create an index `slms-chatbot` with 768 dimensions, cosine metric, and namespace `en-US`; set `PINECONE_API_KEY` and `PINECONE_HOST`.
+- The backend reads these values at startup. Keep `chatbot.seeder` disabled in production; enable it temporarily (env var `CHATBOT_SEEDER_ENABLED=true`) when repopulating the index from project documents.
 
-**Reference:** Code in `src/backend/src/main/java/Operimus/SLMS/business_layer/chatbot_module/`
+### 6.2.5 Observability Endpoints
+
+Elastic APM is wired into both backend and frontends via `ELASTIC_APM_*` and `NEXT_PUBLIC_ELASTIC_APM_*`. The backend exposes `/actuator/*` and Prometheus metrics through Nginx (`/actuator/`), which feed the SLI/SLOs discussed in Section 11.
 
 ## 6.3 Build Process
 
+Builds are deterministic and cache-aware to minimize CI time and avoid "works on my machine" drift.
+
 ### 6.3.1 Backend Build
 
-**Topics to cover:**
+- Local/CI command: `cd src/backend && ./mvnw clean package -DskipTests` (also invoked via `make build`).
+- Docker: `infra/docker/backend/Dockerfile` is a two-stage build. The builder stage pre-downloads dependencies (`mvn dependency:go-offline`), builds the jar, and copies only the artifact into a slim JRE 21 image running as a non-root user with G1GC tuning.
+- Terraform rebuilds the `slms-backend:latest` image when source changes; force a rebuild with `make rebuild` or `terraform taint docker_image.backend`.
 
-```bash
-cd src/backend
-./mvnw clean package -DskipTests
-```
-
-**Produces:** `target/slms-backend-0.0.1-SNAPSHOT.jar`
-
-**Build profiles:**
-- Development profile
-- Production profile
-- Test profile
-
-**Maven configuration highlights:**
-- Spring Boot Maven plugin
-- Dependency management
-- Resource filtering
+The packaged artifact is `target/slms-backend-0.0.1-SNAPSHOT.jar` for local use and `app.jar` inside the runtime image.
 
 ### 6.3.2 Frontend Builds
 
-**Topics to cover:**
+Each Next.js app uses the shared `infra/docker/frontend/Dockerfile`:
 
-**For each application:**
-```bash
-cd src/frontend/{admin-console|customer-portal|driver-pwa|landing-page}
-npm install
-npm run build
-```
+1. Dependencies are installed with `npm ci` in a dedicated `deps` stage to leverage layer caching.
+2. Build args inject `NEXT_PUBLIC_*` values; `npm run build` produces a standalone server bundle.
+3. `npm prune --omit=dev` strips dev dependencies; the runtime image serves on port 3000 with `node server.js`.
 
-**Produces:** `.next/` directory with optimized static files
+For local hot-reload development, `infra/docker-compose.dev.yml` mounts source folders and runs `npm run dev` with polling enabled (`CHOKIDAR_USEPOLLING`, `WATCHPACK_POLLING`).
 
-**Build-time variables:**
-- `NEXT_PUBLIC_BACKEND_URL`
-- `NEXT_PUBLIC_KEYCLOAK_URL`
-- Environment-specific configs
+### 6.3.3 Developer Workflow
 
-**Optimization:**
-- Static page generation
-- Image optimization
-- Code splitting
-- Bundle size optimization
+- **Spin up dev stack:** `make dev-up` (Compose only, with Keycloak/MinIO/Kafka/backends/frontends and Nginx proxy).
+- **Install dependencies:** `make install` (frontends) and `./mvnw` (backend).
+- **Run tests:** `make test-unit`, `make test-backend-integration` (requires supporting containers), `make test-e2e` (Playwright).
+- **Production artefacts:** `make build` builds all frontends and backend locally; CI mirrors this in the deploy workflow.
 
 ## 6.4 Deployment Pipeline (CI/CD)
 
-**Reference:** `.github/workflows/build.yml`, `.github/workflows/deploy.yml`
+Three GitHub Actions workflows cover quality, integration, and production deployment. Concurrency guards prevent overlapping deploys.
 
-### 6.4.1Continuous Integration (build.yml)
+### 6.4.1 Quality Gate (`ci-quality.yml`)
 
-**Topics to cover:**
+Triggered on pull requests to `develop` and `main`:
 
-**Triggers:**
-- Every push to any branch
-- Every pull request
+- Backend: runs unit + mocked integration tests with JaCoCo coverage gates (`make test-ci`), uploads reports, and posts status to the PR.
+- Frontend: matrix over all four apps, running `npm ci`, `npm run lint`, and `npm run build` with stubbed `NEXT_PUBLIC_*` values to catch build-time config errors.
+- Fails fast if coverage or build steps regress.
 
-**Build Steps:**
-1. Checkout code
-2. Setup Java 21 and Node.js 20
-3. Backend: `mvn test`
-4. Frontend: `npm test` for each app
-5. Integration tests with mocked services
-6. Code quality checks (JaCoCo coverage)
+### 6.4.2 Integration & E2E (`ci-integration.yml`)
 
-**Quality Gates:**
-- All tests must pass
-- Code coverage threshold
-- No critical security vulnerabilities
+Triggered on pull requests to `main`:
 
-### 6.4.2 Continuous Deployment (deploy.yml)
+- Uses the `setup-slms-env` action to generate `.env` for containers.
+- Spins up dependencies with `docker-compose.dev.yml` + `docker-compose.ci.yml` (PostgreSQL on 55432, Keycloak on 28180, MinIO on 39000, Kafka/Zookeeper).
+- Backend integration tests run against real Keycloak/MinIO/Kafka (`make test-backend-integration`).
+- Playwright E2E tests run per frontend (`admin-console`, `customer-portal`, `driver-pwa`, `landing-page`) against the locally composed stack; reports are uploaded as artifacts.
+- Cleans containers and volumes after each job to avoid state leakage.
 
-**Topics to cover:**
+### 6.4.3 Continuous Deployment (`cd-deploy.yml`)
 
-**Triggers:**
-- Push to `main` branch
-- Manual workflow dispatch
+Triggered on pushes to `main` or manual dispatch; runs on the self-hosted `aws-runner`:
 
-**Deployment Steps:**
-1. Database backup (pre-deployment)
-2. Docker image builds
-   - Backend image
-   - Frontend images (4 apps)
-3. Terraform plan and apply
-4. Service deployment
-5. Health checks
-6. Database backup (post-deployment)
+1. Generates `infra/.env` and `infra/terraform/terraform.tfvars` from GitHub Secrets via `setup-slms-env` (`mode: deploy`), covering database, Keycloak, MinIO, Kafka, observability, and AI keys.
+2. Stops and prunes old containers and images to avoid conflicts.
+3. Executes `infra/deploy.sh deploy`, which performs a Terraform plan/apply (building backend/frontends, PostgreSQL) and brings up Compose services (`zookeeper`, `kafka`, `keycloak`, `minio`, `nginx`).
+4. Restarts Nginx to refresh DNS and validates that backend and Nginx containers are running.
+5. Health checks can be extended with `infra/test-health-checks.sh` post-deploy.
 
-**Rollback Strategy:**
-- Previous database backup restoration
-- Container version rollback
-- Terraform state management
-
-**Reference:** `.github/workflows/` directory
+Secrets stay within the runner; nothing is committed back to the repository.
 
 ## 6.5 Infrastructure as Code (Terraform)
 
-**Reference:** `infra/terraform/` directory, `infra/README.md`
+Terraform (provider `kreuzwerker/docker`) manages application containers and PostgreSQL, while Compose handles shared infrastructure. This split keeps stateful services (DB, object storage, auth) explicit and allows stateless services to scale independently.
 
-### 6.5.1 Resources Managed
-
-**Topics to cover:**
-
-**Docker Resources:**
-- Network creation (`slms-network`)
-- Image builds with build arguments
-- Container orchestration
-- Volume management
-- Service dependencies
-
-**Configuration:**
-- Environment variable injection
-- Port mappings
-- Health checks
-- Restart policies
-
-### 6.5.2 Terraform Variables
-
-**Topics to cover:**
-
-**Key Variables:**
-- `public_host` - Deployment hostname/IP
-- `docker_network_name` - Network isolation
-- Build-time environment variables for Next.js apps
-- Database credentials
-- Service ports
-
-**Variable files:**
-- `terraform.tfvars.example` - Template
-- `terraform.tfvars` - Actual values (gitignored)
-
-**Sensitive data handling:**
-- Using Terraform variables
-- Secret management best practices
-
-### 6.5.3 Terraform Commands
-
-```bash
-cd infra/terraform
-terraform init
-terraform plan
-terraform apply
-terraform destroy
-```
+- **Resources:** `docker_container.postgres` (PostgreSQL 16 with SCRAM auth and volume `slms-postgres-data-prod`), backend replicas, and four frontend replicas defined in `infra/terraform/main.tf`. All containers join the external `slms-network`, which `deploy.sh` creates automatically if missing.
+- **Scaling:** `service_replica_count` (default 2) sets replica counts for backend and each frontend. Nginx load balances with `least_conn` (`infra/nginx/default.conf`).
+- **Configuration flow:** values come from `terraform.tfvars` or defaults; outputs in `infra/terraform/outputs.tf` expose service URLs for verification.
+- **Operations:** `make up` (or `./deploy.sh deploy`) runs a "smart" plan/apply that reuses unchanged containers. Force rebuild with `make rebuild` or `terraform taint docker_image.<name>`. Destroy resources with `make destroy` (`terraform destroy` + `docker compose down`).
 
 ## 6.6 AWS Deployment
 
-**Reference:** `docs/per-sprint/sprint4/aws-deployment-guide.md`
+The live stack runs on a single EC2 instance using the same automation as local builds. Guidance in `docs/per-sprint/sprint4/aws-deployment-guide.md` applies:
 
-### 6.6.1 EC2 Setup
+1. Provision an EC2 instance (t3.medium or larger, 30GB+ EBS). Open inbound 80/443 (Nginx), 8180 (Keycloak admin), 22 (SSH), and optionally 9000/9001 (MinIO) restricted to trusted IPs.
+2. Install Docker, Docker Compose v2, and Terraform 1.5+ on the host.
+3. Clone the repository and prepare configuration:
+   ```bash
+   cd infra
+   cp .env.example .env   # fill secrets
+   cd terraform
+   cat > terraform.tfvars <<EOF
+   public_host = "$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
+   docker_network_name = "slms-network"
+   EOF
+   ```
+4. Deploy with `cd .. && ./deploy.sh deploy` (or `make up` from project root). The script creates the network, builds images, applies Terraform, and brings up Compose services.
+5. Validate: `make status`, `curl http://<public-ip>/health`, and optionally run `infra/test-health-checks.sh` to exercise all health endpoints through Nginx.
 
-**Topics to cover:**
-
-**Instance Requirements:**
-- Instance type (e.g., t3.medium or larger)
-- CPU: 2+ vCPUs
-- RAM: 4GB minimum (8GB recommended)
-- Storage: 30GB+ EBS volume
-
-**Security Group Configuration:**
-- Inbound rules:
-  - HTTP (80)
-  - HTTPS (443)
-  - SSH (22) - restricted IPs
-  - Custom ports for development
-- Outbound rules: Allow all
-
-**Public IP / Elastic IP:**
-- Allocate Elastic IP for stability
-- Associate with EC2 instance
-- DNS configuration
-
-### 6.6.2 Deployment Steps
-
-**Topics to cover:**
-
-```bash
-# On EC2 instance
-git clone <repository>
-cd group-project-es2526_304
-
-# Configure environment
-cd infra
-./setup-aws.sh      # Auto-detect public IP
-
-# Deploy
-./deploy.sh deploy
-```
-
-**Script functionality:**
-- Automatic IP detection
-- Environment variable setup
-- Terraform execution
-- Service startup
-
-### 6.6.3 Post-Deployment Verification
-
-**Topics to cover:**
-
-**Health Checks:**
-```bash
-make status
-curl http://<public-ip>/health
-```
-
-**Service Availability:**
-- Landing page: `http://<public-ip>/`
-- Admin console: `http://<public-ip>/admin/`
-- Customer portal: `http://<public-ip>/customer/`
-- Driver PWA: `http://<public-ip>/driver/`
-
-**Log Monitoring:**
-```bash
-make logs
-docker compose -f infra/docker-compose.yaml logs -f
-```
+When the public host changes, rebuild frontends (`./deploy.sh down && ./deploy.sh deploy`) so baked URLs reflect the new hostname.
 
 ## 6.7 Database Management
 
+PostgreSQL 16 runs in `slms-postgres-prod` with data persisted to `slms-postgres-data-prod`. Authentication uses SCRAM-SHA-256 (`POSTGRES_HOST_AUTH_METHOD=scram-sha-256`), and other services connect via the Docker network (`slms-postgres-prod:5432`).
+
 ### 6.7.1 Backup System
 
-**Topics to cover:**
+A dedicated backup image (`infra/docker/backup/Dockerfile`) wraps `infra/scripts/backup.sh` to produce compressed dumps and keep only the last `MAX_BACKUPS` files. The helper script `infra/setup-backup.sh` prepares `.env` (adds `MAX_BACKUPS`) and starts the `backup` service when present in the Compose stack.
 
-**Automated Backups:**
-- Pre-deployment backup
-- Post-deployment backup
-- Retention policy: Last 4 backups
-- Backup location and naming
+Typical workflow (run on the server or CI runner):
 
-**Manual Backup:**
 ```bash
-cd infra
-./scripts/backup-db.sh  # If exists
+# Build/start backup container (ensure compose defines the 'backup' service)
+docker compose -f infra/docker-compose.yaml up -d --build backup
+
+# Create a backup with optional label (e.g., pre-deploy SHA)
+docker compose -f infra/docker-compose.yaml exec backup BACKUP_LABEL=pre-$SHA /usr/local/bin/backup.sh
+
+# List available backups
+docker compose -f infra/docker-compose.yaml exec backup ls -lh /backups
+
+# Download a backup
+docker cp slms-backup:/backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz ./
 ```
 
-**Backup verification:**
-- Test restoration process
-- Backup integrity checks
+Restores use `infra/scripts/restore.sh`, which recreates the database and streams the selected dump:
+
+```bash
+docker compose -f infra/docker-compose.yaml exec backup /usr/local/bin/restore.sh backup_slms_20250101_120000.sql.gz
+```
+
+Integrate the backup step before/after deployments on the self-hosted runner to guard against failed rollouts.
 
 ### 6.7.2 Migration Strategy
 
-**Topics to cover:**
+Schema changes are currently applied with `spring.jpa.hibernate.ddl-auto=update` for velocity. For production hardening:
 
-**JPA DDL Auto Configuration:**
-- `spring.jpa.hibernate.ddl-auto=update` (development)
-- `spring.jpa.hibernate.ddl-auto=validate` (production)
-
-**Schema Versioning:**
-- Liquibase or Flyway (if implemented)
-- Migration scripts location
-- Version control of schema changes
-
-**Data Migration:**
-- Handling data transformations
-- Migration scripts for major changes
+- Switch to `validate` in `.env`/Terraform and manage migrations with Flyway or Liquibase stored in version control.
+- Use `make test-backend-integration` to validate migrations against a clean database before releasing.
+- Avoid ad-hoc psql changes in production; encode changes in migration scripts and re-run Terraform.
 
 ## 6.8 Secrets Management
 
-**Topics to cover:**
+Secrets never enter source control:
 
-**Environment Variables:**
-- Never commit secrets to Git
-- `.env` files in `.gitignore`
-- `.env.example` as template
-
-**API Key Rotation:**
-- Regular rotation procedures
-- Rotation for ShipEngine, Gemini, Pinecone
-- Update without downtime
-
-**Keycloak Client Secrets:**
-- Secret generation
-- Secure storage
-- Rotation policy
+- `.env` and `infra/terraform/terraform.tfvars` are gitignored; `.env.example` and `terraform.tfvars.example` carry non-sensitive defaults only.
+- GitHub Actions rely on repository secrets; the `setup-slms-env` action materializes them into files on the runner and cleans the workspace after jobs.
+- Rotate API keys regularly (ShipEngine, Gemini, Pinecone, Flagsmith, Mapbox, Keycloak client secrets) and propagate them through the secrets store and `.env` for local testing.
+- For cloud deployments, prefer a managed secret store (AWS Secrets Manager/SSM Parameter Store) and mount values via environment variables instead of baking them into images.
 
 ## 6.9 Scaling Considerations
 
-**Topics to cover:**
+Although SLMS is a modular monolith, the stack is prepared for horizontal scale and resilience:
 
-**Horizontal Scaling:**
-- Load balancer configuration (Nginx)
-- Stateless application design
-- Session management across instances
-
-**Database Connection Pooling:**
-- HikariCP configuration
-- Pool size tuning
-- Connection leak detection
-
-**Caching Strategies:**
-- Application-level caching
-- Redis integration (future)
-- Cache invalidation
-
-**Load Balancer Configuration:**
-- Nginx as reverse proxy
-- Round-robin or least connections
-- Health check integration
-- SSL termination
-
-**Future Microservices Migration:**
-- Module boundaries as microservice candidates
-- Event-driven architecture considerations
-- Service mesh potential
+- **Stateless replicas:** Backend and all frontends run two replicas by default (`service_replica_count`), load-balanced by Nginx with `least_conn`. Increase replicas to handle higher traffic; backends remain stateless because JWT validation avoids sticky sessions.
+- **Database connections:** PostgreSQL uses connection pooling in the driver; tune via `SPRING_DATASOURCE_*` (HikariCP) if needed when adding replicas. Monitor with Elastic APM metrics.
+- **Kafka throughput:** Kafka/Zookeeper are single-instance in this stack; scale up or move to a managed broker if event volume grows.
+- **Caching and CDN:** Static assets are served by Next.js/Nginx; introduce CDN caching or Redis-backed caches as a future optimization for rate shopping and reporting.
+- **Availability checks:** Nginx and container healthchecks (in Terraform and Compose) ensure unhealthy instances are rotated out automatically. `infra/test-health-checks.sh` provides a quick regression check after scaling changes.
 
 ---
 
