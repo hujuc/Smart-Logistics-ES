@@ -11,6 +11,7 @@
 
 import { onCLS, onLCP, onFCP, onTTFB, onINP, type Metric } from 'web-vitals';
 import { getApm } from './apm';
+import type { WebVitalsMetric } from './types';
 
 /**
  * Send web vital metric to Elastic APM as a custom transaction

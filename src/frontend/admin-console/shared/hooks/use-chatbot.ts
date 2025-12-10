@@ -214,7 +214,7 @@ export function useChatbot({
         setIsTyping(false);
       }
     },
-    [conversations, currentConversationId, apiEndpoint, locale, isTyping, skipAuth]
+    [conversations, currentConversationId, apiEndpoint, locale, isTyping]
   );
 
   /**
