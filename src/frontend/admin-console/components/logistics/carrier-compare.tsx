@@ -1,8 +1,9 @@
 "use client"
 
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, TrendingUp } from "lucide-react"
+import { Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Carrier } from "@/types"
 
@@ -15,6 +16,9 @@ interface CarrierCompareProps {
   showSearch?: boolean
 }
 
+type SortField = 'cost' | 'transitTime' | null
+type SortOrder = 'asc' | 'desc'
+
 export function CarrierCompare({
   carriers,
   selectedCarrier,
@@ -23,11 +27,60 @@ export function CarrierCompare({
   handleSelectCarrier,
   showSearch = true,
 }: CarrierCompareProps) {
-  const filteredCarriers = carriers.filter(
-    (carrier) =>
-      carrier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      carrier.service.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const [sortField, setSortField] = useState<SortField>(null)
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle sort order if clicking the same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new field and default to ascending
+      setSortField(field)
+      setSortOrder('asc')
+    }
+  }
+
+  const filteredAndSortedCarriers = useMemo(() => {
+    let result = carriers.filter(
+      (carrier) =>
+        carrier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        carrier.service.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    if (sortField) {
+      result = [...result].sort((a, b) => {
+        let compareValue = 0
+
+        if (sortField === 'cost') {
+          const costA = a.cost || 0
+          const costB = b.cost || 0
+          compareValue = costA - costB
+        } else if (sortField === 'transitTime') {
+          // Extract numeric value from transit time (e.g., "2-3 days" -> 2)
+          const extractDays = (time?: string) => {
+            if (!time) return 999
+            const match = time.match(/(\d+)/)
+            return match ? parseInt(match[1]) : 999
+          }
+          compareValue = extractDays(a.transitTime) - extractDays(b.transitTime)
+        }
+
+        return sortOrder === 'asc' ? compareValue : -compareValue
+      })
+    }
+
+    return result
+  }, [carriers, searchTerm, sortField, sortOrder])
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 text-gray-400" />
+    }
+    return sortOrder === 'asc'
+      ? <ArrowUp className="h-3 w-3 text-purple-700 fill-purple-700" />
+      : <ArrowDown className="h-3 w-3 text-purple-700 fill-purple-700" />
+  }
 
   return (
     <div className="bg-white border rounded-lg shadow-sm">
@@ -52,22 +105,28 @@ export function CarrierCompare({
             <TableRow>
               <TableHead>Carrier</TableHead>
               <TableHead>
-                <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleSort('cost')}
+                  className="flex items-center gap-1 hover:text-brand-purple transition-colors cursor-pointer"
+                >
                   Cost
-                  <TrendingUp className="h-3 w-3" />
-                </div>
+                  {getSortIcon('cost')}
+                </button>
               </TableHead>
               <TableHead>
-                <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleSort('transitTime')}
+                  className="flex items-center gap-1 hover:text-brand-purple transition-colors cursor-pointer"
+                >
                   Transit Time
-                  <TrendingUp className="h-3 w-3" />
-                </div>
+                  {getSortIcon('transitTime')}
+                </button>
               </TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCarriers.map((carrier) => (
+            {filteredAndSortedCarriers.map((carrier) => (
               <TableRow
                 key={carrier.id}
                 className={`hover:bg-gray-50 ${
@@ -107,7 +166,7 @@ export function CarrierCompare({
           </TableBody>
         </Table>
 
-        {filteredCarriers.length === 0 && (
+        {filteredAndSortedCarriers.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No carriers found matching your search.
           </div>

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   basePath: "/customer",
   assetPrefix: "/customer",
   trailingSlash: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

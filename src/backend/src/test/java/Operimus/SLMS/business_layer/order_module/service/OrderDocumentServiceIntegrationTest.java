@@ -12,6 +12,7 @@ import Operimus.SLMS.config.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,10 +37,13 @@ import static org.assertj.core.api.Assertions.*;
  *
  * Note: This test uses @SpringBootTest and requires the full application context.
  * Security is mocked via TestSecurityConfig to avoid connecting to Keycloak.
+ *
+ * Run with: mvn test -Dgroups=ci-integration
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
+@Tag("ci-integration")
 class OrderDocumentServiceIntegrationTest {
 
     @Autowired

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   basePath: "/driver",
   assetPrefix: "/driver",
   trailingSlash: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

@@ -1,4 +1,4 @@
-import { MessageSquare, FileText, Settings } from "lucide-react"
+import { MessageSquare, FileText, Settings, Bell } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -20,6 +20,11 @@ export const supportNavItems: NavItem[] = [
     label: "Order History",
   },
   {
+    href: "/interfaces/notifications",
+    icon: Bell,
+    label: "Notifications",
+  },
+  {
     href: "/settings",
     icon: Settings,
     label: "Settings",
@@ -30,6 +35,10 @@ export const supportNavItems: NavItem[] = [
 export const navConfig = [
   {
     basePath: "/interfaces/support",
+    items: supportNavItems,
+  },
+  {
+    basePath: "/interfaces/notifications",
     items: supportNavItems,
   },
   {

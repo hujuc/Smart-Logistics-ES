@@ -7,17 +7,17 @@ import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
+import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
-import Operimus.SLMS.business_layer.user_management_module.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -35,8 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = CustomerBffController.class,
-    excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class})
-@Import(SecurityConfig.class)
+    excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class, KafkaAutoConfiguration.class})
 class CustomerBffControllerTest {
 
     @Autowired
@@ -45,19 +44,22 @@ class CustomerBffControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
-    @MockBean
+    @MockitoBean
     private OrderEventService orderEventService;
 
-    @MockBean
+    @MockitoBean
     private WarehouseService warehouseService;
 
-    @MockBean
+    @MockitoBean
     private DeliveryExceptionService exceptionService;
 
-    @MockBean
+    @MockitoBean
+    private OrderDocumentService orderDocumentService;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     private String customerId;

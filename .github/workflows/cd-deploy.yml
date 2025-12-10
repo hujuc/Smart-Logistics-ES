@@ -1,0 +1,272 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  # Database
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  # Keycloak
+  JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
+  KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+  KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+  KC_DB: ${{ secrets.KC_DB }}
+  KC_DB_URL: ${{ secrets.KC_DB_URL }}
+  KC_DB_USERNAME: ${{ secrets.KC_DB_USERNAME }}
+  KC_DB_PASSWORD: ${{ secrets.KC_DB_PASSWORD }}
+  KC_HOSTNAME: ${{ secrets.KC_HOSTNAME }}
+  KC_PROXY: ${{ secrets.KC_PROXY }}
+  KC_HOSTNAME_PORT: ${{ secrets.KC_HOSTNAME_PORT }}
+  KC_HOSTNAME_STRICT: ${{ secrets.KC_HOSTNAME_STRICT }}
+  KC_HTTP_ENABLED: ${{ secrets.KC_HTTP_ENABLED }}
+  KC_PROXY_HEADERS: ${{ secrets.KC_PROXY_HEADERS }}
+  KEYCLOAK_HOST: ${{ secrets.KEYCLOAK_HOST }}
+  KEYCLOAK_PORT: ${{ secrets.KEYCLOAK_PORT }}
+  KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM }}
+  KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
+  KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+  KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
+  KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+  KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+  KEYCLOAK_BASE_URL: ${{ secrets.KEYCLOAK_BASE_URL }}
+  KEYCLOAK_INTERNAL_URL: ${{ secrets.KEYCLOAK_INTERNAL_URL }}
+  KC_HOSTNAME_URL: ${{ secrets.KC_HOSTNAME_URL }}
+  # MinIO
+  MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+  MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+  MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+  MINIO_PORT: ${{ secrets.MINIO_PORT }}
+  MINIO_HOST: ${{ secrets.MINIO_HOST }}
+  # Application
+  BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+  FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
+  NEXT_TELEMETRY_DISABLED: ${{ secrets.NEXT_TELEMETRY_DISABLED }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+  # NextAuth & Frontend
+  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+  NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  NEXT_PUBLIC_FLAGSMITH_ENV_KEY: ${{ secrets.NEXT_PUBLIC_FLAGSMITH_ENV_KEY }}
+  NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+  # External APIs
+  SHIPPO_API_KEY: ${{ secrets.SHIPPO_API_KEY }}
+  SHIPENGINE_API_KEY: ${{ secrets.SHIPENGINE_API_KEY }}
+  PUBLIC_HOST: ${{ secrets.PUBLIC_HOST || 'localhost' }}
+  QR_CONFIRMATION_BASE_URL: ${{ secrets.QR_CONFIRMATION_BASE_URL }}
+  # Observability
+  ELASTIC_APM_SERVER_URL: ${{ secrets.ELASTIC_APM_SERVER_URL }}
+  ELASTIC_APM_SECRET_TOKEN: ${{ secrets.ELASTIC_APM_SECRET_TOKEN }}
+  DEPLOYMENT_ENV: ${{ secrets.DEPLOYMENT_ENV || 'production' }}
+  PROJECT_VERSION: ${{ secrets.PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
+  TRACING_SAMPLING_RATE: ${{ secrets.TRACING_SAMPLING_RATE || '1.0' }}
+  LOG_LEVEL_ROOT: ${{ secrets.LOG_LEVEL_ROOT || 'INFO' }}
+  LOG_LEVEL_APP: ${{ secrets.LOG_LEVEL_APP || 'DEBUG' }}
+  LOG_LEVEL_WEB: ${{ secrets.LOG_LEVEL_WEB || 'INFO' }}
+  LOG_LEVEL_SECURITY: ${{ secrets.LOG_LEVEL_SECURITY || 'INFO' }}
+  # AI & Vector Database
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
+  # Kafka
+  KAFKA_BROKER_HOST: ${{ secrets.KAFKA_BROKER_HOST || 'kafka' }}
+  KAFKA_BROKER_PORT: ${{ secrets.KAFKA_BROKER_PORT || '9092' }}
+  KAFKA_BROKER_EXTERNAL_PORT: ${{ secrets.KAFKA_BROKER_EXTERNAL_PORT || '9094' }}
+  KAFKA_ADVERTISED_HOST: ${{ secrets.KAFKA_ADVERTISED_HOST || 'localhost' }}
+  KAFKA_ZOOKEEPER_HOST: ${{ secrets.KAFKA_ZOOKEEPER_HOST || 'zookeeper' }}
+  KAFKA_ZOOKEEPER_PORT: ${{ secrets.KAFKA_ZOOKEEPER_PORT || '2181' }}
+  KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS || 'kafka:9092' }}
+  KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
+  KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
+  KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+  # Frontend Observability
+  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL }}
+  NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN: ${{ secrets.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN }}
+  NEXT_PUBLIC_DEPLOYMENT_ENV: ${{ secrets.NEXT_PUBLIC_DEPLOYMENT_ENV || 'production' }}
+  NEXT_PUBLIC_PROJECT_VERSION: ${{ secrets.NEXT_PUBLIC_PROJECT_VERSION || '0.0.1-SNAPSHOT' }}
+  NEXT_PUBLIC_TRACING_SAMPLING_RATE: ${{ secrets.NEXT_PUBLIC_TRACING_SAMPLING_RATE || '1.0' }}
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: [self-hosted, aws-runner]
+    timeout-minutes: 60
+
+    steps:
+      - name: Fix permissions
+        shell: bash
+        run: |
+          sudo chown -R $USER:users /home/ubuntu/actions-runner/_work
+          sudo chmod -R 777 /home/ubuntu/actions-runner/_work
+
+      - uses: actions/checkout@v4
+
+      - name: Setup SLMS environment (deploy mode)
+        uses: ./.github/actions/setup-slms-env
+        with:
+          mode: deploy
+          # Database
+          postgres-db: ${{ env.POSTGRES_DB }}
+          postgres-user: ${{ env.POSTGRES_USER }}
+          postgres-password: ${{ env.POSTGRES_PASSWORD }}
+          postgres-port: ${{ env.POSTGRES_PORT }}
+          db-host: ${{ env.DB_HOST }}
+          db-port: ${{ env.DB_PORT }}
+          db-name: ${{ env.DB_NAME }}
+          db-username: ${{ env.DB_USERNAME }}
+          db-password: ${{ env.DB_PASSWORD }}
+          # Keycloak
+          keycloak-host: ${{ env.KEYCLOAK_HOST }}
+          keycloak-port: ${{ env.KEYCLOAK_PORT }}
+          keycloak-realm: ${{ env.KEYCLOAK_REALM }}
+          keycloak-admin-client-id: ${{ env.KEYCLOAK_ADMIN_CLIENT_ID }}
+          keycloak-admin-client-secret: ${{ env.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+          keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
+          keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
+          jwt-issuer-uri: ${{ env.JWT_ISSUER_URI }}
+          kc-db: ${{ env.KC_DB }}
+          kc-db-url: ${{ env.KC_DB_URL }}
+          kc-hostname: ${{ env.KC_HOSTNAME }}
+          kc-proxy: ${{ env.KC_PROXY }}
+          kc-hostname-port: ${{ env.KC_HOSTNAME_PORT }}
+          kc-hostname-strict: ${{ env.KC_HOSTNAME_STRICT }}
+          kc-http-enabled: ${{ env.KC_HTTP_ENABLED }}
+          kc-proxy-headers: ${{ env.KC_PROXY_HEADERS }}
+          kc-hostname-url: ${{ env.KC_HOSTNAME_URL }}
+          keycloak-client-id: ${{ env.KEYCLOAK_CLIENT_ID }}
+          keycloak-client-secret: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          keycloak-issuer: ${{ env.KEYCLOAK_ISSUER }}
+          keycloak-base-url: ${{ env.KEYCLOAK_BASE_URL }}
+          keycloak-internal-url: ${{ env.KEYCLOAK_INTERNAL_URL }}
+          # MinIO
+          minio-host: ${{ env.MINIO_HOST }}
+          minio-port: ${{ env.MINIO_PORT }}
+          minio-root-user: ${{ env.MINIO_ROOT_USER }}
+          minio-root-password: ${{ env.MINIO_ROOT_PASSWORD }}
+          minio-bucket: ${{ env.MINIO_BUCKET }}
+          # Kafka
+          kafka-broker-host: ${{ env.KAFKA_BROKER_HOST }}
+          kafka-broker-port: ${{ env.KAFKA_BROKER_PORT }}
+          kafka-broker-external-port: ${{ env.KAFKA_BROKER_EXTERNAL_PORT }}
+          kafka-advertised-host: ${{ env.KAFKA_ADVERTISED_HOST }}
+          kafka-zookeeper-host: ${{ env.KAFKA_ZOOKEEPER_HOST }}
+          kafka-zookeeper-port: ${{ env.KAFKA_ZOOKEEPER_PORT }}
+          kafka-bootstrap-servers: ${{ env.KAFKA_BOOTSTRAP_SERVERS }}
+          kafka-consumer-group-id: ${{ env.KAFKA_CONSUMER_GROUP_ID }}
+          kafka-consumer-auto-offset-reset: ${{ env.KAFKA_CONSUMER_AUTO_OFFSET_RESET }}
+          kafka-security-protocol: ${{ env.KAFKA_SECURITY_PROTOCOL }}
+          # NextAuth & Application
+          nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+          nextauth-url: ${{ env.NEXTAUTH_URL }}
+          next-public-api-url: ${{ env.NEXT_PUBLIC_API_URL }}
+          backend-port: ${{ env.BACKEND_PORT }}
+          frontend-port: ${{ env.FRONTEND_PORT }}
+          node-env: ${{ env.NODE_ENV }}
+          next-telemetry-disabled: ${{ env.NEXT_TELEMETRY_DISABLED }}
+          # Feature Flags
+          next-public-flagsmith-env-key: ${{ env.NEXT_PUBLIC_FLAGSMITH_ENV_KEY }}
+          next-public-mapbox-access-token: ${{ env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          # External APIs
+          shippo-api-key: ${{ env.SHIPPO_API_KEY }}
+          shipengine-api-key: ${{ env.SHIPENGINE_API_KEY }}
+          public-host: ${{ env.PUBLIC_HOST }}
+          qr-confirmation-base-url: ${{ env.QR_CONFIRMATION_BASE_URL }}
+          # Observability
+          elastic-apm-server-url: ${{ env.ELASTIC_APM_SERVER_URL }}
+          elastic-apm-secret-token: ${{ env.ELASTIC_APM_SECRET_TOKEN }}
+          deployment-env: ${{ env.DEPLOYMENT_ENV }}
+          project-version: ${{ env.PROJECT_VERSION }}
+          tracing-sampling-rate: ${{ env.TRACING_SAMPLING_RATE }}
+          log-level-root: ${{ env.LOG_LEVEL_ROOT }}
+          log-level-app: ${{ env.LOG_LEVEL_APP }}
+          log-level-web: ${{ env.LOG_LEVEL_WEB }}
+          log-level-security: ${{ env.LOG_LEVEL_SECURITY }}
+          # AI & Vector Database
+          gemini-api-key: ${{ env.GEMINI_API_KEY }}
+          gemini-model: ${{ env.GEMINI_MODEL }}
+          gemini-embedding-model: ${{ env.GEMINI_EMBEDDING_MODEL }}
+          pinecone-api-key: ${{ env.PINECONE_API_KEY }}
+          pinecone-host: ${{ env.PINECONE_HOST }}
+          pinecone-index: ${{ env.PINECONE_INDEX }}
+          pinecone-namespace: ${{ env.PINECONE_NAMESPACE }}
+          # Frontend Observability
+          next-public-elastic-apm-server-url: ${{ env.NEXT_PUBLIC_ELASTIC_APM_SERVER_URL }}
+          next-public-elastic-apm-secret-token: ${{ env.NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN }}
+          next-public-deployment-env: ${{ env.NEXT_PUBLIC_DEPLOYMENT_ENV }}
+          next-public-project-version: ${{ env.NEXT_PUBLIC_PROJECT_VERSION }}
+          next-public-tracing-sampling-rate: ${{ env.NEXT_PUBLIC_TRACING_SAMPLING_RATE }}
+
+      - name: Cleanup old containers and images
+        shell: bash
+        run: |
+          echo "Stopping existing services..."
+          sudo docker compose -f infra/docker-compose.dev.yml down --remove-orphans || true
+
+          echo "Removing Terraform-managed containers..."
+          docker ps -a --format '{{.Names}}' | grep -E 'slms-.*-prod' | xargs -r docker stop || true
+          docker ps -a --format '{{.Names}}' | grep -E 'slms-.*-prod' | xargs -r docker rm -f || true
+
+          echo "Clearing Docker build cache and old images..."
+          docker builder prune -f || true
+          docker rmi slms-landing-page:latest -f || true
+          docker rmi slms-admin-console:latest -f || true
+          docker rmi slms-customer-portal:latest -f || true
+          docker rmi slms-driver-pwa:latest -f || true
+
+          echo "✅ Cleanup complete"
+
+      - name: Deploy with Terraform and Docker Compose
+        working-directory: infra
+        shell: bash
+        run: |
+          chmod +x deploy.sh
+          ./deploy.sh deploy
+          echo "✅ Deployment complete"
+
+      - name: Restart Nginx for DNS refresh
+        shell: bash
+        run: |
+          docker restart slms-nginx-prod || true
+          echo "✅ Nginx restarted"
+
+      - name: Verify deployment health
+        shell: bash
+        run: |
+          echo "Checking service health..."
+          sleep 10
+
+          if docker ps | grep -q slms-backend-prod; then
+            echo "✅ Backend is running"
+          else
+            echo "❌ Backend is not running"
+            exit 1
+          fi
+
+          if docker ps | grep -q slms-nginx-prod; then
+            echo "✅ Nginx is running"
+          else
+            echo "❌ Nginx is not running"
+            exit 1
+          fi
+
+          echo "✅ Deployment health check passed"
