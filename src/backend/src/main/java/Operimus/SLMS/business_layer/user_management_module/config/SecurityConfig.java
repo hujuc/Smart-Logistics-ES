@@ -69,6 +69,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/ws-notifications/**").permitAll() // WebSocket notifications endpoint
+                .requestMatchers("/api/notifications/test").permitAll() // Test notifications endpoint (development only)
+                .requestMatchers("/api/notifications/**").permitAll() // Notifications endpoints (should be role-based in production)
+                .requestMatchers("/api/warehouse/public-test-notification").permitAll() // PUBLIC TEST for warehouse notifications
                 // Internal Development APIs - Domain Layer Controllers (no auth required)
                 .requestMatchers("/api/admin/**").permitAll() // Catch-all for other domain controllers
                 // Protected BFF endpoints (role-based)
