@@ -344,6 +344,55 @@ public class DeliveryExceptionService {
         return mapToResponse(updated);
     }
 
+    /**
+     * Create exception reported by driver during delivery
+     */
+    public DeliveryExceptionResponse createDriverException(
+            Long orderId,
+            ExceptionType exceptionType,
+            String description,
+            UUID driverId) {
+
+        log.info("Driver {} reporting exception for order {}: {}", driverId, orderId, exceptionType);
+
+        // Determine severity based on exception type
+        Severity severity = switch (exceptionType) {
+            case DAMAGED -> Severity.HIGH;
+            case CUSTOMER_NOT_AVAILABLE, WRONG_ADDRESS -> Severity.MEDIUM;
+            case ACCESS_DENIED, WEATHER -> Severity.MEDIUM;
+            default -> Severity.MEDIUM;
+        };
+
+        // Set priority (driver-reported exceptions are typically high priority)
+        Priority priority = switch (exceptionType) {
+            case DAMAGED -> Priority.HIGH;
+            case CUSTOMER_NOT_AVAILABLE, WRONG_ADDRESS, ACCESS_DENIED, WEATHER -> Priority.MEDIUM;
+            default -> Priority.MEDIUM;
+        };
+
+        DeliveryException exception = DeliveryException.builder()
+                .orderId(orderId)
+                .type(exceptionType)
+                .category("DRIVER_REPORTED")
+                .severity(severity)
+                .description(description)
+                .source(Source.DRIVER)
+                .reportedBy(driverId)
+                .customerReported(false)
+                .priority(priority)
+                .status(ExceptionStatus.OPEN)
+                .build();
+
+        // Calculate SLA deadline
+        int hoursToAdd = (priority == Priority.HIGH || priority == Priority.CRITICAL) ? 24 : 48;
+        exception.setSlaDeadline(LocalDateTime.now().plusHours(hoursToAdd));
+
+        DeliveryException saved = exceptionRepository.save(exception);
+        log.info("Created driver-reported exception with ID: {}", saved.getId());
+
+        return mapToResponse(saved);
+    }
+
     // Helper methods
 
     private DeliveryException findByIdOrThrow(UUID id) {

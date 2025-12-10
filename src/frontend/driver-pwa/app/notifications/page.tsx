@@ -19,6 +19,9 @@ import Link from "next/link"
 import { useWebSocket } from "@shared/hooks/use-websocket"
 import { useUserStore } from "@shared/lib/user-store"
 import { getAccessToken } from "@shared/lib/auth"
+import { acceptShipment } from "@/lib/api"
+import Alert from "@shared/components/Alert"
+import { useAlert } from "@shared/hooks/useAlert"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -48,7 +51,9 @@ export default function NotificationsPage() {
   const [filterType, setFilterType] = useState<string>("All")
   const [filterStatus, setFilterStatus] = useState<string>("All")
   const [isLoading, setIsLoading] = useState(true)
+  const [acceptingShipmentId, setAcceptingShipmentId] = useState<number | null>(null)
   const user = useUserStore((state) => state.user)
+  const { alert, showSuccess, showError, closeAlert } = useAlert()
 
   // Map backend notification to UI format
   const mapNotification = useCallback((n: any): Notification => {
@@ -232,6 +237,29 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleAcceptShipment = async (shipmentId: number, notificationId: number) => {
+    setAcceptingShipmentId(shipmentId)
+    try {
+      await acceptShipment(shipmentId)
+
+      // Mark notification as read
+      await handleMarkAsRead(notificationId)
+
+      // Show success
+      showSuccess('Shipment Accepted', 'Shipment accepted successfully! Check your daily schedule.')
+
+      // Reload to refresh data
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1500)
+    } catch (error) {
+      console.error("Failed to accept shipment:", error)
+      showError('Accept Failed', 'Failed to accept shipment: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setAcceptingShipmentId(null)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -242,6 +270,13 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Alert
+        isOpen={alert.isOpen}
+        onClose={closeAlert}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
       {/* Header - Black background like homepage */}
       <div className="bg-black text-white p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -355,7 +390,7 @@ export default function NotificationsPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notification</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Related</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mark Read</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Delete</th>
                   </tr>
                 </thead>
@@ -410,15 +445,26 @@ export default function NotificationsPage() {
                           {formatTimeAgo(notification.timestamp)}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {notification.status === "unread" && (
-                            <button
-                              onClick={() => handleMarkAsRead(notification.id)}
-                              className="p-1 hover:bg-gray-100 rounded"
-                              title="Mark as read"
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            {notification.eventType === "DRIVER_ASSIGNED" ? (
+                              <button
+                                onClick={() => handleAcceptShipment(parseInt(notification.aggregateId), notification.id)}
+                                disabled={acceptingShipmentId === parseInt(notification.aggregateId)}
+                                className="px-3 py-1.5 bg-black text-white text-xs font-semibold rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                title="Accept shipment"
+                              >
+                                {acceptingShipmentId === parseInt(notification.aggregateId) ? 'Accepting...' : 'Accept'}
+                              </button>
+                            ) : notification.status === "unread" && (
+                              <button
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                className="p-1 hover:bg-gray-100 rounded"
+                                title="Mark as read"
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
@@ -494,21 +540,33 @@ export default function NotificationsPage() {
                       )}
 
                       <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
-                        {notification.status === "unread" && (
+                        {notification.eventType === "DRIVER_ASSIGNED" ? (
                           <button
-                            onClick={() => handleMarkAsRead(notification.id)}
-                            className="text-xs text-black font-semibold"
+                            onClick={() => handleAcceptShipment(parseInt(notification.aggregateId), notification.id)}
+                            disabled={acceptingShipmentId === parseInt(notification.aggregateId)}
+                            className="flex-1 py-2 bg-black text-white text-sm font-semibold rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
-                            Mark as read
+                            {acceptingShipmentId === parseInt(notification.aggregateId) ? 'Accepting...' : 'Accept Shipment'}
                           </button>
-                        )}
-                        {notification.actionUrl && (
-                          <Link
-                            href={notification.actionUrl}
-                            className="text-xs text-black font-semibold underline"
-                          >
-                            View details
-                          </Link>
+                        ) : (
+                          <>
+                            {notification.status === "unread" && (
+                              <button
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                className="text-xs text-black font-semibold"
+                              >
+                                Mark as read
+                              </button>
+                            )}
+                            {notification.actionUrl && (
+                              <Link
+                                href={notification.actionUrl}
+                                className="text-xs text-black font-semibold underline"
+                              >
+                                View details
+                              </Link>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleDelete(notification.id)}

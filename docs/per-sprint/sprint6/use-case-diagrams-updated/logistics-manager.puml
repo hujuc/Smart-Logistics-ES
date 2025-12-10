@@ -1,0 +1,46 @@
+@startuml logisticsManagerUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Logistics Manager" as LM
+
+rectangle "SLMS System" {
+  (Login to System) as UC_Login
+  
+  (US1: Monitor Transportation KPIs) as UC_KPIs
+  (View Dashboard) as UC_Dashboard
+
+  (US2: Compare Carriers for Shipment) as UC_Compare
+  (View Carrier Comparison Table) as UC_ViewCarriers
+  (Assign Carrier to Shipment) as UC_AssignCarrier
+
+  (US3: Generate & Export Reports) as UC_Reports
+  (Select Report Type) as UC_SelectReport
+  (View Generated Report) as UC_ViewReport
+  (Export Report) as UC_Export
+}
+
+LM --> UC_KPIs
+LM --> UC_Compare
+LM --> UC_Reports
+
+' Includes
+UC_KPIs ..> UC_Login : <<include>>
+UC_Compare ..> UC_Login : <<include>>
+UC_Reports ..> UC_Login : <<include>>
+
+UC_KPIs ..> UC_Dashboard : <<include>>
+UC_Compare ..> UC_ViewCarriers : <<include>>
+UC_Compare ..> UC_AssignCarrier : <<include>>
+UC_Reports ..> UC_SelectReport : <<include>>
+
+' Extends
+UC_Reports ..> UC_ViewReport : <<extend>>
+UC_Reports ..> UC_Export : <<extend>>
+
+@enduml

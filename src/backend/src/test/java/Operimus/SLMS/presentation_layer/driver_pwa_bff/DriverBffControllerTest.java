@@ -7,13 +7,16 @@ import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
+import Operimus.SLMS.business_layer.rate_carrier_module.service.ShipmentService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -32,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = DriverBffController.class,
     excludeAutoConfiguration = {OAuth2ResourceServerAutoConfiguration.class, KafkaAutoConfiguration.class})
+@ActiveProfiles("test")
 class DriverBffControllerTest {
 
     @Autowired
@@ -54,6 +58,12 @@ class DriverBffControllerTest {
 
     @MockitoBean
     private OrderDocumentService orderDocumentService;
+
+    @MockitoBean
+    private ShipmentService shipmentService;
+
+    @MockitoBean
+    private DeliveryExceptionService deliveryExceptionService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

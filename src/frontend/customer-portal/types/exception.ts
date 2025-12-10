@@ -20,6 +20,9 @@ export enum ExceptionType {
   DELAYED = 'DELAYED',           // Significant delay
   WRONG_ADDRESS = 'WRONG_ADDRESS',       // Address issue
   NOT_DELIVERED = 'NOT_DELIVERED',       // Delivery not completed
+  CUSTOMER_NOT_AVAILABLE = 'CUSTOMER_NOT_AVAILABLE',  // Driver-reported: Customer not available
+  ACCESS_DENIED = 'ACCESS_DENIED',       // Driver-reported: Access denied to delivery location
+  WEATHER = 'WEATHER',           // Driver-reported: Weather/force majeure
   OTHER = 'OTHER',               // Other issue
 }
 
@@ -240,6 +243,9 @@ export const EXCEPTION_TYPE_LABELS: Record<ExceptionType, string> = {
   [ExceptionType.DELAYED]: 'Delivery Delayed',
   [ExceptionType.WRONG_ADDRESS]: 'Wrong Address',
   [ExceptionType.NOT_DELIVERED]: 'Not Delivered',
+  [ExceptionType.CUSTOMER_NOT_AVAILABLE]: 'Customer Not Available',
+  [ExceptionType.ACCESS_DENIED]: 'Access Denied',
+  [ExceptionType.WEATHER]: 'Weather / Force Majeure',
   [ExceptionType.OTHER]: 'Other Issue',
 };
 
@@ -370,6 +376,44 @@ export const EXCEPTION_CATEGORIES: ExceptionCategory[] = [
       'No one available to receive',
       'Refused by recipient',
       'Access denied',
+      'Other',
+    ],
+  },
+  {
+    type: ExceptionType.CUSTOMER_NOT_AVAILABLE,
+    label: 'Customer Not Available',
+    description: 'Customer was not available to receive delivery (Driver-reported)',
+    subcategories: [
+      'No one home',
+      'No answer at door',
+      'Business closed',
+      'Recipient unavailable',
+      'Other',
+    ],
+  },
+  {
+    type: ExceptionType.ACCESS_DENIED,
+    label: 'Access Denied',
+    description: 'Unable to access delivery location (Driver-reported)',
+    subcategories: [
+      'Gated community - no access code',
+      'Security denied entry',
+      'Building locked',
+      'Road closed',
+      'Unsafe conditions',
+      'Other',
+    ],
+  },
+  {
+    type: ExceptionType.WEATHER,
+    label: 'Weather / Force Majeure',
+    description: 'Extreme weather or uncontrollable events preventing delivery (Driver-reported)',
+    subcategories: [
+      'Severe storm',
+      'Flooding',
+      'Snow/ice conditions',
+      'Road closures',
+      'Natural disaster',
       'Other',
     ],
   },

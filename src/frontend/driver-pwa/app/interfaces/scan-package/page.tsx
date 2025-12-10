@@ -41,9 +41,15 @@ export default function ScanPackage() {
         // Load orders if feature is enabled
         if (enabled) {
           const schedule = await getDailySchedule();
-          // Filter out already delivered orders
-          const pendingOrders = schedule.deliveries.filter(
-            delivery => delivery.status !== 'DELIVERED'
+          const activeStatuses = [
+            'IN_TRANSIT',
+            'CREATED',
+            'READY_FOR_PICKUP',
+            'COLLECTED',
+            'ASSIGNED_TO_SHIPMENT',
+          ];
+          const pendingOrders = schedule.deliveries.filter(delivery =>
+            activeStatuses.includes(delivery.status)
           );
           setOrders(pendingOrders);
         }

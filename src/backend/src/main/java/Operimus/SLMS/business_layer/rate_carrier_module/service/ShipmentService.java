@@ -4,6 +4,7 @@ import Operimus.SLMS.business_layer.rate_carrier_module.entities.Carrier;
 import Operimus.SLMS.business_layer.order_module.entities.Order;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.rate_carrier_module.entities.Shipment;
+import Operimus.SLMS.business_layer.rate_carrier_module.entities.ShipmentStatus;
 import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
@@ -165,6 +166,123 @@ public class ShipmentService {
         return shipmentRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(id)));
+    }
+
+    /**
+     * Driver accepts a shipment, transitioning it to ACCEPTED status and then to IN_TRANSIT.
+     * All orders in the shipment are moved to IN_TRANSIT status.
+     */
+    @Transactional
+    public Shipment acceptShipment(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} accepting shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in PENDING_ACCEPTANCE status
+        if (shipment.getStatus() != ShipmentStatus.PENDING_ACCEPTANCE) {
+            throw new ResourceConflictException(
+                    "Shipment %d cannot be accepted (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update shipment status to ACCEPTED, then to IN_TRANSIT
+        shipment.setStatus(ShipmentStatus.ACCEPTED);
+        shipment.setStatus(ShipmentStatus.IN_TRANSIT);
+        shipment = shipmentRepository.save(shipment);
+
+        // Update all orders in shipment to IN_TRANSIT
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+        for (Order order : orders) {
+            order.setStatus(OrderStatus.IN_TRANSIT);
+        }
+        orderRepository.saveAll(orders);
+
+        log.info("[ShipmentService] Shipment {} accepted and moved to IN_TRANSIT with {} orders",
+                shipmentId, orders.size());
+
+        return shipment;
+    }
+
+    /**
+     * Driver completes delivery successfully.
+     * All orders are marked as DELIVERED and shipment status is set to COMPLETED.
+     */
+    @Transactional
+    public Shipment completeDelivery(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} completing delivery for shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in IN_TRANSIT status
+        if (shipment.getStatus() != ShipmentStatus.IN_TRANSIT) {
+            throw new ResourceConflictException(
+                    "Shipment %d is not in transit (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update all orders to DELIVERED
+        List<Order> orders = orderRepository.findByShipmentId(shipmentId);
+        for (Order order : orders) {
+            order.setStatus(OrderStatus.DELIVERED);
+        }
+        orderRepository.saveAll(orders);
+
+        // Update shipment status to COMPLETED
+        shipment.setStatus(ShipmentStatus.COMPLETED);
+        shipment = shipmentRepository.save(shipment);
+
+        log.info("[ShipmentService] Shipment {} completed successfully with {} orders",
+                shipmentId, orders.size());
+
+        return shipment;
+    }
+
+    /**
+     * Driver reports a delivery exception.
+     * Shipment status is set to EXCEPTION.
+     * Orders remain in IN_TRANSIT status until CSR resolves the exception.
+     */
+    @Transactional
+    public Shipment reportDeliveryException(Long shipmentId, String driverId) {
+        log.info("[ShipmentService] Driver {} reporting exception for shipment {}", driverId, shipmentId);
+
+        Shipment shipment = shipmentRepository
+                .findById(shipmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment %d not found".formatted(shipmentId)));
+
+        // Verify the driver is assigned to this shipment
+        if (!driverId.equals(shipment.getDriverId())) {
+            throw new ResourceConflictException(
+                    "Driver %s is not assigned to shipment %d".formatted(driverId, shipmentId));
+        }
+
+        // Verify shipment is in IN_TRANSIT status
+        if (shipment.getStatus() != ShipmentStatus.IN_TRANSIT) {
+            throw new ResourceConflictException(
+                    "Shipment %d is not in transit (current status: %s)".formatted(shipmentId, shipment.getStatus()));
+        }
+
+        // Update shipment status to EXCEPTION
+        shipment.setStatus(ShipmentStatus.EXCEPTION);
+        shipment = shipmentRepository.save(shipment);
+
+        log.info("[ShipmentService] Shipment {} marked as EXCEPTION", shipmentId);
+
+        return shipment;
     }
 
     private void triggerShipmentDocuments(Shipment shipment, List<Order> orders) {

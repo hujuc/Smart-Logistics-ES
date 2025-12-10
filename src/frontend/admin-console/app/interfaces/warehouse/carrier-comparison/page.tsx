@@ -12,6 +12,8 @@ import { shipmentService } from "@/lib/services/shipment.service"
 import { calculateShippingRates } from "@/lib/carrier-api"
 import { API_ENDPOINTS, apiFetch } from "@/lib/api"
 import { formatOrderShippingAddress, hasStructuredAddress } from "@/lib/address"
+import Alert from "@shared/components/Alert"
+import { useAlert } from "@shared/hooks/useAlert"
 
 // Shipment entity type from backend
 interface Shipment {
@@ -131,6 +133,7 @@ function truncateString(value: string | undefined, maxLength: number, defaultVal
 }
 
 export default function CarrierComparisonPage() {
+  const { alert, showSuccess, showError, closeAlert } = useAlert()
   const [activeTab, setActiveTab] = useState<"assign" | "allShipments">("assign")
   const [flowStep, setFlowStep] = useState<1 | 2 | 3 | 4>(1) // 1: Add Orders, 2: Choose Carrier, 3: Select Driver, 4: Confirm
   const [searchTerm, setSearchTerm] = useState("")
@@ -175,75 +178,13 @@ export default function CarrierComparisonPage() {
       try {
         const data = await carrierService.getAllCarriers()
         const shippoEnabled = data.filter((carrier) => carrier.shippoCarrierId || carrier.shippoAccountId)
-        setCarrierRecords(shippoEnabled)
-        
-        // If no carriers from API, use mock data
+
+        // If no carriers with Shippo, use all carriers from database
         if (shippoEnabled.length === 0) {
-          console.log('No carriers with Shippo integration found, using mock carriers')
-          
-          // Mock carrier records (simulating database carriers)
-          const mockCarrierRecords: CarrierResponse[] = [
-            {
-              id: 1,
-              code: 'ups',
-              name: 'UPS',
-              description: 'United Parcel Service',
-              active: true,
-              shippoCarrierId: 'mock-ups-carrier-id',
-              shippoAccountId: 'mock-ups-account-id',
-              serviceLevelsSummary: 'Ground, Express, Next Day Air',
-              supportEmail: 'support@ups.com',
-              supportPhone: '1-800-PICK-UPS',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            {
-              id: 2,
-              code: 'fedex',
-              name: 'FedEx',
-              description: 'Federal Express',
-              active: true,
-              shippoCarrierId: 'mock-fedex-carrier-id',
-              shippoAccountId: 'mock-fedex-account-id',
-              serviceLevelsSummary: 'Ground, Express Saver, Priority Overnight',
-              supportEmail: 'support@fedex.com',
-              supportPhone: '1-800-GO-FEDEX',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            {
-              id: 3,
-              code: 'dhl',
-              name: 'DHL Express',
-              description: 'DHL International Shipping',
-              active: true,
-              shippoCarrierId: 'mock-dhl-carrier-id',
-              shippoAccountId: 'mock-dhl-account-id',
-              serviceLevelsSummary: 'Express Worldwide, Economy Select',
-              supportEmail: 'support@dhl.com',
-              supportPhone: '1-800-CALL-DHL',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            {
-              id: 4,
-              code: 'usps',
-              name: 'USPS',
-              description: 'United States Postal Service',
-              active: true,
-              shippoCarrierId: 'mock-usps-carrier-id',
-              shippoAccountId: 'mock-usps-account-id',
-              serviceLevelsSummary: 'Priority Mail, First Class, Express',
-              supportEmail: 'support@usps.com',
-              supportPhone: '1-800-ASK-USPS',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ]
-          
-          setCarrierRecords(mockCarrierRecords)
-          
-          const mapped = mockCarrierRecords.map((carrier) => ({
+          console.log('No carriers with Shippo integration found, using all database carriers')
+          setCarrierRecords(data)
+
+          const mapped = data.map((carrier) => ({
             id: carrier.id.toString(),
             name: carrier.name,
             service: carrier.serviceLevelsSummary || carrier.code,
@@ -252,6 +193,7 @@ export default function CarrierComparisonPage() {
           }))
           setAllCarriers(mapped)
         } else {
+          setCarrierRecords(shippoEnabled)
           const mapped = shippoEnabled.map((carrier) => ({
             id: carrier.id.toString(),
             name: carrier.name,
@@ -263,18 +205,18 @@ export default function CarrierComparisonPage() {
         }
       } catch (err) {
         console.error('Failed to load carriers:', err)
-        // Em caso de erro, também usa mock data
+        // In case of error, use mock data matching database IDs
         console.log('Error loading carriers, falling back to mock data')
-        
+
         const mockCarrierRecords: CarrierResponse[] = [
           {
             id: 1,
-            code: 'ups',
+            code: 'UPS',
             name: 'UPS',
             description: 'United Parcel Service',
             active: true,
-            shippoCarrierId: 'mock-ups-carrier-id',
-            shippoAccountId: 'mock-ups-account-id',
+            shippoCarrierId: null,
+            shippoAccountId: null,
             serviceLevelsSummary: 'Ground, Express, Next Day Air',
             supportEmail: 'support@ups.com',
             supportPhone: '1-800-PICK-UPS',
@@ -283,40 +225,12 @@ export default function CarrierComparisonPage() {
           },
           {
             id: 2,
-            code: 'fedex',
-            name: 'FedEx',
-            description: 'Federal Express',
-            active: true,
-            shippoCarrierId: 'mock-fedex-carrier-id',
-            shippoAccountId: 'mock-fedex-account-id',
-            serviceLevelsSummary: 'Ground, Express Saver, Priority Overnight',
-            supportEmail: 'support@fedex.com',
-            supportPhone: '1-800-GO-FEDEX',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: 3,
-            code: 'dhl',
-            name: 'DHL Express',
-            description: 'DHL International Shipping',
-            active: true,
-            shippoCarrierId: 'mock-dhl-carrier-id',
-            shippoAccountId: 'mock-dhl-account-id',
-            serviceLevelsSummary: 'Express Worldwide, Economy Select',
-            supportEmail: 'support@dhl.com',
-            supportPhone: '1-800-CALL-DHL',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: 4,
-            code: 'usps',
+            code: 'USPS',
             name: 'USPS',
             description: 'United States Postal Service',
             active: true,
-            shippoCarrierId: 'mock-usps-carrier-id',
-            shippoAccountId: 'mock-usps-account-id',
+            shippoCarrierId: null,
+            shippoAccountId: null,
             serviceLevelsSummary: 'Priority Mail, First Class, Express',
             supportEmail: 'support@usps.com',
             supportPhone: '1-800-ASK-USPS',
@@ -324,9 +238,9 @@ export default function CarrierComparisonPage() {
             updatedAt: new Date().toISOString(),
           },
         ]
-        
+
         setCarrierRecords(mockCarrierRecords)
-        
+
         const mapped = mockCarrierRecords.map((carrier) => ({
           id: carrier.id.toString(),
           name: carrier.name,
@@ -490,11 +404,11 @@ export default function CarrierComparisonPage() {
           country: normalizeCountryCode(destination.country),
         },
         parcels: [{
-          weight: selectedOrder.weight || 2.5, // Default to 2.5kg if not set
+          weight: Number(selectedOrder.weight) || 2.5, // Default to 2.5kg if not set
           weightUnit: selectedOrder.weightUnit || "kg",
-          length: selectedOrder.length || 30, // Default dimensions in cm
-          width: selectedOrder.width || 20,
-          height: selectedOrder.height || 15,
+          length: Number(selectedOrder.length) || 30, // Default dimensions in cm
+          width: Number(selectedOrder.width) || 20,
+          height: Number(selectedOrder.height) || 15,
           distanceUnit: selectedOrder.distanceUnit || "cm",
         }]
       }
@@ -638,12 +552,14 @@ export default function CarrierComparisonPage() {
       // The backend should automatically update orders when they're added to a shipment
 
       // Show success message
-      alert(`✅ Shipment Created Successfully!\n\n` +
+      showSuccess(
+        'Shipment Created Successfully!',
         `Shipment Code: ${newShipment.shipmentCode}\n` +
         `Carrier: ${newShipment.carrierName}\n` +
         `Driver: ${selectedDriver.firstName} ${selectedDriver.lastName}\n` +
         `Orders: ${orderIds.length}\n\n` +
-        `Orders are now marked as ASSIGNED_TO_SHIPMENT.`)
+        `Orders are now marked as ASSIGNED_TO_SHIPMENT.`
+      )
 
       // Refresh orders list - only fetch CREATED orders (assigned orders are now ASSIGNED_TO_SHIPMENT)
       const fetchedOrders = await warehouseService.getOrdersByStatus(["CREATED"])
@@ -1202,6 +1118,15 @@ export default function CarrierComparisonPage() {
           )}
         </>
       )}
+
+      {/* Alert Component */}
+      <Alert
+        isOpen={alert.isOpen}
+        onClose={closeAlert}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   )
 }
