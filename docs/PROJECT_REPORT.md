@@ -1520,210 +1520,850 @@ The backend API is accessible at http://localhost/api/ and Keycloak at http://lo
 
 ## 5.3 Project Structure Walkthrough
 
-**Topics to cover:**
+Understanding the project structure is essential for navigating the codebase and locating relevant files when implementing features or fixing bugs. SLMS follows a clear organizational hierarchy that separates concerns between application code, infrastructure, and documentation.
 
-**Root directory:**
-- `/src/backend` - Spring Boot application
-- `/src/frontend` - Next.js applications
-- `/infra` - Infrastructure as Code (Terraform, Docker)
-- `/docs` - Documentation
-- `Makefile` - Build automation
+### Root Directory Organization
 
-**Backend structure:**
-- `/business_layer` - Domain modules (8 modules)
-- `/presentation_layer` - BFF controllers
-- `/data_layer` - JPA repositories (if separate)
+The repository root contains four primary directories and build automation files:
 
-**Frontend structure:**
-- `/admin-console` - Internal operations UI
-- `/customer-portal` - Public customer interface
-- `/driver-pwa` - Mobile driver app
-- `/landing-page` - Marketing/info site
-- `/shared` - Shared components and utilities
+**`/src/backend`** - The complete Spring Boot 3.5 application built with Java 21. Contains all business logic, API controllers, data access layers, and configuration for the modular monolith architecture.
 
-**Infrastructure:**
-- `/terraform` - IaC definitions
-- `/docker` - Dockerfiles
-- `/nginx` - Reverse proxy config
-- `/keycloak` - Auth configuration
-- `/scripts` - Deployment scripts
+**`/src/frontend`** - Four separate Next.js 15 applications (admin-console, customer-portal, driver-pwa, landing-page) plus a shared component library. Each application is independently deployable with its own package.json and build configuration.
 
-**Documentation hierarchy:**
-- `/docs/adr` - Architecture Decision Records
-- `/docs/handbook` - Living documentation
-- `/docs/per-sprint` - Sprint artifacts
-- `/docs/architecture` - Diagrams and models
+**`/infra`** - Infrastructure as Code definitions including Terraform configurations, Docker Compose files, Dockerfiles, Nginx configurations, Keycloak realm exports, and deployment scripts. Everything needed to provision and deploy the system.
+
+**`/docs`** - Comprehensive documentation organized into Architecture Decision Records (ADRs), living handbooks for developers, and per-sprint historical artifacts.
+
+**`Makefile`** - Build automation providing convenient commands for common development tasks (starting services, running tests, viewing logs, cleanup operations). Simplifies the developer workflow by abstracting complex Docker and build commands.
+
+### Backend Structure (`src/backend/src/main/java/Operimus/SLMS`)
+
+The backend follows a layered architecture with clear separation between business logic and presentation:
+
+**`/business_layer`** - Contains eight self-contained modules, each encapsulating a specific domain:
+- **`order_module/`** - Order lifecycle management (controllers, services, entities, repositories, DTOs)
+- **`rate_carrier_module/`** - Carrier integration and shipment execution (ShipEngine API integration)
+- **`visibility_module/`** - Tracking and delivery exception management
+- **`chatbot_module/`** - AI assistant with Gemini and Pinecone integration
+- **`user_management_module/`** - Keycloak integration and security configuration
+- **`notification_module/`** - Event-driven notifications (limited implementation)
+- **`reporting_module/`** - Analytics and KPI dashboards (limited implementation)
+- **`route_module/`** - Route optimization (limited implementation)
+- **`shared/`** - Common utilities, exceptions, and cross-module interfaces
+
+Each module follows a consistent internal structure with `/controllers`, `/service`, `/entities`, `/repository`, and `/dto` packages.
+
+**`/presentation_layer`** - Backend-for-Frontend (BFF) controllers organized by frontend application:
+- **`admin_console_bff/`** - Aggregated endpoints for admin interface (subdivided by role: logistics, warehouse, customer service)
+- **`customer_portal_bff/`** - Customer-facing endpoints with strict data isolation
+- **`driver_pwa_bff/`** - Mobile-optimized endpoints for driver operations
+- **`landing_page_bff/`** - Public endpoints for unauthenticated tracking
+
+**`/observability`** - Monitoring and logging infrastructure including Elastic APM configuration and structured logging utilities.
+
+### Frontend Structure (`src/frontend`)
+
+Each frontend application is self-contained with its own dependencies and build pipeline:
+
+**`/admin-console`** - Next.js application for internal operations serving logistics managers, warehouse staff, and customer service representatives. Contains role-specific pages, dashboards, and order management interfaces.
+
+**`/customer-portal`** - Public-facing Next.js application for end customers. Includes order tracking, delivery preferences, and exception reporting with simplified UX optimized for infrequent users.
+
+**`/driver-pwa`** - Progressive Web App for delivery drivers. Implements offline-first architecture with service workers, delivery manifest views, proof of delivery capture, and Mapbox navigation integration.
+
+**`/landing-page`** - Marketing and information site providing unauthenticated order tracking and system overview.
+
+**`/shared`** - Shared component library containing:
+- **`/components`** - Reusable React components (buttons, forms, tables, modals)
+- **`/lib`** - Common utilities (API clients, authentication helpers, observability instrumentation, date formatters)
+
+Each application follows Next.js conventions with `/app` for routes, `/components` for UI elements, and `/lib` for utilities.
+
+### Infrastructure Organization (`/infra`)
+
+**`/terraform`** - Infrastructure as Code definitions for production deployment including main.tf (resource definitions), variables.tf (configurable parameters), outputs.tf (deployment results), and terraform.tfvars.example (configuration template).
+
+**`/docker`** - Dockerfiles organized by service (backend, frontend applications, supporting services). Each Dockerfile is optimized for its specific runtime with multi-stage builds to minimize image size.
+
+**`/nginx`** - Reverse proxy configuration with `default.conf` for production (optimized caching, gzip compression) and `default.dev.conf` for development (no caching, verbose logging).
+
+**`/keycloak`** - Keycloak realm export (realm-export.json) defining users, roles, clients, and identity provider configuration for reproducible authentication setup.
+
+**`/scripts`** - Operational automation including backup.sh (database and MinIO backup), restore.sh (disaster recovery), and monitor_prod.py (health check monitoring).
+
+**Docker Compose files:** `docker-compose.dev.yml` (lightweight development environment), `docker-compose.yaml` (production configuration), `docker-compose.ci.yml` (CI/CD testing environment).
+
+### Documentation Hierarchy (`/docs`)
+
+**`/adr`** - Architecture Decision Records documenting major architectural choices (8 ADRs covering initial architecture, data model, database integration, security, observability, shipment entity, chatbot integration, and implementation strategy).
+
+**`/handbook`** - Living documentation maintained alongside code changes:
+- **`dev-handbook.md`** - Developer getting started guide and common workflows
+- **`data-model.md`** - Database schema and entity relationships
+- **`chatbot-module.md`** - AI assistant architecture and RAG implementation
+- **`observability.md`** - Monitoring, logging, and SLI/SLO definitions
+- **`ci-cd-pipeline.md`** - Testing strategy and deployment pipeline
+- **`repo-workflow.md`** - Git workflow and collaboration practices
+
+**`/per-sprint`** - Historical documentation organized by sprint showing evolution of requirements, prototypes, diagrams, and decisions. Useful for understanding why certain design choices were made.
 
 ## 5.4 Common Development Commands
 
-**Topics to cover:**
+The project provides a comprehensive Makefile that simplifies common development tasks by abstracting complex Docker, Maven, and npm commands into simple, memorable targets. This section documents the most frequently used commands organized by workflow category.
 
-**From Makefile:**
+### Environment Management
 
+**Start the Development Environment:**
 ```bash
-# Environment management
-make up              # Start production environment (Terraform)
-make dev-up          # Start dev environment (Docker Compose)
-make down            # Stop services
-make restart         # Restart services
-make status          # Check health
-make logs            # View logs
-
-# Build and install
-make install         # Install frontend dependencies
-make build           # Build all components
-
-# Testing
-make test            # Run all tests
-make test-unit       # Unit tests only
-make test-integration # Integration tests
-make test-e2e        # End-to-end tests
-make test-real       # Tests with real services
-
-# Cleanup
-make clean           # Remove stopped containers
-make clean-volumes   # Remove all data
+make up              # Full production-like environment with Terraform
+make dev-up          # Lightweight Docker Compose environment
 ```
 
-**Backend commands:**
+The `make up` command provisions infrastructure via Terraform and builds all application containers, simulating the production deployment. Use this when working on infrastructure changes or testing deployment processes. The `make dev-up` command bypasses Terraform and uses Docker Compose directly, providing faster startup for application development.
+
+**Monitor Service Health:**
+```bash
+make status          # Display running state and health of all containers
+```
+
+This command shows which containers are running, their status (healthy/unhealthy), and basic resource usage. Useful for verifying successful startup or diagnosing container failures.
+
+**View Logs:**
+```bash
+make logs                    # View backend logs only (default)
+make logs SERVICE=all        # View logs from all services
+make logs SERVICE=frontend   # View specific frontend logs
+make logs SERVICE=postgres   # View database logs
+```
+
+Logs stream in real-time and include timestamps. Press Ctrl+C to stop following logs without stopping the containers.
+
+**Restart Services:**
+```bash
+make restart         # Restart all services
+make dev-restart     # Restart dev environment services
+```
+
+Restart commands preserve data volumes while reloading configuration and restarting processes. Useful after modifying environment variables or Docker Compose configurations.
+
+**Stop and Clean Up:**
+```bash
+make down            # Stop all services but preserve data volumes
+make destroy         # Stop services and remove containers (keeps images)
+make clean           # Remove stopped containers and dangling images
+make clean-volumes   # Remove all data volumes (DESTRUCTIVE - loses database data)
+make hard-prune      # Nuclear option - removes everything Docker-related
+```
+
+Use `make down` for normal shutdowns. Reserve `make clean-volumes` and `make hard-prune` for complete environment resets when troubleshooting persistent issues.
+
+### Build and Installation
+
+**Install Dependencies:**
+```bash
+make install         # Install all frontend npm dependencies
+```
+
+Run this command after cloning the repository or when package.json files change. Installs dependencies for all four Next.js applications in parallel.
+
+**Build Applications:**
+```bash
+make build           # Build backend JAR and all frontend production bundles
+```
+
+Creates production-optimized builds for deployment. The backend compiles to `target/slms-backend-*.jar` and frontends build to `.next/` directories.
+
+### Testing
+
+The project implements a comprehensive testing strategy with multiple test categories:
+
+**Run All Tests:**
+```bash
+make test-ci         # CI-safe tests: unit + mocked integration with coverage gates
+```
+
+This is the primary command used in the CI/CD pipeline. Runs backend unit tests and integration tests with mocked external services (Gemini, Pinecone, ShipEngine), plus frontend unit tests. JaCoCo enforces minimum 70% code coverage.
+
+**Backend-Specific Tests:**
+```bash
+make test-backend-integration    # Integration tests with real Docker services
+```
+
+Runs integration tests that spin up test containers for Keycloak, MinIO, and Kafka using Docker. More comprehensive than `test-ci` but requires Docker availability.
+
+**Frontend End-to-End Tests:**
+```bash
+make test-e2e        # Run Playwright E2E tests across all frontends
+```
+
+Requires the full stack to be running (`make up` first). Tests user workflows like order creation, label generation, and exception reporting through actual browser automation.
+
+**Real Integration Tests:**
+```bash
+make test-real       # Tests with actual external APIs (Gemini, Pinecone, ShipEngine)
+```
+
+**WARNING:** This consumes API quotas and requires valid API keys in `infra/.env`. Use sparingly for validating external service integrations before production deployment.
+
+### Direct Backend Development
+
+For developers working primarily on backend code, Maven wrapper commands provide fine-grained control:
+
+**Run Backend Locally (Outside Docker):**
 ```bash
 cd src/backend
-./mvnw spring-boot:run      # Run locally
-./mvnw test                 # Run tests
-./mvnw clean package        # Build JAR
+./mvnw spring-boot:run
 ```
 
-**Frontend commands:**
+Starts the Spring Boot application on port 8080 (or as configured). Requires PostgreSQL, Keycloak, and MinIO to be accessible at the hosts/ports defined in `src/backend/.env`. Useful for rapid iteration with automatic restart on code changes.
+
+**Backend Testing:**
 ```bash
-cd src/frontend/admin-console  # or other app
-npm install                    # Install dependencies
-npm run dev                    # Development server
-npm run build                  # Production build
-npm run test                   # Run tests
+./mvnw test                      # Run all backend tests
+./mvnw test -Dtest=OrderServiceTest  # Run specific test class
+./mvnw clean test                # Clean build then test
 ```
 
-**Reference:** `Makefile` in repository root
+**Build Backend JAR:**
+```bash
+./mvnw clean package             # Compile, test, package to JAR
+./mvnw clean package -DskipTests # Package without running tests (faster)
+```
+
+The packaged JAR appears in `target/slms-backend-0.0.1.jar` (version may vary).
+
+### Direct Frontend Development
+
+Each frontend application can be developed independently with standard npm commands:
+
+**Start Development Server:**
+```bash
+cd src/frontend/admin-console    # or customer-portal, driver-pwa, landing-page
+npm install                       # Install dependencies (first time only)
+npm run dev                       # Start Next.js dev server with hot reload
+```
+
+The dev server runs on port 3000 by default and automatically reloads when source files change. API requests proxy to the backend at `NEXT_PUBLIC_API_URL` defined in `.env.local`.
+
+**Build and Test Frontend:**
+```bash
+npm run build                    # Production build (outputs to .next/)
+npm run start                    # Serve production build locally
+npm run test                     # Run Jest unit tests
+npm run test:watch               # Run tests in watch mode
+npm run lint                     # Run ESLint checks
+```
+
+**Playwright E2E Tests:**
+```bash
+npm run test:e2e                 # Run Playwright tests for this frontend
+npm run test:e2e:ui              # Run with Playwright UI for debugging
+```
+
+### Development Workflow Summary
+
+A typical development session follows this pattern:
+
+1. **Start environment:** `make up` (first time) or `make dev-up` (subsequent sessions)
+2. **Verify health:** `make status`
+3. **Watch logs:** `make logs` in a separate terminal
+4. **Develop:**
+   - Backend: `cd src/backend && ./mvnw spring-boot:run` 
+   - Frontend: `cd src/frontend/<app> && npm run dev`
+5. **Test changes:** `make test-ci` before committing
+6. **Shutdown:** `make down` when finished
+
+For quick frontend-only work, start just the backend infrastructure with `make dev-up`, then run the specific frontend with `npm run dev` for the fastest iteration cycle.
 
 ## 5.5 Development Workflow
 
-**Topics to cover:**
+The project follows a structured Git workflow that balances development velocity with code quality. This workflow ensures all changes are reviewed, tested, and integrated systematically before reaching production.
 
-**Branching Strategy:**
-- `main` - Production-ready code
-- `develop` - Integration branch
-- Feature branches: `feat/feature-name`
-- Bug fixes: `fix/bug-name`
-- Documentation: `docs/doc-name`
+### Branching Strategy
 
-**Commit Message Conventions:**
-- `feat:` - New feature
+The repository uses a two-branch mainline model with feature branches:
+
+**Main Branches:**
+- **`main`** - Production-ready code, protected with required reviews and CI checks
+- **`develop`** - Integration branch where features merge before promotion to production
+
+**Feature Branches:**
+
+Create feature branches from `develop` using descriptive naming conventions:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feat/carrier-rate-comparison
+```
+
+**Branch Naming Prefixes:**
+- `feat/` - New features (e.g., `feat/order-tracking`, `feat/proof-of-delivery`)
+- `fix/` - Bug fixes (e.g., `fix/login-validation`, `fix/null-pointer-exception`)
+- `docs/` - Documentation changes (e.g., `docs/api-guide`, `docs/deployment-instructions`)
+- `test/` - Test additions or modifications (e.g., `test/order-service-unit-tests`)
+- `refactor/` - Code refactoring without functional changes (e.g., `refactor/carrier-module-structure`)
+- `chore/` - Build configuration, dependency updates (e.g., `chore/update-spring-boot`)
+
+### Commit Message Conventions
+
+Commit messages follow a structured format to maintain clear project history:
+
+```
+<type>: <short description>
+
+<optional detailed explanation>
+```
+
+**Common Types:**
+- `feat:` - New feature implementation
 - `fix:` - Bug fix
-- `docs:` - Documentation
-- `refactor:` - Code refactoring
-- `test:` - Test additions
+- `docs:` - Documentation updates
+- `refactor:` - Code restructuring without behavior changes
+- `test:` - Test additions or modifications
+- `chore:` - Build process, tooling, dependencies
 
-**Pull Request Process:**
-1. Create feature branch from `develop`
-2. Implement changes with tests
-3. Create PR to `develop`
-4. Code review (at least 1 approval)
-5. CI checks must pass
-6. Merge to `develop`
-7. Periodic merges to `main`
+**Best Practices:**
+- Use present tense: "add feature" not "added feature"
+- Keep first line under 72 characters
+- Reference GitHub issues when applicable: `feat: add carrier comparison (#42)`
+- One logical change per commit (don't mix unrelated changes)
 
-**CI/CD Pipeline:**
-- Automated builds on every push
-- Test execution
-- Code quality checks
-- Deployment on merge to `main`
+**Examples:**
+```bash
+feat: implement carrier rate comparison endpoint
+fix: resolve null pointer exception in order service
+docs: update architecture decision record for database choice
+test: add integration tests for shipment creation
+refactor: extract document generation into separate service
+```
 
-**Reference:** `docs/handbook/repo-workflow.md`
+### Pull Request Process
+
+All code changes reach `develop` and `main` through reviewed pull requests:
+
+**1. Create Pull Request:**
+
+After pushing your feature branch, create a PR on GitHub targeting `develop`:
+
+```bash
+git push origin feat/your-feature-name
+```
+
+**2. PR Requirements:**
+
+Every PR must include:
+- **Descriptive title** - Clear summary matching commit convention (`feat:`, `fix:`, etc.)
+- **Linked issue** - Reference the GitHub issue (e.g., "Closes #42" or "Fixes #87")
+- **Description** - Explain what changed, why, and how you tested it
+- **Testing evidence** - Screenshots, test output, or description of manual testing performed
+
+**3. Review and Approval:**
+
+- Minimum **1 approval** required from a team member
+- **All CI checks must pass:**
+  - Build successful (backend JAR, frontend production builds)
+  - All tests passing (`make test-ci`)
+  - Linting checks passed (ESLint for frontends, Checkstyle for backend)
+  - Code coverage ≥70% (JaCoCo enforcement)
+
+**4. Merge:**
+
+Once approved and CI passes, the PR author or reviewer merges to `develop`. The merge commit triggers CI to verify integration didn't break anything.
+
+### CI/CD Pipeline Integration
+
+The development workflow integrates with automated quality gates:
+
+**On Pull Request to `develop`:**
+- **ci-quality.yml** workflow executes:
+  - Backend unit tests with mocked external services
+  - Frontend unit tests
+  - Code coverage verification (≥70% threshold)
+  - Linting and code style checks
+  - Build verification (JAR packaging, frontend production builds)
+
+**On Pull Request to `main`:**
+- **ci-quality.yml** executes (quality gate)
+- **ci-integration.yml** executes (comprehensive integration testing):
+  - Backend integration tests with real Docker services (Keycloak, MinIO, Kafka)
+  - Frontend E2E tests with Playwright
+  - Full stack health verification
+
+**On Merge to `main`:**
+- **cd-deploy.yml** workflow executes:
+  - Terraform infrastructure provisioning
+  - Docker Compose deployment
+  - Health check verification
+  - Deployment to production environment
+
+This pipeline ensures that code merged to `develop` meets quality standards, and code merged to `main` has passed comprehensive integration testing before production deployment.
+
+### Typical Development Flow
+
+A typical feature development session follows this pattern:
+
+1. **Create feature branch** from latest `develop`:
+   ```bash
+   git checkout develop && git pull
+   git checkout -b feat/new-feature
+   ```
+
+2. **Develop and test locally**:
+   - Make code changes
+   - Write tests for new functionality
+   - Verify locally with `make test-ci`
+   - Test manually with `make dev-up` and browser/API testing
+
+3. **Commit incrementally** with descriptive messages:
+   ```bash
+   git add <changed-files>
+   git commit -m "feat: implement carrier rate comparison"
+   ```
+
+4. **Push and create PR**:
+   ```bash
+   git push origin feat/new-feature
+   # Create PR on GitHub targeting develop
+   ```
+
+5. **Address review feedback**:
+   - Make requested changes
+   - Commit with `fix: address PR review comments`
+   - Push updates (CI re-runs automatically)
+
+6. **Merge to develop** after approval and green CI
+
+7. **Periodic promotion to main**:
+   - Logistics manager or DevOps master creates PR from `develop` to `main`
+   - Full integration tests run
+   - After approval and CI, merge triggers production deployment
+
+This workflow balances rapid iteration (direct merge to `develop` after review) with production stability (comprehensive testing before `main`).
 
 ## 5.6 Testing Strategy
 
-**Topics to cover:**
+SLMS implements a comprehensive testing strategy following the test pyramid approach: a broad base of fast unit tests, a middle layer of integration tests, and a smaller set of end-to-end tests. This strategy balances test coverage with execution speed and maintenance overhead.
 
-**Test Pyramid Approach:**
+### Test Pyramid Organization
 
-**Unit Tests (Backend):**
-- JUnit 5 + Mockito
-- Service layer testing
-- Controller testing (MockMvc)
-- Repository testing
+The testing strategy is organized into four distinct levels, each serving a specific purpose:
 
-**Integration Tests (Backend):**
-- Mocked external APIs (ShipEngine, Gemini, Pinecone)
-- Database integration tests
-- Module integration testing
+**1. Unit Tests (Base of Pyramid - Fastest, Most Numerous)**
 
-**E2E Tests (Frontend):**
-- Playwright or Cypress
-- User workflow testing
-- Cross-browser testing
+Backend unit tests use JUnit 5 and Mockito to verify individual components in isolation:
 
-**Real Integration Tests:**
-- Actual external service integration
-- Requires API keys in environment
-- Run with `make test-real`
+- **Service Layer Testing:** Business logic validation with mocked dependencies. Example: `OrderServiceTest` verifies order creation logic without touching the database or external APIs.
+- **Controller Testing:** REST endpoint validation using MockMvc. Verifies request/response handling, validation, and HTTP status codes without starting a web server.
+- **Repository Testing:** Data access layer testing with in-memory H2 database for fast feedback.
 
-**Coverage Requirements:**
-- Target: 70% code coverage
-- JaCoCo reports
-- Coverage gates in CI
+Frontend unit tests use Jest and React Testing Library:
 
-**Test Commands:**
+- Component behavior verification (rendering, user interactions, state changes)
+- Utility function testing (date formatters, API clients, validators)
+- Hook testing (custom React hooks for state management, data fetching)
+
+**2. Integration Tests (Middle Layer - Slower, Moderate Coverage)**
+
+Integration tests verify module interactions and external service integration with two variants:
+
+**Mocked Integration Tests** (default in CI via `make test-ci`):
+- External APIs mocked (ShipEngine, Gemini, Pinecone) to avoid quota consumption and flaky tests
+- Database interactions with PostgreSQL test containers
+- Module boundary testing (Order Module ↔ Carrier Module interactions)
+- Fast execution, deterministic results, no external dependencies
+
+**Real Integration Tests** (via `make test-backend-integration`):
+- Spin up real Docker containers for Keycloak, MinIO, and Kafka using Testcontainers
+- Verify actual OAuth 2.0 authentication flows against Keycloak
+- Test document upload/download with MinIO S3-compatible storage
+- Validate event publishing/consumption with Kafka
+- More comprehensive but slower and requires Docker availability
+
+**3. End-to-End Tests (Top of Pyramid - Slowest, Least Numerous)**
+
+Playwright-based E2E tests verify complete user workflows across the full stack:
+
+- **Admin Console workflows:** Order creation, label generation, carrier selection, exception management
+- **Customer Portal workflows:** Account creation, login, order tracking, issue reporting
+- **Driver PWA workflows:** Manifest viewing, proof of delivery capture
+
+E2E tests run against the full deployed stack (backend + all frontends + infrastructure) using `make test-e2e`. They require all services to be running via `make up` first.
+
+**4. Real External Service Tests (Manual Verification)**
+
+The `make test-real` command runs tests against actual external APIs:
+
+- Real Gemini API calls (consumes quota)
+- Real Pinecone vector database queries
+- Real ShipEngine carrier rate requests
+
+**WARNING:** Only run these tests before production deployment or when debugging specific external service integration issues, as they consume API quotas and can fail due to network issues or service outages.
+
+### Coverage Requirements
+
+The project enforces minimum code coverage through JaCoCo (Java Code Coverage):
+
+- **Target:** 70% line coverage for backend code
+- **Enforcement:** CI pipeline fails if coverage drops below threshold
+- **Scope:** Covers all business modules (Order, Carrier, Visibility, Chatbot, etc.)
+- **Reports:** Generated in `target/site/jacoco/index.html` after running tests
+
+Coverage verification happens automatically in the `make test-ci` command, which is the primary CI quality gate.
+
+### Running Tests
+
+**Quick Test Execution (Most Common):**
+
 ```bash
-# Backend
-make test-unit            # Fast unit tests
-make test-integration     # Mocked integration
-make test-real            # Real services
-
-# Frontend
-cd src/frontend/admin-console
-npm run test              # Unit tests
-npm run test:e2e          # E2E tests
+make test-ci         # CI-safe: unit + mocked integration + coverage gates
 ```
 
-**Reference:** `docs/handbook/dev-handbook.md`, `Makefile`
+Use this before committing. It runs fast (2-3 minutes) and doesn't require external API keys.
+
+**Backend-Specific Testing:**
+
+```bash
+cd src/backend
+
+# Run all backend tests
+./mvnw test
+
+# Run specific test class
+./mvnw test -Dtest=OrderServiceTest
+
+# Run tests matching pattern
+./mvnw test -Dtest=*ControllerTest
+
+# Integration tests with Docker services
+make test-backend-integration
+```
+
+**Frontend-Specific Testing:**
+
+```bash
+cd src/frontend/admin-console  # or other frontend app
+
+# Run unit tests (Jest)
+npm run test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run E2E tests (Playwright)
+npm run test:e2e
+
+# Run E2E tests with UI for debugging
+npm run test:e2e:ui
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Full Stack E2E Testing:**
+
+```bash
+# First, start the full stack
+make up
+
+# Then run E2E tests across all frontends
+make test-e2e
+```
+
+**Real External Service Testing:**
+
+```bash
+# Ensure API keys configured in infra/.env
+make test-real
+```
+
+### Test Organization in Codebase
+
+**Backend Tests:** `src/backend/src/test/java/` mirrors the main source structure:
+- `business_layer/order_module/service/OrderServiceTest.java`
+- `business_layer/carrier_module/integration/ShipEngineClientTest.java`
+- `presentation_layer/admin_console_bff/LogisticsBffControllerTest.java`
+
+**Frontend Tests:** Colocated with source files:
+- `src/frontend/admin-console/app/orders/page.test.tsx` (component tests)
+- `src/frontend/admin-console/lib/api-client.test.ts` (utility tests)
+- `src/frontend/admin-console/e2e/order-creation.spec.ts` (E2E tests)
 
 ## 5.7 Troubleshooting Guide
 
-**Topics to cover:**
+This section documents common issues developers encounter when setting up or running SLMS locally, along with proven solutions. Consult this guide before asking for help to resolve issues quickly.
 
-**Common Issues:**
+### Port Conflicts
 
-**Port Conflicts:**
-- Issue: Port 5432 already in use
-- Solution: Configure `postgres_host_port` in Terraform variables
+**Issue:** Container fails to start with error "address already in use" or "port is already allocated"
 
-**Docker Permission Issues:**
-- Issue: Permission denied errors
-- Solution: Add user to docker group or use sudo
+**Common Culprits:**
+- Port 80 (Nginx) - Another web server running
+- Port 5432 (PostgreSQL) - Local PostgreSQL instance
+- Port 8180 (Keycloak) - Another Keycloak or application server
+- Port 9000 (MinIO) - Another MinIO or S3-compatible service
 
-**Database Connection Errors:**
-- Check PostgreSQL container is running
-- Verify credentials in .env
-- Check network connectivity
+**Solutions:**
 
-**Keycloak Configuration:**
-- Ensure realm 'slms' is created
-- Verify client configurations
-- Check redirect URIs
+1. **Find which process is using the port** (Linux/macOS):
+   ```bash
+   sudo lsof -i :80       # Check who's using port 80
+   sudo lsof -i :5432     # Check PostgreSQL port
+   ```
 
-**API Key Setup:**
-- Gemini: Obtain from Google AI Studio
-- Pinecone: Create account, get API key
-- ShipEngine: Register and get test API key
+2. **Stop the conflicting service:**
+   ```bash
+   sudo systemctl stop apache2    # Stop Apache
+   sudo systemctl stop postgresql # Stop local PostgreSQL
+   ```
 
-**Frontend Build Failures:**
-- Clear node_modules and reinstall
-- Check Node.js version (20+)
-- Verify environment variables
+3. **Change SLMS port mapping** (alternative to stopping services):
+   
+   Edit `infra/.env` or `infra/terraform/terraform.tfvars` to map to different host ports:
+   ```bash
+   POSTGRES_PORT=5433      # Map to 5433 instead of 5432
+   KEYCLOAK_PORT=8181      # Map to 8181 instead of 8180
+   ```
+   
+   Then restart: `make down && make up`
 
-**Backend Build Failures:**
-- Check Java version (21)
-- Clean Maven cache: `./mvnw clean`
-- Verify database connection
+### Docker Permission Issues
+
+**Issue:** "permission denied" when running Docker commands, or "Cannot connect to the Docker daemon"
+
+**Solutions:**
+
+1. **Add your user to docker group** (Linux):
+   ```bash
+   sudo usermod -aG docker $USER
+   newgrp docker  # Apply immediately without logout
+   ```
+
+2. **Start Docker daemon** (if not running):
+   ```bash
+   sudo systemctl start docker    # Linux systemd
+   sudo service docker start      # Linux sysvinit
+   ```
+
+3. **Use sudo** (temporary workaround, not recommended long-term):
+   ```bash
+   sudo make up
+   ```
+
+### Database Connection Errors
+
+**Issue:** Backend fails to start with "Connection refused" or "Unknown database" errors
+
+**Diagnostic Steps:**
+
+1. **Verify PostgreSQL container is running:**
+   ```bash
+   make status
+   # Look for slms-postgres-prod in output, should be "healthy"
+   ```
+
+2. **Check container logs:**
+   ```bash
+   make logs SERVICE=postgres
+   # Look for "database system is ready to accept connections"
+   ```
+
+3. **Verify credentials in configuration:**
+   - Check `infra/.env` has correct `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+   - Verify backend sees same values (credentials must match exactly)
+
+**Solutions:**
+
+- If container not running: `make down && make up` (restart everything)
+- If credentials mismatch: Update `infra/.env`, then `make restart`
+- If database not created: Delete volumes and recreate: `make clean-volumes && make up` (DESTRUCTIVE - loses all data)
+
+### Keycloak Configuration Issues
+
+**Issue:** Backend authentication fails with "Invalid token issuer" or frontend redirects fail
+
+**Common Causes:**
+- Issuer URI mismatch between Keycloak and backend configuration
+- Redirect URIs not configured for frontend clients
+- Keycloak realm not imported correctly
+
+**Solutions:**
+
+1. **Verify issuer URI consistency:**
+   
+   In `infra/.env`:
+   ```bash
+   KC_HOSTNAME_URL=http://localhost:8180
+   JWT_ISSUER_URI=http://localhost:8180/realms/slms
+   ```
+   
+   These must match exactly (including protocol, host, port).
+
+2. **Check realm imported successfully:**
+   
+   - Access Keycloak admin console: http://localhost:8180/admin/
+   - Login with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` from `.env`
+   - Verify realm "slms" exists with all clients (slms-backend, slms-admin-console, slms-customer-portal, slms-driver-pwa)
+
+3. **Verify redirect URIs configured:**
+   
+   In Keycloak admin → Clients → (select client) → Valid Redirect URIs:
+   - Admin Console: `http://localhost/admin/*`
+   - Customer Portal: `http://localhost/customer/*`
+   - Driver PWA: `http://localhost/driver/*`
+
+4. **Re-import realm if corrupted:**
+   ```bash
+   make down
+   make clean-volumes  # DESTRUCTIVE - removes all Keycloak data
+   make up             # Re-imports from infra/keycloak/realm-export.json
+   ```
+
+### API Key Configuration Errors
+
+**Issue:** Chatbot module fails to start, or carrier integration returns errors
+
+**Symptoms:**
+- Backend log shows "Gemini API key not configured"
+- ShipEngine endpoints return 401 Unauthorized
+- Pinecone connection fails
+
+**Solutions:**
+
+1. **Obtain required API keys:**
+   - **Gemini:** https://aistudio.google.com/app/apikey (free tier available)
+   - **Pinecone:** https://app.pinecone.io/ (create free account, get API key)
+   - **ShipEngine:** https://www.shipengine.com/ (sandbox/test account)
+
+2. **Configure in environment:**
+   
+   Edit `infra/.env`:
+   ```bash
+   GEMINI_API_KEY=your-actual-key-here
+   PINECONE_API_KEY=your-actual-key-here
+   PINECONE_HOST=https://your-index.svc.region.pinecone.io
+   SHIPENGINE_API_KEY=your-actual-key-here
+   ```
+
+3. **Restart backend to pick up new keys:**
+   ```bash
+   make restart
+   ```
+
+4. **Verify keys are valid:**
+   ```bash
+   # Test Gemini API manually
+   curl -H "Content-Type: application/json" \
+        -d '{"contents":[{"parts":[{"text":"Hello"}]}]}' \
+        "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=YOUR_KEY"
+   ```
+
+**Note:** The chatbot module gracefully degrades if API keys are missing (won't crash backend), but chatbot endpoints will return errors. Carrier integration requires valid ShipEngine key for rate requests.
+
+### Frontend Build Failures
+
+**Issue:** `npm run build` fails or `make build` fails on frontend
+
+**Common Causes:**
+- Outdated node_modules
+- Node.js version mismatch
+- Environment variables not set
+- TypeScript compilation errors
+
+**Solutions:**
+
+1. **Clear and reinstall dependencies:**
+   ```bash
+   cd src/frontend/admin-console  # or affected app
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+2. **Verify Node.js version:**
+   ```bash
+   node -v  # Should show v20.x.x or higher
+   ```
+   
+   If version is too old, install Node.js 20+ via nvm or package manager.
+
+3. **Check environment variables:**
+   
+   Frontend builds require certain variables at build time. Verify these are set in `infra/.env` or as build args in Terraform.
+
+4. **Fix TypeScript errors:**
+   ```bash
+   npm run type-check  # Show all TypeScript errors
+   ```
+   
+   Address reported type errors in source code.
+
+### Backend Build Failures
+
+**Issue:** Maven build fails, or backend container won't start
+
+**Common Causes:**
+- Wrong Java version
+- Maven cache corruption
+- Test failures blocking build
+- Missing dependencies
+
+**Solutions:**
+
+1. **Verify Java version:**
+   ```bash
+   java -version  # Should show Java 21
+   ```
+   
+   If wrong version, install Java 21 or set JAVA_HOME correctly.
+
+2. **Clean Maven cache and rebuild:**
+   ```bash
+   cd src/backend
+   ./mvnw clean install -DskipTests  # Clean build, skip tests temporarily
+   ```
+
+3. **Check for compilation errors:**
+   ```bash
+   ./mvnw compile  # Just compile, don't test or package
+   ```
+   
+   Fix any compilation errors in source code.
+
+4. **Verify database connection for tests:**
+   
+   If tests fail during build, ensure PostgreSQL is accessible:
+   ```bash
+   make status  # Verify postgres container running
+   ```
+
+### General Debugging Tips
+
+**View detailed logs:**
+```bash
+make logs SERVICE=all       # All services
+make logs SERVICE=backend   # Backend only
+docker logs -f <container-name>  # Specific container
+```
+
+**Check container health:**
+```bash
+make status                 # Summary
+docker ps -a                # Detailed container list
+docker inspect <container>  # Full container config
+```
+
+**Reset everything (nuclear option):**
+```bash
+make down
+make clean-volumes  # DESTRUCTIVE - loses all data
+make hard-prune     # Removes all Docker resources
+make up             # Fresh start
+```
+
+**Still stuck?**
+- Check `docs/handbook/dev-handbook.md` for additional guidance
+- Review GitHub Issues for similar problems
+- Ask in team Slack/Discord channel with error logs and `make status` output
 
 ---
 
