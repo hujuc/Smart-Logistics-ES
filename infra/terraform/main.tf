@@ -65,6 +65,27 @@ locals {
   config_log_level_app            = var.log_level_app != null ? var.log_level_app : "DEBUG"
   config_log_level_web            = var.log_level_web != null ? var.log_level_web : "INFO"
   config_log_level_security       = var.log_level_security != null ? var.log_level_security : "INFO"
+
+  # Chatbot Module configuration
+  config_gemini_api_key          = var.gemini_api_key != null ? var.gemini_api_key : ""
+  config_gemini_model            = var.gemini_model != null ? var.gemini_model : "gemini-2.0-flash"
+  config_gemini_embedding_model  = var.gemini_embedding_model != null ? var.gemini_embedding_model : "text-embedding-004"
+  config_pinecone_api_key        = var.pinecone_api_key != null ? var.pinecone_api_key : ""
+  config_pinecone_host           = var.pinecone_host != null ? var.pinecone_host : ""
+  config_pinecone_index          = var.pinecone_index != null ? var.pinecone_index : "slms-chatbot"
+  config_pinecone_namespace      = var.pinecone_namespace != null ? var.pinecone_namespace : "en-US"
+
+  # Kafka configuration
+  config_kafka_broker_host                 = var.kafka_broker_host != null ? var.kafka_broker_host : "kafka"
+  config_kafka_broker_port                 = var.kafka_broker_port != null ? var.kafka_broker_port : "9092"
+  config_kafka_broker_external_port        = var.kafka_broker_external_port != null ? var.kafka_broker_external_port : "9094"
+  config_kafka_advertised_host             = var.kafka_advertised_host != null ? var.kafka_advertised_host : "localhost"
+  config_kafka_zookeeper_host              = var.kafka_zookeeper_host != null ? var.kafka_zookeeper_host : "zookeeper"
+  config_kafka_zookeeper_port              = var.kafka_zookeeper_port != null ? var.kafka_zookeeper_port : "2181"
+  config_kafka_bootstrap_servers           = var.kafka_bootstrap_servers != null ? var.kafka_bootstrap_servers : "kafka:9092"
+  config_kafka_consumer_group_id           = var.kafka_consumer_group_id != null ? var.kafka_consumer_group_id : "slms-consumers"
+  config_kafka_consumer_auto_offset_reset  = var.kafka_consumer_auto_offset_reset != null ? var.kafka_consumer_auto_offset_reset : "earliest"
+  config_kafka_security_protocol           = var.kafka_security_protocol != null ? var.kafka_security_protocol : "PLAINTEXT"
 }
 
 # Network - usar a mesma rede que o docker-compose (deve existir previamente)
@@ -175,7 +196,24 @@ resource "docker_container" "backend" {
     "LOG_LEVEL_ROOT=${local.config_log_level_root}",
     "LOG_LEVEL_APP=${local.config_log_level_app}",
     "LOG_LEVEL_WEB=${local.config_log_level_web}",
-    "LOG_LEVEL_SECURITY=${local.config_log_level_security}"
+    "LOG_LEVEL_SECURITY=${local.config_log_level_security}",
+    "GEMINI_API_KEY=${local.config_gemini_api_key}",
+    "GEMINI_MODEL=${local.config_gemini_model}",
+    "GEMINI_EMBEDDING_MODEL=${local.config_gemini_embedding_model}",
+    "PINECONE_API_KEY=${local.config_pinecone_api_key}",
+    "PINECONE_HOST=${local.config_pinecone_host}",
+    "PINECONE_INDEX=${local.config_pinecone_index}",
+    "PINECONE_NAMESPACE=${local.config_pinecone_namespace}",
+    "KAFKA_BROKER_HOST=${local.config_kafka_broker_host}",
+    "KAFKA_BROKER_PORT=${local.config_kafka_broker_port}",
+    "KAFKA_BROKER_EXTERNAL_PORT=${local.config_kafka_broker_external_port}",
+    "KAFKA_ADVERTISED_HOST=${local.config_kafka_advertised_host}",
+    "KAFKA_ZOOKEEPER_HOST=${local.config_kafka_zookeeper_host}",
+    "KAFKA_ZOOKEEPER_PORT=${local.config_kafka_zookeeper_port}",
+    "KAFKA_BOOTSTRAP_SERVERS=${local.config_kafka_bootstrap_servers}",
+    "KAFKA_CONSUMER_GROUP_ID=${local.config_kafka_consumer_group_id}",
+    "KAFKA_CONSUMER_AUTO_OFFSET_RESET=${local.config_kafka_consumer_auto_offset_reset}",
+    "KAFKA_SECURITY_PROTOCOL=${local.config_kafka_security_protocol}"
   ]
 
   networks_advanced {
@@ -185,6 +223,14 @@ resource "docker_container" "backend" {
 
   restart = "unless-stopped"
 
+  healthcheck {
+    test     = ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+    interval = "30s"
+    timeout  = "10s"
+    retries  = 3
+    start_period = "90s"
+  }
+
   depends_on = [docker_container.postgres]
 }
 
@@ -193,12 +239,17 @@ resource "docker_image" "admin_console" {
   name         = "slms-admin-console:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/admin-console"
+    dockerfile = "Dockerfile"
     tag        = ["slms-admin-console:latest"]
     build_args = {
-      FRONTEND_PATH       = "src/frontend/admin-console"
-      NEXT_PUBLIC_API_URL = local.config_next_public_api_url
+      FRONTEND_PATH                            = "src/frontend/admin-console"
+      NEXT_PUBLIC_API_URL                      = local.config_next_public_api_url
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL       = local.config_elastic_apm_server_url
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN     = local.config_elastic_apm_secret_token
+      NEXT_PUBLIC_DEPLOYMENT_ENV               = local.config_deployment_env
+      NEXT_PUBLIC_PROJECT_VERSION              = local.config_project_version
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE        = local.config_tracing_sampling_rate
     }
   }
 }
@@ -210,7 +261,12 @@ resource "docker_container" "admin_console" {
 
   env = [
     "NODE_ENV=production",
-    "NEXT_TELEMETRY_DISABLED=1"
+    "NEXT_TELEMETRY_DISABLED=1",
+    "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "NEXT_PUBLIC_DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "NEXT_PUBLIC_PROJECT_VERSION=${local.config_project_version}",
+    "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}"
   ]
 
   working_dir = "/app"
@@ -221,6 +277,14 @@ resource "docker_container" "admin_console" {
   }
 
   restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    interval = "30s"
+    timeout  = "10s"
+    retries  = 3
+    start_period = "60s"
+  }
 }
 
 # Customer Portal Frontend
@@ -228,15 +292,20 @@ resource "docker_image" "customer_portal" {
   name         = "slms-customer-portal:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/customer-portal"
+    dockerfile = "Dockerfile"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
-      FRONTEND_PATH                 = "src/frontend/customer-portal"
-      NEXT_PUBLIC_API_URL           = local.config_next_public_api_url
-      NEXT_PUBLIC_FLAGSMITH_ENV_KEY = local.config_flagsmith_env_key
-      KEYCLOAK_BASE_URL             = local.config_keycloak_hostname_url
-      NEXTAUTH_URL                  = "http://${var.public_host != "" ? var.public_host : "localhost"}/customer"
+      FRONTEND_PATH                            = "src/frontend/customer-portal"
+      NEXT_PUBLIC_API_URL                      = local.config_next_public_api_url
+      NEXT_PUBLIC_FLAGSMITH_ENV_KEY            = local.config_flagsmith_env_key
+      KEYCLOAK_BASE_URL                        = local.config_keycloak_hostname_url
+      NEXTAUTH_URL                             = "http://${var.public_host != "" ? var.public_host : "localhost"}/customer"
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL       = local.config_elastic_apm_server_url
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN     = local.config_elastic_apm_secret_token
+      NEXT_PUBLIC_DEPLOYMENT_ENV               = local.config_deployment_env
+      NEXT_PUBLIC_PROJECT_VERSION              = local.config_project_version
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE        = local.config_tracing_sampling_rate
     }
   }
 }
@@ -248,7 +317,12 @@ resource "docker_container" "customer_portal" {
 
   env = [
     "NODE_ENV=production",
-    "NEXT_TELEMETRY_DISABLED=1"
+    "NEXT_TELEMETRY_DISABLED=1",
+    "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "NEXT_PUBLIC_DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "NEXT_PUBLIC_PROJECT_VERSION=${local.config_project_version}",
+    "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}"
   ]
 
   working_dir = "/app"
@@ -259,6 +333,14 @@ resource "docker_container" "customer_portal" {
   }
 
   restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    interval = "30s"
+    timeout  = "10s"
+    retries  = 3
+    start_period = "60s"
+  }
 }
 
 # Driver PWA Frontend
@@ -266,13 +348,18 @@ resource "docker_image" "driver_pwa" {
   name         = "slms-driver-pwa:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/driver-pwa"
+    dockerfile = "Dockerfile"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
-      FRONTEND_PATH                   = "src/frontend/driver-pwa"
-      NEXT_PUBLIC_API_URL             = local.config_next_public_api_url
-      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = local.config_mapbox_access_token
+      FRONTEND_PATH                            = "src/frontend/driver-pwa"
+      NEXT_PUBLIC_API_URL                      = local.config_next_public_api_url
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN          = local.config_mapbox_access_token
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL       = local.config_elastic_apm_server_url
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN     = local.config_elastic_apm_secret_token
+      NEXT_PUBLIC_DEPLOYMENT_ENV               = local.config_deployment_env
+      NEXT_PUBLIC_PROJECT_VERSION              = local.config_project_version
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE        = local.config_tracing_sampling_rate
     }
   }
 }
@@ -284,7 +371,12 @@ resource "docker_container" "driver_pwa" {
 
   env = [
     "NODE_ENV=production",
-    "NEXT_TELEMETRY_DISABLED=1"
+    "NEXT_TELEMETRY_DISABLED=1",
+    "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "NEXT_PUBLIC_DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "NEXT_PUBLIC_PROJECT_VERSION=${local.config_project_version}",
+    "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}"
   ]
 
   working_dir = "/app"
@@ -295,6 +387,14 @@ resource "docker_container" "driver_pwa" {
   }
 
   restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    interval = "30s"
+    timeout  = "10s"
+    retries  = 3
+    start_period = "60s"
+  }
 }
 
 # Landing Page Frontend
@@ -302,12 +402,17 @@ resource "docker_image" "landing_page" {
   name         = "slms-landing-page:latest"
   keep_locally = true
   build {
-    context    = local.repo_root
-    dockerfile = "infra/docker/frontend/Dockerfile.prod"
+    context    = "${local.repo_root}/src/frontend/landing-page"
+    dockerfile = "Dockerfile"
     tag        = ["slms-landing-page:latest"]
     build_args = {
-      FRONTEND_PATH       = "src/frontend/landing-page"
-      NEXT_PUBLIC_API_URL = local.config_next_public_api_url
+      FRONTEND_PATH                            = "src/frontend/landing-page"
+      NEXT_PUBLIC_API_URL                      = local.config_next_public_api_url
+      NEXT_PUBLIC_ELASTIC_APM_SERVER_URL       = local.config_elastic_apm_server_url
+      NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN     = local.config_elastic_apm_secret_token
+      NEXT_PUBLIC_DEPLOYMENT_ENV               = local.config_deployment_env
+      NEXT_PUBLIC_PROJECT_VERSION              = local.config_project_version
+      NEXT_PUBLIC_TRACING_SAMPLING_RATE        = local.config_tracing_sampling_rate
     }
   }
 }
@@ -319,7 +424,12 @@ resource "docker_container" "landing_page" {
 
   env = [
     "NODE_ENV=production",
-    "NEXT_TELEMETRY_DISABLED=1"
+    "NEXT_TELEMETRY_DISABLED=1",
+    "NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${local.config_elastic_apm_server_url}",
+    "NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${local.config_elastic_apm_secret_token}",
+    "NEXT_PUBLIC_DEPLOYMENT_ENV=${local.config_deployment_env}",
+    "NEXT_PUBLIC_PROJECT_VERSION=${local.config_project_version}",
+    "NEXT_PUBLIC_TRACING_SAMPLING_RATE=${local.config_tracing_sampling_rate}"
   ]
 
   working_dir = "/app"
@@ -330,4 +440,12 @@ resource "docker_container" "landing_page" {
   }
 
   restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    interval = "30s"
+    timeout  = "10s"
+    retries  = 3
+    start_period = "60s"
+  }
 }

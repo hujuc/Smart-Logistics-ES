@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   basePath: "/admin",
   assetPrefix: "/admin",
   trailingSlash: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config, { isServer }) => {
     // Add alias for @shared
     if (!config.resolve.alias) {

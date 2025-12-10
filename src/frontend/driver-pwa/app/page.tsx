@@ -260,12 +260,12 @@ export default function DriverHome() {
                 {user ? `${user.firstName} ${user.lastName}` : 'Driver'} • Driver
               </p>
             </div>
-            <div className="relative">
+            <Link href="/notifications" className="relative">
               <Bell className="w-6 h-6" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              3
-            </span>
-            </div>
+                2
+              </span>
+            </Link>
           </div>
           <p className="text-gray-400 text-sm">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

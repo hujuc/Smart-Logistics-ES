@@ -31,7 +31,7 @@ interface OrderResponse {
 /**
  * Create a test warehouse for E2E tests
  */
-async function createTestWarehouse(): Promise<WarehouseResponse> {
+async function createTestWarehouse(token: string): Promise<WarehouseResponse> {
   const timestamp = Date.now();
   const warehouseData = {
     code: `WH-E2E-${timestamp}`,
@@ -48,6 +48,7 @@ async function createTestWarehouse(): Promise<WarehouseResponse> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify(warehouseData),
   });
@@ -69,6 +70,7 @@ async function createTestOrder(
   warehouseId: number,
   reference: string,
   description: string,
+  token: string,
   trackingNumber?: string
 ): Promise<OrderResponse> {
   const orderData = {
@@ -85,6 +87,7 @@ async function createTestOrder(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify(orderData),
   });
@@ -202,7 +205,7 @@ const searchAndViewOrder = async (page: Page, searchTerm: string, expectedRef?: 
 test.describe.configure({ mode: "serial" });
 
 // Test data that will be shared across all tests
-let testOrders: OrderResponse[] = [];
+const testOrders: OrderResponse[] = [];
 let testWarehouse: WarehouseResponse;
 
 test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
@@ -242,7 +245,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
                   deletedCount++;
                   console.log(`  ✓ Deleted orphaned order ${order.reference} (ID: ${order.id})`);
                 }
-              } catch (error) {
+              } catch {
                 console.warn(`  ✗ Failed to delete order ${order.id}`);
               }
             }
@@ -272,7 +275,7 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
                   deletedWhCount++;
                   console.log(`  ✓ Deleted orphaned warehouse ${warehouse.code} (ID: ${warehouse.id})`);
                 }
-              } catch (error) {
+              } catch {
                 console.warn(`  ✗ Failed to delete warehouse ${warehouse.id}`);
               }
             }
@@ -288,38 +291,54 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
 
     console.log("\nCreating fresh test data...");
 
-    // Create a test warehouse
-    testWarehouse = await createTestWarehouse();
-    console.log(`✓ Created warehouse: ${testWarehouse.name} (ID: ${testWarehouse.id})`);
+    // Login to get a fresh token for creating test data
+    const setupPage = await browser.newPage();
+    try {
+      await loginAsWarehouse(setupPage);
+      const setupToken = await setupPage.evaluate(() => localStorage.getItem('access_token'));
 
-    // Create 3 test orders
-    const order1 = await createTestOrder(
-      testWarehouse.id,
-      `E2E-ORDER-1-${Date.now()}`,
-      "Test order 1 for E2E tests"
-    );
-    testOrders.push(order1);
-    console.log(`✓ Created order 1: ${order1.reference} (ID: ${order1.id})`);
+      if (!setupToken) {
+        throw new Error("Could not get authentication token for test setup");
+      }
 
-    const order2 = await createTestOrder(
-      testWarehouse.id,
-      `E2E-ORDER-2-${Date.now()}`,
-      "Test order 2 for E2E tests",
-      "TRK-E2E-12345"
-    );
-    testOrders.push(order2);
-    console.log(`✓ Created order 2: ${order2.reference} (ID: ${order2.id})`);
+      // Create a test warehouse
+      testWarehouse = await createTestWarehouse(setupToken);
+      console.log(`✓ Created warehouse: ${testWarehouse.name} (ID: ${testWarehouse.id})`);
 
-    const order3 = await createTestOrder(
-      testWarehouse.id,
-      `E2E-ORDER-3-${Date.now()}`,
-      "Test order 3 for E2E tests",
-      "TRK-E2E-67890"
-    );
-    testOrders.push(order3);
-    console.log(`✓ Created order 3: ${order3.reference} (ID: ${order3.id})`);
+      // Create 3 test orders
+      const order1 = await createTestOrder(
+        testWarehouse.id,
+        `E2E-ORDER-1-${Date.now()}`,
+        "Test order 1 for E2E tests",
+        setupToken
+      );
+      testOrders.push(order1);
+      console.log(`✓ Created order 1: ${order1.reference} (ID: ${order1.id})`);
 
-    console.log("Test data creation complete!");
+      const order2 = await createTestOrder(
+        testWarehouse.id,
+        `E2E-ORDER-2-${Date.now()}`,
+        "Test order 2 for E2E tests",
+        setupToken,
+        "TRK-E2E-12345"
+      );
+      testOrders.push(order2);
+      console.log(`✓ Created order 2: ${order2.reference} (ID: ${order2.id})`);
+
+      const order3 = await createTestOrder(
+        testWarehouse.id,
+        `E2E-ORDER-3-${Date.now()}`,
+        "Test order 3 for E2E tests",
+        setupToken,
+        "TRK-E2E-67890"
+      );
+      testOrders.push(order3);
+      console.log(`✓ Created order 3: ${order3.reference} (ID: ${order3.id})`);
+
+      console.log("Test data creation complete!");
+    } finally {
+      await setupPage.close();
+    }
   });
 
   // Clean up test data after all tests

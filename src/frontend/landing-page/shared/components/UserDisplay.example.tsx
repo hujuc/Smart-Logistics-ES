@@ -7,7 +7,6 @@
  * Copy these patterns into your own components as needed.
  */
 
-import Link from 'next/link';
 import { useUser, useUserRoles, useHasRole, useIsAuthenticated, useUserActions } from '../hooks/use-user';
 
 /**
@@ -146,16 +145,16 @@ export function UserNavigation() {
 
   return (
     <nav className="flex gap-4">
-      <Link href="/">Home</Link>
+      <a href="/">Home</a>
 
       {user ? (
         <>
-          <Link href="/dashboard">Dashboard</Link>
-          {isAdmin && <Link href="/admin">Admin</Link>}
-          <Link href="/profile">Profile</Link>
+          <a href="/dashboard">Dashboard</a>
+          {isAdmin && <a href="/admin">Admin</a>}
+          <a href="/profile">Profile</a>
         </>
       ) : (
-        <Link href="/">Login</Link>
+        <a href="/">Login</a>
       )}
     </nav>
   );

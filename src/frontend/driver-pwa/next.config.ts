@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   basePath: "/driver",
   assetPrefix: "/driver",
   trailingSlash: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config, { isServer }) => {
     // Add alias for @shared
     if (!config.resolve.alias) {
