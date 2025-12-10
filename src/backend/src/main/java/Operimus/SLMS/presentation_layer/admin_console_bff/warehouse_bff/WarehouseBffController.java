@@ -10,6 +10,7 @@ import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.ShipmentDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
+import Operimus.SLMS.business_layer.notifications_module.service.WarehouseNotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,7 @@ public class WarehouseBffController {
     private final OrderDocumentService orderDocumentService;
     private final ShipmentDocumentService shipmentDocumentService;
     private final KeycloakUserService keycloakUserService;
+    private final WarehouseNotificationService warehouseNotificationService;
 
     /**
      * Health check endpoint
@@ -59,6 +61,35 @@ public class WarehouseBffController {
                 "service", "Warehouse BFF",
                 "timestamp", java.time.Instant.now().toString()
         ));
+    }
+
+    /**
+     * PUBLIC TEST ENDPOINT - Trigger warehouse notification immediately
+     * NO AUTHENTICATION REQUIRED - For testing only
+     */
+    @PostMapping("/public-test-notification")
+    public ResponseEntity<java.util.Map<String, String>> publicTestNotification() {
+        try {
+            log.info("🧪 PUBLIC TEST: Creating warehouse notification NOW!");
+            warehouseNotificationService.notifyLowStockAlert(
+                "TEST-WH-001",
+                "Test Warehouse",
+                "test items",
+                5
+            );
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "SUCCESS",
+                    "message", "Low stock notification sent to all WAREHOUSE_STAFF users!",
+                    "timestamp", java.time.Instant.now().toString()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Failed to send test notification: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "ERROR",
+                    "message", e.getMessage(),
+                    "error", e.getClass().getSimpleName()
+            ));
+        }
     }
 
     /**
@@ -335,6 +366,205 @@ public class WarehouseBffController {
         } catch (Exception e) {
             log.error("Failed to download shipment document {} for order {}: {}", documentId, orderId, e.getMessage());
             throw e;
+        }
+    }
+
+    // ========================================
+    // Warehouse Notification Test Endpoints
+    // ========================================
+
+    /**
+     * Test endpoint to trigger a low stock alert notification
+     * POST /api/warehouse/notifications/test/low-stock
+     */
+    @PostMapping("/notifications/test/low-stock")
+    public ResponseEntity<java.util.Map<String, String>> testLowStockAlert(
+            @RequestParam(required = false, defaultValue = "WH-001") String warehouseId,
+            @RequestParam(required = false, defaultValue = "Warehouse A") String warehouseName,
+            @RequestParam(required = false, defaultValue = "packaging materials") String materialName,
+            @RequestParam(required = false, defaultValue = "15") int currentStock) {
+        try {
+            log.info("Warehouse BFF: Testing low stock alert notification");
+            warehouseNotificationService.notifyLowStockAlert(warehouseId, warehouseName, materialName, currentStock);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Low stock alert notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send low stock alert: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a scanner malfunction notification
+     * POST /api/warehouse/notifications/test/scanner-malfunction
+     */
+    @PostMapping("/notifications/test/scanner-malfunction")
+    public ResponseEntity<java.util.Map<String, String>> testScannerMalfunction(
+            @RequestParam(required = false, defaultValue = "SC-003") String scannerId,
+            @RequestParam(required = false, defaultValue = "Loading Dock 3") String scannerLocation) {
+        try {
+            log.info("Warehouse BFF: Testing scanner malfunction notification");
+            warehouseNotificationService.notifyScannerMalfunction(scannerId, scannerLocation);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Scanner malfunction notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send scanner malfunction notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a shipment prepared notification
+     * POST /api/warehouse/notifications/test/shipment-prepared
+     */
+    @PostMapping("/notifications/test/shipment-prepared")
+    public ResponseEntity<java.util.Map<String, String>> testShipmentPrepared(
+            @RequestParam(required = false, defaultValue = "BATCH-2024-089") String batchId,
+            @RequestParam(required = false, defaultValue = "BATCH-2024-089") String batchCode) {
+        try {
+            log.info("Warehouse BFF: Testing shipment prepared notification");
+            warehouseNotificationService.notifyShipmentPrepared(batchId, batchCode);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Shipment prepared notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send shipment prepared notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a maintenance due notification
+     * POST /api/warehouse/notifications/test/maintenance-due
+     */
+    @PostMapping("/notifications/test/maintenance-due")
+    public ResponseEntity<java.util.Map<String, String>> testMaintenanceDue(
+            @RequestParam(required = false, defaultValue = "FL-007") String equipmentId,
+            @RequestParam(required = false, defaultValue = "FL-007") String equipmentName,
+            @RequestParam(required = false, defaultValue = "180") int daysSinceLastService) {
+        try {
+            log.info("Warehouse BFF: Testing maintenance due notification");
+            warehouseNotificationService.notifyMaintenanceDue(equipmentId, equipmentName, daysSinceLastService);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Maintenance due notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send maintenance due notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a new carrier rate notification
+     * POST /api/warehouse/notifications/test/new-carrier-rate
+     */
+    @PostMapping("/notifications/test/new-carrier-rate")
+    public ResponseEntity<java.util.Map<String, String>> testNewCarrierRate(
+            @RequestParam(required = false, defaultValue = "FEDEX-001") String carrierId,
+            @RequestParam(required = false, defaultValue = "FedEx") String carrierName) {
+        try {
+            log.info("Warehouse BFF: Testing new carrier rate notification");
+            warehouseNotificationService.notifyNewCarrierRate(carrierId, carrierName);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "New carrier rate notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send new carrier rate notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger an inventory count complete notification
+     * POST /api/warehouse/notifications/test/inventory-count-complete
+     */
+    @PostMapping("/notifications/test/inventory-count-complete")
+    public ResponseEntity<java.util.Map<String, String>> testInventoryCountComplete(
+            @RequestParam(required = false, defaultValue = "ZONE-B") String zoneId,
+            @RequestParam(required = false, defaultValue = "Zone B") String zoneName,
+            @RequestParam(required = false, defaultValue = "1250") int itemsAccounted) {
+        try {
+            log.info("Warehouse BFF: Testing inventory count complete notification");
+            warehouseNotificationService.notifyInventoryCountComplete(zoneId, zoneName, itemsAccounted);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Inventory count complete notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send inventory count complete notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a package damaged notification
+     * POST /api/warehouse/notifications/test/package-damaged
+     */
+    @PostMapping("/notifications/test/package-damaged")
+    public ResponseEntity<java.util.Map<String, String>> testPackageDamaged(
+            @RequestParam(required = false, defaultValue = "PKG-2024-5678") String packageId,
+            @RequestParam(required = false, defaultValue = "PKG-2024-5678") String packageCode) {
+        try {
+            log.info("Warehouse BFF: Testing package damaged notification");
+            warehouseNotificationService.notifyPackageDamaged(packageId, packageCode);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "Package damaged notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send package damaged notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Test endpoint to trigger a new packages received notification
+     * POST /api/warehouse/notifications/test/new-packages-received
+     */
+    @PostMapping("/notifications/test/new-packages-received")
+    public ResponseEntity<java.util.Map<String, String>> testNewPackagesReceived(
+            @RequestParam(required = false, defaultValue = "45") int packageCount) {
+        try {
+            log.info("Warehouse BFF: Testing new packages received notification");
+            warehouseNotificationService.notifyNewPackagesReceived(packageCount);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "success",
+                    "message", "New packages received notification sent"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to send new packages received notification: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
         }
     }
 }

@@ -88,6 +88,32 @@ docker cp slms-backup:/backups/backup_slms_YYYYMMDD_HHMMSS.sql.gz ./
 
 - **Basic usage**: [docker/backup/README.md](docker/backup/README.md)
 
+## Demo Data Seeder
+
+Need realistic demo data (warehouses, orders, shipments, Keycloak users)? Use the automation script under `infra/scripts`.
+
+```bash
+# Populate ~10 records for each entity (uses real ShipEngine/Shippo APIs)
+python infra/scripts/seed_demo_data.py \
+  --warehouses 10 \
+  --orders 10 \
+  --shipments 10 \
+  --users 10
+```
+
+**Requirements**
+- `make up` running (backend, Keycloak, MinIO, Shippo keys, etc.)
+- Shippo/ShipEngine API keys configured in `infra/.env` (script triggers real carrier sync + label generation)
+- Python 3.11+
+
+**What it does**
+- Registers demo users (customer, driver, warehouse staff, CSR, manager) via `/api/landing-page/auth/register`
+- Imports carriers through `/api/admin/carriers/integrations/sync`
+- Creates warehouses, orders, and shipments using `/api/admin/**` endpoints
+- Assigns orders to shipments so that `ShipmentLabelGenerationService` hits Shippo and stores PDFs in MinIO
+
+Pass `--api-base-url` if you expose the backend differently (defaults to `http://localhost:8080/api`). Use `--seed` for deterministic data or lower the counts if you only need a few records.
+
 ## Services
 
 - **PostgreSQL** (port 5433): Database

@@ -4,11 +4,16 @@ import Operimus.SLMS.business_layer.order_module.dto.OrderEventResponse;
 import Operimus.SLMS.business_layer.order_module.dto.OrderRequest;
 import Operimus.SLMS.business_layer.order_module.dto.OrderResponse;
 import Operimus.SLMS.business_layer.order_module.dto.WarehouseResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentUploadResponse;
+import Operimus.SLMS.business_layer.order_module.dto.DocumentDownloadResponse;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionRequest;
+import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionResponse;
 import Operimus.SLMS.business_layer.order_module.entities.OrderStatus;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,13 +70,16 @@ class CustomerBffControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private KeycloakUserService keycloakUserService;
+
     private String customerId;
     private OrderResponse mockOrder;
     private WarehouseResponse mockWarehouse;
 
     @BeforeEach
     void setUp() {
-        customerId = "customer-uuid-123";
+        customerId = java.util.UUID.randomUUID().toString();
         
         mockWarehouse = WarehouseResponse.builder()
                 .id(1L)
@@ -210,4 +218,92 @@ class CustomerBffControllerTest {
                 .andExpect(jsonPath("$.reference", is("ORD-002")));
     }
 
+    @Test
+    void whenCreateException_withValidOrder_thenReturnCreatedException() throws Exception {
+        DeliveryExceptionRequest request = DeliveryExceptionRequest.builder()
+                .orderId(1L)
+                .type(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionType.LOST)
+                .category("Delivery Issue")
+                .description("Package lost")
+                .source(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source.CUSTOMER)
+                .build();
+
+        DeliveryExceptionResponse response = DeliveryExceptionResponse.builder()
+                .id(java.util.UUID.randomUUID())
+                .orderId(1L)
+                .type(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionType.LOST)
+                .description("Package lost")
+                .status(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN)
+                .build();
+
+        // Mock order check
+        when(orderService.getById(1L)).thenReturn(mockOrder);
+        // Mock exception creation
+        when(exceptionService.create(any(DeliveryExceptionRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/customer/delivery-exceptions")
+                        .with(createJwtWithCustomerRole(customerId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderId", is(1)))
+                .andExpect(jsonPath("$.description", is("Package lost")));
+    }
+
+    @Test
+    void whenGetCustomerExceptions_thenReturnList() throws Exception {
+        DeliveryExceptionResponse exception = DeliveryExceptionResponse.builder()
+                .id(java.util.UUID.randomUUID())
+                .orderId(1L)
+                .description("Test exception")
+                .build();
+
+        // Since customerId is now a valid UUID, the controller will use the UUID-based service method
+        when(exceptionService.getByCustomerId(java.util.UUID.fromString(customerId))).thenReturn(List.of(exception));
+
+        mockMvc.perform(get("/api/customer/delivery-exceptions")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].description", is("Test exception")));
+    }
+
+    // ========================================
+    // Document Tests
+    // ========================================
+
+    @Test
+    void whenGetOrderDocuments_withValidOrder_thenReturnList() throws Exception {
+        DocumentUploadResponse doc = DocumentUploadResponse.builder()
+                .fileName("invoice.pdf")
+                .contentType("application/pdf")
+                .build();
+
+        when(orderService.getById(1L)).thenReturn(mockOrder);
+        when(orderDocumentService.listDocuments(1L)).thenReturn(List.of(doc));
+
+        mockMvc.perform(get("/api/customer/orders/1/documents")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].fileName", is("invoice.pdf")));
+    }
+
+    @Test
+    void whenDownloadDocument_withValidOrder_thenReturnContent() throws Exception {
+        DocumentDownloadResponse doc = DocumentDownloadResponse.builder()
+                .fileName("invoice.pdf")
+                .contentType("application/pdf")
+                .content("fake-pdf-content".getBytes())
+                .build();
+
+        when(orderService.getById(1L)).thenReturn(mockOrder);
+        when(orderDocumentService.downloadDocument(1L, "invoice.pdf")).thenReturn(doc);
+
+        mockMvc.perform(get("/api/customer/orders/1/documents/invoice.pdf/download")
+                        .with(createJwtWithCustomerRole(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/pdf"))
+                .andExpect(header().string("Content-Disposition", containsString("invoice.pdf")));
+    }
 }

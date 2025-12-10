@@ -9,10 +9,13 @@ import Operimus.SLMS.business_layer.order_module.repository.OrderRepository;
 import Operimus.SLMS.business_layer.rate_carrier_module.repository.ShipmentRepository;
 import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,12 @@ public class ShipmentService {
     private final OrderRepository orderRepository;
     private final CarrierService carrierService;
     private final ObjectProvider<ShipmentLabelGenerationService> shipmentLabelGenerationService;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    private final Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+
+    @Value("${kafka.topic.shipment-events}")
+    private String shipmentEventsTopic;
 
     @Transactional
     public Shipment create(String shipmentCode, Long carrierId, String driverId, List<Long> orderIds) {
@@ -92,6 +101,18 @@ public class ShipmentService {
 
         triggerShipmentDocuments(saved, orders);
 
+        // Notify logistics managers about new shipment
+        logisticsManagerNotificationService.notifyNewShipmentCreated(
+            saved.getId().toString(),
+            saved.getShipmentCode(),
+            orders.size()
+        );
+
+        // Notify driver if assigned
+        if (driverId != null && !driverId.isBlank()) {
+            publishDriverAssignmentEvent(saved, driverId, null);
+        }
+
         return saved;
     }
 
@@ -105,7 +126,12 @@ public class ShipmentService {
             throw new IllegalArgumentException("Driver ID cannot be empty");
         }
 
+        String oldDriverId = shipment.getDriverId();
         shipment.setDriverId(newDriverId);
+        
+        // Publish driver assignment event
+        publishDriverAssignmentEvent(shipment, newDriverId, oldDriverId);
+        
         return shipment;
     }
 
@@ -263,6 +289,52 @@ public class ShipmentService {
         ShipmentLabelGenerationService generator = shipmentLabelGenerationService.getIfAvailable();
         if (generator != null) {
             generator.generateCarrierDocuments(shipment, orders);
+        }
+        
+        // Publish creation event
+        publishNotificationEvent(shipment, "CREATED", "Shipment created with code " + shipment.getShipmentCode());
+    }
+
+    private void publishDriverAssignmentEvent(Shipment shipment, String newDriverId, String oldDriverId) {
+        String message = String.format("You have been assigned to shipment %s", shipment.getShipmentCode());
+        
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(shipment.getId().toString())
+                            .aggregateType("SHIPMENT")
+                            .eventType("DRIVER_ASSIGNED")
+                            .message(message)
+                            .customerId(newDriverId) // Send notification to the driver
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
+            log.info("Published driver assignment event for shipment {} to driver {}", shipment.getId(), newDriverId);
+        } catch (Exception e) {
+            log.error("Failed to publish driver assignment event to Kafka", e);
+        }
+    }
+
+    private void publishNotificationEvent(Shipment shipment, String eventType, String message) {
+        try {
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
+                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
+                            .eventId(java.util.UUID.randomUUID().toString())
+                            .aggregateId(shipment.getId().toString())
+                            .aggregateType("SHIPMENT")
+                            .eventType(eventType)
+                            .message(message)
+                            .customerId(null) // Shipments might not be directly linked to a single customer in this context, or we need to iterate orders
+                            .occurredAt(java.time.OffsetDateTime.now())
+                            .build();
+
+            String payload = objectMapper.writeValueAsString(notificationEvent);
+            kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
+        } catch (Exception e) {
+            log.error("Failed to publish shipment event to Kafka", e);
         }
     }
 }

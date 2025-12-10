@@ -10,12 +10,14 @@ import Operimus.SLMS.business_layer.order_module.service.OrderDocumentService;
 import Operimus.SLMS.business_layer.order_module.service.OrderService;
 import Operimus.SLMS.business_layer.order_module.service.OrderEventService;
 import Operimus.SLMS.business_layer.order_module.service.WarehouseService;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionRequest;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.dto.DeliveryExceptionResponse;
 import Operimus.SLMS.business_layer.visibility_module.exceptions.service.DeliveryExceptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -44,6 +46,7 @@ public class CustomerBffController {
     private final WarehouseService warehouseService;
     private final DeliveryExceptionService exceptionService;
     private final OrderDocumentService orderDocumentService;
+    private final KeycloakUserService keycloakUserService;
 
     /**
      * Extract customer ID from JWT token
@@ -57,6 +60,36 @@ public class CustomerBffController {
             log.info("Using preferred_username as customerId: {}", customerId);
         }
         return customerId;
+    }
+
+    /**
+     * Get customer UUID from username (from JWT)
+     * Converts username to UUID by looking up the user in Keycloak
+     */
+    private java.util.UUID getCustomerUUID(String username) {
+        try {
+            // Search for user by username
+            List<UserRepresentation> users = keycloakUserService.searchUsers(username);
+            
+            if (users.isEmpty()) {
+                log.error("No user found with username: {}", username);
+                throw new RuntimeException("User not found: " + username);
+            }
+            
+            // Find exact match (searchUsers can return partial matches)
+            UserRepresentation user = users.stream()
+                    .filter(u -> username.equals(u.getUsername()))
+                    .findFirst()
+                    .orElse(users.get(0)); // Fallback to first result
+            
+            return java.util.UUID.fromString(user.getId());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid UUID for username {}: {}", username, e.getMessage());
+            throw new RuntimeException("Invalid user ID format for username: " + username, e);
+        } catch (Exception e) {
+            log.error("Failed to get UUID for username {}: {}", username, e.getMessage(), e);
+            throw new RuntimeException("Failed to resolve user ID: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -384,10 +417,10 @@ public class CustomerBffController {
 
             // Create the exception via business layer
             DeliveryExceptionResponse response = exceptionService.create(request);
-
-            log.info("Customer BFF: Successfully created exception {} for customer {}",
-                    response.getId(), customerId);
-
+            
+            log.info("Customer BFF: Successfully created exception {} for customer {} (UUID: {})", 
+                    response.getId(), customerId, request.getCustomerId());
+            
             return ResponseEntity
                     .created(URI.create("/api/customer/delivery-exceptions/" + response.getId()))
                     .body(response);
