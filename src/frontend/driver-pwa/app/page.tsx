@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { Truck, Package, MapPin, Clock, Bell } from 'lucide-react';
+import { Truck, Package, MapPin, Clock, Bell, Settings } from 'lucide-react';
 import { getDashboard, DashboardResponse } from '@/lib/api';
 import { useUser } from '@/shared/hooks/use-user';
 import { useNotificationsStore, useUnreadNotifications } from '@/shared/hooks/use-notifications';
@@ -176,6 +176,17 @@ export default function DriverHome() {
               <p className="text-sm text-yellow-700">
                 Using mock data. {error}
               </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link href="/notifications" className="relative">
+                <Bell className="w-6 h-6" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  2
+                </span>
+              </Link>
+              <Link href="/settings">
+                <Settings className="w-6 h-6 hover:text-gray-300 cursor-pointer" />
+              </Link>
             </div>
           </div>
         </div>

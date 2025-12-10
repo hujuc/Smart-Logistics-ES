@@ -79,7 +79,7 @@ export const customerServiceOrderApi = {
 export interface DeliveryException {
   id: string;
   orderId: number;
-  customerId: string;
+  customerId: string | null;
   type: 'DAMAGED_PACKAGE' | 'LOST_PACKAGE' | 'DELAYED_DELIVERY' | 'WRONG_ADDRESS' | 'CUSTOMER_NOT_AVAILABLE' | 'WEATHER_DELAY' | 'CUSTOMS_HOLD' | 'OTHER';
   category: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -99,7 +99,7 @@ export interface DeliveryException {
 
 export interface DeliveryExceptionRequest {
   orderId: number;
-  customerId: string;
+  customerId: string | null;
   type: DeliveryException['type'];
   category: string;
   severity: DeliveryException['severity'];
@@ -238,9 +238,28 @@ interface UserInfo {
 const userInfoCache = new Map<string, UserInfo>();
 
 /**
+ * Check if a string is a valid UUID format
+ */
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+/**
  * Fetch user information from backend
  */
-async function fetchUserInfo(userId: string): Promise<UserInfo | null> {
+async function fetchUserInfo(userId: string | null | undefined): Promise<UserInfo | null> {
+  // Return null if userId is null or undefined
+  if (!userId) {
+    return null;
+  }
+
+  // If userId is not a valid UUID (e.g., it's a username like "customer"),
+  // skip the API call and return null to use the fallback formatting
+  if (!isValidUUID(userId)) {
+    return null;
+  }
+
   // Check cache first
   if (userInfoCache.has(userId)) {
     return userInfoCache.get(userId)!;
@@ -259,13 +278,18 @@ async function fetchUserInfo(userId: string): Promise<UserInfo | null> {
 /**
  * Helper function to get customer name from user ID
  */
-async function getCustomerName(customerId: string): Promise<string> {
+async function getCustomerName(customerId: string | null | undefined): Promise<string> {
+  // Return fallback if customerId is null or undefined
+  if (!customerId) {
+    return 'Unknown Customer';
+  }
+
   const userInfo = await fetchUserInfo(customerId);
-  
+
   if (userInfo && userInfo.firstName && userInfo.lastName) {
     return `${userInfo.firstName} ${userInfo.lastName}`;
   }
-  
+
   // Fallback to formatted customer ID
   return formatCustomerName(customerId);
 }
@@ -292,20 +316,30 @@ async function getAssigneeName(assigneeId: string | null | undefined): Promise<s
  * Helper function to format customer ID into a more readable name
  * Used as fallback when user info is not available
  */
-function formatCustomerName(customerId: string): string {
+function formatCustomerName(customerId: string | null | undefined): string {
+  // Return default if customerId is null or undefined
+  if (!customerId) {
+    return 'Unknown Customer';
+  }
+
   // If it looks like an email, extract the name part
   if (customerId.includes('@')) {
     const namePart = customerId.split('@')[0];
-    return namePart.split('.').map(part => 
+    return namePart.split('.').map(part =>
       part.charAt(0).toUpperCase() + part.slice(1)
     ).join(' ');
   }
-  
-  // If it's a UUID or ID-like string, show first part only
-  if (customerId.includes('-')) {
+
+  // If it's a UUID (contains dashes and is long), show first part only
+  if (customerId.includes('-') && customerId.length > 20) {
     return `Customer ${customerId.split('-')[0].toUpperCase()}`;
   }
-  
+
+  // If it's a simple username (like "customer"), capitalize it
+  if (customerId.length < 20 && !customerId.includes('-')) {
+    return customerId.charAt(0).toUpperCase() + customerId.slice(1);
+  }
+
   // Otherwise, just capitalize
   return customerId.charAt(0).toUpperCase() + customerId.slice(1);
 }
@@ -342,8 +376,19 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
     'CRITICAL': 'High', // Map CRITICAL severity to High priority for display
   };
 
+  // Get customer ID - if not in exception, fetch from order
+  let customerIdToUse = exception.customerId;
+  if (!customerIdToUse && exception.orderId) {
+    try {
+      const order = await customerServiceOrderApi.getOrderById(exception.orderId);
+      customerIdToUse = order.customerId || null;
+    } catch (error) {
+      console.error(`Failed to fetch order ${exception.orderId} to get customer ID:`, error);
+    }
+  }
+
   // Get customer name from user service
-  const customerName = await getCustomerName(exception.customerId);
+  const customerName = await getCustomerName(customerIdToUse);
   
   // Get assignee name from user service
   const assigneeName = await getAssigneeName(exception.assignedTo);
@@ -351,9 +396,9 @@ async function mapExceptionToTicket(exception: DeliveryException): Promise<Ticke
   const ticket: TicketWithDetails = {
     id: exception.id,
     ticketNumber: `TKT-${exception.id.substring(0, 8)}`,
-    customerId: exception.customerId,
+    customerId: customerIdToUse,
     customerName: customerName,
-    customerEmail: exception.customerId.includes('@') ? exception.customerId : `${exception.customerId}@example.com`,
+    customerEmail: customerIdToUse && customerIdToUse.includes('@') ? customerIdToUse : undefined,
     subject: exception.category, // Use category as the main subject
     description: exception.description,
     status: statusMap[exception.status] || 'Open',

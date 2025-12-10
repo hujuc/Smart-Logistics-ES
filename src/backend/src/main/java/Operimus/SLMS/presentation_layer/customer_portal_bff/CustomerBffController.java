@@ -297,16 +297,23 @@ public class CustomerBffController {
             }
 
             // Try to convert String to UUID
-            // If customerId is not a valid UUID (e.g., username), return empty list
-            java.util.UUID customerUuid;
+            // If customerId is not a valid UUID (e.g., username), fetch exceptions by checking orders
+            List<DeliveryExceptionResponse> exceptions;
             try {
-                customerUuid = java.util.UUID.fromString(customerId);
+                java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
+                exceptions = exceptionService.getByCustomerId(customerUuid);
             } catch (IllegalArgumentException e) {
-                log.warn("Customer BFF: customerId '{}' is not a valid UUID, cannot fetch exceptions", customerId);
-                return ResponseEntity.ok(java.util.Collections.emptyList());
+                log.warn("Customer BFF: customerId '{}' is not a valid UUID, fetching exceptions via orders", customerId);
+                // For non-UUID customers (like "customer" username), we need to fetch exceptions
+                // by checking which orders belong to this customer first
+                List<OrderResponse> customerOrders = orderService.getByCustomerId(customerId);
+                exceptions = new java.util.ArrayList<>();
+                for (OrderResponse order : customerOrders) {
+                    exceptions.addAll(exceptionService.getByOrderId(order.getId()));
+                }
+                log.info("Customer BFF: Found {} exceptions across {} orders for customer {}",
+                        exceptions.size(), customerOrders.size(), customerId);
             }
-
-            List<DeliveryExceptionResponse> exceptions = exceptionService.getByCustomerId(customerUuid);
 
             log.info("Customer BFF: Successfully fetched {} exceptions for customer {}", exceptions.size(), customerId);
             return ResponseEntity.ok(exceptions);
@@ -331,16 +338,35 @@ public class CustomerBffController {
         try {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching exception {} for customer {}", id, customerId);
-            
+
             DeliveryExceptionResponse exception = exceptionService.getById(id);
-            
+
             // Security check: verify that the exception belongs to this customer
-            if (exception.getCustomerId() == null || !customerId.equals(exception.getCustomerId().toString())) {
-                log.warn("Customer {} attempted to access exception {} (exception customerId: {})", 
+            // Handle both UUID-based customerIds and string-based customerIds (like usernames)
+            boolean isAuthorized = false;
+
+            try {
+                // Try UUID comparison first
+                java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
+                isAuthorized = exception.getCustomerId() != null && customerUuid.equals(exception.getCustomerId());
+            } catch (IllegalArgumentException e) {
+                // If customerId is not a UUID (e.g., username), verify by checking if the order belongs to this customer
+                log.info("Customer BFF: customerId '{}' is not a UUID, checking order ownership", customerId);
+                try {
+                    OrderResponse order = orderService.getById(exception.getOrderId());
+                    isAuthorized = order.getCustomerId() != null && customerId.equals(order.getCustomerId());
+                } catch (Exception ex) {
+                    log.error("Customer BFF: Failed to verify order ownership: {}", ex.getMessage());
+                    isAuthorized = false;
+                }
+            }
+
+            if (!isAuthorized) {
+                log.warn("Customer {} attempted to access exception {} (exception customerId: {})",
                         customerId, id, exception.getCustomerId());
                 throw new RuntimeException("Access denied: Exception does not belong to this customer");
             }
-            
+
             log.info("Customer BFF: Successfully fetched exception {}", id);
             return ResponseEntity.ok(exception);
         } catch (Exception e) {
@@ -362,33 +388,33 @@ public class CustomerBffController {
             @Valid @RequestBody DeliveryExceptionRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         try {
-            String customerUsername = extractCustomerId(jwt);
-            log.info("Customer BFF: Customer {} creating new delivery exception for order {}", 
-                    customerUsername, request.getOrderId());
-            
+            String customerId = extractCustomerId(jwt);
+            log.info("Customer BFF: Customer {} creating new delivery exception for order {}",
+                    customerId, request.getOrderId());
+
             // Security: Verify that the order belongs to this customer before creating exception
             OrderResponse order = orderService.getById(request.getOrderId());
-            log.info("Customer BFF: Order {} has customerId: {}", request.getOrderId(), order.getCustomerId());
-            log.info("Customer BFF: Comparing customer username {} with order customerId {}", 
-                    customerUsername, order.getCustomerId());
-            
-            // Orders store username in customer_id field, not UUID
-            if (order.getCustomerId() == null || !customerUsername.equals(order.getCustomerId())) {
-                log.warn("Customer {} attempted to create exception for order {} (order customerId: {})", 
-                        customerUsername, request.getOrderId(), order.getCustomerId());
+            if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
+                log.warn("Customer {} attempted to create exception for order {} (order customerId: {})",
+                        customerId, request.getOrderId(), order.getCustomerId());
                 throw new RuntimeException("Access denied: Cannot create exception for orders that don't belong to you");
             }
-            
-            // Get customer UUID for the exception record
-            java.util.UUID customerUUID = getCustomerUUID(customerUsername);
-            log.info("Customer BFF: Resolved UUID {} for username {}", customerUUID, customerUsername);
-            
+
             // Set customer-specific fields (security: prevent customers from impersonating)
-            request.setCustomerId(customerUUID);
-            request.setReportedBy(customerUUID);
+            // Only set UUID fields if customerId is a valid UUID
+            try {
+                java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
+                request.setCustomerId(customerUuid);
+                request.setReportedBy(customerUuid);
+            } catch (IllegalArgumentException e) {
+                log.warn("Customer BFF: customerId '{}' is not a valid UUID, setting UUID fields to null", customerId);
+                request.setCustomerId(null);
+                request.setReportedBy(null);
+            }
+
             request.setCustomerReported(true);
             request.setSource(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source.CUSTOMER);
-            
+
             // Create the exception via business layer
             DeliveryExceptionResponse response = exceptionService.create(request);
             

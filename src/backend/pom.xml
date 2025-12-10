@@ -240,6 +240,18 @@
 			<artifactId>layout</artifactId>
 			<version>7.2.5</version>
 		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>io</artifactId>
+			<version>7.2.5</version>
+		</dependency>
+
+		<!-- Chart Generation -->
+		<dependency>
+			<groupId>org.jfree</groupId>
+			<artifactId>jfreechart</artifactId>
+			<version>1.5.4</version>
+		</dependency>
 
         <!-- ZXing for QR code generation -->
         <dependency>

@@ -35,7 +35,8 @@ export interface SupportTicket {
   updatedAt: Date
 }
 
-export interface TicketWithDetails extends SupportTicket {
+export interface TicketWithDetails extends Omit<SupportTicket, 'customerId'> {
+  customerId: string | null
   customerName?: string
   customerEmail?: string
   category?: string
