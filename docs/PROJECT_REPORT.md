@@ -2904,58 +2904,31 @@ Spring Security's role checking automatically:
 
 Some users may have multiple roles assigned (e.g., a Logistics Manager who also acts as Warehouse Staff). In such cases, the user can access all endpoints corresponding to any of their assigned roles. The Admin Console frontend adapts its interface to show all features available to the user's combined role set, while the Customer Portal and Driver PWA are designed for single-role use.
 
----
+**Request Flow and Security Enforcement**
 
-**[FIGURE 8.2: BFF Access Control Architecture]**
+The complete request flow through the BFF security architecture follows this sequence:
 
-Create an architecture diagram showing the complete BFF security pattern with the following components:
+1. **Frontend Request**: A frontend application (Admin Console, Customer Portal, Driver PWA, or Landing Page) sends an HTTP request to an endpoint. Authenticated requests include the access token in the Authorization header: `Authorization: Bearer <access_token>`.
 
-**Layout**: Layered architecture diagram with four main horizontal layers plus external services at bottom
+2. **Nginx Routing**: The Nginx reverse proxy (port 80/443) receives the request and routes it to the Spring Boot backend based on the URL path pattern.
 
-**Layer 1 - Frontend Applications (Top)**:
-- Landing Page (Public Entry Point)
-- Admin Console (Logistics/Warehouse/CSR interfaces)
-- Customer Portal
-- Driver PWA
-- Show all connecting to Nginx with Bearer tokens (except Landing Page which sends credentials)
+3. **Security Filter Chain Interception**: Before reaching any BFF controller, the request passes through Spring Security's filter chain:
+   - The `JwtDecoder` extracts and validates the JWT token, checking signature validity against Keycloak's public keys, verifying expiry time, and confirming the issuer matches the expected Keycloak realm
+   - If token validation fails, the request is rejected with 401 Unauthorized
+   - If validation succeeds, Spring Security extracts the user's roles from the token's `realm_access.roles` claim
 
-**Layer 2 - Nginx Reverse Proxy**:
-- Single Nginx component routing to backend
-- Port 80/443
+4. **Role-Based Authorization**: The Security Filter Chain checks whether the user's roles satisfy the endpoint's role requirement:
+   - If the user has the required role, the request proceeds to the BFF controller
+   - If the user lacks the required role, the request is rejected with 403 Forbidden
+   - Public endpoints (`/api/landing-page/auth/**`, `/api/public/**`) bypass role checking
 
-**Layer 3 - Spring Boot Backend - BFF Controllers (Presentation Layer)**:
-- Group BFF endpoints with visual distinction:
-  - `/api/landing-page/auth/**` - AuthController [🔓 PUBLIC]
-  - `/api/logistics/**` - LogisticsBffController [🔒 LOGISTICS_MANAGER]
-  - `/api/warehouse/**` - WarehouseBffController [🔒 WAREHOUSE_STAFF]
-  - `/api/customer-service/**` - CustomerServiceBffController [🔒 CUSTOMER_SERVICE_REP]
-  - `/api/driver/**` - DriverBffController [🔒 DRIVER]
-  - `/api/customer/**` - CustomerBffController [🔒 CUSTOMER]
-  - `/api/public/**` - Public Resources [🔓 PUBLIC]
-  - `/api/admin/**` - Domain Controllers [⚠️ DEV ONLY]
+5. **BFF Controller Processing**: The appropriate BFF controller receives the authenticated and authorized request, potentially performing additional resource ownership checks (e.g., verifying a customer can only access their own orders)
 
-**Security Filter Chain (Between Layer 3 & 4)**:
-- JWT Decoder component (validates token signature, expiry, issuer)
-- Spring Security RBAC component (checks role requirements)
-- Show flow: Request → JWT Validation → Role Check → Allow/Deny (403 Forbidden)
+6. **Business Layer Delegation**: The BFF controller calls the necessary business layer services (Order Module, Rate Carrier Module, Visibility Module, etc.) to fulfill the request, aggregating data and orchestrating multi-service operations as needed
 
-**Layer 4 - Business Layer Services**:
-- Order Module
-- Rate & Carrier Module
-- Reporting Module
-- Visibility Module
-- Notification Module
-- User Management Module
-- Show BFF controllers calling these services after authorization
+7. **Response Return**: The BFF controller returns the formatted response to the frontend via Nginx
 
-**External Services (Bottom)**:
-- Keycloak (only connected to AuthController, not frontends)
-
-**Key Visual Elements**:
-- Color code public endpoints (green), role-protected endpoints (red/protected), dev endpoints (orange/warning)
-- Use arrows to show request flow: Frontend → Nginx → BFF → Security Filter → Business Layer
-- Show 403 Forbidden rejection path from RBAC back to frontends
-- Emphasize that Keycloak only connects to backend, never to frontends directly
+This multi-layered security architecture ensures that authentication and authorization are enforced consistently across all frontend applications, with no requests reaching business logic without proper validation. The centralized enforcement point in the Security Filter Chain simplifies security management and reduces the risk of authorization bypass vulnerabilities.
 
 ---
 
