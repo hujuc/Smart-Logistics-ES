@@ -1,43 +1,169 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   User,
-  Bell,
-  Database,
-  Monitor,
   Save,
   CheckCircle2,
+  LogOut,
 } from "lucide-react"
+import { useUser, useUserActions } from "@/shared/hooks/use-user"
+import { clearAuth } from "@/shared/lib/auth"
 
 export default function SettingsPage() {
+  const user = useUser()
+  const { clearUser } = useUserActions()
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState({
     // User Settings
-    fullName: "John Doe",
-    email: "john.doe@slms.com",
-    role: "Warehouse Manager",
-    
-    // Notification Settings
-    emailNotifications: true,
-    pushNotifications: true,
-    scanAlerts: true,
-    
-    // Display Settings
-    theme: "light",
-    language: "English",
-    
-    // System Settings
-    autoBackup: true,
-    scannerSound: true,
+    fullName: "",
+    email: "",
+    role: "",
   })
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+  useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+        email: user.email,
+        role: user.roles?.[0] || "User",
+      }))
+    }
+  }, [user])
+
+  const handleSave = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Get access token
+      const accessToken = localStorage.getItem('access_token') || document.cookie
+        .split('; ')
+        .find(row => row.startsWith('access_token='))
+        ?.split('=')[1]
+
+      if (!accessToken) {
+        throw new Error('Not authenticated. Please log in again.')
+      }
+
+      // First, get current user info to retrieve user ID
+      const meResponse = await fetch('/api/users/me', {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!meResponse.ok) {
+        throw new Error('Failed to fetch user information')
+      }
+
+      const meData = await meResponse.json()
+      const username = meData.username
+
+      if (!username) {
+        throw new Error("Username not found")
+      }
+
+      // Search for user by username to get the actual Keycloak UUID
+      const searchResponse = await fetch(`/api/users/search?query=${encodeURIComponent(username)}`, {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!searchResponse.ok) {
+        throw new Error('Failed to search for user')
+      }
+
+      const searchResults = await searchResponse.json()
+      if (!searchResults || searchResults.length === 0) {
+        throw new Error('User not found')
+      }
+
+      const userId = searchResults[0].id
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
+      // Split full name into first and last name
+      const nameParts = settings.fullName.trim().split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: settings.email,
+          firstName: firstName,
+          lastName: lastName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to update profile')
+      }
+
+      // Update user data in localStorage
+      if (user) {
+        const updatedUser = {
+          ...user,
+          firstName: firstName,
+          lastName: lastName,
+          email: settings.email,
+        }
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+
+      // Reload the page to fetch updated user data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    setLoading(true)
+    try {
+      // Call logout endpoint
+      const response = await fetch('/api/landing-page/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        console.error('Logout failed:', response.statusText)
+      }
+    } catch (err) {
+      console.error('Error during logout:', err)
+    } finally {
+      // Clear client-side auth regardless of API response
+      clearAuth()
+      clearUser()
+      // Use window.location.href to redirect to landing page (outside basePath)
+      window.location.href = '/'
+    }
   }
 
   return (
@@ -47,12 +173,27 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-black">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your profile, notifications, and preferences</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          disabled={loading}
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
       </div>
 
       {saved && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600" />
           <p className="text-green-800 font-medium">Settings saved successfully!</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <p className="text-red-800 font-medium">{error}</p>
         </div>
       )}
 
@@ -111,183 +252,12 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Notification Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-            <Bell className="h-6 w-6 text-yellow-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">Notifications</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Email Notifications</p>
-              <p className="text-sm text-gray-600">
-                Receive updates and alerts via email
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.emailNotifications}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    emailNotifications: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Push Notifications</p>
-              <p className="text-sm text-gray-600">
-                Receive push notifications in the browser
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.pushNotifications}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    pushNotifications: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">QR Scan Alerts</p>
-              <p className="text-sm text-gray-600">
-                Get notified when packages are scanned
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.scanAlerts}
-                onChange={(e) =>
-                  setSettings({ ...settings, scanAlerts: e.target.checked })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Display Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Monitor className="h-6 w-6 text-purple-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">Display</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="theme">Theme</Label>
-            <select
-              id="theme"
-              value={settings.theme}
-              onChange={(e) =>
-                setSettings({ ...settings, theme: e.target.value })
-              }
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">Auto</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="language">Language</Label>
-            <select
-              id="language"
-              value={settings.language}
-              onChange={(e) =>
-                setSettings({ ...settings, language: e.target.value })
-              }
-              className="mt-2 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* System Settings */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-            <Database className="h-6 w-6 text-green-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">System</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Auto Backup</p>
-              <p className="text-sm text-gray-600">
-                Automatically backup data daily
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.autoBackup}
-                onChange={(e) =>
-                  setSettings({ ...settings, autoBackup: e.target.checked })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <p className="font-medium text-black">Scanner Sound</p>
-              <p className="text-sm text-gray-600">
-                Play sound when QR code is scanned
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.scannerSound}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    scannerSound: e.target.checked,
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
       {/* Save Button */}
       <div className="flex justify-end gap-3">
-        <Button variant="outline">Cancel</Button>
-        <Button onClick={handleSave}>
+        <Button variant="outline" disabled={loading}>Cancel</Button>
+        <Button onClick={handleSave} disabled={loading}>
           <Save className="mr-2 h-4 w-4" />
-          Save Settings
+          {loading ? "Saving..." : "Save Settings"}
         </Button>
       </div>
     </div>
