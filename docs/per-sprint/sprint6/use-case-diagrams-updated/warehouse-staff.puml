@@ -1,0 +1,41 @@
+@startuml warehouseStaffUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Warehouse Staff" as WS
+
+rectangle "SLMS System" {
+  (Login to System) as UC_Login
+  
+  (US4: Generate Shipping Labels & Documents) as UC_GenerateDocs
+  (Select Order) as UC_SelectOrder
+  (Generate Shipping Label) as UC_Label
+  (Generate Packing Slip) as UC_PackingSlip
+  (Generate Carrier Manifest) as UC_Manifest
+  
+  (US5: Confirm Carrier Pickup) as UC_ConfirmPickup
+  (Select Orders for Pickup) as UC_SelectOrders
+  (Mark as Collected) as UC_MarkCollected
+}
+
+WS --> UC_GenerateDocs
+WS --> UC_ConfirmPickup
+
+' Includes: login and sub-flows
+UC_GenerateDocs ..> UC_Login : <<include>>
+UC_ConfirmPickup ..> UC_Login : <<include>>
+
+UC_GenerateDocs ..> UC_SelectOrder : <<include>>
+UC_GenerateDocs ..> UC_Label : <<include>>
+UC_GenerateDocs ..> UC_PackingSlip : <<include>>
+UC_GenerateDocs ..> UC_Manifest : <<include>>
+
+UC_ConfirmPickup ..> UC_SelectOrders : <<include>>
+UC_ConfirmPickup ..> UC_MarkCollected : <<include>>
+
+@enduml

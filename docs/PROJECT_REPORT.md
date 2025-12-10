@@ -987,35 +987,408 @@ Technical Notes
 
 ## 4.4 Feature Prioritization
 
-**Topics to cover:**
-- Completed: 12 stories (67%)
-- In Progress: 5 stories (28%)
-- Pending: 1 story (5%)
-- Sprint-by-sprint feature delivery
-- Rationale for prioritization
+This section outlines the prioritization strategy for SLMS features across the six-sprint development cycle. The prioritization approach balanced business value, technical dependencies, risk mitigation, and stakeholder needs to deliver incremental value while building a solid technical foundation.
 
-**Sprint breakdown:**
-- Sprint 1: Foundation (architecture, data model, basic order management)
-- Sprint 2: Core features (order processing, carrier integration, personas)
-- Sprint 3: Carrier module, rate comparison
-- Sprint 4: Observability, AWS deployment, shipment documents
-- Sprint 5+: Advanced features (chatbot, reporting, etc.)
+**Reference:** `docs/per-sprint/sprint1/epic-&-sprint-planning.md`
 
-**References:**
-- `docs/per-sprint/sprint1/epic-&-sprint-planning.md`
-- Sprint documentation in `docs/per-sprint/`
+### 4.4.1 Current Implementation Status
+
+As of Sprint 6 completion, the SLMS backlog stands at:
+
+**Completed Stories: 18 (100%)**
+- US1: Daily KPI monitoring (João - Logistics Manager)
+- US2: Carrier comparison (João - Logistics Manager)
+- US3: Performance reporting (João - Logistics Manager)
+- US4: Generating shipping labels (Ana - Warehouse Staff)
+- US5: Confirming carrier pickup (Ana - Warehouse Staff)
+- US6: Quick order status lookup (Rita - Customer Service)
+- US7: Resolving delivery issues (Rita - Customer Service)
+- US8: Handling customer-reported issues (Rita - Customer Service)
+- US9: Viewing delivery manifest (Carlos - Driver)
+- US10: Receiving optimized routes (Carlos - Driver)
+- US11: Recording proof of delivery (Carlos - Driver)
+- US12: Reporting delivery exceptions (Carlos - Driver)
+- US13: Creating new order (Mariana - Customer)
+- US14: Creating account (Mariana - Customer)
+- US15: Logging in (Mariana - Customer)
+- US16: Receiving automatic notifications (Mariana - Customer)
+- US17: Reporting delivery issue (Mariana - Customer)
+- US18: AI Assistant for contextual help (All Users)
+
+### 4.4.2 Epic-Based Prioritization Framework
+
+The SLMS feature set was organized into seven epics, each representing a distinct business domain. Epic prioritization followed a dependency-aware sequencing strategy:
+
+**E1 - Order & Shipment Management (Priority: Critical - Sprint 1-2)**
+- **User Stories:** US4 (warehouse label generation), US5 (pickup confirmation), US13 (customer order creation)
+- **Business Rationale:** Order management represents the core operational workflow. Without the ability to create, document, and track orders, no other system functionality provides value. This epic establishes the foundational data model and workflows upon which all other features depend.
+- **Technical Dependencies:** Database schema, authentication, basic CRUD operations
+
+**E2 - Carrier Integration & Rate Management (Priority: Critical - Sprint 2-3)**
+- **User Stories:** US2 (carrier comparison)
+- **Business Rationale:** Multi-carrier support differentiates SLMS from single-carrier solutions and enables cost optimization—a primary value proposition for logistics managers. Rate comparison requires integration with external carrier APIs (ShipEngine, Shippo), establishing patterns for all future third-party integrations.
+- **Technical Dependencies:** E1 (orders must exist before carrier assignment), external API client architecture
+
+**E5 - Reporting & Analytics (Priority: High - Sprint 1, 6)**
+- **User Stories:** US1 (KPI dashboard), US3 (report export)
+- **Business Rationale:** Management visibility and data-driven decision-making justify system investment. Early dashboard implementation (Sprint 1) provided stakeholder visibility into development progress. Full reporting capabilities (Sprint 6) leverage accumulated operational data.
+- **Technical Dependencies:** E1 (requires order/shipment data), time-series data accumulation
+
+**E3 - Tracking & Visibility (Priority: High - Sprint 2-3)**
+- **User Stories:** US6 (CSR status lookup), US13 (customer order creation), US17 (customer issue reporting)
+- **Business Rationale:** Customer service efficiency and end-customer satisfaction depend on real-time visibility. Tracking capabilities reduce support call volume and enable proactive exception management.
+- **Technical Dependencies:** E1 (order events), E2 (carrier status updates)
+
+**E7 - Customer Portal (Priority: High - Sprint 2, 5-6)**
+- **User Stories:** US13 (order creation), US14 (account creation), US15 (login), US17 (issue reporting)
+- **Business Rationale:** Self-service capabilities reduce operational overhead and meet modern customer expectations for delivery transparency. Progressive enhancement across sprints balances early availability with feature richness.
+- **Technical Dependencies:** Keycloak integration (Sprint 1), E1 (order data), E3 (tracking)
+
+**E4 - Route Optimization & Driver Support (Priority: Medium - Sprint 4-5)**
+- **User Stories:** US9 (manifest), US10 (route optimization), US11 (POD), US12 (exception reporting)
+- **Business Rationale:** Driver productivity and last-mile efficiency represent significant cost drivers but require operational workflows to be established first. Mobile application development and route optimization algorithms justify later-sprint placement.
+- **Technical Dependencies:** E1 (shipment data), external mapping APIs (Google Maps/OSRM)
+
+**E6 - Notifications & Alerts (Priority: Medium - Sprint 5-6)**
+- **User Stories:** US16 (automatic notifications), US8 (customer-reported issues)
+- **Business Rationale:** Proactive communication enhances customer experience but represents a "nice-to-have" rather than "must-have" for initial system viability. Notification infrastructure benefits from mature order workflows to avoid alert fatigue.
+- **Technical Dependencies:** E1 (order events), E3 (status transitions), email/SMS gateway integration
+
+**E8 - AI & Advanced Features (Priority: Low - Sprint 4-6)**
+- **User Stories:** US18 (AI assistant)
+- **Business Rationale:** AI-powered contextual help improves user experience and reduces training overhead but provides incremental value rather than core functionality. Implementation leverages modern LLM capabilities (Gemini API) and vector databases (Pinecone).
+- **Technical Dependencies:** Comprehensive documentation, role-based content, mature UI components
+
+### 4.4.3 Sprint-by-Sprint Feature Delivery
+
+The six-sprint development timeline strategically sequenced feature delivery to balance technical risk, business value, and stakeholder feedback opportunities.
+
+#### Sprint 1 (01 Oct - 14 Oct): Technical Foundation & Architecture
+**Objective:** Establish development infrastructure and architectural decisions
+
+**Deliverables:**
+- Repository setup with CI/CD pipeline (GitHub Actions)
+- Architecture definition (BFF pattern, module structure, technology stack)
+- Data model design (entities, relationships, Keycloak integration)
+- Development environment configuration (Docker Compose, Terraform)
+- Initial KPI dashboard stub (US1 - partial)
+
+**Rationale:** Investing in infrastructure, architecture, and tooling early prevents technical debt accumulation and enables parallel development in subsequent sprints. Architecture Decision Records (ADRs) documented key choices (Order-Shipment separation, external user management, module independence) to guide implementation consistency. Early technology validation (Spring Boot 3.x, Next.js 14, Terraform) reduced integration risks in later sprints.
+
+#### Sprint 2 (15 Oct - 28 Oct): First MVP - Order Management Core
+**Objective:** Deliver minimally functional order processing workflow
+
+**Completed User Stories:**
+- US4: Generating shipping labels (Ana - Warehouse)
+- US5: Confirming carrier pickup (Ana - Warehouse)
+- US13: Creating new order (Mariana - Customer)
+- US14: Creating account (Mariana - Customer)
+- US15: Logging in (Mariana - Customer)
+
+**Technical Achievements:**
+- Order Management module (create, read, update order lifecycle)
+- Warehouse Staff interface (order creation, label generation, pickup confirmation)
+- Customer Portal foundation (authentication, basic order creation)
+- Keycloak realm configuration with role-based access control
+- PDF generation for shipping labels (Apache PDFBox)
+
+**Rationale:** Sprint 2 targeted the highest-priority epic (E1) to establish core business workflows. Delivering a functional order creation and documentation pipeline enabled early stakeholder validation and provided a foundation for subsequent carrier integration and tracking features. Warehouse staff could begin using the system for order documentation, providing real feedback to inform Sprint 3 priorities.
+
+#### Sprint 3 (29 Oct - 11 Nov): Carrier Integration & Multi-Carrier Support
+**Objective:** Enable carrier selection and rate comparison
+
+**Completed User Stories:**
+- US2: Carrier comparison for new shipments (João - Logistics Manager)
+- US6: Quick order status lookup (Rita - Customer Service)
+
+**Technical Achievements:**
+- Carrier Management module (CRUD operations, carrier entity)
+- ShipEngine API integration (carrier list, service levels, rate retrieval)
+- Shippo API integration (carrier accounts, address validation, rate calculation)
+- Carrier synchronization service (merge external API data, filter ShipEngine-enabled carriers)
+- Customer Service Representative interface (order search, status display)
+- Rate comparison algorithms (cost, transit time, service level analysis)
+
+**Rationale:** Multi-carrier support represents a core value proposition differentiating SLMS from single-carrier solutions. Sprint 3's focus on carrier integration (E2) unlocked cost optimization capabilities for logistics managers while establishing reusable patterns for external API integration. The carrier synchronization strategy (local database with external API references) balanced performance (local queries) with data freshness (on-demand API calls for rates).
+
+#### Sprint 4 (12 Nov - 25 Nov): Infrastructure, Observability & Shipment Documents
+**Objective:** Production-readiness and operational visibility
+
+**Completed User Stories:**
+- US11: Recording proof of delivery (Carlos - Driver)
+- US1: Daily KPI monitoring (João - Logistics Manager - completion)
+
+**Technical Achievements:**
+- AWS deployment infrastructure (Terraform IaC for EC2, RDS, S3, VPC)
+- Observability stack (Prometheus metrics, Grafana dashboards, structured logging)
+- Health check endpoints (application, database, external API connectivity)
+- Shipment document generation (MinIO S3-compatible storage for PDFs)
+- Driver PWA foundation (proof of delivery photo upload)
+- Database migration system (Flyway for schema versioning)
+
+**Rationale:** Sprint 4 shifted focus from feature development to production readiness. Observability and infrastructure-as-code (IaC) enabled reliable deployment and operational monitoring, critical for system credibility and long-term maintainability. Early AWS deployment identified networking, security group, and database connectivity issues that would have been costly to resolve post-launch.
+
+#### Sprint 5 (26 Nov - 09 Dec): Customer Experience & Tracking Enhancements
+**Objective:** Enhance customer-facing features and issue resolution
+
+**Completed User Stories:**
+- US7: Resolving delivery issues (Rita - Customer Service)
+- US17: Reporting delivery issue (Mariana - Customer)
+- US3: Generating performance reports (João - Logistics Manager)
+
+**Technical Achievements:**
+- DeliveryException module (exception creation, assignment, resolution workflow)
+- Customer issue reporting interface (exception form, severity selection)
+- CSR exception management dashboard (assignment, resolution notes, SLA tracking)
+- Report export functionality (PDF, Excel generation for logistics analytics)
+- Frontend observability (error tracking, performance monitoring)
+- Customer portal issue reporting integration
+
+**Rationale:** Sprint 5 addressed the complete exception management lifecycle (E6 partial), closing the loop between customer problem reporting and CSR resolution. Performance reporting capabilities (E5 completion) provided logistics managers with exportable analytics for strategic decision-making. Customer service representatives validated exception workflows, requesting SLA deadline tracking and resolution history—features incorporated in final implementation.
+
+#### Sprint 6 (10 Dec - 16 Dec): AI Assistant & Final Refinements
+**Objective:** Advanced features and system polish
+
+**Completed User Stories:**
+- US18: AI Assistant for contextual help (All Users - NEW)
+
+**In Progress (Partial Implementation):**
+- US8: Handling customer-reported issues (Rita)
+- US9: Viewing delivery manifest (Carlos)
+- US10: Receiving optimized routes (Carlos)
+- US12: Reporting delivery exceptions (Carlos)
+- US16: Receiving automatic notifications (Mariana)
+
+**Technical Achievements:**
+- Chatbot module (Gemini LLM integration, Pinecone vector database)
+- Role-based contextual help (frontend-specific, route-aware content filtering)
+- Multilingual support (Portuguese/English documentation)
+- Semantic search for natural language queries
+- Chat widget integration across all four frontends
+- Documentation vectorization and embedding pipeline
+
+**Rationale:** Sprint 6 introduced AI-powered assistance (E8) to reduce user training overhead and improve self-service capabilities. The chatbot leverages comprehensive system documentation accumulated across previous sprints, providing role-specific, contextual guidance. US16 (real-time GPS tracking) was descoped due to complexity (21 story points) and time constraints. The existing tracking capabilities (order status, event history) provide 80% of customer needs without requiring complex GPS integration and real-time map rendering.
 
 ## 4.5 Use Case Diagrams
 
-**Diagrams to include:**
-- `docs/per-sprint/sprint2/use-case-diagrams/slms.png` (overall system)
-- `docs/per-sprint/sprint2/use-case-diagrams/logistics-manager.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/warehouse-staff.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/customer-service-representative.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/driver-carrier.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/customer.png`
+This section presents the use case diagrams that model the functional requirements of the SLMS platform from the perspective of each actor (persona). These diagrams capture the interactions between users and the system, illustrating the key use cases, their relationships (include, extend), and cross-module dependencies that enable end-to-end logistics workflows.
 
----
+Use case diagrams serve multiple purposes in the SLMS documentation:
+- **Requirements Traceability:** Each use case maps directly to one or more user stories documented in Section 4.3
+- **System Boundary Definition:** Diagrams clarify what functionality is within SLMS scope versus external systems
+- **Actor Interaction Modeling:** Visual representation of how different personas engage with system modules
+- **Architectural Alignment:** Use case organization reflects the modular architecture defined in Section 3
+
+**Reference:** `docs/per-sprint/sprint6/use-case-diagrams-updated/` - PlantUML source files and generated diagrams
+
+### 4.5.1 Overall System Use Case Diagram
+
+The global SLMS use case diagram provides a high-level view of all actors, their primary use cases, and the key cross-module interactions that enable collaborative logistics workflows. This diagram illustrates how the five personas interact with their respective system modules while maintaining cohesive end-to-end order fulfillment processes.
+
+![SLMS Global Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/slms.png)
+
+**Key Observations:**
+
+**Module Organization:** The diagram organizes use cases into six domain-specific packages, each corresponding to a business module or cross-cutting concern:
+- **Logistics Management Module:** Strategic oversight and carrier selection (João - Logistics Manager) - US1, US2, US3
+- **Warehouse Operations Module:** Order preparation and fulfillment (Ana - Warehouse Staff) - US4, US5
+- **Customer Service Module:** Exception management and customer support (Rita - CSR) - US6, US7, US8
+- **Driver/Carrier Mobile Module:** Last-mile delivery execution (Carlos - Driver) - US9, US10, US11, US12
+- **Customer Tracking Portal:** Self-service order management and tracking (Mariana - Customer) - US13, US14, US15, US16, US17
+- **Cross-Role Features:** AI-powered assistance available to all users (All Users) - US18
+
+**User Story Traceability:** Each use case is explicitly labeled with its corresponding user story number (US1-US18), ensuring complete traceability between requirements documentation (Section 4.3) and functional design. This mapping enables stakeholders to validate that all committed user stories have corresponding system functionality.
+
+**Cross-Module Dependencies:** Critical workflow integrations are modeled through inter-use case relationships:
+- **US17 (Report Delivery Issue) → US8 (Manage Customer-Reported Issues):** Customer-reported problems trigger CSR notifications
+- **US12 (Report Delivery Exception) → US7 (Handle Delivery Exceptions):** Driver-reported delivery failures create exception workflows
+- **US5 (Confirm Carrier Pickup) → US9 (View Delivery Manifest):** Warehouse pickup confirmation generates driver delivery manifests
+- **US11 (Record Proof of Delivery) → US16 (Receive Automatic Notifications):** Delivery completion triggers customer status notifications
+- **US13 (Create New Order) → US16 (Receive Automatic Notifications):** Order creation enables customer tracking and notification enrollment
+- **US3 (Generate Reports) → US7 (Handle Delivery Exceptions):** Analytics include exception metrics for performance evaluation
+
+**Role-Based Access Control:** Each persona interacts exclusively with their designated module, enforcing role-based access control and ensuring users only access functionality appropriate to their responsibilities. This separation aligns with the Keycloak role mapping (MANAGER, WAREHOUSE, CSR, DRIVER, CUSTOMER) defined in the security architecture.
+
+**AI Assistant Accessibility:** US18 (AI Assistant for Contextual Help) is uniquely modeled as accessible to all five personas, reflecting its cross-role nature. The diagram shows direct associations from every actor to this use case, emphasizing the chatbot's role as a universal support mechanism.
+
+**System Boundary Definition:** The diagram establishes clear boundaries for SLMS functionality. External carrier APIs (ShipEngine, Shippo), authentication services (Keycloak), and notification gateways are abstracted as system components rather than explicit actors, focusing the diagram on user-facing use cases.
+
+### 4.5.2 Logistics Manager Use Case Diagram
+
+The Logistics Manager diagram details the analytical and strategic workflows for João Ferreira's persona, focusing on KPI monitoring, carrier selection, and performance reporting capabilities.
+
+![Logistics Manager Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/logistics-manager.png)
+
+**Primary Use Cases:**
+- **US1: Monitor Transportation KPIs** - Access dashboard showing on-time delivery rates, shipping costs, and carrier performance metrics
+- **US2: Compare Carriers for Shipment** - Evaluate carrier options based on cost, transit time, and service levels to select optimal provider
+- **US3: Generate & Export Reports** - Create and export logistics performance reports for management presentation
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - enforces authentication before accessing analytics
+- **US1 (Monitor KPIs)** includes **View Dashboard** - KPI access requires dashboard interface navigation
+- **US2 (Compare Carriers)** includes **View Carrier Comparison Table** and **Assign Carrier to Shipment** - carrier selection workflow requires data presentation and selection confirmation
+- **US3 (Generate Reports)** includes **Select Report Type** - report generation requires user specification of content scope
+
+**<<extend>> Extensions:**
+- **US3 (Generate Reports)** extends to **View Generated Report** - optional preview before export
+- **US3 (Generate Reports)** extends to **Export Report** - optional download in PDF/Excel formats
+
+**Architectural Notes:**
+This diagram maps to the **Logistics Analytics Module** in the backend architecture. The "View Dashboard" and "View Carrier Comparison Table" use cases correspond to dedicated BFF (Backend-for-Frontend) endpoints that aggregate data from Order, Carrier, and Shipment modules to provide consolidated management views.
+
+### 4.5.3 Warehouse Staff Use Case Diagram
+
+The Warehouse Staff diagram models the operational workflows for Ana Martins' persona, capturing label generation and pickup confirmation processes that represent the transition point from order documentation to physical shipment.
+
+![Warehouse Staff Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/warehouse-staff.png)
+
+**Primary Use Cases:**
+- **US4: Generate Shipping Labels & Documents** - Produce carrier-specific labels, packing slips, and shipping manifests for order preparation
+- **US5: Confirm Carrier Pickup** - Update system when carrier collects packages, triggering status transitions and manifest generation
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - role-based authentication required
+- **US4 (Generate Labels & Documents)** includes **Select Order**, **Generate Shipping Label**, **Generate Packing Slip**, and **Generate Carrier Manifest** - comprehensive label production workflow requires order selection and multi-document rendering
+- **US5 (Confirm Pickup)** includes **Select Orders for Pickup** and **Mark as Collected** - pickup confirmation workflow requires selection and status update
+
+**Integration Points:**
+- **US5 (Confirm Carrier Pickup)** has a cross-module dependency on the Driver Module's **US9 (View Delivery Manifest)**. When warehouse staff confirm carrier pickup, the system generates delivery manifests accessible through the driver mobile application.
+- Order creation (performed either by warehouse staff or through **US13** by customers) enables subsequent label generation through **US4**.
+
+**Technical Implementation:**
+The document generation sub-use cases leverage Apache PDFBox for dynamic label creation, incorporating QR codes for driver confirmation workflows and carrier-specific formatting for compatibility with shipping provider requirements. Documents are stored in MinIO object storage for retrieval and reprinting.
+
+### 4.5.4 Customer Service Representative Use Case Diagram
+
+The Customer Service Representative diagram illustrates Rita Lopes' exception management and customer support workflows, focusing on rapid order status access and structured problem resolution.
+
+![Customer Service Representative Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/customer-service-representative.png)
+
+**Primary Use Cases:**
+- **US6: Search Order Status** - Quick order lookup by tracking number to provide immediate customer answers
+- **US7: Handle Delivery Exceptions** - Manage driver-reported and system-detected delivery problems through assignment and resolution workflows
+- **US8: Manage Customer-Reported Issues** - Process customer-initiated problem reports from the tracking portal
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - CSR authentication required
+- **US6 (Search Order Status)** includes **Enter Order Number** and **Display Real-Time Order Status** - status lookup requires input and data presentation
+- **US7 (Handle Delivery Exceptions)** includes **Search Order with Active Exception**, **View Exception Details**, and **Record Resolution Notes** - comprehensive exception workflow
+- **US8 (Manage Customer-Reported Issues)** includes **Receive Issue Notification**, **Contact Customer / Update Order**, and **Log Resolution Notes and Close Issue** - structured issue handling from notification to closure
+
+**Cross-Module Integration:**
+- **US8 (Manage Customer-Reported Issues)** receives inputs from the Customer Portal's **US17 (Report Delivery Issue)**, creating a bidirectional communication channel between customers and customer service.
+- **US7 (Handle Delivery Exceptions)** consumes data from the Driver Module's **US12 (Report Delivery Exception)**, enabling CSR intervention on failed delivery attempts.
+
+**Business Process Notes:**
+The diagram models a complete exception management lifecycle: detection (driver report via US12 or customer report via US17) → notification (CSR receives alert via US8) → investigation (view details, contact customer) → resolution (record notes) → closure (mark as resolved). This workflow supports SLA tracking and resolution history requirements documented in the DeliveryException entity design (Section 3.2).
+
+### 4.5.5 Driver/Carrier Use Case Diagram
+
+The Driver/Carrier diagram captures Carlos Silva's mobile application workflows for last-mile delivery execution, emphasizing manifest access, route optimization, proof of delivery, and exception reporting in field operations.
+
+![Driver/Carrier Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/driver-carrier.png)
+
+**Primary Use Cases:**
+- **US9: View Delivery Manifest** - Access daily delivery list with package details, addresses, and priorities
+- **US10: Receive Optimized Delivery Route** - Obtain optimized delivery sequence for efficient route completion
+- **US11: Record Proof of Delivery (POD)** - Capture delivery confirmation through photo upload or digital signature
+- **US12: Report Delivery Exception** - Document failed delivery attempts with reason codes and contextual notes
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to Mobile App** - driver authentication on PWA
+- **US9 (View Delivery Manifest)** includes **Access Daily Schedule** and **View Delivery Manifest List** - manifest access workflow
+- **US10 (Receive Optimized Route)** includes **Request Optimized Route** and **Receive Route & Navigation Links** - route optimization request and response
+- **US11 (Record POD)** includes **Capture Signature or Photo** and **Submit Delivery Confirmation** - proof capture and status transition
+- **US12 (Report Exception)** includes **Select Exception Reason**, **Log Exception Details**, and **Update Order Status to Exception** - structured exception documentation
+
+**Technical Integration:**
+- **US10 (Receive Optimized Route)** integrates with external mapping APIs (Google Maps/OSRM) to calculate optimal delivery sequences based on geographic proximity and traffic conditions.
+- **US11 (Record POD)** leverages mobile device camera APIs and uploads images to MinIO object storage for permanent POD archival. The "Submit Delivery Confirmation" sub-use case triggers status updates that propagate to **US16 (Receive Automatic Notifications)** in the Customer Portal.
+- **US12 (Report Delivery Exception)** creates DeliveryException records that feed into **US7 (Handle Delivery Exceptions)** in the Customer Service Module, enabling CSR intervention.
+
+**Mobile-Specific Considerations:**
+The diagram models use cases specifically designed for mobile contexts:
+- Offline-capable manifest viewing (data cached on device for connectivity-challenged environments)
+- Photo capture with GPS coordinates for location verification and dispute resolution
+- Simplified exception reporting with predefined reason codes (RECIPIENT_ABSENT, WRONG_ADDRESS, ACCESS_DENIED, PACKAGE_DAMAGED)
+
+**Workflow Separation:**
+Unlike the Sprint 2 diagram which combined US9 and US10 into a single "View Manifest & Receive Optimized Route" use case, the updated diagram clearly separates these as distinct user interactions. Drivers first view their manifest (US9) and then optionally request route optimization (US10), reflecting the actual user workflow in the mobile PWA.
+
+### 4.5.6 Customer Use Case Diagram
+
+The Customer diagram details Mariana Costa's self-service capabilities through the public-facing customer portal, emphasizing order creation, account management, tracking, notifications, and issue reporting.
+
+![Customer Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/customer.png)
+
+**Primary Use Cases:**
+- **US13: Create New Order** - Self-service order creation through the customer portal
+- **US14: Create Account** - Self-registration through Keycloak-managed account creation
+- **US15: Login to Portal** - Secure authentication for order access
+- **US16: Receive Automatic Notifications** - Passive receipt of email/SMS alerts on order status changes
+- **US17: Report Delivery Issue** - Submit problems directly to customer service through integrated issue reporting
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- **US13 (Create New Order)** includes **Access Order Creation Form**, **Fill Order Details**, and **Submit Order** - complete order creation workflow from form access to submission
+- **US14 (Create Account)** includes **Open Registration Page**, **Complete Registration**, and **Redirect to Customer Portal** - multi-step registration flow
+- **US15 (Login to Portal)** includes **Access Login Page** and **Authenticate User** - Keycloak OAuth2 authentication
+- **US16 (Receive Notifications)** includes **Detect Shipment Status Change** and **Send Email/SMS Notification** - automated notification pipeline
+- **US17 (Report Issue)** includes **Open Order Details**, **Submit Delivery Issue Form**, and **Register Exception and Notify CSR** - issue creation and CSR notification
+
+**Authentication Architecture:**
+The **US14 (Create Account)** and **US15 (Login to Portal)** use cases are fully delegated to Keycloak, aligning with the external user management architectural decision (Section 3.4.2). The SLMS backend only stores customer UUIDs rather than managing authentication credentials directly. This design ensures secure, industry-standard authentication while maintaining separation of concerns.
+
+**Order Management Capabilities:**
+**US13 (Create New Order)** represents a Sprint 6 addition to the customer portal, enabling self-service order creation. Previously, orders could only be created by warehouse staff. This enhancement reduces warehouse workload and empowers customers with autonomy over their shipping needs. The "Fill Order Details" sub-use case includes validation for shipping addresses, warehouse selection, and tracking number generation.
+
+**Notification Mechanism:**
+**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and triggers emails/SMS when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation (either through US13 or warehouse-created orders).
+
+**Integration with CSR Workflows:**
+**US17 (Report Delivery Issue)** creates a direct communication channel to the Customer Service Module. When customers submit issues, the "Register Exception and Notify CSR" sub-use case creates DeliveryException records visible in Rita's exception management dashboard (**US8: Manage Customer-Reported Issues**), enabling prompt follow-up and ensuring no customer issues are overlooked.
+
+**Diagram Evolution:**
+The updated diagram removes "Track Order in Real-Time" as a primary use case, as this functionality is now implicitly available through the customer portal's order history view rather than requiring a separate tracking number entry workflow. Order tracking is integrated into the authenticated customer experience rather than being a standalone public tracking portal feature.
+
+### 4.5.7 User Story to Use Case Mapping
+
+The table below provides complete traceability between user stories (Section 4.3) and use case diagrams, ensuring all 18 user stories are represented in the functional design:
+
+| User Story | Use Case Diagram | Use Case Name | Actor |
+|------------|------------------|---------------|-------|
+| US1 | Logistics Manager | Monitor Transportation KPIs | João (Logistics Manager) |
+| US2 | Logistics Manager | Compare Carriers for Shipment | João (Logistics Manager) |
+| US3 | Logistics Manager | Generate & Export Reports | João (Logistics Manager) |
+| US4 | Warehouse Staff | Generate Shipping Labels & Documents | Ana (Warehouse Staff) |
+| US5 | Warehouse Staff | Confirm Carrier Pickup | Ana (Warehouse Staff) |
+| US6 | Customer Service Rep | Search Order Status | Rita (CSR) |
+| US7 | Customer Service Rep | Handle Delivery Exceptions | Rita (CSR) |
+| US8 | Customer Service Rep | Manage Customer-Reported Issues | Rita (CSR) |
+| US9 | Driver/Carrier | View Delivery Manifest | Carlos (Driver) |
+| US10 | Driver/Carrier | Receive Optimized Delivery Route | Carlos (Driver) |
+| US11 | Driver/Carrier | Record Proof of Delivery (POD) | Carlos (Driver) |
+| US12 | Driver/Carrier | Report Delivery Exception | Carlos (Driver) |
+| US13 | Customer | Create New Order | Mariana (Customer) |
+| US14 | Customer | Create Account | Mariana (Customer) |
+| US15 | Customer | Login to Portal | Mariana (Customer) |
+| US16 | Customer | Receive Automatic Notifications | Mariana (Customer) |
+| US17 | Customer | Report Delivery Issue | Mariana (Customer) |
+| US18 | Global System | AI Assistant for Contextual Help | All Users (Cross-Role) |
+
+**Completeness Validation:** All 18 user stories have corresponding use cases in the diagrams, ensuring requirements-to-design traceability. The updated diagrams (Sprint 6) reflect the removal of GPS tracking (originally US16 in Sprint 2, renumbered in Sprint 6) and the addition of US18 (AI Assistant), US13 (Customer Order Creation), and the separation of driver manifest viewing (US9) from route optimization (US10).
+
+
 
 # 5. Developer Onboarding
 
@@ -1027,65 +1400,124 @@ Technical Notes
 
 ## 5.1 Prerequisites
 
-**Topics to cover:**
-- Java 21 (OpenJDK or Oracle)
-- Node.js 20+ and npm
-- Docker Engine 24+ and Docker Compose
-- Terraform 1.5+
-- Git
-- Make (for build automation)
-- IDE recommendations (IntelliJ IDEA, VS Code)
+Before starting development on SLMS, developers must install and configure the required software tools and ensure their development machine meets the minimum system requirements. This section outlines the necessary prerequisites for setting up a functional local development environment.
 
-**System requirements:**
-- 8GB RAM minimum (16GB recommended)
-- 20GB free disk space
-- Linux/macOS/Windows with WSL2
+### Required Software
+
+**Java 21:** The backend application is built with Java 21, leveraging modern language features including records, pattern matching, and virtual threads. Either OpenJDK or Oracle JDK distributions are supported. Verify installation with `java -version`, which should display Java 21 or higher.
+
+**Node.js 20+:** All four frontend applications require Node.js version 20 or later with the bundled npm package manager. The project uses Next.js 15 and React 19, both of which require modern Node.js versions. Verify installation with `node -v` (should show v20.x.x or higher) and `npm -v`.
+
+**Docker Engine 24+ and Docker Compose:** The entire SLMS stack runs in containers, making Docker essential for local development. Docker Compose orchestrates the multi-container environment including the backend application, four frontends, PostgreSQL database, Keycloak authentication server, MinIO object storage, Apache Kafka, and Nginx reverse proxy. Verify installation with `docker -v` and `docker compose version`.
+
+**Make:** The project uses Make for build automation and common development tasks. The Makefile provides convenient commands like `make up`, `make logs`, `make test-ci`, and `make clean` to manage the development workflow. Make is typically pre-installed on Linux and macOS systems; Windows users with WSL2 will have access through the Linux subsystem.
+
+**Git:** Version control and collaboration happen through Git. Clone the repository and manage branches using standard Git commands. Verify installation with `git --version`.
+
+### Optional but Recommended
+
+**Terraform 1.5+:** While the development environment uses Docker Compose, the production deployment leverages Terraform for infrastructure as code. Developers working on infrastructure changes or deployment automation should install Terraform. The `make up` command uses Terraform to provision infrastructure resources.
+
+**IDE Recommendations:** IntelliJ IDEA Ultimate provides excellent support for Spring Boot development with features like intelligent code completion, database tools, and integrated debugging. Visual Studio Code offers a lightweight alternative with strong TypeScript/React support through extensions. Both IDEs support the project's Java backend and Next.js frontends.
+
+### System Requirements
+
+**Memory:** Minimum 8GB RAM, with 16GB recommended. Running the full SLMS stack locally (backend, four frontends, PostgreSQL, Keycloak, Kafka, MinIO, Nginx) requires substantial memory. Development machines with 8GB can run the stack but may experience slowness when running tests or builds simultaneously.
+
+**Disk Space:** Allocate at least 20GB of free disk space to accommodate Docker images, database volumes, object storage, and build artifacts. The PostgreSQL data directory, MinIO storage buckets, and Maven/npm caches consume significant space over time.
+
+**Operating System:** Linux, macOS, or Windows with WSL2 (Windows Subsystem for Linux version 2). The Docker-based development environment ensures consistency across operating systems, though WSL2 is required for Windows users to achieve performance parity with native Unix systems. All shell scripts and Makefile commands assume a Unix-like environment.
 
 ## 5.2 Initial Environment Setup
 
-**Topics to cover:**
+This section provides a step-by-step guide to configure and launch the SLMS development environment on a local machine. The process assumes all prerequisites from Section 5.1 are already installed.
 
-**Step 1: Clone Repository**
+### Step 1: Clone the Repository
+
+Clone the SLMS repository from GitHub and navigate into the project directory:
+
 ```bash
 git clone https://github.com/detiuaveiro/group-project-es2526_304.git
 cd group-project-es2526_304
 ```
 
-**Step 2: Configure Backend Environment Variables**
-```bash
-cp src/backend/.env.example src/backend/.env
-# Edit .env file with:
-# - Database credentials
-# - Keycloak configuration
-# - MinIO settings
-# - Gemini API key
-# - Pinecone credentials
-```
+This downloads the complete codebase including backend, frontends, infrastructure definitions, and documentation.
 
-**Step 3: Configure Infrastructure Variables**
+### Step 2: Configure Environment Variables
+
+The system requires environment variables for external service integration and sensitive configuration. Copy the example environment file and customize it:
+
 ```bash
 cp infra/.env.example infra/.env
-# Edit with PostgreSQL, Keycloak, MinIO settings
 ```
 
-**Step 4: Create Docker Network**
-```bash
-docker network create slms-network
-```
+Edit `infra/.env` with a text editor to configure:
 
-**Step 5: Start Development Environment**
+- **Keycloak:** Admin credentials, realm name, and client configuration for OAuth 2.0 authentication
+- **MinIO:** Access keys and bucket names for S3-compatible object storage
+- **PostgreSQL:** Database name, username, and password
+- **API Keys:** 
+  - **Gemini API Key:** Required for AI chatbot functionality (obtain from Google AI Studio)
+  - **Pinecone API Key:** Required for vector search in chatbot (obtain from Pinecone console)
+  - **ShipEngine API Key:** Required for carrier integration (obtain from ShipEngine dashboard)
+
+The `.env.example` file includes placeholder values and comments explaining each variable. Sensitive values like API keys must never be committed to version control—the `.env` file is excluded via `.gitignore`.
+
+### Step 3: Start the Development Environment
+
+The project provides a simplified development workflow using Make. Start all services with a single command:
+
 ```bash
-make dev-up
-# OR for full Terraform deployment:
 make up
 ```
 
-**Step 6: Verify Installation**
+This command performs several automated steps:
+
+1. **Network Creation:** Creates the `slms-network` Docker network for inter-container communication
+2. **Infrastructure Provisioning:** Runs Terraform to provision PostgreSQL, Keycloak, MinIO, Kafka, and Nginx containers
+3. **Application Build:** Compiles the Spring Boot backend and builds all four Next.js frontend applications
+4. **Container Start:** Launches all application and infrastructure containers with proper dependency ordering
+
+The first execution takes 5-10 minutes as Docker downloads base images and builds application containers. Subsequent runs are faster as the system reuses existing containers when possible.
+
+**Alternative: Development-Only Mode**
+
+For developers working exclusively on frontend or backend code without infrastructure changes, a lightweight Docker Compose environment is available:
+
+```bash
+make dev-up
+```
+
+This bypasses Terraform and starts services using `docker-compose.dev.yml`, which is faster for rapid iteration cycles.
+
+### Step 4: Verify the Installation
+
+Confirm all services started successfully by checking container health status:
+
 ```bash
 make status
 ```
 
-**Reference:** `docs/handbook/dev-handbook.md` (Getting Started section)
+This displays the running state of all containers. All services should show as "healthy" or "running". If any container shows as "exited" or "unhealthy", inspect logs with `make logs SERVICE=<service-name>`.
+
+### Step 5: Access the Applications
+
+Once all services are running, access the applications through the Nginx reverse proxy:
+
+- **Landing Page:** http://localhost/
+- **Customer Portal:** http://localhost/customer/
+- **Admin Console:** http://localhost/admin/
+- **Driver PWA:** http://localhost/driver/
+
+The backend API is accessible at http://localhost/api/ and Keycloak at http://localhost/auth/.
+
+### Troubleshooting Common Setup Issues
+
+**Port Conflicts:** If port 80 or other required ports are already in use, the containers will fail to start. Check for conflicting services with `sudo lsof -i :80` (Linux/macOS) and stop them before retrying.
+
+**Out of Memory:** If containers crash or the system becomes unresponsive, Docker may not have sufficient memory allocated. Increase Docker's memory limit to at least 6GB through Docker Desktop settings (Preferences → Resources → Memory).
+
+**API Key Errors:** If the chatbot module fails to start, verify that Gemini and Pinecone API keys are correctly configured in `infra/.env`. Missing or invalid keys prevent the chatbot service from initializing.
 
 ## 5.3 Project Structure Walkthrough
 
