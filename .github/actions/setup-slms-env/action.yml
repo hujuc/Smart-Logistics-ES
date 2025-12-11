@@ -300,6 +300,17 @@ runs:
 
         # MinIO Bucket Name (alias for MINIO_BUCKET)
         MINIO_BUCKET_NAME=${{ inputs.minio-bucket }}
+
+        # AI & Chatbot (Required for Spring context - dummy values in CI)
+        GEMINI_API_KEY=ci-dummy-gemini-key-12345
+        GEMINI_MODEL=gemini-2.0-flash
+        GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+        # Vector Database (Required for Spring context - dummy values in CI)
+        PINECONE_API_KEY=ci-dummy-pinecone-key-12345
+        PINECONE_HOST=https://ci-dummy-index-12345.svc.pinecone.io
+        PINECONE_INDEX=slms-chatbot
+        PINECONE_NAMESPACE=en-US
         EOF
         echo "✅ Generated infra/.env (CI mode)"
 

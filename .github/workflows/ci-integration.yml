@@ -3,8 +3,6 @@ name: CI - Integration & E2E Tests
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [fix/fixing_e2e]
 
 permissions:
   contents: read
@@ -154,6 +152,7 @@ jobs:
           # Wait for each service with appropriate timeouts
           wait_for_health "postgres" 90
           wait_for_health "keycloak" 240
+          wait_for_health "zookeeper" 60
           wait_for_health "minio" 90
           wait_for_health "kafka" 120
 
