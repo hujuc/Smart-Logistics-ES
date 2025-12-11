@@ -107,21 +107,44 @@ jobs:
 
       - name: Wait for services
         run: |
-          echo "Waiting for PostgreSQL..."
-          timeout 60 bash -c 'until docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml exec -T postgres pg_isready -U slms; do sleep 2; done'
-          
-          echo "Waiting for Keycloak..."
-          timeout 180 bash -c 'until curl -f http://localhost:28180/realms/slms 2>/dev/null | grep -q "realm"; do sleep 3; done'
-          
-          echo "Waiting for MinIO..."
-          timeout 60 bash -c 'until curl -f http://localhost:39000/minio/health/live 2>/dev/null; do sleep 2; done'
-          
-          echo "Waiting for Kafka..."
-          timeout 60 bash -c 'until docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml exec -T kafka kafka-broker-api-versions --bootstrap-server localhost:9092 2>/dev/null; do sleep 2; done'
-          
-          echo "All services are ready!"
-          echo "Waiting additional 5 seconds for stability..."
-          sleep 5
+          set -e
+          COMPOSE_FILES="-f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml"
+
+          echo "Checking service health status..."
+
+          # Function to wait for service health
+          wait_for_health() {
+            local service=$1
+            local timeout=$2
+            local elapsed=0
+
+            echo "Waiting for $service to be healthy (timeout: ${timeout}s)..."
+            while [ $elapsed -lt $timeout ]; do
+              health_status=$(docker compose $COMPOSE_FILES ps --format json $service | jq -r '.[0].Health // "unknown"')
+              if [ "$health_status" = "healthy" ]; then
+                echo "$service is healthy!"
+                return 0
+              fi
+              echo "   Status: $health_status (${elapsed}s elapsed)"
+              sleep 5
+              elapsed=$((elapsed + 5))
+            done
+
+            echo "$service failed to become healthy within ${timeout}s"
+            echo "Service logs:"
+            docker compose $COMPOSE_FILES logs --tail=50 $service
+            return 1
+          }
+
+          # Wait for each service with appropriate timeouts
+          wait_for_health "postgres" 90
+          wait_for_health "keycloak" 240
+          wait_for_health "minio" 90
+          wait_for_health "kafka" 120
+
+          echo "All services are healthy!"
+          echo "Waiting additional 10 seconds for stability..."
+          sleep 10
 
       - name: Run backend integration tests
         working-directory: src/backend
@@ -229,18 +252,35 @@ jobs:
 
       - name: Wait for services to be ready
         run: |
+          set -e
+
+          echo "Waiting for services to be ready for E2E tests..."
+
+          # Wait for Keycloak
           echo "Waiting for Keycloak..."
           timeout 180 bash -c 'until curl -f http://localhost:28180/realms/slms 2>/dev/null | grep -q "realm"; do sleep 3; done'
-          echo "Waiting additional 5 seconds for stability..."
-          sleep 5
-          
-          echo "Waiting for landing page..."
+          echo "Keycloak is ready!"
+
+          # Wait for Backend (CRITICAL - this was missing!)
+          echo "Waiting for Backend API (checking through nginx)..."
+          timeout 180 bash -c 'until curl -f http://localhost/actuator/health 2>/dev/null | grep -q "UP"; do echo "Backend not ready yet... (elapsed: $SECONDS seconds)"; sleep 5; done'
+          echo "Backend API is healthy!"
+
+          # Additional stability wait for backend
+          echo "Waiting 15 seconds for backend to stabilize..."
+          sleep 15
+
+          # Wait for Landing Page
+          echo "Waiting for Landing Page..."
           timeout 300 bash -c 'until curl -fsSL http://localhost/ > /dev/null; do sleep 5; done'
-          
-          echo "Waiting for admin console..."
+          echo "Landing Page is ready!"
+
+          # Wait for Admin Console
+          echo "Waiting for Admin Console..."
           timeout 300 bash -c 'until curl -fsSL http://localhost/admin/ > /dev/null; do sleep 5; done'
-          
-          echo "✅ All services are ready"
+          echo "Admin Console is ready!"
+
+          echo "All services are ready for E2E tests!"
 
       - name: Run E2E tests for ${{ matrix.app }}
         working-directory: src/frontend/${{ matrix.app }}
