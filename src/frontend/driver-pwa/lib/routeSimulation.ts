@@ -95,7 +95,7 @@ export class RouteSimulator {
 
     // Reset to start position
     if (this.route.length > 0 && this.callback) {
-      this.callback(this.route[0], 0);
+      this.callback(this.route[0], 0, 0);
     }
   }
 
@@ -146,7 +146,7 @@ export class RouteSimulator {
       // Reached the end
       this.isRunning = false;
       if (this.callback) {
-        this.callback(this.route[this.route.length - 1], 100);
+        this.callback(this.route[this.route.length - 1], 100, this.route.length - 1);
       }
     }
   };
@@ -169,7 +169,7 @@ export class RouteSimulator {
     const progress = (this.currentIndex / (this.route.length - 1)) * 100;
 
     if (this.callback) {
-      this.callback(currentPosition, progress);
+      this.callback(currentPosition, progress, this.currentIndex);
     }
   }
 }
