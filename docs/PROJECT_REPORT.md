@@ -32,8 +32,7 @@
 9. [AI-Powered Chatbot](#9-ai-powered-chatbot)
 10. [Testing & Quality Assurance](#10-testing--quality-assurance)
 11. [Observability & Monitoring](#11-observability--monitoring)
-12. [Lessons Learned & Future Work](#12-lessons-learned--future-work)
-13. [Conclusion](#13-conclusion)
+12. [Conclusion](#12-conclusion)
 
 ---
 
