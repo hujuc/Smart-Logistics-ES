@@ -557,7 +557,7 @@ function NavigationOptimizedContent() {
     }, [simulationProgress, totalDistance, totalDuration, routeGeometry]);
 
     const handleCenterLocation = () => {
-        if (map.current && mapReady) {
+        if (map.current && mapReady && currentLocation) {
             map.current.flyTo({
                 center: currentLocation,
                 zoom: 16,
