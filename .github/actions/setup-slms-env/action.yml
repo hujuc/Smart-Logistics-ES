@@ -301,20 +301,14 @@ runs:
         # MinIO Bucket Name (alias for MINIO_BUCKET)
         MINIO_BUCKET_NAME=${{ inputs.minio-bucket }}
 
-        # AI & Chatbot (Required for Spring context - dummy values in CI)
-        GEMINI_API_KEY=ci-dummy-gemini-key-12345
-        GEMINI_MODEL=gemini-2.0-flash
-        GEMINI_EMBEDDING_MODEL=text-embedding-004
-
-        # Vector Database (Required for Spring context - dummy values in CI)
-        PINECONE_API_KEY=ci-dummy-pinecone-key-12345
-        PINECONE_HOST=https://ci-dummy-index-12345.svc.pinecone.io
-        PINECONE_INDEX=slms-chatbot
-        PINECONE_NAMESPACE=en-US
-
-        # Chatbot Health Indicators (disabled in CI to avoid failures with dummy keys)
-        HEALTH_GEMINI_ENABLED=false
-        HEALTH_PINECONE_ENABLED=false
+        # AI & Vector Database (Optional - from GitHub secrets if available)
+        GEMINI_API_KEY=${{ inputs.gemini-api-key }}
+        GEMINI_MODEL=${{ inputs.gemini-model }}
+        GEMINI_EMBEDDING_MODEL=${{ inputs.gemini-embedding-model }}
+        PINECONE_API_KEY=${{ inputs.pinecone-api-key }}
+        PINECONE_HOST=${{ inputs.pinecone-host }}
+        PINECONE_INDEX=${{ inputs.pinecone-index }}
+        PINECONE_NAMESPACE=${{ inputs.pinecone-namespace }}
         EOF
         echo "✅ Generated infra/.env (CI mode)"
 

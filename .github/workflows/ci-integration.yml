@@ -39,6 +39,13 @@ env:
   KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
   KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
   KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
 
 jobs:
   backend-integration:
@@ -90,6 +97,13 @@ jobs:
           keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
           keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
           nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+          gemini-api-key: ${{ env.GEMINI_API_KEY }}
+          gemini-model: ${{ env.GEMINI_MODEL }}
+          gemini-embedding-model: ${{ env.GEMINI_EMBEDDING_MODEL }}
+          pinecone-api-key: ${{ env.PINECONE_API_KEY }}
+          pinecone-host: ${{ env.PINECONE_HOST }}
+          pinecone-index: ${{ env.PINECONE_INDEX }}
+          pinecone-namespace: ${{ env.PINECONE_NAMESPACE }}
 
       - name: Cleanup existing containers
         run: |
@@ -194,9 +208,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Temporarily only test admin-console while fixing auth issues in other apps
-        app: [admin-console]
-        # app: [admin-console, customer-portal, driver-pwa, landing-page]
+        app: [admin-console, customer-portal, driver-pwa, landing-page]
 
     env:
       CI: true
@@ -251,6 +263,13 @@ jobs:
           keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
           keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
           nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+          gemini-api-key: ${{ env.GEMINI_API_KEY }}
+          gemini-model: ${{ env.GEMINI_MODEL }}
+          gemini-embedding-model: ${{ env.GEMINI_EMBEDDING_MODEL }}
+          pinecone-api-key: ${{ env.PINECONE_API_KEY }}
+          pinecone-host: ${{ env.PINECONE_HOST }}
+          pinecone-index: ${{ env.PINECONE_INDEX }}
+          pinecone-namespace: ${{ env.PINECONE_NAMESPACE }}
 
       - name: Cleanup existing containers
         run: |
