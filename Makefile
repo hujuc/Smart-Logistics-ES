@@ -178,6 +178,7 @@ test-e2e-ci:
 	@cd src/frontend/landing-page && npm run test:e2e
 	@cd src/frontend/admin-console && npm run test:e2e
 	@cd src/frontend/customer-portal && npm run test:e2e
+	@echo "Skipping driver-pwa (no e2e tests configured)"
 	@echo "E2E tests complete!"
 
 test-backend-integration:

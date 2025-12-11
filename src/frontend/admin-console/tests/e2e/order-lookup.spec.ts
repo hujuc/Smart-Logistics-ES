@@ -134,28 +134,64 @@ const loginAsCSR = async (page: Page) => {
 };
 
 /**
- * Helper to perform Warehouse Manager login via landing page
+ * Helper to perform Warehouse Manager login via API (more reliable than UI flow)
  */
 const loginAsWarehouse = async (page: Page) => {
-  // Start from landing page
-  await page.goto("/");
+  console.log("🔐 Starting API-based login flow...");
 
-  // Click on Login button
-  await page.getByRole("button", { name: /login/i }).first().click();
+  // Login via API instead of UI
+  const API_URL = `${BASE_URL}/api/landing-page`;
 
-  // Wait for Keycloak login page
-  await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 30_000 });
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'warehouse',
+        password: 'warehouse',
+      }),
+    });
 
-  // Fill credentials
-  await page.getByLabel(/username/i).fill("warehouse");
-  await page.getByLabel(/password/i).fill("warehouse");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`  ✗ API login failed: ${response.status} ${response.statusText}`);
+      console.error(`  Error: ${errorText}`);
+      throw new Error(`Login API failed: ${response.status} - ${errorText}`);
+    }
 
-  // Click login button
-  await page.getByRole("button", { name: /^login$/i }).last().click();
+    const loginData = await response.json();
+    console.log(`  ✓ API login successful for user: ${loginData.username}`);
 
-  // Wait for login to complete
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(2000);
+    // Navigate to landing page first
+    await page.goto("/");
+    console.log(`  ✓ Navigated to landing page`);
+
+    // Inject the token into browser storage
+    await page.evaluate((data) => {
+      localStorage.setItem('access_token', data.accessToken);
+      localStorage.setItem('user', JSON.stringify({
+        username: data.username,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        roles: data.roles,
+      }));
+
+      // Also set cookie
+      const expiresInMs = data.expiresIn * 1000;
+      const expiryDate = new Date(Date.now() + expiresInMs);
+      document.cookie = `access_token=${data.accessToken}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+    }, loginData);
+
+    console.log(`  ✓ Token injected into browser storage`);
+    console.log(`  ✓ Login completed successfully`);
+
+  } catch (error) {
+    console.error(`  ✗ Login failed:`, error);
+    throw error;
+  }
 };
 
 /**
@@ -174,21 +210,21 @@ const searchAndViewOrder = async (page: Page, searchTerm: string, expectedRef?: 
   // Fill search input
   const orderIdInput = page.getByPlaceholder(/order.*tracking/i);
   await orderIdInput.fill(searchTerm);
-  
+
   // Click search
   await page.getByRole("button", { name: /search/i }).click();
-  
+
   // Wait a bit for results
   await page.waitForTimeout(2000);
-  
+
   // Check if we got a table (multiple results)
   const resultsTable = page.locator('table');
   const hasTable = await resultsTable.isVisible({ timeout: 3000 }).catch(() => false);
-  
+
   if (hasTable && expectedRef) {
     // Multiple results - find the row with the expected reference (exact match in first cell)
     // Use a more precise selector to avoid matching "teste2" when looking for "teste"
-    const row = page.locator('tr').filter({ 
+    const row = page.locator('tr').filter({
       has: page.locator('td').first().filter({ hasText: new RegExp(`^${expectedRef}$`) })
     });
     const viewButton = row.getByRole("button", { name: /^view$/i });
@@ -197,7 +233,7 @@ const searchAndViewOrder = async (page: Page, searchTerm: string, expectedRef?: 
     // Multiple results but no specific ref - click first View button
     await page.getByRole("button", { name: /^view$/i }).first().click();
   }
-  
+
   // Wait for navigation/state update
   await page.waitForTimeout(1000);
 };
@@ -216,11 +252,13 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     const context = page.context();
 
     try {
-      // 1. Login so Keycloak token gets stored in localStorage
+      // Login via API to get token
       await loginAsWarehouse(page);
 
-      // 2. Extract token from browser
-      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+      // Token should be available immediately
+      const cookies = await context.cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
 
       if (token) {
         // Get all orders to find orphaned ones
@@ -295,11 +333,20 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     const setupPage = await browser.newPage();
     try {
       await loginAsWarehouse(setupPage);
-      const setupToken = await setupPage.evaluate(() => localStorage.getItem('access_token'));
+
+      // Token should be available immediately after API login
+      const cookies = await setupPage.context().cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const setupToken = tokenCookie?.value || await setupPage.evaluate(() => localStorage.getItem('access_token'));
 
       if (!setupToken) {
+        console.error('Available cookies:', (await setupPage.context().cookies()).map(c => c.name));
+        console.error('localStorage access_token:', await setupPage.evaluate(() => localStorage.getItem('access_token')));
+        console.error('Current URL:', setupPage.url());
         throw new Error("Could not get authentication token for test setup");
       }
+
+      console.log(`✓ Got authentication token (length: ${setupToken.length})`);
 
       // Create a test warehouse
       testWarehouse = await createTestWarehouse(setupToken);
@@ -349,11 +396,13 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
     const context = page.context();
 
     try {
-      // 1. Login so Keycloak token gets stored in localStorage
+      // Login via API to get token
       await loginAsWarehouse(page);
 
-      // 2. Extract token from browser
-      const token = await page.evaluate(() => localStorage.getItem('access_token'));
+      // Token should be available immediately
+      const cookies = await page.context().cookies();
+      const tokenCookie = cookies.find(c => c.name === 'access_token');
+      const token = tokenCookie?.value || await page.evaluate(() => localStorage.getItem('access_token'));
 
       if (!token) {
         throw new Error("Could not read Keycloak token from browser session");
@@ -417,10 +466,10 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can navigate to order lookup page", async ({ page }) => {
     // Navigate directly to order lookup page
     await page.goto("/admin/interfaces/customer-service/order-lookup");
-    
+
     // Verify page loaded
     await waitForOrderLookupPage(page);
-    
+
     // Verify search input is present
     await expect(page.getByPlaceholder(/order.*tracking/i)).toBeVisible();
   });
@@ -428,16 +477,16 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can search for an order by ID", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     // Get first test order
     const testOrder = testOrders[0];
     // Use reference instead of ID for search, as the frontend seems to search by reference
     const searchTerm = testOrder.reference;
     const testOrderRef = testOrder.reference;
-    
+
     // Search and view order
     await searchAndViewOrder(page, searchTerm, testOrderRef);
-    
+
     // Verify order details are displayed
     await expect(page.getByRole("heading", { name: new RegExp(testOrderRef, "i") })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/warehouse/i)).toBeVisible();
@@ -447,21 +496,21 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can view order details including status and timeline", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     const testOrder = testOrders[0];
     const testOrderRef = testOrder.reference;
-    
+
     // Search and view order (using reference as search term)
     await searchAndViewOrder(page, testOrderRef, testOrderRef);
-    
+
     // Verify order details loaded
     await expect(page.getByRole("heading", { name: new RegExp(testOrderRef, "i") })).toBeVisible({ timeout: 30_000 });
-    
+
     // Verify essential information is present
     await expect(page.getByText(/warehouse/i)).toBeVisible();
     await expect(page.getByText(/est\. delivery|estimated delivery/i)).toBeVisible();
     await expect(page.getByText(/last updated/i)).toBeVisible();
-    
+
     // Verify order journey/timeline is present
     await expect(page.getByRole("heading", { name: /order journey|shipping timeline/i })).toBeVisible();
   });
@@ -469,16 +518,16 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can see delivery address in order details", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     const testOrder = testOrders[0];
     const testOrderRef = testOrder.reference;
-    
+
     // Search and view order (using reference as search term)
     await searchAndViewOrder(page, testOrderRef, testOrderRef);
-    
+
     // Verify order details loaded
     await expect(page.getByRole("heading", { name: new RegExp(testOrderRef, "i") })).toBeVisible({ timeout: 30_000 });
-    
+
     // Verify delivery address section
     await expect(page.getByText(/shipping address/i)).toBeVisible();
   });
@@ -486,30 +535,30 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR sees error message for non-existent order", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     // Search for non-existent order
     await page.getByPlaceholder(/order.*tracking/i).fill("999999");
     await page.getByRole("button", { name: /search/i }).click();
-    
+
     // Verify error message appears: "No orders found for "999999""
-    await expect(page.getByText(/no orders found/i)).toBeVisible({ 
-      timeout: 30_000 
+    await expect(page.getByText(/no orders found/i)).toBeVisible({
+      timeout: 30_000
     });
   });
 
   test("CSR can view order item details", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     const testOrder = testOrders[0];
     const testOrderRef = testOrder.reference;
-    
+
     // Search and view order (using reference as search term)
     await searchAndViewOrder(page, testOrderRef, testOrderRef);
-    
+
     // Verify order details loaded
     await expect(page.getByRole("heading", { name: new RegExp(testOrderRef, "i") })).toBeVisible({ timeout: 30_000 });
-    
+
     // Verify order information is present
     await expect(page.getByText(/warehouse/i)).toBeVisible();
     await expect(page.getByText(/tracking/i)).toBeVisible();
@@ -518,23 +567,23 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can search for another order after viewing one", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     const firstOrder = testOrders[0];
     const secondOrder = testOrders[1];
-    
+
     // First search (using reference as search term)
     await searchAndViewOrder(page, firstOrder.reference, firstOrder.reference);
     await expect(page.getByRole("heading", { name: new RegExp(firstOrder.reference, "i") })).toBeVisible({ timeout: 30_000 });
-    
+
     // Go back to order lookup page for second search
     await page.goto("/admin/interfaces/customer-service/order-lookup");
-    
+
     // Wait for page to be ready - check for search input instead of heading
     await expect(page.getByPlaceholder(/order.*tracking/i)).toBeVisible({ timeout: 30_000 });
-    
+
     // Search for second order (using reference as search term)
     await searchAndViewOrder(page, secondOrder.reference, secondOrder.reference);
-    
+
     // Verify second order is displayed
     await expect(page.getByRole("heading", { name: new RegExp(secondOrder.reference, "i") })).toBeVisible({ timeout: 30_000 });
   });
@@ -542,19 +591,19 @@ test.describe("Customer Service - Order Tracking and Details (US 7)", () => {
   test("CSR can view carrier information if order has shipment", async ({ page }) => {
     await page.goto("/admin/interfaces/customer-service/order-lookup");
     await waitForOrderLookupPage(page);
-    
+
     const testOrder = testOrders[0];
     const testOrderRef = testOrder.reference;
-    
+
     // Search and view order (using reference as search term)
     await searchAndViewOrder(page, testOrderRef, testOrderRef);
-    
+
     // Verify order details loaded
     await expect(page.getByRole("heading", { name: new RegExp(testOrderRef, "i") })).toBeVisible({ timeout: 30_000 });
-    
+
     // Verify warehouse information is present (acts as logistics info)
     await expect(page.getByText(/warehouse/i)).toBeVisible();
-    
+
     // If tracking number exists, verify it's shown
     if (testOrder.trackingNumber) {
       await expect(page.getByText(/tracking/i)).toBeVisible();

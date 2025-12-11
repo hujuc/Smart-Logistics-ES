@@ -420,7 +420,8 @@ test.describe("Customer Portal - Order Tracking and Details (US)", () => {
 
     // Verify order details are displayed
     await expect(page.getByText(targetOrder.trackingNumber)).toBeVisible();
-    await expect(page.getByText(targetOrder.reference)).toBeVisible();
+    // Use exact match to avoid matching the order reference in event notes
+    await expect(page.getByText(targetOrder.reference, { exact: true })).toBeVisible();
   });
 
   test("Customer can see order status and timeline", async ({ page }) => {

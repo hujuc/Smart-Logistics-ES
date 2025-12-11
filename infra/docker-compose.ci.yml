@@ -12,6 +12,12 @@ services:
       - "55432:5432"
     volumes:
       - postgres-data-ci:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -30,29 +36,43 @@ services:
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS}
     command: start-dev --health-enabled=true --import-realm
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "28180:8080"
     volumes:
       - keycloak-data-ci:/opt/keycloak/data
       - ./keycloak:/opt/keycloak/data/import
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && exit 0 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     restart: unless-stopped
     environment:
-      ZOOKEEPER_CLIENT_PORT: ${CI_KAFKA_ZOOKEEPER_PORT:-32181}
+      ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "${CI_KAFKA_ZOOKEEPER_PORT:-32181}:2181"
     volumes:
       - zookeeper-data-ci:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "cub zk-ready localhost:2181 10"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     restart: unless-stopped
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -69,6 +89,12 @@ services:
       - "${CI_KAFKA_EXTERNAL_PORT:-39094}:9094"
     volumes:
       - kafka-data-ci:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
 
   minio:
     image: minio/minio:latest
@@ -84,11 +110,18 @@ services:
     volumes:
       - minio-data-ci:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   minio-create-bucket:
     image: minio/mc:latest
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     env_file:
       - .env
     entrypoint: >

@@ -39,6 +39,13 @@ env:
   KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID || 'slms-consumers' }}
   KAFKA_CONSUMER_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_CONSUMER_AUTO_OFFSET_RESET || 'earliest' }}
   KAFKA_SECURITY_PROTOCOL: ${{ secrets.KAFKA_SECURITY_PROTOCOL || 'PLAINTEXT' }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash' }}
+  GEMINI_EMBEDDING_MODEL: ${{ secrets.GEMINI_EMBEDDING_MODEL || 'text-embedding-004' }}
+  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  PINECONE_HOST: ${{ secrets.PINECONE_HOST }}
+  PINECONE_INDEX: ${{ secrets.PINECONE_INDEX || 'slms-chatbot' }}
+  PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE || 'en-US' }}
 
 jobs:
   backend-integration:
@@ -90,6 +97,13 @@ jobs:
           keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
           keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
           nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+          gemini-api-key: ${{ env.GEMINI_API_KEY }}
+          gemini-model: ${{ env.GEMINI_MODEL }}
+          gemini-embedding-model: ${{ env.GEMINI_EMBEDDING_MODEL }}
+          pinecone-api-key: ${{ env.PINECONE_API_KEY }}
+          pinecone-host: ${{ env.PINECONE_HOST }}
+          pinecone-index: ${{ env.PINECONE_INDEX }}
+          pinecone-namespace: ${{ env.PINECONE_NAMESPACE }}
 
       - name: Cleanup existing containers
         run: |
@@ -105,8 +119,60 @@ jobs:
 
       - name: Wait for services
         run: |
-          echo "Waiting for services to be ready..."
-          sleep 30
+          set -e
+          COMPOSE_FILES="-f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml"
+
+          echo "Checking service health status..."
+
+          # Function to wait for service health
+          wait_for_health() {
+            local service=$1
+            local timeout=$2
+            local elapsed=0
+
+            echo "Waiting for $service to be healthy (timeout: ${timeout}s)..."
+            while [ $elapsed -lt $timeout ]; do
+              # Handle both array and object JSON formats from docker compose ps
+              health_status=$(docker compose $COMPOSE_FILES ps --format json $service 2>/dev/null | jq -r 'if type=="array" then (if length > 0 then .[0].Health else "unknown" end) else .Health end // "unknown"')
+
+              # If health status is unavailable, check container state
+              if [ "$health_status" = "unknown" ] || [ "$health_status" = "null" ]; then
+                container_state=$(docker compose $COMPOSE_FILES ps --format json $service 2>/dev/null | jq -r 'if type=="array" then (if length > 0 then .[0].State else "unknown" end) else .State end // "unknown"')
+                if [ "$container_state" = "running" ]; then
+                  health_status="running (no healthcheck)"
+                else
+                  health_status="$container_state"
+                fi
+              fi
+
+              if [ "$health_status" = "healthy" ]; then
+                echo "$service is healthy!"
+                return 0
+              fi
+
+              echo "   Status: $health_status (${elapsed}s elapsed)"
+              sleep 5
+              elapsed=$((elapsed + 5))
+            done
+
+            echo "$service failed to become healthy within ${timeout}s"
+            echo "Service logs:"
+            docker compose $COMPOSE_FILES logs --tail=50 $service
+            echo "Container status:"
+            docker compose $COMPOSE_FILES ps $service
+            return 1
+          }
+
+          # Wait for each service with appropriate timeouts
+          wait_for_health "postgres" 90
+          wait_for_health "keycloak" 240
+          wait_for_health "zookeeper" 60
+          wait_for_health "minio" 90
+          wait_for_health "kafka" 120
+
+          echo "All services are healthy!"
+          echo "Waiting additional 10 seconds for stability..."
+          sleep 10
 
       - name: Run backend integration tests
         working-directory: src/backend
@@ -134,6 +200,7 @@ jobs:
             -f infra/docker-compose.ci.yml \
             down -v
 
+  # E2E tests - debugging authentication issues with detailed logging
   e2e-tests:
     name: E2E Tests (${{ matrix.app }})
     runs-on: ubuntu-latest
@@ -196,11 +263,27 @@ jobs:
           keycloak-admin: ${{ env.KEYCLOAK_ADMIN }}
           keycloak-admin-password: ${{ env.KEYCLOAK_ADMIN_PASSWORD }}
           nextauth-secret: ${{ env.NEXTAUTH_SECRET }}
+          gemini-api-key: ${{ env.GEMINI_API_KEY }}
+          gemini-model: ${{ env.GEMINI_MODEL }}
+          gemini-embedding-model: ${{ env.GEMINI_EMBEDDING_MODEL }}
+          pinecone-api-key: ${{ env.PINECONE_API_KEY }}
+          pinecone-host: ${{ env.PINECONE_HOST }}
+          pinecone-index: ${{ env.PINECONE_INDEX }}
+          pinecone-namespace: ${{ env.PINECONE_NAMESPACE }}
 
       - name: Cleanup existing containers
         run: |
           docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml down --remove-orphans || true
           docker system prune -f --volumes || true
+
+      - name: Build services for E2E (to avoid timeout during startup)
+        run: |
+          echo "Building backend and frontend services..."
+          docker compose \
+            -f infra/docker-compose.dev.yml \
+            -f infra/docker-compose.ci.yml \
+            build backend admin-console landing-page customer-portal
+          echo "Build completed!"
 
       - name: Start SLMS stack for E2E
         run: |
@@ -211,23 +294,77 @@ jobs:
 
       - name: Wait for services to be ready
         run: |
-          timeout 300 bash -c '
-            until curl -fsSL http://localhost/ >/dev/null; do
-              echo "Waiting for landing page..."
-              sleep 5
-            done
-            until curl -fsSL http://localhost/admin/ >/dev/null; do
-              echo "Waiting for admin console..."
-              sleep 5
-            done
-          '
-          echo "✅ Services are ready"
+          set -e
+          COMPOSE_FILES="-f infra/docker-compose.dev.yml -f infra/docker-compose.ci.yml"
+
+          echo "Waiting for services to be ready for E2E tests..."
+
+          # Wait for Keycloak
+          echo "Waiting for Keycloak..."
+          timeout 180 bash -c 'until curl -f http://localhost:28180/realms/slms 2>/dev/null | grep -q "realm"; do sleep 3; done'
+          echo "Keycloak is ready!"
+
+          # Wait for Backend - CRITICAL with extended timeout
+          echo "Waiting for Backend API..."
+          echo "Note: Backend needs to compile and start Spring Boot, this may take several minutes..."
+
+          # First check if backend container is running
+          backend_state=$(docker compose $COMPOSE_FILES ps --format json backend 2>/dev/null | jq -r 'if type=="array" then (if length > 0 then .[0].State else "unknown" end) else .State end // "unknown"')
+          echo "Backend container state: $backend_state"
+
+          if [ "$backend_state" != "running" ]; then
+            echo "ERROR: Backend container is not running!"
+            echo "Backend container logs:"
+            docker compose $COMPOSE_FILES logs --tail=100 backend
+            exit 1
+          fi
+
+          # Now wait for backend health endpoint (increased timeout for Maven build)
+          backend_ready=false
+          for i in {1..36}; do  # 36 * 5s = 180s = 3 minutes
+            if curl -f http://localhost/actuator/health 2>/dev/null | grep -q "UP"; then
+              echo "Backend API is healthy! (attempt $i)"
+              backend_ready=true
+              break
+            fi
+            echo "Backend not ready yet... (attempt $i/36, elapsed: $((i * 5))s)"
+            sleep 5
+          done
+
+          if [ "$backend_ready" = false ]; then
+            echo "ERROR: Backend failed to become ready within 3 minutes"
+            echo "Backend logs:"
+            docker compose $COMPOSE_FILES logs --tail=200 backend
+            exit 1
+          fi
+
+          # Additional stability wait
+          echo "Waiting 20 seconds for backend to fully stabilize..."
+          sleep 20
+
+          # Wait for Landing Page
+          echo "Waiting for Landing Page..."
+          timeout 300 bash -c 'until curl -fsSL http://localhost/ > /dev/null; do sleep 5; done'
+          echo "Landing Page is ready!"
+
+          # Wait for Admin Console
+          echo "Waiting for Admin Console..."
+          timeout 300 bash -c 'until curl -fsSL http://localhost/admin/ > /dev/null; do sleep 5; done'
+          echo "Admin Console is ready!"
+
+          echo "All services are ready for E2E tests!"
 
       - name: Run E2E tests for ${{ matrix.app }}
         working-directory: src/frontend/${{ matrix.app }}
         env:
           E2E_BASE_URL: http://localhost
-        run: npm run test:e2e
+        run: |
+          if npm run | grep -q "test:e2e"; then
+            npm run test:e2e
+          else
+            echo "⚠️ No test:e2e script found for ${{ matrix.app }}, skipping..."
+            exit 0
+          fi
 
       - name: Upload Playwright report
         if: always()
