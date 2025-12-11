@@ -302,18 +302,18 @@ jobs:
 
           # Now wait for backend health endpoint (increased timeout for Maven build)
           backend_ready=false
-          for i in {1..72}; do  # 72 * 5s = 360s = 6 minutes
+          for i in {1..36}; do  # 36 * 5s = 180s = 3 minutes
             if curl -f http://localhost/actuator/health 2>/dev/null | grep -q "UP"; then
               echo "Backend API is healthy! (attempt $i)"
               backend_ready=true
               break
             fi
-            echo "Backend not ready yet... (attempt $i/72, elapsed: $((i * 5))s)"
+            echo "Backend not ready yet... (attempt $i/36, elapsed: $((i * 5))s)"
             sleep 5
           done
 
           if [ "$backend_ready" = false ]; then
-            echo "ERROR: Backend failed to become ready within 6 minutes"
+            echo "ERROR: Backend failed to become ready within 3 minutes"
             echo "Backend logs:"
             docker compose $COMPOSE_FILES logs --tail=200 backend
             exit 1

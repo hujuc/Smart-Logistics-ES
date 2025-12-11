@@ -311,6 +311,10 @@ runs:
         PINECONE_HOST=https://ci-dummy-index-12345.svc.pinecone.io
         PINECONE_INDEX=slms-chatbot
         PINECONE_NAMESPACE=en-US
+
+        # Chatbot Health Indicators (disabled in CI to avoid failures with dummy keys)
+        HEALTH_GEMINI_ENABLED=false
+        HEALTH_PINECONE_ENABLED=false
         EOF
         echo "✅ Generated infra/.env (CI mode)"
 
