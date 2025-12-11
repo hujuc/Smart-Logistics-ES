@@ -54,14 +54,14 @@ services:
     image: confluentinc/cp-zookeeper:7.6.1
     restart: unless-stopped
     environment:
-      ZOOKEEPER_CLIENT_PORT: ${CI_KAFKA_ZOOKEEPER_PORT:-32181}
+      ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "${CI_KAFKA_ZOOKEEPER_PORT:-32181}:2181"
     volumes:
       - zookeeper-data-ci:/bitnami/zookeeper
     healthcheck:
-      test: ["CMD-SHELL", "cub zk-ready localhost:32181 10"]
+      test: ["CMD-SHELL", "cub zk-ready localhost:2181 10"]
       interval: 10s
       timeout: 10s
       retries: 5
