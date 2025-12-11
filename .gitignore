@@ -133,7 +133,3 @@ pip-selfcheck.json
 # End of https://www.toptal.com/developers/gitignore/api/react,nextjs,java,venv,git
 
 .idea
-
-# Own custom ignores
-SLMS_API_Tests.postman_collection.json
-test-data/

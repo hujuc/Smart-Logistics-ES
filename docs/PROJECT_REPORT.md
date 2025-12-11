@@ -32,7 +32,8 @@
 9. [AI-Powered Chatbot](#9-ai-powered-chatbot)
 10. [Testing & Quality Assurance](#10-testing--quality-assurance)
 11. [Observability & Monitoring](#11-observability--monitoring)
-12. [Conclusion](#12-conclusion)
+12. [Lessons Learned & Future Work](#12-lessons-learned--future-work)
+13. [Conclusion](#13-conclusion)
 
 ---
 
@@ -68,7 +69,7 @@ SLMS implements a modular monolith architecture designed to balance development 
 - **Customer Portal:** Self-service application enabling customers to track their orders, view delivery history, and manage delivery preferences
 - **Driver PWA:** Mobile-optimized Progressive Web Application providing drivers with delivery manifests, route optimization, real-time status updates, and proof of delivery capture
 
-These frontends interact with a centralized backend organized into seven business modules: Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, and AI-Powered Chatbot. Each module encapsulates specific domain logic while maintaining clear boundaries that prevent tight coupling and enable independent evolution (detailed in Section 2).
+These frontends interact with a centralized backend organized into eight business modules: Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, Warehouse Management, and AI-Powered Chatbot. Each module encapsulates specific domain logic while maintaining clear boundaries that prevent tight coupling and enable independent evolution (detailed in Section 2).
 
 The technology stack combines mature, production-proven technologies with modern capabilities. The backend leverages **Spring Boot 3.5.0** with **Java 21** for application logic, **Spring Data JPA** with **Hibernate** for object-relational mapping, and **PostgreSQL 16** for relational data storage. All four frontend applications are built with **Next.js 15.5.4** and **React 19.1.0**, using **TypeScript** for type safety and **Tailwind CSS** for styling. The infrastructure employs **Docker** for containerization, **Terraform** for infrastructure as code, and **Nginx** as the reverse proxy and load balancer.
 
@@ -164,7 +165,7 @@ The logic architecture of SLMS organizes functionality into distinct layers, wit
 
 ### 2.2.1 Backend Modules
 
-The backend comprises seven specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
+The backend comprises eight specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
 
 **Order Module:** Manages the complete order lifecycle from creation to delivery. Captures shipment details (package dimensions, destination, special requirements), tracks order status through a state machine (PENDING → READY → ASSIGNED → IN_TRANSIT → DELIVERED), generates shipping documents stored in MinIO, and maintains an immutable audit trail of all order events.
 
@@ -1113,7 +1114,7 @@ The six-sprint development timeline strategically sequenced feature delivery to 
 - US1: Daily KPI monitoring (João - Logistics Manager - completion)
 
 **Technical Achievements:**
-- AWS deployment infrastructure (Terraform IaC for EC2, containerized PostgreSQL, MinIO for S3-compatible storage, VPC)
+- AWS deployment infrastructure (Terraform IaC for EC2, RDS, S3, VPC)
 - Observability stack (Prometheus metrics, Grafana dashboards, structured logging)
 - Health check endpoints (application, database, external API connectivity)
 - Shipment document generation (MinIO S3-compatible storage for PDFs)
@@ -2903,31 +2904,58 @@ Spring Security's role checking automatically:
 
 Some users may have multiple roles assigned (e.g., a Logistics Manager who also acts as Warehouse Staff). In such cases, the user can access all endpoints corresponding to any of their assigned roles. The Admin Console frontend adapts its interface to show all features available to the user's combined role set, while the Customer Portal and Driver PWA are designed for single-role use.
 
-**Request Flow and Security Enforcement**
+---
 
-The complete request flow through the BFF security architecture follows this sequence:
+**[FIGURE 8.2: BFF Access Control Architecture]**
 
-1. **Frontend Request**: A frontend application (Admin Console, Customer Portal, Driver PWA, or Landing Page) sends an HTTP request to an endpoint. Authenticated requests include the access token in the Authorization header: `Authorization: Bearer <access_token>`.
+Create an architecture diagram showing the complete BFF security pattern with the following components:
 
-2. **Nginx Routing**: The Nginx reverse proxy (port 80/443) receives the request and routes it to the Spring Boot backend based on the URL path pattern.
+**Layout**: Layered architecture diagram with four main horizontal layers plus external services at bottom
 
-3. **Security Filter Chain Interception**: Before reaching any BFF controller, the request passes through Spring Security's filter chain:
-   - The `JwtDecoder` extracts and validates the JWT token, checking signature validity against Keycloak's public keys, verifying expiry time, and confirming the issuer matches the expected Keycloak realm
-   - If token validation fails, the request is rejected with 401 Unauthorized
-   - If validation succeeds, Spring Security extracts the user's roles from the token's `realm_access.roles` claim
+**Layer 1 - Frontend Applications (Top)**:
+- Landing Page (Public Entry Point)
+- Admin Console (Logistics/Warehouse/CSR interfaces)
+- Customer Portal
+- Driver PWA
+- Show all connecting to Nginx with Bearer tokens (except Landing Page which sends credentials)
 
-4. **Role-Based Authorization**: The Security Filter Chain checks whether the user's roles satisfy the endpoint's role requirement:
-   - If the user has the required role, the request proceeds to the BFF controller
-   - If the user lacks the required role, the request is rejected with 403 Forbidden
-   - Public endpoints (`/api/landing-page/auth/**`, `/api/public/**`) bypass role checking
+**Layer 2 - Nginx Reverse Proxy**:
+- Single Nginx component routing to backend
+- Port 80/443
 
-5. **BFF Controller Processing**: The appropriate BFF controller receives the authenticated and authorized request, potentially performing additional resource ownership checks (e.g., verifying a customer can only access their own orders)
+**Layer 3 - Spring Boot Backend - BFF Controllers (Presentation Layer)**:
+- Group BFF endpoints with visual distinction:
+  - `/api/landing-page/auth/**` - AuthController [🔓 PUBLIC]
+  - `/api/logistics/**` - LogisticsBffController [🔒 LOGISTICS_MANAGER]
+  - `/api/warehouse/**` - WarehouseBffController [🔒 WAREHOUSE_STAFF]
+  - `/api/customer-service/**` - CustomerServiceBffController [🔒 CUSTOMER_SERVICE_REP]
+  - `/api/driver/**` - DriverBffController [🔒 DRIVER]
+  - `/api/customer/**` - CustomerBffController [🔒 CUSTOMER]
+  - `/api/public/**` - Public Resources [🔓 PUBLIC]
+  - `/api/admin/**` - Domain Controllers [⚠️ DEV ONLY]
 
-6. **Business Layer Delegation**: The BFF controller calls the necessary business layer services (Order Module, Rate Carrier Module, Visibility Module, etc.) to fulfill the request, aggregating data and orchestrating multi-service operations as needed
+**Security Filter Chain (Between Layer 3 & 4)**:
+- JWT Decoder component (validates token signature, expiry, issuer)
+- Spring Security RBAC component (checks role requirements)
+- Show flow: Request → JWT Validation → Role Check → Allow/Deny (403 Forbidden)
 
-7. **Response Return**: The BFF controller returns the formatted response to the frontend via Nginx
+**Layer 4 - Business Layer Services**:
+- Order Module
+- Rate & Carrier Module
+- Reporting Module
+- Visibility Module
+- Notification Module
+- User Management Module
+- Show BFF controllers calling these services after authorization
 
-This multi-layered security architecture ensures that authentication and authorization are enforced consistently across all frontend applications, with no requests reaching business logic without proper validation. The centralized enforcement point in the Security Filter Chain simplifies security management and reduces the risk of authorization bypass vulnerabilities.
+**External Services (Bottom)**:
+- Keycloak (only connected to AuthController, not frontends)
+
+**Key Visual Elements**:
+- Color code public endpoints (green), role-protected endpoints (red/protected), dev endpoints (orange/warning)
+- Use arrows to show request flow: Frontend → Nginx → BFF → Security Filter → Business Layer
+- Show 403 Forbidden rejection path from RBAC back to frontends
+- Emphasize that Keycloak only connects to backend, never to frontends directly
 
 ---
 
@@ -4264,7 +4292,7 @@ The **multi-carrier integration** through ShipEngine API enables the system to c
 
 The **exception handling system** ensures that delivery problems—failed delivery attempts, incorrect addresses, damaged packages—are captured, assigned to appropriate personnel, and tracked through resolution. Real-time tracking capabilities provide visibility into shipment status from carrier acceptance through final delivery, with proactive notifications keeping all stakeholders informed of status changes and potential issues.
 
-From a technical delivery perspective, the project encompasses a **modular monolith backend** organized into seven distinct business modules (Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, and AI Chatbot), four Next.js frontend applications implementing the Backend-for-Frontend pattern, a complete PostgreSQL database schema with comprehensive entity relationships, and full infrastructure as code definitions using Terraform for deployment across development, staging, and production environments.
+From a technical delivery perspective, the project encompasses a **modular monolith backend** organized into eight distinct business modules (Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, Warehouse Management, and AI Chatbot), four Next.js frontend applications implementing the Backend-for-Frontend pattern, a complete PostgreSQL database schema with comprehensive entity relationships, and full infrastructure as code definitions using Terraform for deployment across development, staging, and production environments.
 
 The **CI/CD pipeline** implemented through GitHub Actions automates testing, building, and deployment processes, ensuring code quality through automated test execution and enforcing quality gates before changes reach production. The **observability infrastructure** based on Elastic APM provides distributed tracing, application performance monitoring, and service level indicator tracking aligned with defined SLOs for system availability and performance.
 
@@ -4276,7 +4304,7 @@ The SLMS project demonstrates the application of modern software architecture pa
 
 ### Architectural Approach
 
-The **modular monolith architecture** provides a structured approach to managing complexity while maintaining operational simplicity. Unlike a traditional monolithic application where boundaries between functional areas blur over time, SLMS enforces clear module boundaries through package structure and dependency management. Each of the seven backend modules encapsulates specific domain logic—the Order Module owns order lifecycle management and warehouse entity management, the Rate Carrier Module handles carrier interactions and shipment entities, the Visibility Module manages tracking and exception workflows—while maintaining well-defined interfaces for inter-module communication.
+The **modular monolith architecture** provides a structured approach to managing complexity while maintaining operational simplicity. Unlike a traditional monolithic application where boundaries between functional areas blur over time, SLMS enforces clear module boundaries through package structure and dependency management. Each of the eight backend modules encapsulates specific domain logic—the Order Module owns order lifecycle management, the Rate Carrier Module handles carrier interactions and shipment entities, the Visibility Module manages tracking and exception workflows—while maintaining well-defined interfaces for inter-module communication.
 
 This architectural approach delivers practical benefits that proved valuable throughout development. Teams could work on different modules with minimal coordination overhead, as changes to order processing logic did not require modifications to carrier integration code. Debugging became more straightforward, as issues could be isolated to specific modules based on their functional responsibilities. The single-process deployment model simplified operational management compared to a microservices architecture, avoiding the complexity of distributed systems coordination, service discovery, and inter-service communication reliability.
 
@@ -4306,7 +4334,7 @@ The system integrates multiple external services to deliver comprehensive functi
 
 **AI capabilities** combine Google Gemini for large language model processing with Pinecone vector database for semantic document search. The Chatbot Module implements a Retrieval-Augmented Generation (RAG) architecture that grounds AI responses in the project's documentation corpus. When users ask questions, the system generates embeddings of the query, searches Pinecone for semantically similar documentation chunks, and provides these as context to Gemini for response generation. The tool-calling system extends the chatbot beyond pure documentation lookup, allowing it to execute structured database queries when users request real-time operational data.
 
-**Object storage** through MinIO provides S3-compatible storage for shipping documents and proof-of-delivery photos. The Order Module generates shipping labels and customs documentation, storing these as objects retrievable through signed URLs. The Driver PWA uploads proof-of-delivery photos captured during delivery completion, associating these with specific shipment records for audit trails and dispute resolution.
+**Object storage** through MinIO provides S3-compatible storage for shipping documents and proof-of-delivery photos. The Warehouse Management Module generates shipping labels and customs documentation, storing these as objects retrievable through signed URLs. The Driver PWA uploads proof-of-delivery photos captured during delivery completion, associating these with specific shipment records for audit trails and dispute resolution.
 
 **Observability** through Elastic APM provides distributed tracing across the application stack. The system instruments both backend services and frontend applications, correlating user interactions in the browser with corresponding backend API calls and database queries. This end-to-end visibility enables performance analysis and troubleshooting of complex interactions spanning multiple system components.
 

@@ -21,26 +21,6 @@ make prod-logs     # View logs
 make prod-down     # Stop services
 ```
 
-## Directory Structure
-
-The infrastructure directory is organized as follows:
-
-- **backup_management/** - Database backup and restore scripts (backup.sh, restore.sh, setup-backup.sh)
-- **docker/** - Dockerfiles for containerizing services
-  - `backend/` - Spring Boot application Dockerfiles (dev & prod)
-  - `frontend/` - Next.js application Dockerfiles (dev & prod)
-  - `backup/` - Backup service configuration and scripts
-- **keycloak/** - Keycloak realm configuration and setup (users, roles, clients)
-- **nginx/** - Nginx reverse proxy configuration for load balancing and routing
-- **scripts/** - Automation scripts
-  - `seed_demo_data.py` - Populates database with realistic demo data
-  - `monitor_prod.py` - Production monitoring utilities
-- **terraform/** - Infrastructure as Code (IaC) for managing Docker containers (PostgreSQL, Backend, Frontends)
-- **docker-compose.yaml** - External services orchestration (Keycloak, MinIO, Nginx)
-- **docker-compose.dev.yml** - Development environment configuration
-- **.env** - Environment variables (secrets, API keys, database credentials)
-- **deploy.sh** - Deployment automation script
-
 ## Environment Configuration
 
 ### Backend (`src/backend/.env`)

@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     if (!config.resolve.alias) {
       config.resolve.alias = {};
     }
-    config.resolve.alias['@shared'] = path.resolve(__dirname, 'shared');
+    config.resolve.alias['@shared'] = path.resolve('/shared');
 
     return config;
   },
