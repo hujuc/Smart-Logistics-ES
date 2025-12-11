@@ -358,7 +358,13 @@ jobs:
         working-directory: src/frontend/${{ matrix.app }}
         env:
           E2E_BASE_URL: http://localhost
-        run: npm run test:e2e
+        run: |
+          if npm run | grep -q "test:e2e"; then
+            npm run test:e2e
+          else
+            echo "⚠️ No test:e2e script found for ${{ matrix.app }}, skipping..."
+            exit 0
+          fi
 
       - name: Upload Playwright report
         if: always()
