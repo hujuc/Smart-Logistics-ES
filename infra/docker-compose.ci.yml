@@ -61,7 +61,7 @@ services:
     volumes:
       - zookeeper-data-ci:/bitnami/zookeeper
     healthcheck:
-      test: ["CMD-SHELL", "cub zk-ready localhost:2181 10"]
+      test: ["CMD-SHELL", "cub zk-ready localhost:32181 10"]
       interval: 10s
       timeout: 10s
       retries: 5
