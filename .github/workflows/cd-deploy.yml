@@ -121,9 +121,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Sync shared library to frontends
-        run: bash src/frontend/sync-shared.sh
-
       - name: Setup SLMS environment (deploy mode)
         uses: ./.github/actions/setup-slms-env
         with:
