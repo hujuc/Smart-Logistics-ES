@@ -557,7 +557,7 @@ function NavigationOptimizedContent() {
     }, [simulationProgress, totalDistance, totalDuration, routeGeometry]);
 
     const handleCenterLocation = () => {
-        if (map.current && mapReady) {
+        if (map.current && mapReady && currentLocation) {
             map.current.flyTo({
                 center: currentLocation,
                 zoom: 16,
@@ -644,7 +644,7 @@ function NavigationOptimizedContent() {
                 reader.readAsDataURL(compressedFile);
             } catch (error) {
                 console.error('Failed to compress image:', error);
-                alert('Failed to process image. Please try again.');
+                showError('Image Error', 'Failed to process image. Please try again.');
             }
         }
     };
