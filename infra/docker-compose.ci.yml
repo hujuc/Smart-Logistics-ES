@@ -61,9 +61,9 @@ services:
     volumes:
       - zookeeper-data-ci:/bitnami/zookeeper
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok || exit 1"]
+      test: ["CMD-SHELL", "cub zk-ready localhost:2181 10"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       start_period: 30s
 
