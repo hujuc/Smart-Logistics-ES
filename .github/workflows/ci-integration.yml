@@ -149,6 +149,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Sync shared library to frontends
+        run: bash src/frontend/sync-shared.sh
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
