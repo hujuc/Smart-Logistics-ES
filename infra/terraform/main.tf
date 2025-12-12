@@ -142,11 +142,12 @@ resource "docker_image" "backend" {
   name         = "slms-backend:latest"
   keep_locally = true # Keep image locally for faster rebuilds
   build {
-    context    = local.backend_dir
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/backend/Dockerfile.prod"
     tag        = ["slms-backend:latest"]
     build_args = {
       BUILDKIT_INLINE_CACHE = "1"
+      BACKEND_PATH          = "src/backend"
     }
   }
 }
@@ -239,8 +240,8 @@ resource "docker_image" "admin_console" {
   name         = "slms-admin-console:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/admin-console"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-admin-console:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/admin-console"
@@ -292,8 +293,8 @@ resource "docker_image" "customer_portal" {
   name         = "slms-customer-portal:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/customer-portal"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/customer-portal"
@@ -348,8 +349,8 @@ resource "docker_image" "driver_pwa" {
   name         = "slms-driver-pwa:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/driver-pwa"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/driver-pwa"
@@ -402,8 +403,8 @@ resource "docker_image" "landing_page" {
   name         = "slms-landing-page:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/landing-page"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-landing-page:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/landing-page"
