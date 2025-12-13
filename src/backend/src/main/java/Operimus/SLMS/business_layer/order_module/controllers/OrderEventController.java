@@ -10,9 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/admin/orders/{orderId}/events")
+@RequestMapping("/api/admin/order-events")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class OrderEventController {
 
     private final OrderEventService orderEventService;

@@ -11,7 +11,6 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -22,6 +21,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@lombok.extern.slf4j.Slf4j
 public class SecurityConfig {
 
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
@@ -170,6 +170,7 @@ public class SecurityConfig {
                     if (validIssuers.contains(issuer)) {
                         return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success();
                     }
+                    log.error("JWT Validation Failed: Invalid issuer '{}'. Expected one of: {}", issuer, validIssuers);
                     return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
                             new org.springframework.security.oauth2.core.OAuth2Error(
                                     "invalid_token",

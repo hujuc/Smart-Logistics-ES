@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.*;
  * Driver PWA Chatbot BFF Controller
  *
  * Provides chatbot functionality for authenticated drivers.
- * The chatbot provides driver-specific information about routes, deliveries, and procedures.
+ * The chatbot provides driver-specific information about routes, deliveries,
+ * and procedures.
  *
  * Endpoints are mapped to /api/driver/chat
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/driver")
+@RequestMapping("/api/driver/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class DriverChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,8 +36,9 @@ public class DriverChatBffController {
      *
      * POST /api/driver/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt JWT token with driver information (required)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     JWT token with driver information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
     @PostMapping("/chat")
@@ -58,7 +59,7 @@ public class DriverChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    driverId  // Pass driverId for tool authorization
+                    driverId // Pass driverId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

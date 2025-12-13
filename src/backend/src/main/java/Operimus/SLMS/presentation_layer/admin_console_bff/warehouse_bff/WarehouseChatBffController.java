@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.*;
  * Warehouse Staff Chatbot BFF Controller (Admin Console)
  *
  * Provides chatbot functionality for warehouse staff in the admin console.
- * The chatbot provides information about warehouse operations, inventory, and procedures.
+ * The chatbot provides information about warehouse operations, inventory, and
+ * procedures.
  *
  * Endpoints are mapped to /api/warehouse/chat
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/warehouse")
+@RequestMapping("/api/warehouse/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class WarehouseChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,8 +36,9 @@ public class WarehouseChatBffController {
      *
      * POST /api/warehouse/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt JWT token with warehouse staff information (required)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     JWT token with warehouse staff information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
     @PostMapping("/chat")
@@ -58,7 +59,7 @@ public class WarehouseChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    userId  // Pass userId for tool authorization
+                    userId // Pass userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

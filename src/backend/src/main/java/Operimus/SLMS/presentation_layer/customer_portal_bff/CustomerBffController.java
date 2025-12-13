@@ -29,16 +29,18 @@ import java.util.List;
 /**
  * Customer BFF Controller
  *
- * This controller is part of the Backend-For-Frontend (BFF) pattern for the customer portal.
- * It exposes customer-specific endpoints that delegate to business layer services.
+ * This controller is part of the Backend-For-Frontend (BFF) pattern for the
+ * customer portal.
+ * It exposes customer-specific endpoints that delegate to business layer
+ * services.
  *
- * Endpoints are mapped to /api/customer/* to match the customer role permissions.
+ * Endpoints are mapped to /api/customer/* to match the customer role
+ * permissions.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/customer")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class CustomerBffController {
 
     private final OrderService orderService;
@@ -70,18 +72,18 @@ public class CustomerBffController {
         try {
             // Search for user by username
             List<UserRepresentation> users = keycloakUserService.searchUsers(username);
-            
+
             if (users.isEmpty()) {
                 log.error("No user found with username: {}", username);
                 throw new RuntimeException("User not found: " + username);
             }
-            
+
             // Find exact match (searchUsers can return partial matches)
             UserRepresentation user = users.stream()
                     .filter(u -> username.equals(u.getUsername()))
                     .findFirst()
                     .orElse(users.get(0)); // Fallback to first result
-            
+
             return java.util.UUID.fromString(user.getId());
         } catch (IllegalArgumentException e) {
             log.error("Invalid UUID for username {}: {}", username, e.getMessage());
@@ -102,8 +104,7 @@ public class CustomerBffController {
         return ResponseEntity.ok(java.util.Map.of(
                 "status", "UP",
                 "service", "Customer BFF",
-                "timestamp", java.time.Instant.now().toString()
-        ));
+                "timestamp", java.time.Instant.now().toString()));
     }
 
     /**
@@ -152,11 +153,12 @@ public class CustomerBffController {
      * GET /api/customer/orders/tracking/{trackingNumber}
      *
      * @param trackingNumber Order tracking number
-     * @param jwt JWT token with customer information
+     * @param jwt            JWT token with customer information
      * @return Order details (only if it belongs to the authenticated customer)
      */
     @GetMapping("/orders/tracking/{trackingNumber}")
-    public ResponseEntity<OrderResponse> getOrderByTrackingNumber(@PathVariable String trackingNumber, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<OrderResponse> getOrderByTrackingNumber(@PathVariable String trackingNumber,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching order with tracking {} for customer {}", trackingNumber, customerId);
@@ -182,7 +184,7 @@ public class CustomerBffController {
      * Get order by ID
      * GET /api/customer/orders/{id}
      *
-     * @param id Order ID
+     * @param id  Order ID
      * @param jwt JWT token with customer information
      * @return Order details (only if it belongs to the authenticated customer)
      */
@@ -191,16 +193,16 @@ public class CustomerBffController {
         try {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching order {} for customer {}", id, customerId);
-            
+
             OrderResponse order = orderService.getById(id);
-            
+
             // Security check: verify that the order belongs to this customer
             if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
-                log.warn("Customer {} attempted to access order {} (order customerId: {})", 
+                log.warn("Customer {} attempted to access order {} (order customerId: {})",
                         customerId, id, order.getCustomerId());
                 throw new RuntimeException("Access denied: Order does not belong to this customer");
             }
-            
+
             log.info("Customer BFF: Successfully fetched order {}", id);
             return ResponseEntity.ok(order);
         } catch (Exception e) {
@@ -213,24 +215,26 @@ public class CustomerBffController {
      * Get order events
      * GET /api/customer/orders/{id}/events
      *
-     * @param id Order ID
+     * @param id  Order ID
      * @param jwt JWT token with customer information
-     * @return List of order events (only if the order belongs to the authenticated customer)
+     * @return List of order events (only if the order belongs to the authenticated
+     *         customer)
      */
     @GetMapping("/orders/{id}/events")
-    public ResponseEntity<List<OrderEventResponse>> getOrderEvents(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<OrderEventResponse>> getOrderEvents(@PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Fetching events for order {} for customer {}", id, customerId);
-            
+
             // First verify the order belongs to this customer
             OrderResponse order = orderService.getById(id);
             if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
-                log.warn("Customer {} attempted to access events for order {} (order customerId: {})", 
+                log.warn("Customer {} attempted to access events for order {} (order customerId: {})",
                         customerId, id, order.getCustomerId());
                 throw new RuntimeException("Access denied: Order does not belong to this customer");
             }
-            
+
             List<OrderEventResponse> events = orderEventService.getEventsForOrder(id);
             log.info("Customer BFF: Successfully fetched {} events for order {}", events.size(), id);
             return ResponseEntity.ok(events);
@@ -245,7 +249,7 @@ public class CustomerBffController {
      * POST /api/customer/orders
      *
      * @param request Order creation request
-     * @param jwt JWT token with customer information
+     * @param jwt     JWT token with customer information
      * @return Created order
      */
     @PostMapping("/orders")
@@ -256,7 +260,8 @@ public class CustomerBffController {
             String customerId = extractCustomerId(jwt);
             log.info("Customer BFF: Customer {} creating new order", customerId);
 
-            // Set the customer ID from the JWT token (security: customer can only create orders for themselves)
+            // Set the customer ID from the JWT token (security: customer can only create
+            // orders for themselves)
             request.setCustomerId(customerId);
 
             // Create the order via business layer
@@ -297,14 +302,17 @@ public class CustomerBffController {
             }
 
             // Try to convert String to UUID
-            // If customerId is not a valid UUID (e.g., username), fetch exceptions by checking orders
+            // If customerId is not a valid UUID (e.g., username), fetch exceptions by
+            // checking orders
             List<DeliveryExceptionResponse> exceptions;
             try {
                 java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
                 exceptions = exceptionService.getByCustomerId(customerUuid);
             } catch (IllegalArgumentException e) {
-                log.warn("Customer BFF: customerId '{}' is not a valid UUID, fetching exceptions via orders", customerId);
-                // For non-UUID customers (like "customer" username), we need to fetch exceptions
+                log.warn("Customer BFF: customerId '{}' is not a valid UUID, fetching exceptions via orders",
+                        customerId);
+                // For non-UUID customers (like "customer" username), we need to fetch
+                // exceptions
                 // by checking which orders belong to this customer first
                 List<OrderResponse> customerOrders = orderService.getByCustomerId(customerId);
                 exceptions = new java.util.ArrayList<>();
@@ -327,7 +335,7 @@ public class CustomerBffController {
      * Get delivery exception by ID
      * GET /api/customer/delivery-exceptions/{id}
      *
-     * @param id Exception ID (UUID)
+     * @param id  Exception ID (UUID)
      * @param jwt JWT token with customer information
      * @return Exception details (only if it belongs to the authenticated customer)
      */
@@ -342,7 +350,8 @@ public class CustomerBffController {
             DeliveryExceptionResponse exception = exceptionService.getById(id);
 
             // Security check: verify that the exception belongs to this customer
-            // Handle both UUID-based customerIds and string-based customerIds (like usernames)
+            // Handle both UUID-based customerIds and string-based customerIds (like
+            // usernames)
             boolean isAuthorized = false;
 
             try {
@@ -350,7 +359,8 @@ public class CustomerBffController {
                 java.util.UUID customerUuid = java.util.UUID.fromString(customerId);
                 isAuthorized = exception.getCustomerId() != null && customerUuid.equals(exception.getCustomerId());
             } catch (IllegalArgumentException e) {
-                // If customerId is not a UUID (e.g., username), verify by checking if the order belongs to this customer
+                // If customerId is not a UUID (e.g., username), verify by checking if the order
+                // belongs to this customer
                 log.info("Customer BFF: customerId '{}' is not a UUID, checking order ownership", customerId);
                 try {
                     OrderResponse order = orderService.getById(exception.getOrderId());
@@ -380,7 +390,7 @@ public class CustomerBffController {
      * POST /api/customer/delivery-exceptions
      *
      * @param request Exception creation request
-     * @param jwt JWT token with customer information
+     * @param jwt     JWT token with customer information
      * @return Created exception
      */
     @PostMapping("/delivery-exceptions")
@@ -392,12 +402,14 @@ public class CustomerBffController {
             log.info("Customer BFF: Customer {} creating new delivery exception for order {}",
                     customerId, request.getOrderId());
 
-            // Security: Verify that the order belongs to this customer before creating exception
+            // Security: Verify that the order belongs to this customer before creating
+            // exception
             OrderResponse order = orderService.getById(request.getOrderId());
             if (order.getCustomerId() == null || !customerId.equals(order.getCustomerId())) {
                 log.warn("Customer {} attempted to create exception for order {} (order customerId: {})",
                         customerId, request.getOrderId(), order.getCustomerId());
-                throw new RuntimeException("Access denied: Cannot create exception for orders that don't belong to you");
+                throw new RuntimeException(
+                        "Access denied: Cannot create exception for orders that don't belong to you");
             }
 
             // Set customer-specific fields (security: prevent customers from impersonating)
@@ -413,14 +425,15 @@ public class CustomerBffController {
             }
 
             request.setCustomerReported(true);
-            request.setSource(Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source.CUSTOMER);
+            request.setSource(
+                    Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.Source.CUSTOMER);
 
             // Create the exception via business layer
             DeliveryExceptionResponse response = exceptionService.create(request);
-            
-            log.info("Customer BFF: Successfully created exception {} for customer {} (UUID: {})", 
+
+            log.info("Customer BFF: Successfully created exception {} for customer {} (UUID: {})",
                     response.getId(), customerId, request.getCustomerId());
-            
+
             return ResponseEntity
                     .created(URI.create("/api/customer/delivery-exceptions/" + response.getId()))
                     .body(response);
@@ -435,7 +448,7 @@ public class CustomerBffController {
      * GET /api/customer/orders/{orderId}/exceptions
      *
      * @param orderId Order ID
-     * @param jwt JWT token with customer information
+     * @param jwt     JWT token with customer information
      * @return List of exceptions for the order (only if order belongs to customer)
      */
     @GetMapping("/orders/{orderId}/exceptions")
@@ -471,7 +484,7 @@ public class CustomerBffController {
      * Get all documents for an order
      * GET /api/customer/orders/{id}/documents
      *
-     * @param id Order ID
+     * @param id  Order ID
      * @param jwt JWT token with customer information
      * @return List of documents (only if order belongs to customer)
      */
@@ -504,9 +517,9 @@ public class CustomerBffController {
      * Download a specific document for an order
      * GET /api/customer/orders/{id}/documents/{documentId}/download
      *
-     * @param id Order ID
+     * @param id         Order ID
      * @param documentId Document ID (filename)
-     * @param jwt JWT token with customer information
+     * @param jwt        JWT token with customer information
      * @return Document content (only if order belongs to customer)
      */
     @GetMapping("/orders/{id}/documents/{documentId}/download")

@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/shipments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
@@ -30,8 +29,7 @@ public class ShipmentController {
                 request.getShipmentCode(),
                 request.getCarrierId(),
                 request.getDriverId(),
-                request.getOrderIds()
-        );
+                request.getOrderIds());
 
         ShipmentResponse response = mapToResponse(shipment);
         return ResponseEntity
