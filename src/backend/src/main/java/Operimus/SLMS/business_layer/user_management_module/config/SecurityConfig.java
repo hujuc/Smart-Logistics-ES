@@ -142,12 +142,25 @@ public class SecurityConfig {
         String nginxIssuerWithPort = String.format("http://localhost:%s/realms/%s", keycloakPort, keycloakRealm); // http://localhost:8080/realms/slms
         String nginxIssuerNoPort = String.format("http://localhost/realms/%s", keycloakRealm); // http://localhost/realms/slms
 
-        List<String> validIssuers = List.of(
+        List<String> validIssuers = new java.util.ArrayList<>(List.of(
                 externalIssuerUri, // http://localhost:8180/realms/slms (direct external access)
                 internalIssuerUri, // http://keycloak:8080/realms/slms (internal Docker network)
                 nginxIssuerWithPort, // http://localhost:8080/realms/slms (nginx proxy with internal port)
                 nginxIssuerNoPort // http://localhost/realms/slms (nginx proxy without port)
-        );
+        ));
+
+        // Add issuers based on allowed origins (e.g. for EC2 deployment)
+        if (allowedOrigins != null) {
+            for (String origin : allowedOrigins) {
+                if (!origin.equals("*")) {
+                    // Remove trailing slash if present
+                    String cleanOrigin = origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
+                    validIssuers.add(String.format("%s/realms/%s", cleanOrigin, keycloakRealm));
+                    // Also add with port 8180 just in case (Keycloak direct access)
+                    validIssuers.add(String.format("%s:8180/realms/%s", cleanOrigin, keycloakRealm));
+                }
+            }
+        }
 
         // Configure validators to accept ANY of the valid issuers
         OAuth2TokenValidator<Jwt> withIssuer = new DelegatingOAuth2TokenValidator<>(
