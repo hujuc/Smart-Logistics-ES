@@ -3,7 +3,7 @@ package Operimus.SLMS.business_layer.chatbot_module.integration.pinecone;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryRequest;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryResponse;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeUpsertRequest;
-import java.nio.charset.StandardCharsets;
+
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
+
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -24,22 +24,25 @@ public class PineconeClient {
     private final PineconeProperties properties;
 
     public PineconeClient(PineconeProperties properties) {
-        Assert.hasText(properties.apiKey(), "chatbot.pinecone.api-key must be configured");
-        Assert.hasText(properties.host(), "chatbot.pinecone.host must be configured");
-        Assert.hasText(properties.index(), "chatbot.pinecone.index must be configured");
-        Assert.hasText(properties.namespace(), "chatbot.pinecone.namespace must be configured");
-
         this.properties = properties;
-        this.webClient = WebClient.builder()
-                .baseUrl(properties.host())
-                .defaultHeader("Api-Key", properties.apiKey())
-                .defaultHeader("X-Pinecone-API-Version", "2025-01")
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build();
+        if (properties.apiKey() != null && !properties.apiKey().isBlank() &&
+                properties.host() != null && !properties.host().isBlank()) {
+            this.webClient = WebClient.builder()
+                    .baseUrl(properties.host())
+                    .defaultHeader("Api-Key", properties.apiKey())
+                    .defaultHeader("X-Pinecone-API-Version", "2025-01")
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .build();
+        } else {
+            log.warn("Pinecone API key or Host not configured. Chatbot features will be disabled.");
+            this.webClient = null;
+        }
     }
 
     public void upsertVectors(List<PineconeVector> vectors) {
-        if (vectors.isEmpty()) {
+        if (vectors.isEmpty() || webClient == null) {
+            if (webClient == null)
+                log.debug("Pinecone client not initialized, skipping upsert");
             return;
         }
         PineconeUpsertRequest payload = new PineconeUpsertRequest(properties.namespace(), vectors);
@@ -53,13 +56,16 @@ public class PineconeClient {
     }
 
     public List<PineconeQueryResponse.Match> query(float[] vector, int topK, Map<String, Object> metadataFilter) {
+        if (webClient == null) {
+            log.debug("Pinecone client not initialized, returning empty results");
+            return List.of();
+        }
         PineconeQueryRequest request = new PineconeQueryRequest(
                 properties.namespace(),
                 vector,
                 topK,
                 true,
-                metadataFilter
-        );
+                metadataFilter);
 
         PineconeQueryResponse response = webClient.post()
                 .uri("/query")
