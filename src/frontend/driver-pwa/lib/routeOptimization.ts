@@ -82,8 +82,6 @@ export async function optimizeRouteWithMapbox(
     const response = await fetch(url, { method: 'GET' });
 
     if (!response.ok) {
-      const errorText = await response.text();
-
       // If it's a payment/quota error, fall back to nearest-neighbor
       if (response.status === 402 || response.status === 429) {
         return optimizeWithNearestNeighbor(startLocation, deliveries);
@@ -129,8 +127,7 @@ export async function optimizeRouteWithMapbox(
       fallbackUsed: false
     };
 
-  } catch (error) {
-
+  } catch {
     // Fall back to nearest-neighbor algorithm
     return optimizeWithNearestNeighbor(startLocation, deliveries);
   }

@@ -271,17 +271,7 @@ function NavigationOptimizedContent() {
 
     // Update route when location or delivery changes
     useEffect(() => {
-            hasMap: !!map.current,
-            mapReady,
-            currentDeliveryId: currentDelivery?.orderId,
-            currentLocation
-        });
-
         if (!map.current || !mapReady || !currentDelivery) {
-                hasMap: !!map.current,
-                mapReady,
-                hasDelivery: !!currentDelivery
-            });
             return;
         }
 
@@ -297,16 +287,7 @@ function NavigationOptimizedContent() {
             }
 
             async function addRouteToMap() {
-                    deliveryId: currentDelivery?.orderId,
-                    from: currentLocation,
-                    to: currentDelivery?.coordinates
-                });
-
                 if (!map.current || !currentDelivery || !currentLocation) {
-                        hasMap: !!map.current,
-                        hasDelivery: !!currentDelivery,
-                        hasLocation: !!currentLocation
-                    });
                     return;
                 }
 
@@ -748,14 +729,6 @@ function NavigationOptimizedContent() {
             </div>
         );
     }
-
-
-        currentDelivery: currentDelivery?.orderId,
-        currentLocation,
-        warehouseLocation,
-        mapReady,
-        deliveries: deliveries.length
-    });
 
     if (!currentDelivery) {
         return (
