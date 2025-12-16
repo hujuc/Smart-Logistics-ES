@@ -41,7 +41,7 @@ public class LogisticsChatBffController {
      * @param jwt     JWT token with logistics manager information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {

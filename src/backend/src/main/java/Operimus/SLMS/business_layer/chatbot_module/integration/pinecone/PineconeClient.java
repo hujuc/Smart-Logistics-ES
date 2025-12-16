@@ -25,24 +25,31 @@ public class PineconeClient {
 
     public PineconeClient(PineconeProperties properties) {
         this.properties = properties;
-        if (properties.apiKey() != null && !properties.apiKey().isBlank() &&
-                properties.host() != null && !properties.host().isBlank()) {
-            this.webClient = WebClient.builder()
-                    .baseUrl(properties.host())
-                    .defaultHeader("Api-Key", properties.apiKey())
-                    .defaultHeader("X-Pinecone-API-Version", "2025-01")
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .build();
-        } else {
-            log.warn("Pinecone API key or Host not configured. Chatbot features will be disabled.");
-            this.webClient = null;
+
+        // Validate required properties
+        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.api-key must be configured");
         }
+        if (properties.host() == null || properties.host().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.host must be configured");
+        }
+        if (properties.index() == null || properties.index().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.index must be configured");
+        }
+        if (properties.namespace() == null || properties.namespace().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.namespace must be configured");
+        }
+
+        this.webClient = WebClient.builder()
+                .baseUrl(properties.host())
+                .defaultHeader("Api-Key", properties.apiKey())
+                .defaultHeader("X-Pinecone-API-Version", "2025-01")
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
     }
 
     public void upsertVectors(List<PineconeVector> vectors) {
-        if (vectors.isEmpty() || webClient == null) {
-            if (webClient == null)
-                log.debug("Pinecone client not initialized, skipping upsert");
+        if (vectors.isEmpty()) {
             return;
         }
         PineconeUpsertRequest payload = new PineconeUpsertRequest(properties.namespace(), vectors);
@@ -56,10 +63,6 @@ public class PineconeClient {
     }
 
     public List<PineconeQueryResponse.Match> query(float[] vector, int topK, Map<String, Object> metadataFilter) {
-        if (webClient == null) {
-            log.debug("Pinecone client not initialized, returning empty results");
-            return List.of();
-        }
         PineconeQueryRequest request = new PineconeQueryRequest(
                 properties.namespace(),
                 vector,

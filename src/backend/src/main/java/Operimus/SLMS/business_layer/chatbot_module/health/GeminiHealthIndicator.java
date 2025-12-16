@@ -32,12 +32,9 @@ public class GeminiHealthIndicator implements HealthIndicator {
             float[] embedding = geminiClient.generateEmbedding(TEST_TEXT);
 
             if (embedding == null || embedding.length == 0) {
-                // Report as UP with warning - don't fail entire health check for empty response
-                return Health.up()
+                return Health.down()
                         .withDetail("service", "Google Gemini AI")
-                        .withDetail("status", "degraded")
-                        .withDetail("warning", "Empty embedding response")
-                        .withDetail("note", "Chatbot functionality may be limited")
+                        .withDetail("error", "Empty embedding response")
                         .build();
             }
 
@@ -49,13 +46,10 @@ public class GeminiHealthIndicator implements HealthIndicator {
 
         } catch (Exception e) {
             log.warn("Gemini health check failed: {}", e.getMessage());
-            // Report as UP with warning - Gemini is optional, don't fail the entire health check
-            return Health.up()
+            return Health.down()
                     .withDetail("service", "Google Gemini AI")
-                    .withDetail("status", "degraded")
-                    .withDetail("warning", e.getMessage())
+                    .withDetail("error", e.getMessage())
                     .withDetail("error_type", e.getClass().getSimpleName())
-                    .withDetail("note", "Chatbot functionality may be limited")
                     .build();
         }
     }

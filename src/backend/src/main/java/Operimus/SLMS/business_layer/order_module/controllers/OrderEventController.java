@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/admin/order-events")
+@RequestMapping("/api/admin/orders/{orderId}/events")
 @RequiredArgsConstructor
 public class OrderEventController {
 

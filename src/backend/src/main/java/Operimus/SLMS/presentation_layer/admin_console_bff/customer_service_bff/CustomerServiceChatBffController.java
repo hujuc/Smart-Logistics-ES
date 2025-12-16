@@ -42,7 +42,7 @@ public class CustomerServiceChatBffController {
      * @param jwt     JWT token with customer service rep information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {

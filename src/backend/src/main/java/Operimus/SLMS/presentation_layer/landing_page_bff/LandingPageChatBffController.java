@@ -40,7 +40,7 @@ public class LandingPageChatBffController {
      * @param jwt     Optional JWT token (null for anonymous users)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
