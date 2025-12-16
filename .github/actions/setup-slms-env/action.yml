@@ -246,6 +246,9 @@ runs:
         KC_DB_URL=jdbc:postgresql://${{ inputs.db-host }}:${{ inputs.db-port }}/slms
         KC_DB_USERNAME=${{ inputs.postgres-user }}
         KC_DB_PASSWORD=${{ inputs.postgres-password }}
+        KC_HOSTNAME=
+        KC_HTTP_ENABLED=true
+        KC_PROXY_HEADERS=xforwarded
         # KC_HOSTNAME_* variables are set in deployment-specific section below to avoid duplicates
 
         # Admin Keycloak
