@@ -30,17 +30,14 @@ export async function optimizeRouteWithMapbox(
   startLocation: [number, number],
   deliveries: DeliveryPoint[]
 ): Promise<OptimizationResult> {
-  console.log('🚀 Starting Mapbox Optimization API v1...');
 
   // Check if access token is available
   if (!mapboxgl.accessToken || mapboxgl.accessToken === '') {
-    console.error('❌ Mapbox access token not configured');
     return optimizeWithNearestNeighbor(startLocation, deliveries);
   }
 
   // Special case: only one delivery
   if (deliveries.length === 1) {
-    console.log('ℹ️ Only one delivery, skipping optimization');
     return {
       optimizedOrder: [deliveries[0].id],
       totalDistance: 0,
@@ -58,7 +55,6 @@ export async function optimizeRouteWithMapbox(
 
   // Validate coordinate count (Optimization API v1 supports 2-12 coordinates)
   if (allCoordinates.length < 3) {
-    console.warn('⚠️ Need at least warehouse + 2 deliveries for optimization');
     return {
       optimizedOrder: deliveries.map(d => d.id),
       totalDistance: 0,
@@ -69,7 +65,6 @@ export async function optimizeRouteWithMapbox(
   }
 
   if (allCoordinates.length > 12) {
-    console.warn('⚠️ Optimization API v1 supports max 12 coordinates. Using first 11 deliveries only.');
     allCoordinates.splice(12);
     deliveries = deliveries.slice(0, 11);
   }
@@ -79,22 +74,18 @@ export async function optimizeRouteWithMapbox(
     .map(coord => `${coord[0]},${coord[1]}`)
     .join(';');
 
-  console.log('📍 Coordinates for optimization:', coordinates);
 
   try {
     // Call Mapbox Optimization API v1
     const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?source=first&destination=any&roundtrip=false&access_token=${mapboxgl.accessToken}`;
 
-    console.log('🌐 Calling Mapbox Optimization API v1...');
     const response = await fetch(url, { method: 'GET' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Mapbox Optimization API error:', response.status, errorText);
 
       // If it's a payment/quota error, fall back to nearest-neighbor
       if (response.status === 402 || response.status === 429) {
-        console.warn('⚠️ API quota exceeded or payment required. Falling back to nearest-neighbor algorithm.');
         return optimizeWithNearestNeighbor(startLocation, deliveries);
       }
 
@@ -105,15 +96,11 @@ export async function optimizeRouteWithMapbox(
 
     // Check for "NotImplemented" error - API not available in current plan
     if (data.code === 'NotImplemented' || data.message === 'This request is not supported') {
-      console.warn('⚠️ Mapbox Optimization API not available (requires paid plan)');
-      console.log('ℹ️ Falling back to nearest-neighbor algorithm');
       return optimizeWithNearestNeighbor(startLocation, deliveries);
     }
 
     if (!data.trips || data.trips.length === 0) {
-      console.warn('⚠️ No trips returned from API, using fallback');
       if (data.message) {
-        console.log('API message:', data.message);
       }
       return optimizeWithNearestNeighbor(startLocation, deliveries);
     }
@@ -133,10 +120,6 @@ export async function optimizeRouteWithMapbox(
       return deliveries[deliveryIndex].id;
     });
 
-    console.log('✅ Mapbox Optimization successful!');
-    console.log('📊 Optimized order:', optimizedOrder);
-    console.log('📏 Total distance:', (trip.distance / 1000).toFixed(2), 'km');
-    console.log('⏱️ Total duration:', Math.round(trip.duration / 60), 'min');
 
     return {
       optimizedOrder,
@@ -147,8 +130,6 @@ export async function optimizeRouteWithMapbox(
     };
 
   } catch (error) {
-    console.error('❌ Error calling Mapbox Optimization API:', error);
-    console.log('🔄 Falling back to nearest-neighbor algorithm...');
 
     // Fall back to nearest-neighbor algorithm
     return optimizeWithNearestNeighbor(startLocation, deliveries);
@@ -165,7 +146,6 @@ function optimizeWithNearestNeighbor(
   startLocation: [number, number],
   deliveries: DeliveryPoint[]
 ): OptimizationResult {
-  console.log('📍 Using nearest-neighbor fallback algorithm');
 
   const optimized: number[] = [];
   const remaining = [...deliveries];
@@ -195,7 +175,6 @@ function optimizeWithNearestNeighbor(
     remaining.splice(nearestIndex, 1);
   }
 
-  console.log('✅ Nearest-neighbor optimization complete:', optimized);
 
   return {
     optimizedOrder: optimized,
