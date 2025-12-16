@@ -276,6 +276,39 @@ runs:
         NODE_ENV=production
         NEXT_TELEMETRY_DISABLED=1
         SPRING_DEVTOOLS_RESTART_ENABLED=false
+
+        # Frontend API Configuration
+        NEXT_PUBLIC_API_URL=http://localhost
+
+        # Observability (Optional - empty in CI)
+        ELASTIC_APM_SERVER_URL=
+        ELASTIC_APM_SECRET_TOKEN=
+        DEPLOYMENT_ENV=ci
+        PROJECT_VERSION=ci-build
+        TRACING_SAMPLING_RATE=0.0
+
+        # Frontend Observability (Optional - empty in CI)
+        NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=
+        NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=
+        NEXT_PUBLIC_DEPLOYMENT_ENV=ci
+        NEXT_PUBLIC_PROJECT_VERSION=ci-build
+        NEXT_PUBLIC_TRACING_SAMPLING_RATE=0.0
+
+        # Feature Flags (Optional - empty in CI)
+        NEXT_PUBLIC_FLAGSMITH_ENV_KEY=
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=
+
+        # MinIO Bucket Name (alias for MINIO_BUCKET)
+        MINIO_BUCKET_NAME=${{ inputs.minio-bucket }}
+
+        # AI & Vector Database (Optional - from GitHub secrets if available)
+        GEMINI_API_KEY=${{ inputs.gemini-api-key }}
+        GEMINI_MODEL=${{ inputs.gemini-model }}
+        GEMINI_EMBEDDING_MODEL=${{ inputs.gemini-embedding-model }}
+        PINECONE_API_KEY=${{ inputs.pinecone-api-key }}
+        PINECONE_HOST=${{ inputs.pinecone-host }}
+        PINECONE_INDEX=${{ inputs.pinecone-index }}
+        PINECONE_NAMESPACE=${{ inputs.pinecone-namespace }}
         EOF
         echo "✅ Generated infra/.env (CI mode)"
 

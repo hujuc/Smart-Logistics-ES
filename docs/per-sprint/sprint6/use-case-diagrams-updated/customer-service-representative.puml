@@ -1,0 +1,52 @@
+@startuml customerServiceRepresentativeUCs
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8f9fa
+  BorderColor #2b303b
+  FontColor #2b303b
+}
+
+actor "Customer Service Representative" as CSR
+
+rectangle "SLMS System" {
+  (Login to System) as UC_Login
+
+  (US6: Search Order Status) as UC_SearchStatus
+  (Enter Order Number) as UC_EnterOrder
+  (Display Real-Time Order Status) as UC_DisplayStatus
+
+  (US7: Handle Delivery Exceptions) as UC_HandleExceptions
+  (Search Order with Active Exception) as UC_SearchException
+  (View Exception Details) as UC_ViewDetails
+  (Record Resolution Notes) as UC_RecordNotes
+
+  (US8: Manage Customer-Reported Issues) as UC_ManageIssues
+  (Receive Issue Notification) as UC_ReceiveNotification
+  (Contact Customer / Update Order) as UC_ContactCustomer
+  (Log Resolution Notes and Close Issue) as UC_CloseIssue
+}
+
+' Actor interactions
+CSR --> UC_SearchStatus
+CSR --> UC_HandleExceptions
+CSR --> UC_ManageIssues
+
+' Authentication includes
+UC_SearchStatus --> UC_Login : «include»
+UC_HandleExceptions --> UC_Login : «include»
+UC_ManageIssues --> UC_Login : «include»
+
+' Internal includes (sub-flows)
+UC_SearchStatus --> UC_EnterOrder : «include»
+UC_SearchStatus --> UC_DisplayStatus : «include»
+
+UC_HandleExceptions --> UC_SearchException : «include»
+UC_HandleExceptions --> UC_ViewDetails : «include»
+UC_HandleExceptions --> UC_RecordNotes : «include»
+
+UC_ManageIssues --> UC_ReceiveNotification : «include»
+UC_ManageIssues --> UC_ContactCustomer : «include»
+UC_ManageIssues --> UC_CloseIssue : «include»
+
+@enduml

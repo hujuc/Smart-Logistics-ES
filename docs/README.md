@@ -56,7 +56,7 @@ ADRs document significant architectural decisions made throughout the project li
 ### Implemented Modules
 - [Chatbot Module](handbook/chatbot-module.md) - AI assistant with role/frontend/route-based filtering
 - [Observability](handbook/observability.md) - SLIs, SLOs, and monitoring strategy
-- [Frontend Observability Setup](handbook/frontend-observability-setup.md) - Elastic APM RUM implementation guide
+- [Frontend Observability Setup](per-sprint/sprint5/frontend-observability-setup.md) - Elastic APM RUM implementation guide
 - [Carrier Module](per-sprint/sprint3/carrier-module-readme.md) - ShipEngine integration and carrier management
 - [Shipment Documents](per-sprint/sprint4/shipment-documents-guide.md) - Document generation and management
 - [Health Checks](per-sprint/sprint4/health-checks-implementation.md) - Application health monitoring
@@ -114,15 +114,23 @@ Sprint-by-sprint documentation preserves the evolution of the project.
 - [Shipment Documents Guide](per-sprint/sprint4/shipment-documents-guide.md)
 - [AWS Deployment Guide](per-sprint/sprint4/aws-deployment-guide.md)
 
+### Sprint 5 - Frontend Observability
+- [Frontend Observability Setup](per-sprint/sprint5/frontend-observability-setup.md)
+
+### Sprint 6 - Requirements Refinement
+- [Use Case Diagrams Updated](per-sprint/sprint6/use-case-diagrams-updated/)
+- [User Stories Update](per-sprint/sprint6/user-stories-update.md)
+
 ## Handbook
 
 Developer guides and operational procedures.
 
 - [Developer Handbook](handbook/dev-handbook.md) - Essential development guide
+- [Architecture Diagram](handbook/Architecture_SLMS.png) - System architecture overview
 - [Data Model](handbook/data-model.md) - Current database schema
 - [Chatbot Module](handbook/chatbot-module.md) - AI assistant documentation
 - [Observability](handbook/observability.md) - SLIs and SLOs
-- [Frontend Observability Setup](handbook/frontend-observability-setup.md) - Implementation guide
+- [CI/CD Pipeline](handbook/ci-cd-pipeline.md) - Continuous integration and deployment workflows
 - [Repository Workflow](handbook/repo-workflow.md) - Git workflow and PR process
 
 ## Contributing

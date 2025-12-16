@@ -32,8 +32,7 @@
 9. [AI-Powered Chatbot](#9-ai-powered-chatbot)
 10. [Testing & Quality Assurance](#10-testing--quality-assurance)
 11. [Observability & Monitoring](#11-observability--monitoring)
-12. [Lessons Learned & Future Work](#12-lessons-learned--future-work)
-13. [Conclusion](#13-conclusion)
+12. [Conclusion](#12-conclusion)
 
 ---
 
@@ -52,13 +51,13 @@ This project was developed as part of the Software Engineering course at the Uni
 The primary objective of SLMS is to provide a comprehensive logistics management solution that supports all key roles involved in the shipping and delivery process. The system addresses several core challenges:
 
 - **Real-time monitoring and decision-making:** Enable logistics managers to track key performance indicators (KPIs), compare carrier performance, and generate reports for data-driven decision-making
-- **Streamlined warehouse operations:** Support warehouse staff with order registration, automatic label and document generation, and carrier pickup confirmation
+- **Streamlined warehouse operations:** Support warehouse staff with shipment registration, automatic label and document generation, and carrier pickup confirmation
 - **Improved customer service efficiency:** Provide customer service representatives with real-time access to order status, delivery exceptions, and tools to resolve issues quickly
 - **Driver empowerment:** Equip carriers with a mobile Progressive Web Application (PWA) to view delivery manifests, receive optimized routes, and record proof of delivery
 - **Customer transparency:** Allow customers to track orders in real time, receive proactive notifications, and report delivery problems directly through a public portal
 - **Structured exception management:** Ensure that delivery problems such as failed attempts, incorrect addresses, or damaged packages are logged, assigned, and resolved systematically
 
-The system's scope encompasses 18 user stories addressing 5 distinct user personas (detailed in Section 4), with 12 user stories completed, 5 in progress, and 1 pending. The platform handles the complete order lifecycle from creation through carrier selection, shipment, tracking, exception handling, and final delivery confirmation.
+The system's scope encompasses 18 user stories addressing 5 distinct user personas (detailed in Section 4), all of which have been successfully completed. The platform handles the complete order lifecycle from creation through carrier selection, shipment, tracking, exception handling, and final delivery confirmation.
 
 ## 1.3 System Overview
 
@@ -69,11 +68,11 @@ SLMS implements a modular monolith architecture designed to balance development 
 - **Customer Portal:** Self-service application enabling customers to track their orders, view delivery history, and manage delivery preferences
 - **Driver PWA:** Mobile-optimized Progressive Web Application providing drivers with delivery manifests, route optimization, real-time status updates, and proof of delivery capture
 
-These frontends interact with a centralized backend organized into eight business modules: Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, Warehouse Management, and AI-Powered Chatbot. Each module encapsulates specific domain logic while maintaining clear boundaries that prevent tight coupling and enable independent evolution (detailed in Section 2).
+These frontends interact with a centralized backend organized into seven business modules: Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, and AI-Powered Chatbot. Each module encapsulates specific domain logic while maintaining clear boundaries that prevent tight coupling and enable independent evolution (detailed in Section 2).
 
 The technology stack combines mature, production-proven technologies with modern capabilities. The backend leverages **Spring Boot 3.5.0** with **Java 21** for application logic, **Spring Data JPA** with **Hibernate** for object-relational mapping, and **PostgreSQL 16** for relational data storage. All four frontend applications are built with **Next.js 15.5.4** and **React 19.1.0**, using **TypeScript** for type safety and **Tailwind CSS** for styling. The infrastructure employs **Docker** for containerization, **Terraform** for infrastructure as code, and **Nginx** as the reverse proxy and load balancer.
 
-Key external integrations include **Keycloak 26.0** for OAuth 2.0/OpenID Connect authentication and authorization, **ShipEngine API** for multi-carrier integration (FedEx, UPS, DHL), **Google Gemini** for large language model capabilities in the AI chatbot, **Pinecone** for vector database and semantic search, **Elastic APM** for application performance monitoring and distributed tracing, **MinIO** for S3-compatible object storage of shipping documents and proof of delivery photos, **Mapbox** for mapping and routing services in the Driver PWA, and **Flagsmith** for feature flag management. The complete technical stack is detailed in Section 2.3.
+Key external integrations include **Keycloak 26.0** for OAuth 2.0/OpenID Connect authentication and authorization, **ShipEngine and Shippo APIs** for multi-carrier integration (FedEx, UPS, DHL), **Google Gemini** for large language model capabilities in the AI chatbot, **Pinecone** for vector database and semantic search, **Elastic APM** for application performance monitoring and distributed tracing, **MinIO** for S3-compatible object storage of shipping documents and proof of delivery photos, **Mapbox** for mapping and routing services in the Driver PWA, and **Flagsmith** for feature flag management. The complete technical stack is detailed in Section 2.3.
 
 ## 1.4 Development Approach
 
@@ -165,11 +164,11 @@ The logic architecture of SLMS organizes functionality into distinct layers, wit
 
 ### 2.2.1 Backend Modules
 
-The backend comprises eight specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
+The backend comprises seven specialized modules, each encapsulating a distinct domain within the logistics workflow. Modules operate independently while collaborating through well-defined interfaces.
 
 **Order Module:** Manages the complete order lifecycle from creation to delivery. Captures shipment details (package dimensions, destination, special requirements), tracks order status through a state machine (PENDING → READY → ASSIGNED → IN_TRANSIT → DELIVERED), generates shipping documents stored in MinIO, and maintains an immutable audit trail of all order events.
 
-**Rate Carrier Module:** Handles carrier integration and shipment execution through the Shippo API aggregator, supporting FedEx, UPS, and DHL. Provides rate comparison functionality for cost-optimal carrier selection, generates shipping labels with tracking numbers, manages shipment entities containing carrier-specific data, and tracks driver assignments for delivery execution.
+**Rate Carrier Module:** Handles carrier integration and shipment execution through ShipEngine and Shippo API aggregators, supporting FedEx, UPS, and DHL. Provides rate comparison functionality for cost-optimal carrier selection, generates shipping labels with tracking numbers, manages shipment entities containing carrier-specific data, and tracks driver assignments for delivery execution.
 
 **Visibility Module:** Aggregates real-time tracking updates from multiple sources (carrier webhooks, driver app, warehouse staff) into a unified order status view. Manages delivery exception workflow—capturing, categorizing, prioritizing, and routing exceptions to customer service representatives based on severity, workload, and expertise. Integrates with notifications to keep stakeholders informed.
 
@@ -177,7 +176,7 @@ The backend comprises eight specialized modules, each encapsulating a distinct d
 
 **User Management Module:** Bridges application logic with Keycloak authentication. Validates JWT tokens on every request, extracting user identity and roles (LOGISTICS_MANAGER, WAREHOUSE_STAFF, CUSTOMER_SERVICE, DRIVER, CUSTOMER) for authorization decisions. Enforces role-based access control across all modules and handles token refresh for seamless user experience.
 
-**Notification Module:** Event-driven communication system built on Kafka. Subscribes to events from other modules (order status changes, exceptions, deliveries) and transforms them into user notifications via email and SMS. Maintains multi-language templates, respects user channel preferences, implements delivery tracking and retry logic, and prioritizes critical alerts.
+**Notification Module:** Event-driven communication system built on Kafka. Subscribes to events from other modules (order status changes, exceptions, deliveries) and displays them as in-app notifications accessible through the notifications tab in each frontend. Maintains notification history, supports real-time updates, and prioritizes critical alerts for immediate user attention.
 
 **Reporting Module:** Transforms operational data into business intelligence for logistics managers. Calculates KPIs (on-time delivery %, average duration, cost per package, carrier performance, exception rates), generates real-time dashboards, enables time-series analysis for pattern identification, and supports custom ad-hoc reports. Uses pre-calculated aggregates and caching to avoid impacting transactional performance.
 
@@ -189,9 +188,9 @@ SLMS implements four separate Next.js applications rather than a single monolith
 
 **Landing Page (Public visitors):** Public entry point providing marketing information and unauthenticated order tracking. Enables anyone with a tracking number to check shipment status without creating an account. Routes authenticated users to appropriate applications based on their role (managers to Admin Console, customers to Customer Portal).
 
-**Admin Console (Logistics managers, warehouse staff, customer service):** Unified internal operations interface serving three roles with role-based UI adaptation. Managers access analytics dashboards and carrier configuration; warehouse staff create orders and generate shipping labels; customer service investigates issues and manages delivery exceptions. Consolidation enables cross-functional visibility while maintaining focused interfaces per role.
+**Admin Console (Logistics managers, warehouse staff, customer service):** Unified internal operations interface serving three roles with role-based UI adaptation. Managers access analytics dashboards and carrier configuration; warehouse staff process and prepare orders, generating shipping labels and documentation; customer service investigates issues and manages delivery exceptions. Consolidation enables cross-functional visibility while maintaining focused interfaces per role.
 
-**Customer Portal (End customers):** Self-service interface for order tracking, delivery preference management, and issue reporting. Prioritizes simplicity and responsive design for infrequent users across all devices. Implements strict data isolation ensuring customers only access their own orders. Provides real-time tracking updates and direct exception reporting to reduce customer service load.
+**Customer Portal (End customers):** Self-service interface for order creation, tracking, delivery preference management, and issue reporting. Prioritizes simplicity and responsive design for infrequent users across all devices. Implements strict data isolation ensuring customers only access their own orders. Provides real-time tracking updates and direct exception reporting to reduce customer service load.
 
 **Driver PWA (Delivery drivers):** Mobile Progressive Web App for field operations with offline-first design. Displays optimized delivery manifests with turn-by-turn navigation (Mapbox integration), captures proof of delivery (photos, signatures), and reports delivery exceptions. Service workers cache route data for offline access, with automatic sync when connectivity returns. Optimized for mobile constraints: large touch targets, minimal typing, battery efficiency.
 
@@ -255,7 +254,7 @@ The SLMS technical stack combines mature, production-proven technologies with se
 
 **MinIO** implements S3-compatible object storage for documents and images. Shipping labels, packing slips, customs declarations, and proof of delivery photos store in MinIO buckets, accessible through standard S3 APIs.
 
-**Shippo API** aggregates carrier integrations, providing unified access to FedEx, UPS, and DHL services. The API supports rate requests, label generation, and tracking webhooks, abstracting carrier-specific details.
+**ShipEngine and Shippo APIs** aggregate carrier integrations, providing unified access to FedEx, UPS, and DHL services. These APIs support rate requests, label generation, and tracking webhooks, abstracting carrier-specific details.
 
 **Google Gemini** provides large language model capabilities for the chatbot. The API handles natural language understanding, response generation, and text embedding (768-dimensional vectors) for semantic search.
 
@@ -376,7 +375,7 @@ The relationships between entities reflect the logistics workflow and business r
 
 **Relationship:** Every order originates from exactly one warehouse.
 
-**Business Logic:** When warehouse staff create an order, they specify which physical facility it's shipping from. This relationship enables:
+**Business Logic:** When customers create an order, they (or the system) specify which physical facility it's shipping from. This relationship enables:
 - Tracking which warehouse is responsible for preparing the shipment
 - Multi-warehouse operations where different facilities handle different orders
 - Warehouse-level performance metrics (orders processed, average processing time)
@@ -535,439 +534,1779 @@ This pattern requires application code to manually maintain referential integrit
 
 # 4. User Requirements
 
-**Responsible: Hugo Castro**
-
-*[10-12 pages with persona images and scenarios]*
-
 ## 4.1 Personas
 
 **Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
 
 ### 4.1.1 João Ferreira - Logistics Manager
 
-**Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/joaoFerreira.png`
+![João Ferreira](per-sprint/sprint2/personas-scenarios-US-update/imgs/joaoFerreira.png)
 
-**Topics to cover:**
-- Age: 42
-- Profile: Senior manager with operations experience
-- Goals: Global operations view, cost reduction, carrier performance evaluation
-- Frustrations: Lack of real-time data, manual carrier comparison
-- How he uses SLMS: KPI monitoring, strategy optimization, report exports
+João Ferreira represents the strategic management layer within the SLMS ecosystem. At 42 years of age, João occupies a senior managerial position in a retail company, bringing extensive professional experience in operations and transportation logistics to his role. His expertise encompasses the full spectrum of supply chain management, from tactical operational decisions to strategic planning and optimization.
+
+As a Logistics Manager, João's primary professional objectives center on achieving comprehensive operational visibility and continuous improvement of logistics performance. He seeks to obtain a global view of all transportation operations under his purview, enabling him to identify patterns, trends, and opportunities for optimization. Cost reduction represents a critical mandate, with particular emphasis on decreasing shipping expenses while simultaneously increasing on-time delivery rates. Furthermore, João requires robust mechanisms for evaluating carrier performance across multiple dimensions, including reliability, cost-effectiveness, and service quality, to inform strategic vendor management decisions.
+
+Despite his experience and expertise, João faces significant challenges inherent to traditional logistics management systems. The absence of real-time operational data severely constrains his ability to make timely, data-driven decisions and respond proactively to emerging issues. Additionally, the manual nature of carrier comparison processes consumes valuable time and introduces potential for human error, preventing efficient optimization of shipping strategies. These frustrations highlight the critical need for integrated, automated systems that consolidate logistics data and provide actionable intelligence.
+
+Within the SLMS, João leverages the platform's comprehensive monitoring and reporting capabilities to address these challenges systematically. He routinely monitors key performance indicators (KPIs) through the system's dashboard, tracking metrics such as shipping costs, delivery performance rates, and carrier reliability. The platform enables him to implement and refine shipping optimization strategies based on empirical data, identifying underperforming carriers and reallocating shipments to more efficient alternatives. Furthermore, João utilizes the system's reporting functionality to export detailed performance analyses, facilitating communication with executive leadership and supporting strategic decision-making at the organizational level. Through these capabilities, SLMS transforms João's role from reactive problem-solving to proactive strategic management of logistics operations.
 
 ### 4.1.2 Ana Martins - Warehouse Staff
 
-**Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/anaMartins.png`
+![Ana Martins](per-sprint/sprint2/personas-scenarios-US-update/imgs/anaMartins.png)
 
-**Topics to cover:**
-- Age: 29
-- Profile: Warehouse employee, shipping department
-- Goals: Quick order processing, correct labels/docs, error reduction
-- Frustrations: Manual processes, carrier-specific systems
-- How she uses SLMS: Order registration, label generation, pickup updates
+Ana Martins embodies the operational core of the logistics workflow, representing the warehouse personnel responsible for the critical transition of orders from internal processing to carrier dispatch. At 29 years of age, Ana works as a warehouse employee within the shipping department, where she handles the day-to-day operations that directly impact delivery timelines and customer satisfaction.
+
+Ana's professional responsibilities require precision, efficiency, and attention to detail across multiple operational domains. Her primary objectives include processing orders with speed and accuracy to maintain throughput and meet service level agreements. She must ensure that each shipment is accompanied by correct labels and comprehensive documentation, as errors at this stage can cascade into significant downstream issues including delivery failures, customer complaints, and financial penalties. Additionally, Ana is committed to continuously reducing errors in the shipping process through systematic procedures and quality controls.
+
+The nature of Ana's work presents several persistent operational challenges that impede efficiency and increase cognitive load. Manual processes consume considerable time and introduce opportunities for human error, particularly during high-volume periods when warehouse activity intensifies. Furthermore, the necessity of managing multiple carrier-specific systems, each with distinct interfaces, requirements, and workflows, creates operational complexity and increases the learning curve for warehouse staff. This fragmentation prevents the development of streamlined, standardized procedures that could enhance both speed and accuracy.
+
+Within the SLMS environment, Ana benefits from integrated workflows that consolidate previously disparate tasks into a unified operational interface. The platform's automated label and shipping document generation capabilities eliminate manual data entry and reduce preparation time significantly, enabling Ana to efficiently process orders that have been created in the system. When carriers arrive for pickup, Ana efficiently updates the system to reflect the collection status, ensuring real-time visibility for all stakeholders. Through these functionalities, SLMS transforms Ana's role from managing multiple disconnected systems to executing a streamlined, error-resistant workflow that enhances both productivity and job satisfaction.
 
 ### 4.1.3 Rita Lopes - Customer Service Representative
 
-**Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/ritaLopes.png`
+![Rita Lopes](per-sprint/sprint2/personas-scenarios-US-update/imgs/ritaLopes.png)
 
-**Topics to cover:**
-- Age: 34
-- Profile: Call center staff
-- Goals: Quick status access, issue resolution, improved CX
-- Frustrations: No real-time info, manual carrier contact
-- How she uses SLMS: Status checks, exception management, customer feedback
+Rita Lopes serves as the critical interface between the organization and its customers, representing the customer service layer responsible for managing inquiries, resolving issues, and maintaining customer satisfaction throughout the delivery lifecycle. At 34 years of age, Rita functions as a call center staff member who fields customer calls and emails concerning delivery status, exceptions, and concerns.
+
+Rita's professional mandate centers on delivering responsive, accurate customer service while efficiently managing a high volume of interactions. Her primary objectives include obtaining rapid access to comprehensive order status information to minimize customer wait times and provide immediate answers. She is tasked with resolving complex delivery issues such as delays, failed delivery attempts, and address discrepancies through effective problem-solving and coordination with logistics operations. Ultimately, Rita strives to continuously improve the overall customer service experience by anticipating needs, providing proactive communication, and ensuring consistent service quality across all customer touchpoints.
+
+The execution of Rita's responsibilities is significantly hampered by information asymmetries and system limitations inherent to traditional logistics platforms. The absence of real-time information forces Rita to provide customers with outdated or incomplete status updates, undermining confidence and requiring follow-up interactions. Moreover, the necessity of manually contacting carriers to obtain current shipment information introduces substantial delays, frustration for both Rita and customers, and potential for miscommunication. These constraints prevent Rita from delivering the responsive, informed service that modern customers expect.
+
+Through the SLMS platform, Rita gains immediate access to comprehensive order visibility and exception management tools that transform her service delivery capabilities. She performs instant status checks by querying order tracking numbers, accessing real-time location data, delivery progress, and detailed event histories. When delivery exceptions occur, Rita leverages the system's exception management module to review categorized issues, understand root causes, and coordinate resolutions with appropriate stakeholders. The platform enables her to provide immediate, accurate feedback to customers based on current system data rather than delayed carrier communications. Additionally, Rita records all customer interactions, resolution actions, and follow-up requirements directly in SLMS, ensuring continuity across service interactions and enabling data-driven quality improvements. These capabilities empower Rita to deliver superior customer service while reducing resolution times and improving first-call resolution rates.
 
 ### 4.1.4 Carlos Silva - Driver/Carrier
 
-**Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/carlosSilva.png`
+![Carlos Silva](per-sprint/sprint2/personas-scenarios-US-update/imgs/carlosSilva.png)
 
-**Topics to cover:**
-- Age: 38
-- Profile: Delivery driver (urban/intercity routes)
-- Goals: Clear instructions, efficient delivery, easy POD
-- Frustrations: Poor route planning, difficult status updates
-- How he uses SLMS: Mobile manifest, optimized routes, POD capture
+Carlos Silva represents the mobile workforce responsible for the final and most customer-facing stage of the logistics chain: last-mile delivery. At 38 years of age, Carlos works as a carrier driver managing both urban and intercity delivery routes, directly interfacing with end customers and serving as the tangible representation of service quality.
+
+Carlos's operational objectives emphasize efficiency, accuracy, and effective communication throughout the delivery process. He requires clear, unambiguous delivery instructions and route guidance to minimize confusion and prevent failed delivery attempts. Delivering packages quickly and efficiently is paramount, as driver productivity directly impacts both operational costs and customer satisfaction metrics. Furthermore, Carlos needs streamlined mechanisms for recording proof of delivery (photographic evidence) to validate successful completions and protect against disputed deliveries.
+
+The challenges Carlos encounters in traditional delivery operations significantly impede his effectiveness and job satisfaction. Poorly planned routes result in wasted time, unnecessary mileage, increased fuel consumption, and reduced daily delivery capacity. The difficulty of updating delivery status in real-time while mobile creates information lag, preventing timely visibility for customers and internal stakeholders. Additionally, cumbersome proof-of-delivery collection processes slow down the delivery workflow and create potential for incomplete documentation.
+
+The SLMS mobile application provides Carlos with purpose-built tools designed specifically for the demands of mobile delivery operations. He accesses his complete delivery manifest through the mobile app, viewing all assigned packages with destination details, delivery priorities, and special instructions in a clear, organized interface. Upon completing each delivery, Carlos efficiently captures proof of delivery through integrated mobile functionality (photograph capture), which are immediately synchronized to the central system. When delivery attempts fail, Carlos reports exceptions directly through the app, selecting from predefined reason codes and adding contextual notes, ensuring that customer service teams receive immediate notification. Through these mobile-optimized capabilities, SLMS enhances Carlos's productivity, reduces administrative burden, and improves the accuracy and timeliness of delivery operations.
 
 ### 4.1.5 Mariana Costa - Customer
 
-**Image:** `docs/per-sprint/sprint2/personas-scenarios-US-update/imgs/marianaCosta.png`
+![Mariana Costa](per-sprint/sprint2/personas-scenarios-US-update/imgs/marianaCosta.png)
 
-**Topics to cover:**
-- Age: 26
-- Profile: Frequent online shopper
-- Goals: Real-time tracking, delivery transparency, issue reporting
-- Frustrations: Lack of visibility, poor communication
-- How she uses SLMS: Order tracking, notifications, problem reporting
+Mariana Costa represents the end consumer perspective within the SLMS ecosystem, embodying the expectations and requirements of modern e-commerce customers. At 26 years of age, Mariana is a frequent online shopper whose purchasing behavior reflects broader market trends toward digital commerce and heightened expectations for delivery transparency and reliability.
+
+Mariana's primary objectives as a customer center on visibility, reliability, control, and autonomy throughout the order fulfillment process. She seeks the ability to independently create and manage her own orders without requiring intermediary assistance, exercising direct control over her logistics needs. She seeks comprehensive real-time tracking capabilities that provide continuous visibility into her order's location and status from dispatch through final delivery. Receiving orders within the promised timeframe is essential, as delivery reliability directly influences her satisfaction and likelihood of repeat purchases. Additionally, Mariana expects to receive proactive, automatic notifications regarding any changes, delays, or exceptions that may affect her delivery, enabling her to plan accordingly and maintain confidence in the service.
+
+Traditional e-commerce logistics experiences present significant pain points that undermine Mariana's confidence and satisfaction. The lack of transparency in package tracking creates uncertainty and anxiety, particularly for time-sensitive or valuable purchases. When issues arise, the burden of initiating contact with the retailer or carrier to obtain information or resolve problems represents an unacceptable friction point in the customer experience. These frustrations reflect a fundamental misalignment between customer expectations shaped by leading e-commerce platforms and the capabilities of traditional logistics systems.
+
+The SLMS customer portal empowers Mariana with self-service capabilities and proactive communication that address these pain points comprehensively. She can create new orders directly through the customer portal, entering all necessary shipment details including destination addresses and warehouse selection, with the system automatically associating orders with her customer account for security and tracking purposes. She accesses the public tracking portal where she is able to see her full order history, where she can search for a specific order by entering its unique tracking number, immediately viewing her order's current location, transit history, and estimated delivery date without requiring assistance. The system delivers automatic notifications at critical milestones, including shipment confirmation, out-for-delivery status, and delivery completion. When Mariana identifies issues such as incorrect delivery addresses, scheduling conflicts, or package damage, she reports them directly through the portal's integrated issue reporting functionality, which creates tracked exceptions visible to customer service representatives. Through these capabilities, SLMS transforms Mariana's experience from passive waiting and reactive problem-solving to active monitoring and confident engagement with the delivery process, ultimately enhancing satisfaction and building brand loyalty.
 
 ## 4.2 Usage Scenarios
 
-**Topics to cover:**
-- 18+ detailed scenarios across all personas
-- Realistic workflow examples
-- Step-by-step interactions
-- Expected outcomes
+This section presents detailed usage scenarios that illustrate how each persona interacts with the SLMS platform to accomplish their respective objectives. These scenarios are grounded in realistic workflows and demonstrate the system's capabilities across the complete logistics lifecycle, from strategic management through operational execution to customer-facing service delivery. Each scenario provides contextual background, describes the specific actions taken within the system, and articulates the expected outcomes that address the persona's goals and pain points.
 
-**Scenarios to highlight:**
-1. João: Weekly KPI review and carrier performance analysis
-2. Ana: Processing a new order from intake to carrier pickup
-3. Rita: Resolving a delivery exception reported by customer
-4. Carlos: Completing delivery route with POD capture
-5. Mariana: Tracking order and reporting a delivery issue
+**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md`
 
-**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (Scenarios section)
+### 4.2.1 João Ferreira (Logistics Manager) Scenarios
 
-## 4.3 User Stories
+#### Scenario 1: Daily monitoring of KPIs
+- Context: João starts his day by reviewing the performance of the previous day’s transportation operations.  
+- Action: He accesses the SLMS dashboard to check KPIs such as on-time delivery rates, cost per shipment, and carrier performance.  
+- Expected result: He quickly identifies failures or areas for improvement, enabling immediate adjustments to the logistics strategy.  
 
-**Topics to cover:**
+#### Scenario 2: Carrier comparison for new shipments
+- Context: The company needs to ship a large volume of orders to another city. João must select the most efficient and cost-effective carrier.  
+- Action: He accesses the SLMS carrier integration module, compares prices and transit times, and selects the best option.  
+- Expected result: João makes an informed decision, reducing costs and improving delivery times.  
 
-**Complete list of 18 user stories with acceptance criteria:**
-
-**Logistics Manager (3 stories):**
-- US1: KPI monitoring dashboard
-- US2: Carrier performance comparison
-- US3: Custom report generation
-
-**Warehouse Staff (3 stories):**
-- US4: Order registration and processing
-- US5: Automated label and document generation
-- US6: Carrier pickup confirmation
-
-**Customer Service Representative (3 stories):**
-- US7: Order status lookup
-- US8: Delivery exception resolution
-- US9: Customer notification management
-
-**Driver (4 stories):**
-- US10: View delivery manifest
-- US11: Route optimization
-- US12: Proof of delivery capture
-- US13: Exception reporting
-
-**Customer (4 stories):**
-- US14: Account creation
-- US15: Secure login
-- US16: Real-time order tracking (removed/modified)
-- US17: Delivery notifications
-- US18: Issue reporting
-
-**All Users (1 story):**
-- US19: AI Assistant for contextual help
-
-**Reference:** `docs/per-sprint/sprint2/personas-scenarios-US-update/personas-scenarios-US.md` (User Stories section)
-
-## 4.4 Feature Prioritization
-
-**Topics to cover:**
-- Completed: 12 stories (67%)
-- In Progress: 5 stories (28%)
-- Pending: 1 story (5%)
-- Sprint-by-sprint feature delivery
-- Rationale for prioritization
-
-**Sprint breakdown:**
-- Sprint 1: Foundation (architecture, data model, basic order management)
-- Sprint 2: Core features (order processing, carrier integration, personas)
-- Sprint 3: Carrier module, rate comparison
-- Sprint 4: Observability, AWS deployment, shipment documents
-- Sprint 5+: Advanced features (chatbot, reporting, etc.)
-
-**References:**
-- `docs/per-sprint/sprint1/epic-&-sprint-planning.md`
-- Sprint documentation in `docs/per-sprint/`
-
-## 4.5 Use Case Diagrams
-
-**Diagrams to include:**
-- `docs/per-sprint/sprint2/use-case-diagrams/slms.png` (overall system)
-- `docs/per-sprint/sprint2/use-case-diagrams/logistics-manager.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/warehouse-staff.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/customer-service-representative.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/driver-carrier.png`
-- `docs/per-sprint/sprint2/use-case-diagrams/customer.png`
+#### Scenario 3: Performance reporting for management
+- Context: João needs to present a logistics performance report to the company’s management.  
+- Action: He exports detailed SLMS reports, including costs, delivery rates, and carrier performance.  
+- Expected result: Management receives clear and reliable data, enabling strategic decisions about operational improvements.  
 
 ---
 
+### 4.2.2 Ana Martins (Warehouse Staff) Scenarios
+
+#### Scenario 4: Processing a new order
+- Context: A new order arrives at the warehouse for shipping.  
+- Action: Ana registers the order in SLMS, entering all required details (destination, weight, dimensions, assigned carrier).  
+- Expected result: The order is correctly registered in the system and ready for shipment preparation.  
+
+#### Scenario 5: Generating shipping labels and documents
+- Context: Ana needs to prepare several orders for dispatch at the end of the day.  
+- Action: She uses SLMS to automatically generate shipping labels, transport guides, and manifests for each carrier.  
+- Expected result: Each order leaves the warehouse with the correct documentation, reducing errors in the shipping process.  
+
+#### Scenario 6: Confirming carrier pickup
+- Context: The carrier arrives at the warehouse to pick up orders.  
+- Action: After the pickup, Ana updates SLMS to mark the orders as collected.  
+- Expected result: The system records the pickup time, keeping information updated for both internal teams and customers.  
+
+---
+
+### 4.2.3 Rita Lopes (Customer Service Representative) Scenarios
+
+#### Scenario 7: Quick order status check
+- Context: A customer contacts support to ask about their order status.  
+- Action: Rita searches for the order number in SLMS and accesses the real-time status.  
+- Expected result: She immediately informs the customer of the order’s location and estimated delivery date.  
+
+#### Scenario 8: Resolving a delivery issue
+- Context: A customer calls to report that they did not receive their order on time after being notified by SLMS about a delivery problem.  
+- Action: Rita checks the exception reported by the driver (e.g., recipient absent, incorrect address, carrier delay), explains the details to the customer over the phone, makes the necessary updates to the order, records the resolution in SLMS, and closes the issue.  
+- Expected result: The customer receives a clear explanation and immediate solution. SLMS is updated with the resolution, avoiding manual steps from the customer’s side.  
+
+#### Scenario 9: Handling a customer-reported issue
+- Context: A customer reports a delivery issue through the SLMS public portal.  
+- Action: Rita receives a notification in SLMS with the issue details (e.g., incorrect address, damaged package). She reviews the exception in the system, contacts the customer to clarify the situation, and records the resolution in SLMS, closing the exception.  
+- Expected result: The issue reported by the customer is promptly addressed and registered in SLMS, ensuring transparent follow-up and efficient resolution.  
+
+---
+
+### 4.2.4 Carlos Silva (Driver/Carrier) Scenarios
+
+#### Scenario 10: Checking delivery manifest
+- Context: Carlos starts his shift and needs to know which packages he has to deliver.  
+- Action: He opens the SLMS mobile app and checks the manifest with his daily deliveries.  
+- Expected result: Carlos has a clear and organized view of packages, destinations, and priorities.  
+
+#### Scenario 11: Receiving optimized delivery routes
+- Context: Carlos must deliver multiple packages along an urban route with many stops.  
+- Action: He uses SLMS to receive an optimized route with the best delivery sequence.  
+- Expected result: Reduced travel time and fuel consumption, completing deliveries more quickly.  
+
+#### Scenario 12: Recording proof of delivery (POD)
+- Context: Carlos delivers a package to a customer.  
+- Action: In SLMS, he records the delivery with either a customer’s digital signature or a photo of the package at the location.  
+- Expected result: The delivery is validated in real time, visible to both the customer and the company.  
+
+#### Scenario 13: Reporting a delivery exception
+- Context: Carlos attempts to deliver a package but the recipient is absent.  
+- Action: He updates SLMS with the reason for the failed delivery (e.g., recipient not at home) and marks the package as an exception.  
+- Expected result: The information is immediately available to both customer support and the customer.  
+
+---
+
+### 4.2.5 Mariana Costa (Customer) Scenarios
+
+#### Scenario 14: Creating an Account through the Landing Page
+- Context: Mariana visits the company’s website for the first time and wants to create an account to track her orders.  
+- Action: She accesses the SLMS landing page, clicks “Create Account,” and is redirected to the registration screen managed by Keycloak.  
+- Expected result: Mariana successfully registers (using email and password) and receives a confirmation email. Her account is now active and linked to the customer portal.
+
+#### Scenario 15: Logging In through the Landing Page
+- Context: Mariana already has an account and wants to log in to view her order status.  
+- Action: She accesses the SLMS landing page and selects “Login,” being redirected to the Keycloak authentication screen.  
+- Expected result: Mariana successfully logs in and is automatically redirected to the customer portal, where she can check her active and past deliveries.  
+
+#### Scenario 16: Real-time order tracking
+- Context: Mariana made an online purchase and wants to know where her package is.  
+- Action: She accesses the SLMS public portal, enters her tracking number, and views the updated delivery status.  
+- Expected result: Mariana sees the current location and estimated delivery date without needing to contact the store.  
+
+#### Scenario 17: Receiving automatic notifications
+- Context: Mariana’s order moves through different shipping stages (shipped, out for delivery, failed attempt).  
+- Action: SLMS automatically creates in-app notifications in her notifications tab whenever there is a relevant update.  
+- Expected result: Mariana feels informed and confident, always knowing what is happening with her order through the notifications panel.  
+
+#### Scenario 18: Reporting a delivery issue
+- Context: Mariana notices a problem with her order (e.g., wrong address, impossible delivery time, damaged package).  
+- Action: She accesses the SLMS public portal, enters her tracking number, selects “Report a problem,” and describes the issue. The report is sent to Customer Service.  
+- Expected result: The problem is registered in SLMS as an open exception, visible to the support team, who can contact Mariana and resolve it more quickly.  
+
+
+## 4.3 User Stories
+This section reflects the Sprint 6 updates to the backlog, including the removal of US16 (real-time GPS tracking due to scope constraints) and the addition of the AI Assistant user story (US18) applicable across all frontends and roles. Status markers indicate current completion.
+
+### João Ferreira (Logistics Manager)
+
+#### US1 – “Daily monitoring of KPIs”
+As a Logistics Manager I want to access a dashboard with transportation KPIs so that I can monitor performance.  
+
+Acceptance Criteria
+- View daily KPIs  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I open the dashboard  
+   - Then the system must show me KPIs such as on-time delivery rate, shipping costs and carrier performance  
+
+#### US2 – “Carrier comparison for new shipments”
+As a Logistics Manager I want to compare available carriers so that I can select the best option for new shipments.  
+
+Acceptance Criteria
+- Access carrier comparison  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I open the carrier integration module  
+   - Then the system must display shipping costs and transit times for each carrier  
+- Select the optimal carrier  
+   - Given that I am reviewing the carrier list  
+   - When I choose one carrier  
+   - Then the system must assign that carrier to the shipment  
+
+#### US3 – “Generating performance reports”
+As a Logistics Manager I want to export reports so that I can share logistics performance with management.  
+
+Acceptance Criteria
+- Generate performance reports  
+   - Given that I am logged into the SLMS as a Logistics Manager  
+   - When I select the reporting option  
+   - Then the system must generate detailed reports with costs, on-time delivery rate and carrier performance  
+- Export reports  
+   - Given that the report is generated  
+   - When I click on export  
+   - Then the system must allow me to download it in formats such as PDF or Excel  
+
+---
+
+### Ana Martins (Warehouse Staff)
+
+#### US4 – “Generating shipping labels and documents”
+As Warehouse Staff I want to generate labels and shipping documents so that I ensure each order is ready for dispatch.  
+
+Acceptance Criteria
+- Generate labels and documents  
+   - Given that I am logged into the SLMS as Warehouse Staff  
+   - When I select an order  
+   - Then the system must generate the shipping label, packing slip and shipping manifest for the carrier  
+
+#### US5 – “Confirming carrier pickup”
+As Warehouse Staff I want to confirm carrier pickups in order to keep the system updated.  
+
+Acceptance Criteria
+- Confirm pickup  
+   - Given that the carrier has collected the packages  
+   - When I update the SLMS  
+   - Then the system must mark the orders as “collected”  
+
+---
+
+### Rita Lopes (Customer Service Representative)
+
+#### US6 – “Quick order status lookup”
+As a Customer Service Representative I want to check the status of an order so that I can provide fast answers to customers.  
+
+Acceptance Criteria
+- Search for order status  
+   - Given that a customer contacts support  
+   - When I search the order number in the SLMS  
+   - Then the system must display the latest real-time status  
+
+#### US7 – “Resolving a delivery issue”
+As a Customer Service Representative I want to view delivery exceptions so that I can provide clear explanations and resolutions to customers.  
+
+Acceptance Criteria
+- Identify delivery issues  
+   - Given that I am logged into the SLMS as Customer Service  
+   - When I search for an order with a reported exception  
+   - Then the system must display the exception details (e.g. recipient absent, incorrect address, carrier delay)  
+- Provide resolution to customer  
+   - Given that I am handling a customer call about an exception  
+   - When I explain the details and propose a solution  
+   - Then the customer must receive clear information about the next steps  
+- Close exception  
+   - Given that the customer has been informed and the issue addressed  
+   - When I update the SLMS with resolution notes  
+   - Then the system must mark the exception as closed and keep the resolution history available for future reference  
+
+#### US8 – “Handling customer-reported issues”
+As a Customer Service Representative I want to receive notifications of problems reported by customers so that I can follow up and resolve them quickly.  
+
+Acceptance Criteria
+- Receive notification  
+   - Given that a customer has reported a problem  
+   - When the SLMS registers it  
+   - Then I must receive a notification with the order details and the issue description  
+- Follow up with customer  
+   - Given that I received a notification of a customer-reported problem  
+   - When I contact the customer or update the order  
+   - Then the SLMS must allow me to log resolution notes and close the exception  
+
+---
+
+### Carlos Silva (Driver / Carrier)
+
+#### US9 – “Viewing delivery manifest”
+As a Driver I want to view my delivery manifest so that I know all packages I need to deliver.  
+
+Acceptance Criteria
+- Access delivery manifest  
+   - Given that I am logged into the SLMS mobile app  
+   - When I open my daily schedule  
+   - Then the system must show a list of packages with addresses and priorities  
+
+#### US10 – “Receiving optimized delivery routes”
+As a Driver I want to receive optimized delivery routes so that I can complete deliveries more efficiently.  
+
+Acceptance Criteria
+- Receive route planning  
+   - Given that I am logged into the SLMS mobile app  
+   - When I request my route  
+   - Then the system must provide me with the optimal delivery sequence  
+
+#### US11 – “Recording proof of delivery (POD)”
+As a Driver I want to record proof of delivery so that I am able to validate that the package was delivered.  
+
+Acceptance Criteria
+- Register POD  
+   - Given that I have delivered a package  
+   - When I take a delivery photo  
+   - Then the SLMS must update the order as “delivered” in real time  
+
+#### US12 – “Reporting delivery exceptions”
+As a Driver I want to report delivery exceptions so that I can keep the system updated when delivery fails.  
+
+Acceptance Criteria
+- Report failed delivery  
+   - Given that I cannot deliver a package  
+   - When I select a reason (e.g. recipient absent) in the mobile app  
+   - Then the system must update the order status as “exception”  
+
+---
+
+### Mariana Costa (Customer)
+
+#### US13 – “Creating a new order”
+As a Customer I want to create a new order through the customer portal so that I can request shipment of my packages.  
+
+Acceptance Criteria
+- Access order creation  
+   - Given that I am logged into the SLMS customer portal  
+   - When I navigate to “Create Order” or “/interfaces/new-order”  
+   - Then the system must display an order creation form  
+- Fill order details  
+   - Given that I am on the order creation page  
+   - When I enter order information (reference, description, shipping address, warehouse selection, tracking number)  
+   - Then the system must validate my input and show any errors  
+- Submit order  
+   - Given that I have filled all required fields  
+   - When I click “Create Order”  
+   - Then the system must create the order, associate it with my customer ID, and redirect me to order history  
+
+#### US14 – “Creating an Account through the Landing Page”
+As a Customer I want to create an account through the SLMS landing page so that I can access my delivery history and track my orders.  
+
+Acceptance Criteria
+- Access registration page  
+   - Given that I am on the SLMS landing page  
+   - When I click on “Create Account”  
+   - Then I must be redirected to the Keycloak registration screen  
+- Complete registration  
+   - Given that I enter valid registration details (name, email, password)  
+   - When I submit the form  
+   - Then my account must be created  
+- Access customer portal  
+   - Given that my registration is complete  
+   - When I return to the customer portal  
+   - Then I can log in with my new credentials  
+
+#### US15 – “Logging In through the Landing Page”
+As a Customer I want to log in through the SLMS landing page so that I can securely access my order tracking portal.  
+
+Acceptance Criteria
+- Access login page  
+   - Given that I am on the SLMS landing page  
+   - When I click on “Login”  
+   - Then I am redirected to the Keycloak authentication page  
+- Successful authentication  
+   - Given that I enter valid credentials or choose a social login option  
+   - When I log in successfully  
+   - Then I am redirected to my customer dashboard  
+- Session management  
+   - Given that I am logged in  
+   - When I close the browser or my session expires  
+   - Then I must log in again to regain access  
+
+#### US16 – “Receiving automatic notifications”
+As a Customer I want to receive notifications about my order so that I can stay informed.  
+
+Acceptance Criteria
+- Receive shipment updates  
+   - Given that my order status changes (e.g. shipped, out for delivery, failed attempt)  
+   - When the event occurs  
+   - Then the SLMS must send me an automatic notification
+
+#### US17 – “Reporting a delivery issue”
+As a Customer I want to report delivery issues through the tracking portal so that I can notify support and get faster resolutions.  
+
+Acceptance Criteria
+- Access report option  
+   - Given that I am in the SLMS customer portal with my tracking number  
+   - When I open my order details  
+   - Then the system must display an option to “Report a problem”  
+- Submit problem details  
+   - Given that I have identified a problem with my order  
+   - When I select the “Report a problem” option and enter details (e.g. wrong address, damaged package, unavailable at delivery time)  
+   - Then the SLMS must register the issue as an open exception linked to my order  
+- Notify customer service  
+   - Given that I have submitted a problem report  
+   - When the exception is created  
+   - Then the SLMS must notify a Customer Service Representative so that they can follow up with me  
+
+---
+
+### All Users (Cross-Role)
+
+#### US18 – “AI Assistant for contextual help”
+As a SLMS User I want to access an AI assistant so that I can get instant contextual help based on my role and current page.  
+
+Acceptance Criteria
+- Access chatbot interface  
+   - Given that I am logged into any SLMS frontend (admin-console, customer-portal, driver-pwa, landing-page)  
+   - When I click on the chat widget icon  
+   - Then the system must open an interactive chat interface  
+- Receive role-based responses  
+   - Given that I am asking a question in the chatbot  
+   - When the system processes my query  
+   - Then I must only receive answers based on content authorized for my role (e.g., warehouse staff don't see manager-only information)  
+- Get contextual help  
+   - Given that I am on a specific page or route (e.g., /orders, /carriers, /tracking)  
+   - When I ask a question  
+   - Then the system must prioritize content relevant to my current page context  
+- Multilingual support  
+   - Given that I have set my language preference to Portuguese or English  
+   - When I interact with the chatbot  
+   - Then the system must provide responses in my preferred language  
+- Natural language interaction  
+   - Given that I ask a question in conversational language  
+   - When the chatbot processes my query  
+   - Then I must receive a natural language response (not just keyword matches or static answers)  
+- Semantic search capability  
+   - Given that I ask a question using different words than the documentation  
+   - When the system searches for relevant content  
+   - Then it must find semantically similar content (meaning-based, not just keyword-based)  
+
+Technical Notes
+- Backend: Gemini API for LLM, Pinecone for vector database  
+- Database: AssistantDocument entity with role/frontend/route filtering  
+- Frontend: Chat widget component integrated in all 4 frontends  
+- See ADR-0007 and Chatbot Module Handbook for implementation details  
+
+
+## 4.4 Feature Prioritization
+
+This section outlines the prioritization strategy for SLMS features across the six-sprint development cycle. The prioritization approach balanced business value, technical dependencies, risk mitigation, and stakeholder needs to deliver incremental value while building a solid technical foundation.
+
+**Reference:** `docs/per-sprint/sprint1/epic-&-sprint-planning.md`
+
+### 4.4.1 Current Implementation Status
+
+As of Sprint 6 completion, the SLMS backlog stands at:
+
+**Completed Stories: 18 (100%)**
+- US1: Daily KPI monitoring (João - Logistics Manager)
+- US2: Carrier comparison (João - Logistics Manager)
+- US3: Performance reporting (João - Logistics Manager)
+- US4: Generating shipping labels (Ana - Warehouse Staff)
+- US5: Confirming carrier pickup (Ana - Warehouse Staff)
+- US6: Quick order status lookup (Rita - Customer Service)
+- US7: Resolving delivery issues (Rita - Customer Service)
+- US8: Handling customer-reported issues (Rita - Customer Service)
+- US9: Viewing delivery manifest (Carlos - Driver)
+- US10: Receiving optimized routes (Carlos - Driver)
+- US11: Recording proof of delivery (Carlos - Driver)
+- US12: Reporting delivery exceptions (Carlos - Driver)
+- US13: Creating new order (Mariana - Customer)
+- US14: Creating account (Mariana - Customer)
+- US15: Logging in (Mariana - Customer)
+- US16: Receiving automatic notifications (Mariana - Customer)
+- US17: Reporting delivery issue (Mariana - Customer)
+- US18: AI Assistant for contextual help (All Users)
+
+### 4.4.2 Epic-Based Prioritization Framework
+
+The SLMS feature set was organized into seven epics, each representing a distinct business domain. Epic prioritization followed a dependency-aware sequencing strategy:
+
+**E1 - Order & Shipment Management (Priority: Critical - Sprint 1-2)**
+- **User Stories:** US4 (warehouse label generation), US5 (pickup confirmation), US13 (customer order creation)
+- **Business Rationale:** Order management represents the core operational workflow. Without the ability to create, document, and track orders, no other system functionality provides value. This epic establishes the foundational data model and workflows upon which all other features depend.
+- **Technical Dependencies:** Database schema, authentication, basic CRUD operations
+
+**E2 - Carrier Integration & Rate Management (Priority: Critical - Sprint 2-3)**
+- **User Stories:** US2 (carrier comparison)
+- **Business Rationale:** Multi-carrier support differentiates SLMS from single-carrier solutions and enables cost optimization—a primary value proposition for logistics managers. Rate comparison requires integration with external carrier APIs (ShipEngine, Shippo), establishing patterns for all future third-party integrations.
+- **Technical Dependencies:** E1 (orders must exist before carrier assignment), external API client architecture
+
+**E5 - Reporting & Analytics (Priority: High - Sprint 1, 6)**
+- **User Stories:** US1 (KPI dashboard), US3 (report export)
+- **Business Rationale:** Management visibility and data-driven decision-making justify system investment. Early dashboard implementation (Sprint 1) provided stakeholder visibility into development progress. Full reporting capabilities (Sprint 6) leverage accumulated operational data.
+- **Technical Dependencies:** E1 (requires order/shipment data), time-series data accumulation
+
+**E3 - Tracking & Visibility (Priority: High - Sprint 2-3)**
+- **User Stories:** US6 (CSR status lookup), US13 (customer order creation), US17 (customer issue reporting)
+- **Business Rationale:** Customer service efficiency and end-customer satisfaction depend on real-time visibility. Tracking capabilities reduce support call volume and enable proactive exception management.
+- **Technical Dependencies:** E1 (order events), E2 (carrier status updates)
+
+**E7 - Customer Portal (Priority: High - Sprint 2, 5-6)**
+- **User Stories:** US13 (order creation), US14 (account creation), US15 (login), US17 (issue reporting)
+- **Business Rationale:** Self-service capabilities reduce operational overhead and meet modern customer expectations for delivery transparency. Progressive enhancement across sprints balances early availability with feature richness.
+- **Technical Dependencies:** Keycloak integration (Sprint 1), E1 (order data), E3 (tracking)
+
+**E4 - Route Optimization & Driver Support (Priority: Medium - Sprint 4-5)**
+- **User Stories:** US9 (manifest), US10 (route optimization), US11 (POD), US12 (exception reporting)
+- **Business Rationale:** Driver productivity and last-mile efficiency represent significant cost drivers but require operational workflows to be established first. Mobile application development and route optimization algorithms justify later-sprint placement.
+- **Technical Dependencies:** E1 (shipment data), external mapping APIs (Google Maps/OSRM)
+
+**E6 - Notifications & Alerts (Priority: Medium - Sprint 5-6)**
+- **User Stories:** US16 (automatic notifications), US8 (customer-reported issues)
+- **Business Rationale:** Proactive communication enhances customer experience but represents a "nice-to-have" rather than "must-have" for initial system viability. Notification infrastructure benefits from mature order workflows to avoid alert fatigue.
+- **Technical Dependencies:** E1 (order events), E3 (status transitions), notification storage and display system
+
+**E8 - AI & Advanced Features (Priority: Low - Sprint 4-6)**
+- **User Stories:** US18 (AI assistant)
+- **Business Rationale:** AI-powered contextual help improves user experience and reduces training overhead but provides incremental value rather than core functionality. Implementation leverages modern LLM capabilities (Gemini API) and vector databases (Pinecone).
+- **Technical Dependencies:** Comprehensive documentation, role-based content, mature UI components
+
+### 4.4.3 Sprint-by-Sprint Feature Delivery
+
+The six-sprint development timeline strategically sequenced feature delivery to balance technical risk, business value, and stakeholder feedback opportunities.
+
+#### Sprint 1 (01 Oct - 14 Oct): Technical Foundation & Architecture
+**Objective:** Establish development infrastructure and architectural decisions
+
+**Deliverables:**
+- Repository setup with CI/CD pipeline (GitHub Actions)
+- Architecture definition (BFF pattern, module structure, technology stack)
+- Data model design (entities, relationships, Keycloak integration)
+- Development environment configuration (Docker Compose, Terraform)
+- Initial KPI dashboard stub (US1 - partial)
+
+**Rationale:** Investing in infrastructure, architecture, and tooling early prevents technical debt accumulation and enables parallel development in subsequent sprints. Architecture Decision Records (ADRs) documented key choices (Order-Shipment separation, external user management, module independence) to guide implementation consistency. Early technology validation (Spring Boot 3.x, Next.js 15, Terraform) reduced integration risks in later sprints.
+
+#### Sprint 2 (15 Oct - 28 Oct): First MVP - Order Management Core
+**Objective:** Deliver minimally functional order processing workflow
+
+**Completed User Stories:**
+- US4: Generating shipping labels (Ana - Warehouse)
+- US5: Confirming carrier pickup (Ana - Warehouse)
+- US13: Creating new order (Mariana - Customer)
+- US14: Creating account (Mariana - Customer)
+- US15: Logging in (Mariana - Customer)
+
+**Technical Achievements:**
+- Order Management module (create, read, update order lifecycle)
+- Warehouse Staff interface (order processing, label generation, pickup confirmation)
+- Customer Portal foundation (authentication, order creation)
+- Keycloak realm configuration with role-based access control
+- PDF generation for shipping labels (Apache PDFBox)
+
+**Rationale:** Sprint 2 targeted the highest-priority epic (E1) to establish core business workflows. Delivering a functional order creation and documentation pipeline enabled early stakeholder validation and provided a foundation for subsequent carrier integration and tracking features. Warehouse staff could begin using the system for order documentation, providing real feedback to inform Sprint 3 priorities.
+
+#### Sprint 3 (29 Oct - 11 Nov): Carrier Integration & Multi-Carrier Support
+**Objective:** Enable carrier selection and rate comparison
+
+**Completed User Stories:**
+- US2: Carrier comparison for new shipments (João - Logistics Manager)
+- US6: Quick order status lookup (Rita - Customer Service)
+
+**Technical Achievements:**
+- Carrier Management module (CRUD operations, carrier entity)
+- ShipEngine API integration (carrier list, service levels, rate retrieval)
+- Shippo API integration (carrier accounts, address validation, rate calculation)
+- Carrier synchronization service (merge external API data, filter ShipEngine-enabled carriers)
+- Customer Service Representative interface (order search, status display)
+- Rate comparison algorithms (cost, transit time, service level analysis)
+
+**Rationale:** Multi-carrier support represents a core value proposition differentiating SLMS from single-carrier solutions. Sprint 3's focus on carrier integration (E2) unlocked cost optimization capabilities for logistics managers while establishing reusable patterns for external API integration. The carrier synchronization strategy (local database with external API references) balanced performance (local queries) with data freshness (on-demand API calls for rates).
+
+#### Sprint 4 (12 Nov - 25 Nov): Infrastructure, Observability & Shipment Documents
+**Objective:** Production-readiness and operational visibility
+
+**Completed User Stories:**
+- US11: Recording proof of delivery (Carlos - Driver)
+- US1: Daily KPI monitoring (João - Logistics Manager - completion)
+
+**Technical Achievements:**
+- AWS deployment infrastructure (Terraform IaC for EC2, containerized PostgreSQL, MinIO for S3-compatible storage, VPC)
+- Observability stack (Prometheus metrics, Grafana dashboards, structured logging)
+- Health check endpoints (application, database, external API connectivity)
+- Shipment document generation (MinIO S3-compatible storage for PDFs)
+- Driver PWA foundation (proof of delivery photo upload)
+- Database migration system (Flyway for schema versioning)
+
+**Rationale:** Sprint 4 shifted focus from feature development to production readiness. Observability and infrastructure-as-code (IaC) enabled reliable deployment and operational monitoring, critical for system credibility and long-term maintainability. Early AWS deployment identified networking, security group, and database connectivity issues that would have been costly to resolve post-launch.
+
+#### Sprint 5 (26 Nov - 09 Dec): Customer Experience & Tracking Enhancements
+**Objective:** Enhance customer-facing features and issue resolution
+
+**Completed User Stories:**
+- US7: Resolving delivery issues (Rita - Customer Service)
+- US17: Reporting delivery issue (Mariana - Customer)
+- US3: Generating performance reports (João - Logistics Manager)
+
+**Technical Achievements:**
+- DeliveryException module (exception creation, assignment, resolution workflow)
+- Customer issue reporting interface (exception form, severity selection)
+- CSR exception management dashboard (assignment, resolution notes, SLA tracking)
+- Report export functionality (PDF, Excel generation for logistics analytics)
+- Frontend observability (error tracking, performance monitoring)
+- Customer portal issue reporting integration
+
+**Rationale:** Sprint 5 addressed the complete exception management lifecycle (E6 partial), closing the loop between customer problem reporting and CSR resolution. Performance reporting capabilities (E5 completion) provided logistics managers with exportable analytics for strategic decision-making. Customer service representatives validated exception workflows, requesting SLA deadline tracking and resolution history—features incorporated in final implementation.
+
+#### Sprint 6 (10 Dec - 16 Dec): AI Assistant & Final Refinements
+**Objective:** Advanced features and system polish
+
+**Completed User Stories:**
+- US18: AI Assistant for contextual help (All Users - NEW)
+
+**In Progress (Partial Implementation):**
+- US8: Handling customer-reported issues (Rita)
+- US9: Viewing delivery manifest (Carlos)
+- US10: Receiving optimized routes (Carlos)
+- US12: Reporting delivery exceptions (Carlos)
+- US16: Receiving automatic notifications (Mariana)
+
+**Technical Achievements:**
+- Chatbot module (Gemini LLM integration, Pinecone vector database)
+- Role-based contextual help (frontend-specific, route-aware content filtering)
+- Multilingual support (Portuguese/English documentation)
+- Semantic search for natural language queries
+- Chat widget integration across all four frontends
+- Documentation vectorization and embedding pipeline
+
+**Rationale:** Sprint 6 introduced AI-powered assistance (E8) to reduce user training overhead and improve self-service capabilities. The chatbot leverages comprehensive system documentation accumulated across previous sprints, providing role-specific, contextual guidance. US16 (real-time GPS tracking) was descoped due to complexity (21 story points) and time constraints. The existing tracking capabilities (order status, event history) provide 80% of customer needs without requiring complex GPS integration and real-time map rendering.
+
+## 4.5 Use Case Diagrams
+
+This section presents the use case diagrams that model the functional requirements of the SLMS platform from the perspective of each actor (persona). These diagrams capture the interactions between users and the system, illustrating the key use cases, their relationships (include, extend), and cross-module dependencies that enable end-to-end logistics workflows.
+
+Use case diagrams serve multiple purposes in the SLMS documentation:
+- **Requirements Traceability:** Each use case maps directly to one or more user stories documented in Section 4.3
+- **System Boundary Definition:** Diagrams clarify what functionality is within SLMS scope versus external systems
+- **Actor Interaction Modeling:** Visual representation of how different personas engage with system modules
+- **Architectural Alignment:** Use case organization reflects the modular architecture defined in Section 3
+
+**Reference:** `docs/per-sprint/sprint6/use-case-diagrams-updated/` - PlantUML source files and generated diagrams
+
+### 4.5.1 Overall System Use Case Diagram
+
+The global SLMS use case diagram provides a high-level view of all actors, their primary use cases, and the key cross-module interactions that enable collaborative logistics workflows. This diagram illustrates how the five personas interact with their respective system modules while maintaining cohesive end-to-end order fulfillment processes.
+
+![SLMS Global Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/slms.png)
+
+**Key Observations:**
+
+**Module Organization:** The diagram organizes use cases into six domain-specific packages, each corresponding to a business module or cross-cutting concern:
+- **Logistics Management Module:** Strategic oversight and carrier selection (João - Logistics Manager) - US1, US2, US3
+- **Warehouse Operations Module:** Order preparation and fulfillment (Ana - Warehouse Staff) - US4, US5
+- **Customer Service Module:** Exception management and customer support (Rita - CSR) - US6, US7, US8
+- **Driver/Carrier Mobile Module:** Last-mile delivery execution (Carlos - Driver) - US9, US10, US11, US12
+- **Customer Tracking Portal:** Self-service order management and tracking (Mariana - Customer) - US13, US14, US15, US16, US17
+- **Cross-Role Features:** AI-powered assistance available to all users (All Users) - US18
+
+**User Story Traceability:** Each use case is explicitly labeled with its corresponding user story number (US1-US18), ensuring complete traceability between requirements documentation (Section 4.3) and functional design. This mapping enables stakeholders to validate that all committed user stories have corresponding system functionality.
+
+**Cross-Module Dependencies:** Critical workflow integrations are modeled through inter-use case relationships:
+- **US17 (Report Delivery Issue) → US8 (Manage Customer-Reported Issues):** Customer-reported problems trigger CSR notifications
+- **US12 (Report Delivery Exception) → US7 (Handle Delivery Exceptions):** Driver-reported delivery failures create exception workflows
+- **US5 (Confirm Carrier Pickup) → US9 (View Delivery Manifest):** Warehouse pickup confirmation generates driver delivery manifests
+- **US11 (Record Proof of Delivery) → US16 (Receive Automatic Notifications):** Delivery completion triggers customer status notifications
+- **US13 (Create New Order) → US16 (Receive Automatic Notifications):** Order creation enables customer tracking and notification enrollment
+- **US3 (Generate Reports) → US7 (Handle Delivery Exceptions):** Analytics include exception metrics for performance evaluation
+
+**Role-Based Access Control:** Each persona interacts exclusively with their designated module, enforcing role-based access control and ensuring users only access functionality appropriate to their responsibilities. This separation aligns with the Keycloak role mapping (MANAGER, WAREHOUSE, CSR, DRIVER, CUSTOMER) defined in the security architecture.
+
+**AI Assistant Accessibility:** US18 (AI Assistant for Contextual Help) is uniquely modeled as accessible to all five personas, reflecting its cross-role nature. The diagram shows direct associations from every actor to this use case, emphasizing the chatbot's role as a universal support mechanism.
+
+**System Boundary Definition:** The diagram establishes clear boundaries for SLMS functionality. External carrier APIs (ShipEngine, Shippo), authentication services (Keycloak), and notification gateways are abstracted as system components rather than explicit actors, focusing the diagram on user-facing use cases.
+
+### 4.5.2 Logistics Manager Use Case Diagram
+
+The Logistics Manager diagram details the analytical and strategic workflows for João Ferreira's persona, focusing on KPI monitoring, carrier selection, and performance reporting capabilities.
+
+![Logistics Manager Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/logistics-manager.png)
+
+**Primary Use Cases:**
+- **US1: Monitor Transportation KPIs** - Access dashboard showing on-time delivery rates, shipping costs, and carrier performance metrics
+- **US2: Compare Carriers for Shipment** - Evaluate carrier options based on cost, transit time, and service levels to select optimal provider
+- **US3: Generate & Export Reports** - Create and export logistics performance reports for management presentation
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - enforces authentication before accessing analytics
+- **US1 (Monitor KPIs)** includes **View Dashboard** - KPI access requires dashboard interface navigation
+- **US2 (Compare Carriers)** includes **View Carrier Comparison Table** and **Assign Carrier to Shipment** - carrier selection workflow requires data presentation and selection confirmation
+- **US3 (Generate Reports)** includes **Select Report Type** - report generation requires user specification of content scope
+
+**<<extend>> Extensions:**
+- **US3 (Generate Reports)** extends to **View Generated Report** - optional preview before export
+- **US3 (Generate Reports)** extends to **Export Report** - optional download in PDF/Excel formats
+
+**Architectural Notes:**
+This diagram maps to the **Logistics Analytics Module** in the backend architecture. The "View Dashboard" and "View Carrier Comparison Table" use cases correspond to dedicated BFF (Backend-for-Frontend) endpoints that aggregate data from Order, Carrier, and Shipment modules to provide consolidated management views.
+
+### 4.5.3 Warehouse Staff Use Case Diagram
+
+The Warehouse Staff diagram models the operational workflows for Ana Martins' persona, capturing label generation and pickup confirmation processes that represent the transition point from order documentation to physical shipment.
+
+![Warehouse Staff Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/warehouse-staff.png)
+
+**Primary Use Cases:**
+- **US4: Generate Shipping Labels & Documents** - Produce carrier-specific labels, packing slips, and shipping manifests for order preparation
+- **US5: Confirm Carrier Pickup** - Update system when carrier collects packages, triggering status transitions and manifest generation
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - role-based authentication required
+- **US4 (Generate Labels & Documents)** includes **Select Order**, **Generate Shipping Label**, **Generate Packing Slip**, and **Generate Carrier Manifest** - comprehensive label production workflow requires order selection and multi-document rendering
+- **US5 (Confirm Pickup)** includes **Select Orders for Pickup** and **Mark as Collected** - pickup confirmation workflow requires selection and status update
+
+**Integration Points:**
+- **US5 (Confirm Carrier Pickup)** has a cross-module dependency on the Driver Module's **US9 (View Delivery Manifest)**. When warehouse staff confirm carrier pickup, the system generates delivery manifests accessible through the driver mobile application.
+- Order creation (performed either by warehouse staff or through **US13** by customers) enables subsequent label generation through **US4**.
+
+**Technical Implementation:**
+The document generation sub-use cases leverage Apache PDFBox for dynamic label creation, incorporating QR codes for driver confirmation workflows and carrier-specific formatting for compatibility with shipping provider requirements. Documents are stored in MinIO object storage for retrieval and reprinting.
+
+### 4.5.4 Customer Service Representative Use Case Diagram
+
+The Customer Service Representative diagram illustrates Rita Lopes' exception management and customer support workflows, focusing on rapid order status access and structured problem resolution.
+
+![Customer Service Representative Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/customer-service-representative.png)
+
+**Primary Use Cases:**
+- **US6: Search Order Status** - Quick order lookup by tracking number to provide immediate customer answers
+- **US7: Handle Delivery Exceptions** - Manage driver-reported and system-detected delivery problems through assignment and resolution workflows
+- **US8: Manage Customer-Reported Issues** - Process customer-initiated problem reports from the tracking portal
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to System** - CSR authentication required
+- **US6 (Search Order Status)** includes **Enter Order Number** and **Display Real-Time Order Status** - status lookup requires input and data presentation
+- **US7 (Handle Delivery Exceptions)** includes **Search Order with Active Exception**, **View Exception Details**, and **Record Resolution Notes** - comprehensive exception workflow
+- **US8 (Manage Customer-Reported Issues)** includes **Receive Issue Notification**, **Contact Customer / Update Order**, and **Log Resolution Notes and Close Issue** - structured issue handling from notification to closure
+
+**Cross-Module Integration:**
+- **US8 (Manage Customer-Reported Issues)** receives inputs from the Customer Portal's **US17 (Report Delivery Issue)**, creating a bidirectional communication channel between customers and customer service.
+- **US7 (Handle Delivery Exceptions)** consumes data from the Driver Module's **US12 (Report Delivery Exception)**, enabling CSR intervention on failed delivery attempts.
+
+**Business Process Notes:**
+The diagram models a complete exception management lifecycle: detection (driver report via US12 or customer report via US17) → notification (CSR receives alert via US8) → investigation (view details, contact customer) → resolution (record notes) → closure (mark as resolved). This workflow supports SLA tracking and resolution history requirements documented in the DeliveryException entity design (Section 3.2).
+
+### 4.5.5 Driver/Carrier Use Case Diagram
+
+The Driver/Carrier diagram captures Carlos Silva's mobile application workflows for last-mile delivery execution, emphasizing manifest access, route optimization, proof of delivery, and exception reporting in field operations.
+
+![Driver/Carrier Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/driver-carrier.png)
+
+**Primary Use Cases:**
+- **US9: View Delivery Manifest** - Access daily delivery list with package details, addresses, and priorities
+- **US10: Receive Optimized Delivery Route** - Obtain optimized delivery sequence for efficient route completion
+- **US11: Record Proof of Delivery (POD)** - Capture delivery confirmation through photo upload or digital signature
+- **US12: Report Delivery Exception** - Document failed delivery attempts with reason codes and contextual notes
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- All primary use cases include **Login to Mobile App** - driver authentication on PWA
+- **US9 (View Delivery Manifest)** includes **Access Daily Schedule** and **View Delivery Manifest List** - manifest access workflow
+- **US10 (Receive Optimized Route)** includes **Request Optimized Route** and **Receive Route & Navigation Links** - route optimization request and response
+- **US11 (Record POD)** includes **Capture Signature or Photo** and **Submit Delivery Confirmation** - proof capture and status transition
+- **US12 (Report Exception)** includes **Select Exception Reason**, **Log Exception Details**, and **Update Order Status to Exception** - structured exception documentation
+
+**Technical Integration:**
+- **US10 (Receive Optimized Route)** integrates with external mapping APIs (Google Maps/OSRM) to calculate optimal delivery sequences based on geographic proximity and traffic conditions.
+- **US11 (Record POD)** leverages mobile device camera APIs and uploads images to MinIO object storage for permanent POD archival. The "Submit Delivery Confirmation" sub-use case triggers status updates that propagate to **US16 (Receive Automatic Notifications)** in the Customer Portal.
+- **US12 (Report Delivery Exception)** creates DeliveryException records that feed into **US7 (Handle Delivery Exceptions)** in the Customer Service Module, enabling CSR intervention.
+
+**Mobile-Specific Considerations:**
+The diagram models use cases specifically designed for mobile contexts:
+- Offline-capable manifest viewing (data cached on device for connectivity-challenged environments)
+- Photo capture with GPS coordinates for location verification and dispute resolution
+- Simplified exception reporting with predefined reason codes (RECIPIENT_ABSENT, WRONG_ADDRESS, ACCESS_DENIED, PACKAGE_DAMAGED)
+
+**Workflow Separation:**
+Unlike the Sprint 2 diagram which combined US9 and US10 into a single "View Manifest & Receive Optimized Route" use case, the updated diagram clearly separates these as distinct user interactions. Drivers first view their manifest (US9) and then optionally request route optimization (US10), reflecting the actual user workflow in the mobile PWA.
+
+### 4.5.6 Customer Use Case Diagram
+
+The Customer diagram details Mariana Costa's self-service capabilities through the public-facing customer portal, emphasizing order creation, account management, tracking, notifications, and issue reporting.
+
+![Customer Use Case Diagram](per-sprint/sprint6/use-case-diagrams-updated/customer.png)
+
+**Primary Use Cases:**
+- **US13: Create New Order** - Self-service order creation through the customer portal
+- **US14: Create Account** - Self-registration through Keycloak-managed account creation
+- **US15: Login to Portal** - Secure authentication for order access
+- **US16: Receive Automatic Notifications** - Passive receipt of in-app notifications on order status changes
+- **US17: Report Delivery Issue** - Submit problems directly to customer service through integrated issue reporting
+
+**Use Case Relationships:**
+
+**<<include>> Dependencies:**
+- **US13 (Create New Order)** includes **Access Order Creation Form**, **Fill Order Details**, and **Submit Order** - complete order creation workflow from form access to submission
+- **US14 (Create Account)** includes **Open Registration Page**, **Complete Registration**, and **Redirect to Customer Portal** - multi-step registration flow
+- **US15 (Login to Portal)** includes **Access Login Page** and **Authenticate User** - Keycloak OAuth2 authentication
+- **US16 (Receive Notifications)** includes **Detect Shipment Status Change** and **Display In-App Notification** - automated notification pipeline
+- **US17 (Report Issue)** includes **Open Order Details**, **Submit Delivery Issue Form**, and **Register Exception and Notify CSR** - issue creation and CSR notification
+
+**Authentication Architecture:**
+The **US14 (Create Account)** and **US15 (Login to Portal)** use cases are fully delegated to Keycloak, aligning with the external user management architectural decision (Section 3.4.2). The SLMS backend only stores customer UUIDs rather than managing authentication credentials directly. This design ensures secure, industry-standard authentication while maintaining separation of concerns.
+
+**Order Management Capabilities:**
+**US13 (Create New Order)** represents a Sprint 6 addition to the customer portal, enabling self-service order creation. This enhancement empowers customers with autonomy over their shipping needs and provides a streamlined interface for order submission. The "Fill Order Details" sub-use case includes validation for shipping addresses, warehouse selection, and tracking number generation.
+
+**Notification Mechanism:**
+**US16 (Receive Automatic Notifications)** models a system-initiated workflow rather than user-initiated action. The <<include>> relationship to "Detect Shipment Status Change" indicates that the notification system monitors OrderEvent creation and displays in-app notifications when order status transitions occur (CREATED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED → EXCEPTION). Customers are automatically enrolled in notifications upon order creation through US13.
+
+**Integration with CSR Workflows:**
+**US17 (Report Delivery Issue)** creates a direct communication channel to the Customer Service Module. When customers submit issues, the "Register Exception and Notify CSR" sub-use case creates DeliveryException records visible in Rita's exception management dashboard (**US8: Manage Customer-Reported Issues**), enabling prompt follow-up and ensuring no customer issues are overlooked.
+
+**Diagram Evolution:**
+The updated diagram removes "Track Order in Real-Time" as a primary use case, as this functionality is now implicitly available through the customer portal's order history view rather than requiring a separate tracking number entry workflow. Order tracking is integrated into the authenticated customer experience rather than being a standalone public tracking portal feature.
+
+### 4.5.7 User Story to Use Case Mapping
+
+The table below provides complete traceability between user stories (Section 4.3) and use case diagrams, ensuring all 18 user stories are represented in the functional design:
+
+| User Story | Use Case Diagram | Use Case Name | Actor |
+|------------|------------------|---------------|-------|
+| US1 | Logistics Manager | Monitor Transportation KPIs | João (Logistics Manager) |
+| US2 | Logistics Manager | Compare Carriers for Shipment | João (Logistics Manager) |
+| US3 | Logistics Manager | Generate & Export Reports | João (Logistics Manager) |
+| US4 | Warehouse Staff | Generate Shipping Labels & Documents | Ana (Warehouse Staff) |
+| US5 | Warehouse Staff | Confirm Carrier Pickup | Ana (Warehouse Staff) |
+| US6 | Customer Service Rep | Search Order Status | Rita (CSR) |
+| US7 | Customer Service Rep | Handle Delivery Exceptions | Rita (CSR) |
+| US8 | Customer Service Rep | Manage Customer-Reported Issues | Rita (CSR) |
+| US9 | Driver/Carrier | View Delivery Manifest | Carlos (Driver) |
+| US10 | Driver/Carrier | Receive Optimized Delivery Route | Carlos (Driver) |
+| US11 | Driver/Carrier | Record Proof of Delivery (POD) | Carlos (Driver) |
+| US12 | Driver/Carrier | Report Delivery Exception | Carlos (Driver) |
+| US13 | Customer | Create New Order | Mariana (Customer) |
+| US14 | Customer | Create Account | Mariana (Customer) |
+| US15 | Customer | Login to Portal | Mariana (Customer) |
+| US16 | Customer | Receive Automatic Notifications | Mariana (Customer) |
+| US17 | Customer | Report Delivery Issue | Mariana (Customer) |
+| US18 | Global System | AI Assistant for Contextual Help | All Users (Cross-Role) |
+
+**Completeness Validation:** All 18 user stories have corresponding use cases in the diagrams, ensuring requirements-to-design traceability. The updated diagrams (Sprint 6) reflect the removal of GPS tracking (originally US16 in Sprint 2, renumbered in Sprint 6) and the addition of US18 (AI Assistant), US13 (Customer Order Creation), and the separation of driver manifest viewing (US9) from route optimization (US10).
+
+
+
 # 5. Developer Onboarding
-
-**Responsible: Hugo Castro**
-
-*[8-10 pages with step-by-step instructions]*
 
 **Reference:** `docs/handbook/dev-handbook.md`
 
 ## 5.1 Prerequisites
 
-**Topics to cover:**
-- Java 21 (OpenJDK or Oracle)
-- Node.js 20+ and npm
-- Docker Engine 24+ and Docker Compose
-- Terraform 1.5+
-- Git
-- Make (for build automation)
-- IDE recommendations (IntelliJ IDEA, VS Code)
+Before starting development on SLMS, developers must install and configure the required software tools and ensure their development machine meets the minimum system requirements. This section outlines the necessary prerequisites for setting up a functional local development environment.
 
-**System requirements:**
-- 8GB RAM minimum (16GB recommended)
-- 20GB free disk space
-- Linux/macOS/Windows with WSL2
+### Required Software
+
+**Java 21:** The backend application is built with Java 21, leveraging modern language features including records, pattern matching, and virtual threads. Either OpenJDK or Oracle JDK distributions are supported. Verify installation with `java -version`, which should display Java 21 or higher.
+
+**Node.js 20+:** All four frontend applications require Node.js version 20 or later with the bundled npm package manager. The project uses Next.js 15 and React 19, both of which require modern Node.js versions. Verify installation with `node -v` (should show v20.x.x or higher) and `npm -v`.
+
+**Docker Engine 24+ and Docker Compose:** The entire SLMS stack runs in containers, making Docker essential for local development. Docker Compose orchestrates the multi-container environment including the backend application, four frontends, PostgreSQL database, Keycloak authentication server, MinIO object storage, Apache Kafka, and Nginx reverse proxy. Verify installation with `docker -v` and `docker compose version`.
+
+**Make:** The project uses Make for build automation and common development tasks. The Makefile provides convenient commands like `make up`, `make logs`, `make test-ci`, and `make clean` to manage the development workflow. Make is typically pre-installed on Linux and macOS systems; Windows users with WSL2 will have access through the Linux subsystem.
+
+**Git:** Version control and collaboration happen through Git. Clone the repository and manage branches using standard Git commands. Verify installation with `git --version`.
+
+### Optional but Recommended
+
+**Terraform 1.5+:** While the development environment uses Docker Compose, the production deployment leverages Terraform for infrastructure as code. Developers working on infrastructure changes or deployment automation should install Terraform. The `make up` command uses Terraform to provision infrastructure resources.
+
+**IDE Recommendations:** IntelliJ IDEA Ultimate provides excellent support for Spring Boot development with features like intelligent code completion, database tools, and integrated debugging. Visual Studio Code offers a lightweight alternative with strong TypeScript/React support through extensions. Both IDEs support the project's Java backend and Next.js frontends.
+
+### System Requirements
+
+**Memory:** Minimum 8GB RAM, with 16GB recommended. Running the full SLMS stack locally (backend, four frontends, PostgreSQL, Keycloak, Kafka, MinIO, Nginx) requires substantial memory. Development machines with 8GB can run the stack but may experience slowness when running tests or builds simultaneously.
+
+**Disk Space:** Allocate at least 20GB of free disk space to accommodate Docker images, database volumes, object storage, and build artifacts. The PostgreSQL data directory, MinIO storage buckets, and Maven/npm caches consume significant space over time.
+
+**Operating System:** Linux, macOS, or Windows with WSL2 (Windows Subsystem for Linux version 2). The Docker-based development environment ensures consistency across operating systems, though WSL2 is required for Windows users to achieve performance parity with native Unix systems. All shell scripts and Makefile commands assume a Unix-like environment.
 
 ## 5.2 Initial Environment Setup
 
-**Topics to cover:**
+The complete step-by-step installation and configuration process is documented in the accompanying **SLMS Installation Guide** (PDF document submitted with this report). That guide provides detailed instructions for:
 
-**Step 1: Clone Repository**
+- Cloning the repository and navigating the project structure
+- Configuring environment variables for all services (Keycloak, MinIO, PostgreSQL, external APIs)
+- Starting the development environment with `make up` or `make dev-up`
+- Verifying successful installation and service health
+- Accessing the four frontend applications and backend API
+- Troubleshooting common setup issues (port conflicts, memory limitations, API key errors)
+
+For quick reference, the basic setup workflow is:
+
 ```bash
+# 1. Clone repository
 git clone https://github.com/detiuaveiro/group-project-es2526_304.git
 cd group-project-es2526_304
-```
 
-**Step 2: Configure Backend Environment Variables**
-```bash
-cp src/backend/.env.example src/backend/.env
-# Edit .env file with:
-# - Database credentials
-# - Keycloak configuration
-# - MinIO settings
-# - Gemini API key
-# - Pinecone credentials
-```
-
-**Step 3: Configure Infrastructure Variables**
-```bash
+# 2. Configure environment
 cp infra/.env.example infra/.env
-# Edit with PostgreSQL, Keycloak, MinIO settings
-```
+# Edit infra/.env with required API keys and credentials
 
-**Step 4: Create Docker Network**
-```bash
-docker network create slms-network
-```
-
-**Step 5: Start Development Environment**
-```bash
-make dev-up
-# OR for full Terraform deployment:
+# 3. Start all services
 make up
-```
 
-**Step 6: Verify Installation**
-```bash
+# 4. Verify health
 make status
+
+# 5. Access applications
+# Landing Page:     http://localhost/
+# Customer Portal:  http://localhost/customer/
+# Admin Console:    http://localhost/admin/
+# Driver PWA:       http://localhost/driver/
 ```
 
-**Reference:** `docs/handbook/dev-handbook.md` (Getting Started section)
+**Note:** The first startup takes 5-10 minutes while Docker downloads images and builds containers. Subsequent runs are significantly faster.
+
+For comprehensive installation instructions, configuration details, and troubleshooting guidance, **refer to the SLMS Installation Guide PDF**.
 
 ## 5.3 Project Structure Walkthrough
 
-**Topics to cover:**
+Understanding the project structure is essential for navigating the codebase and locating relevant files when implementing features or fixing bugs. SLMS follows a clear organizational hierarchy that separates concerns between application code, infrastructure, and documentation.
 
-**Root directory:**
-- `/src/backend` - Spring Boot application
-- `/src/frontend` - Next.js applications
-- `/infra` - Infrastructure as Code (Terraform, Docker)
-- `/docs` - Documentation
-- `Makefile` - Build automation
+### Root Directory Organization
 
-**Backend structure:**
-- `/business_layer` - Domain modules (8 modules)
-- `/presentation_layer` - BFF controllers
-- `/data_layer` - JPA repositories (if separate)
+The repository root contains four primary directories and build automation files:
 
-**Frontend structure:**
-- `/admin-console` - Internal operations UI
-- `/customer-portal` - Public customer interface
-- `/driver-pwa` - Mobile driver app
-- `/landing-page` - Marketing/info site
-- `/shared` - Shared components and utilities
+**`/src/backend`** - The complete Spring Boot 3.5 application built with Java 21. Contains all business logic, API controllers, data access layers, and configuration for the modular monolith architecture.
 
-**Infrastructure:**
-- `/terraform` - IaC definitions
-- `/docker` - Dockerfiles
-- `/nginx` - Reverse proxy config
-- `/keycloak` - Auth configuration
-- `/scripts` - Deployment scripts
+**`/src/frontend`** - Four separate Next.js 15 applications (admin-console, customer-portal, driver-pwa, landing-page) plus a shared component library. Each application is independently deployable with its own package.json and build configuration.
 
-**Documentation hierarchy:**
-- `/docs/adr` - Architecture Decision Records
-- `/docs/handbook` - Living documentation
-- `/docs/per-sprint` - Sprint artifacts
-- `/docs/architecture` - Diagrams and models
+**`/infra`** - Infrastructure as Code definitions including Terraform configurations, Docker Compose files, Dockerfiles, Nginx configurations, Keycloak realm exports, and deployment scripts. Everything needed to provision and deploy the system.
+
+**`/docs`** - Comprehensive documentation organized into Architecture Decision Records (ADRs), living handbooks for developers, and per-sprint historical artifacts.
+
+**`Makefile`** - Build automation providing convenient commands for common development tasks (starting services, running tests, viewing logs, cleanup operations). Simplifies the developer workflow by abstracting complex Docker and build commands.
+
+### Backend Structure (`src/backend/src/main/java/Operimus/SLMS`)
+
+The backend follows a layered architecture with clear separation between business logic and presentation:
+
+**`/business_layer`** - Contains eight self-contained modules, each encapsulating a specific domain:
+- **`order_module/`** - Order lifecycle management (controllers, services, entities, repositories, DTOs)
+- **`rate_carrier_module/`** - Carrier integration and shipment execution (ShipEngine API integration)
+- **`visibility_module/`** - Tracking and delivery exception management
+- **`chatbot_module/`** - AI assistant with Gemini and Pinecone integration
+- **`user_management_module/`** - Keycloak integration and security configuration
+- **`notification_module/`** - Event-driven notifications (limited implementation)
+- **`reporting_module/`** - Analytics and KPI dashboards (limited implementation)
+- **`route_module/`** - Route optimization (limited implementation)
+- **`shared/`** - Common utilities, exceptions, and cross-module interfaces
+
+Each module follows a consistent internal structure with `/controllers`, `/service`, `/entities`, `/repository`, and `/dto` packages.
+
+**`/presentation_layer`** - Backend-for-Frontend (BFF) controllers organized by frontend application:
+- **`admin_console_bff/`** - Aggregated endpoints for admin interface (subdivided by role: logistics, warehouse, customer service)
+- **`customer_portal_bff/`** - Customer-facing endpoints with strict data isolation
+- **`driver_pwa_bff/`** - Mobile-optimized endpoints for driver operations
+- **`landing_page_bff/`** - Public endpoints for unauthenticated tracking
+
+**`/observability`** - Monitoring and logging infrastructure including Elastic APM configuration and structured logging utilities.
+
+### Frontend Structure (`src/frontend`)
+
+Each frontend application is self-contained with its own dependencies and build pipeline:
+
+**`/admin-console`** - Next.js application for internal operations serving logistics managers, warehouse staff, and customer service representatives. Contains role-specific pages, dashboards, and order management interfaces.
+
+**`/customer-portal`** - Public-facing Next.js application for end customers. Includes order tracking, delivery preferences, and exception reporting with simplified UX optimized for infrequent users.
+
+**`/driver-pwa`** - Progressive Web App for delivery drivers. Implements offline-first architecture with service workers, delivery manifest views, proof of delivery capture, and Mapbox navigation integration.
+
+**`/landing-page`** - Marketing and information site providing unauthenticated order tracking and system overview.
+
+**`/shared`** - Shared component library containing:
+- **`/components`** - Reusable React components (buttons, forms, tables, modals)
+- **`/lib`** - Common utilities (API clients, authentication helpers, observability instrumentation, date formatters)
+
+Each application follows Next.js conventions with `/app` for routes, `/components` for UI elements, and `/lib` for utilities.
+
+### Infrastructure Organization (`/infra`)
+
+**`/terraform`** - Infrastructure as Code definitions for production deployment including main.tf (resource definitions), variables.tf (configurable parameters), outputs.tf (deployment results), and terraform.tfvars.example (configuration template).
+
+**`/docker`** - Dockerfiles organized by service (backend, frontend applications, supporting services). Each Dockerfile is optimized for its specific runtime with multi-stage builds to minimize image size.
+
+**`/nginx`** - Reverse proxy configuration with `default.conf` for production (optimized caching, gzip compression) and `default.dev.conf` for development (no caching, verbose logging).
+
+**`/keycloak`** - Keycloak realm export (realm-export.json) defining users, roles, clients, and identity provider configuration for reproducible authentication setup.
+
+**`/scripts`** - Operational automation including backup.sh (database and MinIO backup), restore.sh (disaster recovery), and monitor_prod.py (health check monitoring).
+
+**Docker Compose files:** `docker-compose.dev.yml` (lightweight development environment), `docker-compose.yaml` (production configuration), `docker-compose.ci.yml` (CI/CD testing environment).
+
+### Documentation Hierarchy (`/docs`)
+
+**`/adr`** - Architecture Decision Records documenting major architectural choices (8 ADRs covering initial architecture, data model, database integration, security, observability, shipment entity, chatbot integration, and implementation strategy).
+
+**`/handbook`** - Living documentation maintained alongside code changes:
+- **`dev-handbook.md`** - Developer getting started guide and common workflows
+- **`data-model.md`** - Database schema and entity relationships
+- **`chatbot-module.md`** - AI assistant architecture and RAG implementation
+- **`observability.md`** - Monitoring, logging, and SLI/SLO definitions
+- **`ci-cd-pipeline.md`** - Testing strategy and deployment pipeline
+- **`repo-workflow.md`** - Git workflow and collaboration practices
+
+**`/per-sprint`** - Historical documentation organized by sprint showing evolution of requirements, prototypes, diagrams, and decisions. Useful for understanding why certain design choices were made.
 
 ## 5.4 Common Development Commands
 
-**Topics to cover:**
+The project provides a comprehensive Makefile that simplifies common development tasks by abstracting complex Docker, Maven, and npm commands into simple, memorable targets. This section documents the most frequently used commands organized by workflow category.
 
-**From Makefile:**
+### Environment Management
 
+**Start the Development Environment:**
 ```bash
-# Environment management
-make up              # Start production environment (Terraform)
-make dev-up          # Start dev environment (Docker Compose)
-make down            # Stop services
-make restart         # Restart services
-make status          # Check health
-make logs            # View logs
-
-# Build and install
-make install         # Install frontend dependencies
-make build           # Build all components
-
-# Testing
-make test            # Run all tests
-make test-unit       # Unit tests only
-make test-integration # Integration tests
-make test-e2e        # End-to-end tests
-make test-real       # Tests with real services
-
-# Cleanup
-make clean           # Remove stopped containers
-make clean-volumes   # Remove all data
+make up              # Full production-like environment with Terraform
+make dev-up          # Lightweight Docker Compose environment
 ```
 
-**Backend commands:**
+The `make up` command provisions infrastructure via Terraform and builds all application containers, simulating the production deployment. Use this when working on infrastructure changes or testing deployment processes. The `make dev-up` command bypasses Terraform and uses Docker Compose directly, providing faster startup for application development.
+
+**Monitor Service Health:**
+```bash
+make status          # Display running state and health of all containers
+```
+
+This command shows which containers are running, their status (healthy/unhealthy), and basic resource usage. Useful for verifying successful startup or diagnosing container failures.
+
+**View Logs:**
+```bash
+make logs                    # View backend logs only (default)
+make logs SERVICE=all        # View logs from all services
+make logs SERVICE=frontend   # View specific frontend logs
+make logs SERVICE=postgres   # View database logs
+```
+
+Logs stream in real-time and include timestamps. Press Ctrl+C to stop following logs without stopping the containers.
+
+**Restart Services:**
+```bash
+make restart         # Restart all services
+make dev-restart     # Restart dev environment services
+```
+
+Restart commands preserve data volumes while reloading configuration and restarting processes. Useful after modifying environment variables or Docker Compose configurations.
+
+**Stop and Clean Up:**
+```bash
+make down            # Stop all services but preserve data volumes
+make destroy         # Stop services and remove containers (keeps images)
+make clean           # Remove stopped containers and dangling images
+make clean-volumes   # Remove all data volumes (DESTRUCTIVE - loses database data)
+make hard-prune      # Nuclear option - removes everything Docker-related
+```
+
+Use `make down` for normal shutdowns. Reserve `make clean-volumes` and `make hard-prune` for complete environment resets when troubleshooting persistent issues.
+
+### Build and Installation
+
+**Install Dependencies:**
+```bash
+make install         # Install all frontend npm dependencies
+```
+
+Run this command after cloning the repository or when package.json files change. Installs dependencies for all four Next.js applications in parallel.
+
+**Build Applications:**
+```bash
+make build           # Build backend JAR and all frontend production bundles
+```
+
+Creates production-optimized builds for deployment. The backend compiles to `target/slms-backend-*.jar` and frontends build to `.next/` directories.
+
+### Testing
+
+The project implements a comprehensive testing strategy with multiple test categories:
+
+**Run All Tests:**
+```bash
+make test-ci         # CI-safe tests: unit + mocked integration with coverage gates
+```
+
+This is the primary command used in the CI/CD pipeline. Runs backend unit tests and integration tests with mocked external services (Gemini, Pinecone, ShipEngine), plus frontend unit tests. JaCoCo enforces minimum 70% code coverage.
+
+**Backend-Specific Tests:**
+```bash
+make test-backend-integration    # Integration tests with real Docker services
+```
+
+Runs integration tests that spin up test containers for Keycloak, MinIO, and Kafka using Docker. More comprehensive than `test-ci` but requires Docker availability.
+
+**Frontend End-to-End Tests:**
+```bash
+make test-e2e        # Run Playwright E2E tests across all frontends
+```
+
+Requires the full stack to be running (`make up` first). Tests user workflows like order creation, label generation, and exception reporting through actual browser automation.
+
+**Real Integration Tests:**
+```bash
+make test-real       # Tests with actual external APIs (Gemini, Pinecone, ShipEngine)
+```
+
+**WARNING:** This consumes API quotas and requires valid API keys in `infra/.env`. Use sparingly for validating external service integrations before production deployment.
+
+### Direct Backend Development
+
+For developers working primarily on backend code, Maven wrapper commands provide fine-grained control:
+
+**Run Backend Locally (Outside Docker):**
 ```bash
 cd src/backend
-./mvnw spring-boot:run      # Run locally
-./mvnw test                 # Run tests
-./mvnw clean package        # Build JAR
+./mvnw spring-boot:run
 ```
 
-**Frontend commands:**
+Starts the Spring Boot application on port 8080 (or as configured). Requires PostgreSQL, Keycloak, and MinIO to be accessible at the hosts/ports defined in `src/backend/.env`. Useful for rapid iteration with automatic restart on code changes.
+
+**Backend Testing:**
 ```bash
-cd src/frontend/admin-console  # or other app
-npm install                    # Install dependencies
-npm run dev                    # Development server
-npm run build                  # Production build
-npm run test                   # Run tests
+./mvnw test                      # Run all backend tests
+./mvnw test -Dtest=OrderServiceTest  # Run specific test class
+./mvnw clean test                # Clean build then test
 ```
 
-**Reference:** `Makefile` in repository root
+**Build Backend JAR:**
+```bash
+./mvnw clean package             # Compile, test, package to JAR
+./mvnw clean package -DskipTests # Package without running tests (faster)
+```
+
+The packaged JAR appears in `target/slms-backend-0.0.1.jar` (version may vary).
+
+### Direct Frontend Development
+
+Each frontend application can be developed independently with standard npm commands:
+
+**Start Development Server:**
+```bash
+cd src/frontend/admin-console    # or customer-portal, driver-pwa, landing-page
+npm install                       # Install dependencies (first time only)
+npm run dev                       # Start Next.js dev server with hot reload
+```
+
+The dev server runs on port 3000 by default and automatically reloads when source files change. API requests proxy to the backend at `NEXT_PUBLIC_API_URL` defined in `.env.local`.
+
+**Build and Test Frontend:**
+```bash
+npm run build                    # Production build (outputs to .next/)
+npm run start                    # Serve production build locally
+npm run test                     # Run Jest unit tests
+npm run test:watch               # Run tests in watch mode
+npm run lint                     # Run ESLint checks
+```
+
+**Playwright E2E Tests:**
+```bash
+npm run test:e2e                 # Run Playwright tests for this frontend
+npm run test:e2e:ui              # Run with Playwright UI for debugging
+```
+
+### Development Workflow Summary
+
+A typical development session follows this pattern:
+
+1. **Start environment:** `make up` (first time) or `make dev-up` (subsequent sessions)
+2. **Verify health:** `make status`
+3. **Watch logs:** `make logs` in a separate terminal
+4. **Develop:**
+   - Backend: `cd src/backend && ./mvnw spring-boot:run` 
+   - Frontend: `cd src/frontend/<app> && npm run dev`
+5. **Test changes:** `make test-ci` before committing
+6. **Shutdown:** `make down` when finished
+
+For quick frontend-only work, start just the backend infrastructure with `make dev-up`, then run the specific frontend with `npm run dev` for the fastest iteration cycle.
 
 ## 5.5 Development Workflow
 
-**Topics to cover:**
+The project follows a structured Git workflow that balances development velocity with code quality. This workflow ensures all changes are reviewed, tested, and integrated systematically before reaching production.
 
-**Branching Strategy:**
-- `main` - Production-ready code
-- `develop` - Integration branch
-- Feature branches: `feat/feature-name`
-- Bug fixes: `fix/bug-name`
-- Documentation: `docs/doc-name`
+### Branching Strategy
 
-**Commit Message Conventions:**
-- `feat:` - New feature
+The repository uses a two-branch mainline model with feature branches:
+
+**Main Branches:**
+- **`main`** - Production-ready code, protected with required reviews and CI checks
+- **`develop`** - Integration branch where features merge before promotion to production
+
+**Feature Branches:**
+
+Create feature branches from `develop` using descriptive naming conventions:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feat/carrier-rate-comparison
+```
+
+**Branch Naming Prefixes:**
+- `feat/` - New features (e.g., `feat/order-tracking`, `feat/proof-of-delivery`)
+- `fix/` - Bug fixes (e.g., `fix/login-validation`, `fix/null-pointer-exception`)
+- `docs/` - Documentation changes (e.g., `docs/api-guide`, `docs/deployment-instructions`)
+- `test/` - Test additions or modifications (e.g., `test/order-service-unit-tests`)
+- `refactor/` - Code refactoring without functional changes (e.g., `refactor/carrier-module-structure`)
+- `chore/` - Build configuration, dependency updates (e.g., `chore/update-spring-boot`)
+
+### Commit Message Conventions
+
+Commit messages follow a structured format to maintain clear project history:
+
+```
+<type>: <short description>
+
+<optional detailed explanation>
+```
+
+**Common Types:**
+- `feat:` - New feature implementation
 - `fix:` - Bug fix
-- `docs:` - Documentation
-- `refactor:` - Code refactoring
-- `test:` - Test additions
+- `docs:` - Documentation updates
+- `refactor:` - Code restructuring without behavior changes
+- `test:` - Test additions or modifications
+- `chore:` - Build process, tooling, dependencies
 
-**Pull Request Process:**
-1. Create feature branch from `develop`
-2. Implement changes with tests
-3. Create PR to `develop`
-4. Code review (at least 1 approval)
-5. CI checks must pass
-6. Merge to `develop`
-7. Periodic merges to `main`
+**Best Practices:**
+- Use present tense: "add feature" not "added feature"
+- Keep first line under 72 characters
+- Reference GitHub issues when applicable: `feat: add carrier comparison (#42)`
+- One logical change per commit (don't mix unrelated changes)
 
-**CI/CD Pipeline:**
-- Automated builds on every push
-- Test execution
-- Code quality checks
-- Deployment on merge to `main`
+**Examples:**
+```bash
+feat: implement carrier rate comparison endpoint
+fix: resolve null pointer exception in order service
+docs: update architecture decision record for database choice
+test: add integration tests for shipment creation
+refactor: extract document generation into separate service
+```
 
-**Reference:** `docs/handbook/repo-workflow.md`
+### Pull Request Process
+
+All code changes reach `develop` and `main` through reviewed pull requests:
+
+**1. Create Pull Request:**
+
+After pushing your feature branch, create a PR on GitHub targeting `develop`:
+
+```bash
+git push origin feat/your-feature-name
+```
+
+**2. PR Requirements:**
+
+Every PR must include:
+- **Descriptive title** - Clear summary matching commit convention (`feat:`, `fix:`, etc.)
+- **Linked issue** - Reference the GitHub issue (e.g., "Closes #42" or "Fixes #87")
+- **Description** - Explain what changed, why, and how you tested it
+- **Testing evidence** - Screenshots, test output, or description of manual testing performed
+
+**3. Review and Approval:**
+
+- Minimum **1 approval** required from a team member
+- **All CI checks must pass:**
+  - Build successful (backend JAR, frontend production builds)
+  - All tests passing (`make test-ci`)
+  - Linting checks passed (ESLint for frontends, Checkstyle for backend)
+  - Code coverage ≥70% (JaCoCo enforcement)
+
+**4. Merge:**
+
+Once approved and CI passes, the PR author or reviewer merges to `develop`. The merge commit triggers CI to verify integration didn't break anything.
+
+### CI/CD Pipeline Integration
+
+The development workflow integrates with automated quality gates:
+
+**On Pull Request to `develop`:**
+- **ci-quality.yml** workflow executes:
+  - Backend unit tests with mocked external services
+  - Frontend unit tests
+  - Code coverage verification (≥70% threshold)
+  - Linting and code style checks
+  - Build verification (JAR packaging, frontend production builds)
+
+**On Pull Request to `main`:**
+- **ci-quality.yml** executes (quality gate)
+- **ci-integration.yml** executes (comprehensive integration testing):
+  - Backend integration tests with real Docker services (Keycloak, MinIO, Kafka)
+  - Frontend E2E tests with Playwright
+  - Full stack health verification
+
+**On Merge to `main`:**
+- **cd-deploy.yml** workflow executes:
+  - Terraform infrastructure provisioning
+  - Docker Compose deployment
+  - Health check verification
+  - Deployment to production environment
+
+This pipeline ensures that code merged to `develop` meets quality standards, and code merged to `main` has passed comprehensive integration testing before production deployment.
+
+### Typical Development Flow
+
+A typical feature development session follows this pattern:
+
+1. **Create feature branch** from latest `develop`:
+   ```bash
+   git checkout develop && git pull
+   git checkout -b feat/new-feature
+   ```
+
+2. **Develop and test locally**:
+   - Make code changes
+   - Write tests for new functionality
+   - Verify locally with `make test-ci`
+   - Test manually with `make dev-up` and browser/API testing
+
+3. **Commit incrementally** with descriptive messages:
+   ```bash
+   git add <changed-files>
+   git commit -m "feat: implement carrier rate comparison"
+   ```
+
+4. **Push and create PR**:
+   ```bash
+   git push origin feat/new-feature
+   # Create PR on GitHub targeting develop
+   ```
+
+5. **Address review feedback**:
+   - Make requested changes
+   - Commit with `fix: address PR review comments`
+   - Push updates (CI re-runs automatically)
+
+6. **Merge to develop** after approval and green CI
+
+7. **Periodic promotion to main**:
+   - Logistics manager or DevOps master creates PR from `develop` to `main`
+   - Full integration tests run
+   - After approval and CI, merge triggers production deployment
+
+This workflow balances rapid iteration (direct merge to `develop` after review) with production stability (comprehensive testing before `main`).
 
 ## 5.6 Testing Strategy
 
-**Topics to cover:**
+SLMS implements a comprehensive testing strategy following the test pyramid approach: a broad base of fast unit tests, a middle layer of integration tests, and a smaller set of end-to-end tests. This strategy balances test coverage with execution speed and maintenance overhead.
 
-**Test Pyramid Approach:**
+### Test Pyramid Organization
 
-**Unit Tests (Backend):**
-- JUnit 5 + Mockito
-- Service layer testing
-- Controller testing (MockMvc)
-- Repository testing
+The testing strategy is organized into four distinct levels, each serving a specific purpose:
 
-**Integration Tests (Backend):**
-- Mocked external APIs (ShipEngine, Gemini, Pinecone)
-- Database integration tests
-- Module integration testing
+**1. Unit Tests (Base of Pyramid - Fastest, Most Numerous)**
 
-**E2E Tests (Frontend):**
-- Playwright or Cypress
-- User workflow testing
-- Cross-browser testing
+Backend unit tests use JUnit 5 and Mockito to verify individual components in isolation:
 
-**Real Integration Tests:**
-- Actual external service integration
-- Requires API keys in environment
-- Run with `make test-real`
+- **Service Layer Testing:** Business logic validation with mocked dependencies. Example: `OrderServiceTest` verifies order creation logic without touching the database or external APIs.
+- **Controller Testing:** REST endpoint validation using MockMvc. Verifies request/response handling, validation, and HTTP status codes without starting a web server.
+- **Repository Testing:** Data access layer testing with in-memory H2 database for fast feedback.
 
-**Coverage Requirements:**
-- Target: 70% code coverage
-- JaCoCo reports
-- Coverage gates in CI
+Frontend unit tests use Jest and React Testing Library:
 
-**Test Commands:**
+- Component behavior verification (rendering, user interactions, state changes)
+- Utility function testing (date formatters, API clients, validators)
+- Hook testing (custom React hooks for state management, data fetching)
+
+**2. Integration Tests (Middle Layer - Slower, Moderate Coverage)**
+
+Integration tests verify module interactions and external service integration with two variants:
+
+**Mocked Integration Tests** (default in CI via `make test-ci`):
+- External APIs mocked (ShipEngine, Gemini, Pinecone) to avoid quota consumption and flaky tests
+- Database interactions with PostgreSQL test containers
+- Module boundary testing (Order Module ↔ Carrier Module interactions)
+- Fast execution, deterministic results, no external dependencies
+
+**Real Integration Tests** (via `make test-backend-integration`):
+- Spin up real Docker containers for Keycloak, MinIO, and Kafka using Testcontainers
+- Verify actual OAuth 2.0 authentication flows against Keycloak
+- Test document upload/download with MinIO S3-compatible storage
+- Validate event publishing/consumption with Kafka
+- More comprehensive but slower and requires Docker availability
+
+**3. End-to-End Tests (Top of Pyramid - Slowest, Least Numerous)**
+
+Playwright-based E2E tests verify complete user workflows across the full stack:
+
+- **Admin Console workflows:** Order creation, label generation, carrier selection, exception management
+- **Customer Portal workflows:** Account creation, login, order tracking, issue reporting
+- **Driver PWA workflows:** Manifest viewing, proof of delivery capture
+
+E2E tests run against the full deployed stack (backend + all frontends + infrastructure) using `make test-e2e`. They require all services to be running via `make up` first.
+
+**4. Real External Service Tests (Manual Verification)**
+
+The `make test-real` command runs tests against actual external APIs:
+
+- Real Gemini API calls (consumes quota)
+- Real Pinecone vector database queries
+- Real ShipEngine carrier rate requests
+
+**WARNING:** Only run these tests before production deployment or when debugging specific external service integration issues, as they consume API quotas and can fail due to network issues or service outages.
+
+### Coverage Requirements
+
+The project enforces minimum code coverage through JaCoCo (Java Code Coverage):
+
+- **Target:** 70% line coverage for backend code
+- **Enforcement:** CI pipeline fails if coverage drops below threshold
+- **Scope:** Covers all business modules (Order, Carrier, Visibility, Chatbot, etc.)
+- **Reports:** Generated in `target/site/jacoco/index.html` after running tests
+
+Coverage verification happens automatically in the `make test-ci` command, which is the primary CI quality gate.
+
+### Running Tests
+
+**Quick Test Execution (Most Common):**
+
 ```bash
-# Backend
-make test-unit            # Fast unit tests
-make test-integration     # Mocked integration
-make test-real            # Real services
-
-# Frontend
-cd src/frontend/admin-console
-npm run test              # Unit tests
-npm run test:e2e          # E2E tests
+make test-ci         # CI-safe: unit + mocked integration + coverage gates
 ```
 
-**Reference:** `docs/handbook/dev-handbook.md`, `Makefile`
+Use this before committing. It runs fast (2-3 minutes) and doesn't require external API keys.
+
+**Backend-Specific Testing:**
+
+```bash
+cd src/backend
+
+# Run all backend tests
+./mvnw test
+
+# Run specific test class
+./mvnw test -Dtest=OrderServiceTest
+
+# Run tests matching pattern
+./mvnw test -Dtest=*ControllerTest
+
+# Integration tests with Docker services
+make test-backend-integration
+```
+
+**Frontend-Specific Testing:**
+
+```bash
+cd src/frontend/admin-console  # or other frontend app
+
+# Run unit tests (Jest)
+npm run test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run E2E tests (Playwright)
+npm run test:e2e
+
+# Run E2E tests with UI for debugging
+npm run test:e2e:ui
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Full Stack E2E Testing:**
+
+```bash
+# First, start the full stack
+make up
+
+# Then run E2E tests across all frontends
+make test-e2e
+```
+
+**Real External Service Testing:**
+
+```bash
+# Ensure API keys configured in infra/.env
+make test-real
+```
+
+### Test Organization in Codebase
+
+**Backend Tests:** `src/backend/src/test/java/` mirrors the main source structure:
+- `business_layer/order_module/service/OrderServiceTest.java`
+- `business_layer/carrier_module/integration/ShipEngineClientTest.java`
+- `presentation_layer/admin_console_bff/LogisticsBffControllerTest.java`
+
+**Frontend Tests:** Colocated with source files:
+- `src/frontend/admin-console/app/orders/page.test.tsx` (component tests)
+- `src/frontend/admin-console/lib/api-client.test.ts` (utility tests)
+- `src/frontend/admin-console/e2e/order-creation.spec.ts` (E2E tests)
 
 ## 5.7 Troubleshooting Guide
 
-**Topics to cover:**
+This section documents common issues developers encounter when setting up or running SLMS locally, along with proven solutions. Consult this guide before asking for help to resolve issues quickly.
 
-**Common Issues:**
+### Port Conflicts
 
-**Port Conflicts:**
-- Issue: Port 5432 already in use
-- Solution: Configure `postgres_host_port` in Terraform variables
+**Issue:** Container fails to start with error "address already in use" or "port is already allocated"
 
-**Docker Permission Issues:**
-- Issue: Permission denied errors
-- Solution: Add user to docker group or use sudo
+**Common Culprits:**
+- Port 80 (Nginx) - Another web server running
+- Port 5432 (PostgreSQL) - Local PostgreSQL instance
+- Port 8180 (Keycloak) - Another Keycloak or application server
+- Port 9000 (MinIO) - Another MinIO or S3-compatible service
 
-**Database Connection Errors:**
-- Check PostgreSQL container is running
-- Verify credentials in .env
-- Check network connectivity
+**Solutions:**
 
-**Keycloak Configuration:**
-- Ensure realm 'slms' is created
-- Verify client configurations
-- Check redirect URIs
+1. **Find which process is using the port** (Linux/macOS):
+   ```bash
+   sudo lsof -i :80       # Check who's using port 80
+   sudo lsof -i :5432     # Check PostgreSQL port
+   ```
 
-**API Key Setup:**
-- Gemini: Obtain from Google AI Studio
-- Pinecone: Create account, get API key
-- ShipEngine: Register and get test API key
+2. **Stop the conflicting service:**
+   ```bash
+   sudo systemctl stop apache2    # Stop Apache
+   sudo systemctl stop postgresql # Stop local PostgreSQL
+   ```
 
-**Frontend Build Failures:**
-- Clear node_modules and reinstall
-- Check Node.js version (20+)
-- Verify environment variables
+3. **Change SLMS port mapping** (alternative to stopping services):
+   
+   Edit `infra/.env` or `infra/terraform/terraform.tfvars` to map to different host ports:
+   ```bash
+   POSTGRES_PORT=5433      # Map to 5433 instead of 5432
+   KEYCLOAK_PORT=8181      # Map to 8181 instead of 8180
+   ```
+   
+   Then restart: `make down && make up`
 
-**Backend Build Failures:**
-- Check Java version (21)
-- Clean Maven cache: `./mvnw clean`
-- Verify database connection
+### Docker Permission Issues
+
+**Issue:** "permission denied" when running Docker commands, or "Cannot connect to the Docker daemon"
+
+**Solutions:**
+
+1. **Add your user to docker group** (Linux):
+   ```bash
+   sudo usermod -aG docker $USER
+   newgrp docker  # Apply immediately without logout
+   ```
+
+2. **Start Docker daemon** (if not running):
+   ```bash
+   sudo systemctl start docker    # Linux systemd
+   sudo service docker start      # Linux sysvinit
+   ```
+
+3. **Use sudo** (temporary workaround, not recommended long-term):
+   ```bash
+   sudo make up
+   ```
+
+### Database Connection Errors
+
+**Issue:** Backend fails to start with "Connection refused" or "Unknown database" errors
+
+**Diagnostic Steps:**
+
+1. **Verify PostgreSQL container is running:**
+   ```bash
+   make status
+   # Look for slms-postgres-prod in output, should be "healthy"
+   ```
+
+2. **Check container logs:**
+   ```bash
+   make logs SERVICE=postgres
+   # Look for "database system is ready to accept connections"
+   ```
+
+3. **Verify credentials in configuration:**
+   - Check `infra/.env` has correct `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+   - Verify backend sees same values (credentials must match exactly)
+
+**Solutions:**
+
+- If container not running: `make down && make up` (restart everything)
+- If credentials mismatch: Update `infra/.env`, then `make restart`
+- If database not created: Delete volumes and recreate: `make clean-volumes && make up` (DESTRUCTIVE - loses all data)
+
+### Keycloak Configuration Issues
+
+**Issue:** Backend authentication fails with "Invalid token issuer" or frontend redirects fail
+
+**Common Causes:**
+- Issuer URI mismatch between Keycloak and backend configuration
+- Redirect URIs not configured for frontend clients
+- Keycloak realm not imported correctly
+
+**Solutions:**
+
+1. **Verify issuer URI consistency:**
+   
+   In `infra/.env`:
+   ```bash
+   KC_HOSTNAME_URL=http://localhost:8180
+   JWT_ISSUER_URI=http://localhost:8180/realms/slms
+   ```
+   
+   These must match exactly (including protocol, host, port).
+
+2. **Check realm imported successfully:**
+   
+   - Access Keycloak admin console: http://localhost:8180/admin/
+   - Login with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` from `.env`
+   - Verify realm "slms" exists with all clients (slms-backend, slms-admin-console, slms-customer-portal, slms-driver-pwa)
+
+3. **Verify redirect URIs configured:**
+   
+   In Keycloak admin → Clients → (select client) → Valid Redirect URIs:
+   - Admin Console: `http://localhost/admin/*`
+   - Customer Portal: `http://localhost/customer/*`
+   - Driver PWA: `http://localhost/driver/*`
+
+4. **Re-import realm if corrupted:**
+   ```bash
+   make down
+   make clean-volumes  # DESTRUCTIVE - removes all Keycloak data
+   make up             # Re-imports from infra/keycloak/realm-export.json
+   ```
+
+### API Key Configuration Errors
+
+**Issue:** Chatbot module fails to start, or carrier integration returns errors
+
+**Symptoms:**
+- Backend log shows "Gemini API key not configured"
+- ShipEngine endpoints return 401 Unauthorized
+- Pinecone connection fails
+
+**Solutions:**
+
+1. **Obtain required API keys:**
+   - **Gemini:** https://aistudio.google.com/app/apikey (free tier available)
+   - **Pinecone:** https://app.pinecone.io/ (create free account, get API key)
+   - **ShipEngine:** https://www.shipengine.com/ (sandbox/test account)
+
+2. **Configure in environment:**
+   
+   Edit `infra/.env`:
+   ```bash
+   GEMINI_API_KEY=your-actual-key-here
+   PINECONE_API_KEY=your-actual-key-here
+   PINECONE_HOST=https://your-index.svc.region.pinecone.io
+   SHIPENGINE_API_KEY=your-actual-key-here
+   ```
+
+3. **Restart backend to pick up new keys:**
+   ```bash
+   make restart
+   ```
+
+4. **Verify keys are valid:**
+   ```bash
+   # Test Gemini API manually
+   curl -H "Content-Type: application/json" \
+        -d '{"contents":[{"parts":[{"text":"Hello"}]}]}' \
+        "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=YOUR_KEY"
+   ```
+
+**Note:** The chatbot module gracefully degrades if API keys are missing (won't crash backend), but chatbot endpoints will return errors. Carrier integration requires valid ShipEngine key for rate requests.
+
+### Frontend Build Failures
+
+**Issue:** `npm run build` fails or `make build` fails on frontend
+
+**Common Causes:**
+- Outdated node_modules
+- Node.js version mismatch
+- Environment variables not set
+- TypeScript compilation errors
+
+**Solutions:**
+
+1. **Clear and reinstall dependencies:**
+   ```bash
+   cd src/frontend/admin-console  # or affected app
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+2. **Verify Node.js version:**
+   ```bash
+   node -v  # Should show v20.x.x or higher
+   ```
+   
+   If version is too old, install Node.js 20+ via nvm or package manager.
+
+3. **Check environment variables:**
+   
+   Frontend builds require certain variables at build time. Verify these are set in `infra/.env` or as build args in Terraform.
+
+4. **Fix TypeScript errors:**
+   ```bash
+   npm run type-check  # Show all TypeScript errors
+   ```
+   
+   Address reported type errors in source code.
+
+### Backend Build Failures
+
+**Issue:** Maven build fails, or backend container won't start
+
+**Common Causes:**
+- Wrong Java version
+- Maven cache corruption
+- Test failures blocking build
+- Missing dependencies
+
+**Solutions:**
+
+1. **Verify Java version:**
+   ```bash
+   java -version  # Should show Java 21
+   ```
+   
+   If wrong version, install Java 21 or set JAVA_HOME correctly.
+
+2. **Clean Maven cache and rebuild:**
+   ```bash
+   cd src/backend
+   ./mvnw clean install -DskipTests  # Clean build, skip tests temporarily
+   ```
+
+3. **Check for compilation errors:**
+   ```bash
+   ./mvnw compile  # Just compile, don't test or package
+   ```
+   
+   Fix any compilation errors in source code.
+
+4. **Verify database connection for tests:**
+   
+   If tests fail during build, ensure PostgreSQL is accessible:
+   ```bash
+   make status  # Verify postgres container running
+   ```
+
+### General Debugging Tips
+
+**View detailed logs:**
+```bash
+make logs SERVICE=all       # All services
+make logs SERVICE=backend   # Backend only
+docker logs -f <container-name>  # Specific container
+```
+
+**Check container health:**
+```bash
+make status                 # Summary
+docker ps -a                # Detailed container list
+docker inspect <container>  # Full container config
+```
+
+**Reset everything (nuclear option):**
+```bash
+make down
+make clean-volumes  # DESTRUCTIVE - loses all data
+make hard-prune     # Removes all Docker resources
+make up             # Fresh start
+```
+
+**Still stuck?**
+- Check `docs/handbook/dev-handbook.md` for additional guidance
+- Review GitHub Issues for similar problems
+- Ask in team Slack/Discord channel with error logs and `make status` output
 
 ---
 
 # 6. Production Configuration
-
-**Responsible: João Varela**
 
 Production configuration ensures the Smart Logistics Management System is reproducible across laptops, CI runners, and the AWS EC2 host that runs the live stack. All runtimes are containerized, and configuration is centralized in `.env`/`terraform.tfvars` so that Terraform can build the application images while Docker Compose provisions the supporting services (Keycloak, MinIO, Kafka, Nginx). `infra/deploy.sh` orchestrates both layers, guaranteeing that the same artefacts and health checks are exercised locally and in the self-hosted GitHub Actions runner.
 
@@ -1342,7 +2681,7 @@ SLMS defines five distinct user roles, each corresponding to a key persona in th
 | **Role** | **User Type** | **Primary Responsibilities** | **Access Level** |
 |----------|---------------|------------------------------|------------------|
 | `LOGISTICS_MANAGER` | Logistics Manager | Oversee all logistics operations, view system-wide KPIs and reports, manage warehouse and staff configurations, monitor carrier performance | Full administrative access to logistics operations |
-| `WAREHOUSE_STAFF` | Warehouse Staff | Register incoming orders, generate shipping labels and documents, manage inventory, confirm carrier pickups, process shipments | Warehouse-specific operations with order modification rights |
+| `WAREHOUSE_STAFF` | Warehouse Staff | Process incoming orders, generate shipping labels and documents, manage inventory, confirm carrier pickups, prepare shipments for dispatch | Warehouse-specific operations with order modification rights |
 | `CUSTOMER_SERVICE_REP` | Customer Service Representative | Handle customer inquiries, manage delivery exceptions, resolve customer issues, communicate order status updates | Read-only access to orders with write access to exceptions and notifications |
 | `DRIVER` | Delivery Driver | View assigned delivery routes, update delivery status, capture proof-of-delivery, report delivery exceptions | Limited to own assigned deliveries with status update capabilities |
 | `CUSTOMER` | End Customer | Place new orders, track order status, view delivery history, report delivery issues | Limited to own orders and related information |
@@ -1537,7 +2876,7 @@ The security configuration establishes the following access rules:
 | **Endpoint Pattern** | **Required Role** | **Served Frontend** | **Typical Operations** |
 |----------------------|-------------------|---------------------|------------------------|
 | `/api/logistics/**` | `LOGISTICS_MANAGER` | Admin Console (Logistics view) | View KPIs, generate reports, manage users, configure warehouses and carriers |
-| `/api/warehouse/**` | `WAREHOUSE_STAFF` | Admin Console (Warehouse view) | Register orders, generate labels, manage inventory, confirm pickups |
+| `/api/warehouse/**` | `WAREHOUSE_STAFF` | Admin Console (Warehouse view) | Process orders, generate labels, manage inventory, confirm pickups |
 | `/api/customer-service/**` | `CUSTOMER_SERVICE_REP` | Admin Console (CSR view) | Search orders, manage delivery exceptions, send notifications |
 | `/api/driver/**` | `DRIVER` | Driver PWA | View assigned deliveries, update delivery status, upload proof of delivery |
 | `/api/customer/**` | `CUSTOMER` | Customer Portal | Place orders, track shipments, view order history, report issues |
@@ -1564,58 +2903,31 @@ Spring Security's role checking automatically:
 
 Some users may have multiple roles assigned (e.g., a Logistics Manager who also acts as Warehouse Staff). In such cases, the user can access all endpoints corresponding to any of their assigned roles. The Admin Console frontend adapts its interface to show all features available to the user's combined role set, while the Customer Portal and Driver PWA are designed for single-role use.
 
----
+**Request Flow and Security Enforcement**
 
-**[FIGURE 8.2: BFF Access Control Architecture]**
+The complete request flow through the BFF security architecture follows this sequence:
 
-Create an architecture diagram showing the complete BFF security pattern with the following components:
+1. **Frontend Request**: A frontend application (Admin Console, Customer Portal, Driver PWA, or Landing Page) sends an HTTP request to an endpoint. Authenticated requests include the access token in the Authorization header: `Authorization: Bearer <access_token>`.
 
-**Layout**: Layered architecture diagram with four main horizontal layers plus external services at bottom
+2. **Nginx Routing**: The Nginx reverse proxy (port 80/443) receives the request and routes it to the Spring Boot backend based on the URL path pattern.
 
-**Layer 1 - Frontend Applications (Top)**:
-- Landing Page (Public Entry Point)
-- Admin Console (Logistics/Warehouse/CSR interfaces)
-- Customer Portal
-- Driver PWA
-- Show all connecting to Nginx with Bearer tokens (except Landing Page which sends credentials)
+3. **Security Filter Chain Interception**: Before reaching any BFF controller, the request passes through Spring Security's filter chain:
+   - The `JwtDecoder` extracts and validates the JWT token, checking signature validity against Keycloak's public keys, verifying expiry time, and confirming the issuer matches the expected Keycloak realm
+   - If token validation fails, the request is rejected with 401 Unauthorized
+   - If validation succeeds, Spring Security extracts the user's roles from the token's `realm_access.roles` claim
 
-**Layer 2 - Nginx Reverse Proxy**:
-- Single Nginx component routing to backend
-- Port 80/443
+4. **Role-Based Authorization**: The Security Filter Chain checks whether the user's roles satisfy the endpoint's role requirement:
+   - If the user has the required role, the request proceeds to the BFF controller
+   - If the user lacks the required role, the request is rejected with 403 Forbidden
+   - Public endpoints (`/api/landing-page/auth/**`, `/api/public/**`) bypass role checking
 
-**Layer 3 - Spring Boot Backend - BFF Controllers (Presentation Layer)**:
-- Group BFF endpoints with visual distinction:
-  - `/api/landing-page/auth/**` - AuthController [🔓 PUBLIC]
-  - `/api/logistics/**` - LogisticsBffController [🔒 LOGISTICS_MANAGER]
-  - `/api/warehouse/**` - WarehouseBffController [🔒 WAREHOUSE_STAFF]
-  - `/api/customer-service/**` - CustomerServiceBffController [🔒 CUSTOMER_SERVICE_REP]
-  - `/api/driver/**` - DriverBffController [🔒 DRIVER]
-  - `/api/customer/**` - CustomerBffController [🔒 CUSTOMER]
-  - `/api/public/**` - Public Resources [🔓 PUBLIC]
-  - `/api/admin/**` - Domain Controllers [⚠️ DEV ONLY]
+5. **BFF Controller Processing**: The appropriate BFF controller receives the authenticated and authorized request, potentially performing additional resource ownership checks (e.g., verifying a customer can only access their own orders)
 
-**Security Filter Chain (Between Layer 3 & 4)**:
-- JWT Decoder component (validates token signature, expiry, issuer)
-- Spring Security RBAC component (checks role requirements)
-- Show flow: Request → JWT Validation → Role Check → Allow/Deny (403 Forbidden)
+6. **Business Layer Delegation**: The BFF controller calls the necessary business layer services (Order Module, Rate Carrier Module, Visibility Module, etc.) to fulfill the request, aggregating data and orchestrating multi-service operations as needed
 
-**Layer 4 - Business Layer Services**:
-- Order Module
-- Rate & Carrier Module
-- Reporting Module
-- Visibility Module
-- Notification Module
-- User Management Module
-- Show BFF controllers calling these services after authorization
+7. **Response Return**: The BFF controller returns the formatted response to the frontend via Nginx
 
-**External Services (Bottom)**:
-- Keycloak (only connected to AuthController, not frontends)
-
-**Key Visual Elements**:
-- Color code public endpoints (green), role-protected endpoints (red/protected), dev endpoints (orange/warning)
-- Use arrows to show request flow: Frontend → Nginx → BFF → Security Filter → Business Layer
-- Show 403 Forbidden rejection path from RBAC back to frontends
-- Emphasize that Keycloak only connects to backend, never to frontends directly
+This multi-layered security architecture ensures that authentication and authorization are enforced consistently across all frontend applications, with no requests reaching business logic without proper validation. The centralized enforcement point in the Security Filter Chain simplifies security management and reduces the risk of authorization bypass vulnerabilities.
 
 ---
 
@@ -2417,9 +3729,7 @@ Both Gemini and Pinecone are usage-based services requiring cost monitoring. Gem
 
 # 10. Testing & Quality Assurance
 
-**Responsible: Hugo Sousa**
-
-## 11.1 Testing Strategy
+## 10.1 Testing Strategy
 
 **Topics to cover:**
 
@@ -2441,7 +3751,7 @@ While not strictly enforced for every feature, we encouraged a TDD mindset:
 
 ## 10.2 Test Coverage
 
-### 11.2.1 Backend Testing
+### 10.2.1 Backend Testing
 
 **Topics to cover:**
 
@@ -2501,7 +3811,7 @@ Unlike the backend, we prioritize **End-to-End (E2E)** testing over unit testing
 - **Navigation:** Tests ensure clicking links routes to the correct pages.
 - **State Management:** Verifies that UI updates correctly after user actions (e.g., badge counts incrementing).
 
-### 11.2.3 Integration Testing
+### 10.2.3 Integration Testing
 
 **Topics to cover:**
 
@@ -2518,7 +3828,7 @@ To ensure stability and speed, we mock external services during standard integra
 **Module Integration:**
 - **BFF Testing:** We verify that the Backend-for-Frontend correctly aggregates data from multiple internal services before sending it to the client.
 
-### 11.2.4 E2E Testing
+### 10.2.4 E2E Testing
 
 **Topics to cover:**
 
@@ -2532,7 +3842,7 @@ We use **Playwright** for robust browser automation.
 - **Critical Paths:** "Happy path" flows like "Create Order -> Assign Carrier -> Print Label".
 - **Error Scenarios:** Verifying error pages and toast notifications appear when the backend fails.
 
-### 11.2.5 Real Integration Tests
+### 10.2.5 Real Integration Tests
 
 **Topics to cover:**
 
@@ -2550,7 +3860,7 @@ make test-real
 docker exec slms-backend-dev ./mvnw test -Preal-integration
 ```
 
-## 11.3 Coverage Requirements
+## 10.3 Coverage Requirements
 
 **Topics to cover:**
 
@@ -2595,7 +3905,7 @@ We exclude boilerplate code that doesn't contain business logic:
 - **Ad-hoc:** We perform unscripted testing to find edge cases.
 - **Usability:** Verifying the UX feels natural and responsive.
 
-## 11.5 CI/CD Validation
+## 10.5 CI/CD Validation
 
 **Topics to cover:**
 
@@ -2948,13 +4258,13 @@ This architecture ensures operational excellence, rapid incident response, and c
 
 The Smart Logistics Management System (SLMS) represents a comprehensive solution to the challenges faced by modern logistics operations in an increasingly competitive e-commerce landscape. The platform successfully delivers a complete order-to-delivery lifecycle management system that serves five distinct user personas through four specialized frontend applications, supported by a modular backend architecture and extensive external service integrations.
 
-From a functional perspective, the system addresses the core requirements established at project inception. The platform supports **18 user stories** spanning the needs of logistics managers, warehouse staff, customer service representatives, carriers, and end customers. These user stories translate into concrete capabilities: logistics managers can compare carrier performance metrics and generate operational reports; warehouse staff can register orders and generate shipping documentation with automated label creation; customer service representatives can track orders in real time and resolve delivery exceptions systematically; drivers receive optimized delivery manifests through a mobile Progressive Web Application with proof-of-delivery capture; and customers can track their shipments, view delivery history, and report problems through a self-service portal.
+From a functional perspective, the system addresses the core requirements established at project inception. The platform supports **18 user stories** spanning the needs of logistics managers, warehouse staff, customer service representatives, carriers, and end customers. These user stories translate into concrete capabilities: logistics managers can compare carrier performance metrics and generate operational reports; warehouse staff can process orders and generate shipping documentation with automated label creation; customer service representatives can track orders in real time and resolve delivery exceptions systematically; drivers receive optimized delivery manifests through a mobile Progressive Web Application with proof-of-delivery capture; and customers can create and track their shipments, view delivery history, and report problems through a self-service portal.
 
 The **multi-carrier integration** through ShipEngine API enables the system to compare rates and transit times across FedEx, UPS, and DHL, providing logistics managers with data-driven decision-making capabilities. The **AI-powered chatbot** delivers context-aware assistance across all frontend applications, combining large language model capabilities from Google Gemini with semantic search through Pinecone's vector database. The chatbot understands user roles, current application context, and navigation state to provide relevant answers from the comprehensive documentation repository, while also executing database queries through a structured tool-calling system when users need real-time operational data.
 
 The **exception handling system** ensures that delivery problems—failed delivery attempts, incorrect addresses, damaged packages—are captured, assigned to appropriate personnel, and tracked through resolution. Real-time tracking capabilities provide visibility into shipment status from carrier acceptance through final delivery, with proactive notifications keeping all stakeholders informed of status changes and potential issues.
 
-From a technical delivery perspective, the project encompasses a **modular monolith backend** organized into eight distinct business modules (Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, Warehouse Management, and AI Chatbot), four Next.js frontend applications implementing the Backend-for-Frontend pattern, a complete PostgreSQL database schema with comprehensive entity relationships, and full infrastructure as code definitions using Terraform for deployment across development, staging, and production environments.
+From a technical delivery perspective, the project encompasses a **modular monolith backend** organized into seven distinct business modules (Order Management, Rate & Carrier Integration, Visibility & Tracking, User Management, Notifications, Reporting, and AI Chatbot), four Next.js frontend applications implementing the Backend-for-Frontend pattern, a complete PostgreSQL database schema with comprehensive entity relationships, and full infrastructure as code definitions using Terraform for deployment across development, staging, and production environments.
 
 The **CI/CD pipeline** implemented through GitHub Actions automates testing, building, and deployment processes, ensuring code quality through automated test execution and enforcing quality gates before changes reach production. The **observability infrastructure** based on Elastic APM provides distributed tracing, application performance monitoring, and service level indicator tracking aligned with defined SLOs for system availability and performance.
 
@@ -2966,7 +4276,7 @@ The SLMS project demonstrates the application of modern software architecture pa
 
 ### Architectural Approach
 
-The **modular monolith architecture** provides a structured approach to managing complexity while maintaining operational simplicity. Unlike a traditional monolithic application where boundaries between functional areas blur over time, SLMS enforces clear module boundaries through package structure and dependency management. Each of the eight backend modules encapsulates specific domain logic—the Order Module owns order lifecycle management, the Rate Carrier Module handles carrier interactions and shipment entities, the Visibility Module manages tracking and exception workflows—while maintaining well-defined interfaces for inter-module communication.
+The **modular monolith architecture** provides a structured approach to managing complexity while maintaining operational simplicity. Unlike a traditional monolithic application where boundaries between functional areas blur over time, SLMS enforces clear module boundaries through package structure and dependency management. Each of the seven backend modules encapsulates specific domain logic—the Order Module owns order lifecycle management and warehouse entity management, the Rate Carrier Module handles carrier interactions and shipment entities, the Visibility Module manages tracking and exception workflows—while maintaining well-defined interfaces for inter-module communication.
 
 This architectural approach delivers practical benefits that proved valuable throughout development. Teams could work on different modules with minimal coordination overhead, as changes to order processing logic did not require modifications to carrier integration code. Debugging became more straightforward, as issues could be isolated to specific modules based on their functional responsibilities. The single-process deployment model simplified operational management compared to a microservices architecture, avoiding the complexity of distributed systems coordination, service discovery, and inter-service communication reliability.
 
@@ -2996,7 +4306,7 @@ The system integrates multiple external services to deliver comprehensive functi
 
 **AI capabilities** combine Google Gemini for large language model processing with Pinecone vector database for semantic document search. The Chatbot Module implements a Retrieval-Augmented Generation (RAG) architecture that grounds AI responses in the project's documentation corpus. When users ask questions, the system generates embeddings of the query, searches Pinecone for semantically similar documentation chunks, and provides these as context to Gemini for response generation. The tool-calling system extends the chatbot beyond pure documentation lookup, allowing it to execute structured database queries when users request real-time operational data.
 
-**Object storage** through MinIO provides S3-compatible storage for shipping documents and proof-of-delivery photos. The Warehouse Management Module generates shipping labels and customs documentation, storing these as objects retrievable through signed URLs. The Driver PWA uploads proof-of-delivery photos captured during delivery completion, associating these with specific shipment records for audit trails and dispute resolution.
+**Object storage** through MinIO provides S3-compatible storage for shipping documents and proof-of-delivery photos. The Order Module generates shipping labels and customs documentation, storing these as objects retrievable through signed URLs. The Driver PWA uploads proof-of-delivery photos captured during delivery completion, associating these with specific shipment records for audit trails and dispute resolution.
 
 **Observability** through Elastic APM provides distributed tracing across the application stack. The system instruments both backend services and frontend applications, correlating user interactions in the browser with corresponding backend API calls and database queries. This end-to-end visibility enables performance analysis and troubleshooting of complex interactions spanning multiple system components.
 
@@ -3014,7 +4324,7 @@ The project employs **Architecture Decision Records (ADRs)** to document signifi
 
 The **developer handbook** provides practical onboarding guidance covering environment prerequisites, initial setup procedures, project structure walkthrough, common development commands, testing strategy, and troubleshooting guides. This living documentation evolved throughout the project as the team encountered and resolved setup issues, capturing institutional knowledge that reduces onboarding friction for new contributors.
 
-## 12.5 Final Remarks
+## 12.3 Final Remarks
 
 The Smart Logistics Management System project successfully demonstrates the application of modern software engineering practices to solve real-world logistics challenges. The delivered platform provides comprehensive functionality serving five distinct user personas through specialized frontend applications, supported by a well-architected backend system with extensive external service integrations.
 
