@@ -38,7 +38,7 @@ function NavigationOptimizedContent() {
     const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [exceptionType, setExceptionType] = useState<string>('CUSTOMER_NOT_AVAILABLE');
+    const [exceptionType, setExceptionType] = useState<string>('NOT_DELIVERED');
     const [exceptionDescription, setExceptionDescription] = useState<string>('');
     const [mapReady, setMapReady] = useState(false);
     const [routeDistance, setRouteDistance] = useState<string>('');
@@ -170,13 +170,16 @@ function NavigationOptimizedContent() {
                     window.history.replaceState(null, '', `/interfaces/navigation-optimized?deliveryId=${deliveriesWithCoords[0].orderId}`);
                 }
 
+                console.log('✅ Setting isLoadingLocation to false');
                 setIsLoadingLocation(false);
 
             } catch (error) {
                 console.error('❌ Error loading deliveries:', error);
                 setLocationError('Failed to load deliveries');
+                console.log('✅ Setting isLoadingLocation to false (error case)');
                 setIsLoadingLocation(false);
             } finally {
+                console.log('✅ Setting isLoadingDeliveries to false (finally block)');
                 setIsLoadingDeliveries(false);
             }
         };
@@ -239,6 +242,14 @@ function NavigationOptimizedContent() {
 
     // Initialize map
     useEffect(() => {
+        console.log('🗺️ Map init useEffect triggered', {
+            hasContainer: !!mapContainer.current,
+            hasMap: !!map.current,
+            currentLocation,
+            isLoadingLocation,
+            isLoadingDeliveries
+        });
+
         if (!mapContainer.current || map.current || !currentLocation) {
             if (!mapContainer.current) console.warn('⚠️ Map container ref is null');
             if (map.current) console.log('ℹ️ Map already exists, skipping initialization');
@@ -247,6 +258,11 @@ function NavigationOptimizedContent() {
         }
 
         console.log('🗺️ Initializing map with center:', currentLocation);
+        console.log('🗺️ Mapbox token present:', !!mapboxgl.accessToken);
+        console.log('🗺️ Map container dimensions:', {
+            width: mapContainer.current.offsetWidth,
+            height: mapContainer.current.offsetHeight
+        });
 
         const newMap = new mapboxgl.Map({
             container: mapContainer.current,
@@ -257,14 +273,48 @@ function NavigationOptimizedContent() {
 
         map.current = newMap;
 
+        // Set a timeout to detect if map never loads
+        const loadTimeout = setTimeout(() => {
+            console.warn('⏰ Map load timeout reached (10s)');
+            // Check if map appears to be loaded even without firing load event
+            if (newMap && newMap.isStyleLoaded()) {
+                console.log('✅ Map style is loaded (detected via timeout check)');
+                setMapReady(true);
+            } else {
+                console.error('❌ Map failed to load within 10 seconds');
+                showError('Map Loading Error', 'Map failed to load. Please refresh the page.');
+            }
+        }, 10000);
+
+        // Fallback: Check if style is already loaded after a short delay
+        const styleCheckInterval = setInterval(() => {
+            if (newMap.isStyleLoaded() && !mapReady) {
+                console.log('✅ Map style detected as loaded (via interval check)');
+                clearInterval(styleCheckInterval);
+                clearTimeout(loadTimeout);
+                setMapReady(true);
+            }
+        }, 500);
+
         newMap.on('load', () => {
-            console.log('✅ Map loaded and ready');
+            console.log('✅ Map loaded and ready (via load event)');
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
             setMapReady(true);
+        });
+
+        newMap.on('error', (e) => {
+            console.error('❌ Map error:', e);
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
+            showError('Map Error', 'Failed to initialize map. Check your internet connection.');
         });
 
         newMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         return () => {
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
             if (map.current) {
                 console.log('🧹 Cleaning up map');
                 map.current.remove();
@@ -272,7 +322,7 @@ function NavigationOptimizedContent() {
                 setMapReady(false);
             }
         };
-    }, [currentLocation]);
+    }, [currentLocation, isLoadingLocation, isLoadingDeliveries]);
 
     // Update route when location or delivery changes
     useEffect(() => {
@@ -744,7 +794,7 @@ function NavigationOptimizedContent() {
 
             setShowExceptionModal(false);
             setExceptionDescription('');
-            setExceptionType('CUSTOMER_NOT_AVAILABLE');
+            setExceptionType('NOT_DELIVERED');
 
             handleRedirectToDailySchedule(
                 'Exception Reported',
@@ -760,7 +810,7 @@ function NavigationOptimizedContent() {
     };
 
     if (isLoadingLocation || isLoadingDeliveries) {
-        console.log('🔄 Loading state:', { isLoadingLocation, isLoadingDeliveries });
+        console.log('🔄 Showing loading screen:', { isLoadingLocation, isLoadingDeliveries });
         return (
             <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center">
                 <div className="relative">
@@ -771,6 +821,8 @@ function NavigationOptimizedContent() {
             </div>
         );
     }
+
+    console.log('✅ Loading complete, rendering map container');
 
     console.log('📍 Render state:', {
         currentDelivery: currentDelivery?.orderId,
@@ -1032,11 +1084,12 @@ function NavigationOptimizedContent() {
                                     paddingRight: '3rem'
                                 }}
                             >
-                                <option value="CUSTOMER_NOT_AVAILABLE">Customer Not Available</option>
+                                <option value="NOT_DELIVERED">Not Delivered</option>
                                 <option value="WRONG_ADDRESS">Wrong Address</option>
-                                <option value="ACCESS_DENIED">Access Denied</option>
                                 <option value="DAMAGED">Package Damaged</option>
-                                <option value="WEATHER">Weather Conditions</option>
+                                <option value="LOST">Package Lost</option>
+                                <option value="DELAYED">Delivery Delayed</option>
+                                <option value="WRONG_ITEM">Wrong Item</option>
                                 <option value="OTHER">Other</option>
                             </select>
                         </div>
