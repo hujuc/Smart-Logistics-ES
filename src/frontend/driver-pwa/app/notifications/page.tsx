@@ -89,10 +89,10 @@ export default function NotificationsPage() {
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
-    if (!user?.username) return
+    if (!user?.userId) return
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/${user.username}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/${user.userId}`, {
         headers: {
           Authorization: `Bearer ${getAccessToken()}`
         }
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [user?.username, mapNotification])
+  }, [user?.userId, mapNotification])
 
   useEffect(() => {
     fetchNotifications()
@@ -222,10 +222,10 @@ export default function NotificationsPage() {
   }
 
   const handleDeleteAll = async () => {
-    if (!user?.username || !confirm("Are you sure you want to delete all notifications?")) return
+    if (!user?.userId || !confirm("Are you sure you want to delete all notifications?")) return
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/customer/${user.username}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/customer/${user.userId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${getAccessToken()}`
@@ -250,7 +250,7 @@ export default function NotificationsPage() {
 
       // Reload to refresh data
       setTimeout(() => {
-        window.location.href = '/'
+        window.location.href = '/driver'
       }, 1500)
     } catch (error) {
       console.error("Failed to accept shipment:", error)

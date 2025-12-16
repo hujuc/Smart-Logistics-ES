@@ -292,31 +292,64 @@ public class DriverBffController {
 
         AtomicInteger stopNumber = new AtomicInteger(1);
         List<DailyScheduleDeliveryResponse> deliveries = ordersWithoutActiveExceptions.stream()
-                .map(order -> DailyScheduleDeliveryResponse.builder()
-                        .orderId(order.getId())
-                        .orderReference(order.getReference())
-                        .stopNumber(stopNumber.getAndIncrement())
-                        .customerName(order.getCustomerId())
-                        .address(order.getShippingAddress())
-                        .phone(order.getShippingPhone())
-                        .status(order.getStatus())
-                        .weight(order.getWeight())
-                        .weightUnit(order.getWeightUnit())
-                        .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
-                        .shippingCity(order.getShippingCity())
-                        .shippingPostalCode(order.getShippingPostalCode())
-                        .shippingCountry(order.getShippingCountry())
-                        .shippingStateOrProvince(order.getShippingStateOrProvince())
-                        .warehouseAddress(DailyScheduleDeliveryResponse.WarehouseAddressDto.builder()
-                                .name(order.getWarehouse().getName())
-                                .addressLine1(order.getWarehouse().getAddressLine1())
-                                .addressLine2(order.getWarehouse().getAddressLine2())
-                                .city(order.getWarehouse().getCity())
-                                .stateOrProvince(order.getWarehouse().getStateOrProvince())
-                                .country(order.getWarehouse().getCountry())
-                                .postalCode(order.getWarehouse().getPostalCode())
-                                .build())
-                        .build())
+                .map(order -> {
+                    // Build full address from components if shippingAddress is not properly formatted
+                    String fullAddress = order.getShippingAddress();
+                    if (fullAddress == null || fullAddress.isEmpty() || !fullAddress.contains(",")) {
+                        // Shipping address is not properly formatted, build from components
+                        StringBuilder addressBuilder = new StringBuilder();
+                        if (order.getShippingAddressLine1() != null) {
+                            addressBuilder.append(order.getShippingAddressLine1());
+                        }
+                        if (order.getShippingAddressLine2() != null && !order.getShippingAddressLine2().isEmpty()) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingAddressLine2());
+                        }
+                        if (order.getShippingCity() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCity());
+                        }
+                        if (order.getShippingStateOrProvince() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingStateOrProvince());
+                        }
+                        if (order.getShippingPostalCode() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingPostalCode());
+                        }
+                        if (order.getShippingCountry() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCountry());
+                        }
+                        fullAddress = addressBuilder.toString();
+                    }
+
+                    return DailyScheduleDeliveryResponse.builder()
+                            .orderId(order.getId())
+                            .orderReference(order.getReference())
+                            .stopNumber(stopNumber.getAndIncrement())
+                            .customerName(order.getCustomerId())
+                            .address(fullAddress)
+                            .phone(order.getShippingPhone())
+                            .status(order.getStatus())
+                            .weight(order.getWeight())
+                            .weightUnit(order.getWeightUnit())
+                            .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
+                            .shippingCity(order.getShippingCity())
+                            .shippingPostalCode(order.getShippingPostalCode())
+                            .shippingCountry(order.getShippingCountry())
+                            .shippingStateOrProvince(order.getShippingStateOrProvince())
+                            .warehouseAddress(DailyScheduleDeliveryResponse.WarehouseAddressDto.builder()
+                                    .name(order.getWarehouse().getName())
+                                    .addressLine1(order.getWarehouse().getAddressLine1())
+                                    .addressLine2(order.getWarehouse().getAddressLine2())
+                                    .city(order.getWarehouse().getCity())
+                                    .stateOrProvince(order.getWarehouse().getStateOrProvince())
+                                    .country(order.getWarehouse().getCountry())
+                                    .postalCode(order.getWarehouse().getPostalCode())
+                                    .build())
+                            .build();
+                })
                 .toList();
 
         // Use first shipment for summary info (or could aggregate)
@@ -463,13 +496,29 @@ public class DriverBffController {
         List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .limit(3)
-                .map(order -> DriverDashboardResponse.NextDeliveryPreview.builder()
-                        .orderId(order.getId())
-                        .stopNumber(stopNumber.getAndIncrement())
-                        .customerName(order.getCustomerId() != null ? order.getCustomerId() : "Unknown Customer")
-                        .address(order.getShippingAddress())
-                        .priority("Medium") // Default priority for now
-                        .build())
+                .map(order -> {
+                    // Build full address from components if shippingAddress is not properly formatted
+                    String fullAddress = order.getShippingAddress();
+                    if (fullAddress == null || fullAddress.isEmpty() || !fullAddress.contains(",")) {
+                        StringBuilder addressBuilder = new StringBuilder();
+                        if (order.getShippingAddressLine1() != null) {
+                            addressBuilder.append(order.getShippingAddressLine1());
+                        }
+                        if (order.getShippingCity() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCity());
+                        }
+                        fullAddress = addressBuilder.toString();
+                    }
+
+                    return DriverDashboardResponse.NextDeliveryPreview.builder()
+                            .orderId(order.getId())
+                            .stopNumber(stopNumber.getAndIncrement())
+                            .customerName(order.getCustomerId() != null ? order.getCustomerId() : "Unknown Customer")
+                            .address(fullAddress)
+                            .priority("Medium") // Default priority for now
+                            .build();
+                })
                 .toList();
 
         DriverDashboardResponse.TodayStats stats = DriverDashboardResponse.TodayStats.builder()
