@@ -246,15 +246,7 @@ runs:
         KC_DB_URL=jdbc:postgresql://${{ inputs.db-host }}:${{ inputs.db-port }}/slms
         KC_DB_USERNAME=${{ inputs.postgres-user }}
         KC_DB_PASSWORD=${{ inputs.postgres-password }}
-        KC_HOSTNAME_URL=http://${{ inputs.keycloak-host }}:${{ inputs.keycloak-port }}
-        KC_HOSTNAME_ADMIN_URL=http://${{ inputs.keycloak-host }}:${{ inputs.keycloak-port }}
-        KC_HOSTNAME_STRICT=false
-        KC_HOSTNAME_STRICT_BACKCHANNEL=false
-        KC_HOSTNAME=${{ inputs.keycloak-host }}
-        KC_HOSTNAME_PORT=${{ inputs.keycloak-port }}
-        KC_HTTP_ENABLED=true
-        KC_PROXY_HEADERS=xforwarded
-        KC_PROXY=edge
+        # KC_HOSTNAME_* variables are set in deployment-specific section below to avoid duplicates
 
         # Admin Keycloak
         ADMIN_KEYCLOAK_CLIENT_ID=${{ inputs.keycloak-admin-client-id }}
@@ -329,6 +321,7 @@ runs:
         KC_HTTP_ENABLED=${{ inputs.kc-http-enabled }}
         KC_PROXY_HEADERS=${{ inputs.kc-proxy-headers }}
         KC_HOSTNAME_URL=${{ inputs.kc-hostname-url }}
+        KC_HOSTNAME_ADMIN_URL=${{ inputs.kc-hostname-url }}
         KEYCLOAK_CLIENT_ID=${{ inputs.keycloak-client-id }}
         KEYCLOAK_CLIENT_SECRET=${{ inputs.keycloak-client-secret }}
         KEYCLOAK_ISSUER=${{ inputs.keycloak-issuer }}

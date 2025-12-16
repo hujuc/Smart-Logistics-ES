@@ -29,16 +29,17 @@ import java.util.Map;
 /**
  * Logistics BFF Controller - Admin Console
  *
- * This controller is part of the Backend-For-Frontend (BFF) pattern for the logistics manager interface.
+ * This controller is part of the Backend-For-Frontend (BFF) pattern for the
+ * logistics manager interface.
  * Provides user management capabilities for the logistics manager role.
  *
- * Endpoints are mapped to /api/logistics/* to match the logistics manager role permissions.
+ * Endpoints are mapped to /api/logistics/* to match the logistics manager role
+ * permissions.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/logistics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class LogisticsBffController {
 
     private final KeycloakUserService userService;
@@ -57,8 +58,7 @@ public class LogisticsBffController {
         return ResponseEntity.ok(java.util.Map.of(
                 "status", "UP",
                 "service", "Logistics BFF",
-                "timestamp", java.time.Instant.now().toString()
-        ));
+                "timestamp", java.time.Instant.now().toString()));
     }
 
     // ===========================
@@ -68,7 +68,8 @@ public class LogisticsBffController {
     /**
      * Get comprehensive logistics statistics for dashboard
      *
-     * @param period Time period for trend calculation: "daily", "weekly", or "monthly" (default: "daily")
+     * @param period Time period for trend calculation: "daily", "weekly", or
+     *               "monthly" (default: "daily")
      * @return Comprehensive statistics with breakdowns
      */
     @GetMapping("/stats")
@@ -94,13 +95,11 @@ public class LogisticsBffController {
     /**
      * Export comprehensive logistics KPI report as PDF
      *
-     * @param period Time period for trend calculation: "daily", "weekly", or "monthly" (default: "daily")
+     * @param period Time period for trend calculation: "daily", "weekly", or
+     *               "monthly" (default: "daily")
      * @return PDF file download
      */
-    @GetMapping(
-        value = "/reports/export",
-        produces = MediaType.APPLICATION_PDF_VALUE
-    )
+    @GetMapping(value = "/reports/export", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> exportKPIReport(@RequestParam(defaultValue = "daily") String period) {
         try {
             log.info("Exporting logistics KPI report for period: {}", period);
@@ -134,7 +133,6 @@ public class LogisticsBffController {
                     .body(null);
         }
     }
-
 
     // ===========================
     // Warehouse Management Endpoints
@@ -198,7 +196,7 @@ public class LogisticsBffController {
     /**
      * Update warehouse
      *
-     * @param id Warehouse ID
+     * @param id      Warehouse ID
      * @param request Warehouse update request
      * @return Updated warehouse
      */
@@ -236,7 +234,7 @@ public class LogisticsBffController {
     /**
      * Get orders by warehouse ID
      *
-     * @param id Warehouse ID
+     * @param id     Warehouse ID
      * @param status Optional status filter
      * @return List of orders for the warehouse
      */
@@ -338,7 +336,8 @@ public class LogisticsBffController {
      * Update user password
      */
     @PutMapping("/users/{userId}/password")
-    public ResponseEntity<?> updatePassword(@PathVariable String userId, @Valid @RequestBody PasswordUpdateDTO passwordDTO) {
+    public ResponseEntity<?> updatePassword(@PathVariable String userId,
+            @Valid @RequestBody PasswordUpdateDTO passwordDTO) {
         try {
             log.info("Updating password for user via Logistics BFF: {}", userId);
             userService.updatePassword(userId, passwordDTO.getPassword());

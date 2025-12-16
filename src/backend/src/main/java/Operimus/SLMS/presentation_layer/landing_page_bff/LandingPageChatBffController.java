@@ -22,9 +22,8 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/landing-page")
+@RequestMapping("/api/landing-page/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class LandingPageChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,11 +35,12 @@ public class LandingPageChatBffController {
      *
      * POST /api/landing-page/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt Optional JWT token (null for anonymous users)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     Optional JWT token (null for anonymous users)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
@@ -57,7 +57,7 @@ public class LandingPageChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    null  // Landing page is anonymous, no userId for tool authorization
+                    null // Landing page is anonymous, no userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

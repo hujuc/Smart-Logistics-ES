@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.*;
  * Logistics Manager Chatbot BFF Controller (Admin Console)
  *
  * Provides chatbot functionality for logistics managers in the admin console.
- * The chatbot provides information about operations, reporting, user management, and logistics procedures.
+ * The chatbot provides information about operations, reporting, user
+ * management, and logistics procedures.
  *
  * Endpoints are mapped to /api/logistics/chat
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/logistics")
+@RequestMapping("/api/logistics/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class LogisticsChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,11 +36,12 @@ public class LogisticsChatBffController {
      *
      * POST /api/logistics/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt JWT token with logistics manager information (required)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     JWT token with logistics manager information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
@@ -58,7 +59,7 @@ public class LogisticsChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    userId  // Pass userId for tool authorization
+                    userId // Pass userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

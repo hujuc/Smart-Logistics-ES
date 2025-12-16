@@ -20,16 +20,17 @@ import java.util.Map;
 /**
  * Landing Page BFF - Authentication Controller
  *
- * This controller is part of the Backend-For-Frontend (BFF) pattern for the landing page.
+ * This controller is part of the Backend-For-Frontend (BFF) pattern for the
+ * landing page.
  * It exposes authentication endpoints that delegate to business layer services.
  *
- * Endpoints are mapped to /api/landing-page/auth/* to clearly identify the BFF boundary.
+ * Endpoints are mapped to /api/landing-page/auth/* to clearly identify the BFF
+ * boundary.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/landing-page/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class AuthController {
 
     private final AuthService authService;
@@ -39,7 +40,7 @@ public class AuthController {
      * Login endpoint - authenticates user via business layer
      *
      * @param loginRequest user credentials
-     * @param response HTTP response to set cookies
+     * @param response     HTTP response to set cookies
      * @return LoginResponse with access token and user info
      */
     @PostMapping("/login")
@@ -77,7 +78,7 @@ public class AuthController {
     /**
      * Register new user endpoint
      *
-     * @param userDTO user registration data
+     * @param userDTO  user registration data
      * @param response HTTP response to set cookies
      * @return LoginResponse after auto-login
      */
@@ -121,7 +122,7 @@ public class AuthController {
      * Refresh access token using refresh token from cookie
      *
      * @param refreshToken refresh token from HTTP-only cookie
-     * @param response HTTP response to update cookie
+     * @param response     HTTP response to update cookie
      * @return LoginResponse with new tokens
      */
     @PostMapping("/refresh")
@@ -165,7 +166,7 @@ public class AuthController {
      * Logout endpoint - revokes tokens and clears cookies
      *
      * @param refreshToken refresh token from HTTP-only cookie
-     * @param response HTTP response to clear cookie
+     * @param response     HTTP response to clear cookie
      * @return Success message
      */
     @PostMapping("/logout")
