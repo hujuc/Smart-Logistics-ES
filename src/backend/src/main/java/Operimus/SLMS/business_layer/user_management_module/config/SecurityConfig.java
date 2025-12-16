@@ -158,6 +158,8 @@ public class SecurityConfig {
                     validIssuers.add(String.format("%s/realms/%s", cleanOrigin, keycloakRealm));
                     // Also add with port 8180 just in case (Keycloak direct access)
                     validIssuers.add(String.format("%s:8180/realms/%s", cleanOrigin, keycloakRealm));
+                    // Also add with port 8080 (Keycloak internal port when accessed via proxy)
+                    validIssuers.add(String.format("%s:8080/realms/%s", cleanOrigin, keycloakRealm));
                 }
             }
         }
