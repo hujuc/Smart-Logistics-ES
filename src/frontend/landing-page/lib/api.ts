@@ -28,6 +28,26 @@ export interface LoginResponse {
 }
 
 /**
+ * Parse JWT token and extract payload
+ */
+function parseJwt(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error('Failed to parse JWT:', e);
+    return {};
+  }
+}
+
+/**
  * Login user via Landing Page BFF
  */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -120,7 +140,12 @@ export function getRoleBasedRedirect(roles: string[]): string {
  * Store access token in localStorage and cookies, then redirect based on role
  */
 export function handleSuccessfulAuth(response: LoginResponse): void {
+  // Parse JWT to extract user ID from 'sub' claim
+  const jwtPayload = parseJwt(response.accessToken);
+  const userId = jwtPayload.sub || '';  // Keycloak stores user UUID in 'sub' claim
+
   const userData = {
+    userId,
     username: response.username,
     email: response.email,
     firstName: response.firstName,
