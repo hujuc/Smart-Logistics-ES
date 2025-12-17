@@ -15,4 +15,4 @@ python3 seed_demo_data.py --api-base "$API_BASE_URL"
 
 # Run orchestrator
 echo "Starting orchestrator..."
-python3 orchestrate_orders.py --api-base "$API_BASE_URL" --interval 18000
+python3 orchestrate_orders.py --api-base "$API_BASE_URL" --interval 3600
