@@ -113,10 +113,7 @@ services:
     container_name: slms-orchestrator-prod
     environment:
       - API_BASE_URL=http://slms-backend-prod:8080/api
-<<<<<<< HEAD
-=======
       - ORCHESTRATOR_INTERVAL=600
->>>>>>> 02cca291b460e0028533afa9b134a2124bc2e188
     restart: unless-stopped
     networks:
       - slms-network
