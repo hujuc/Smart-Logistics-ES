@@ -13,6 +13,7 @@ import mapboxgl from 'mapbox-gl';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 import { useNotificationsStore, useUnreadNotifications } from '@/shared/hooks/use-notifications';
+import { useNotificationAnimation } from '@/shared/hooks/use-notification-animation';
 import { useWebSocket } from '@/shared/hooks/use-websocket';
 import { getAccessToken } from '@/shared/lib/auth';
 
@@ -27,47 +28,13 @@ export default function DriverHome() {
 
   // Notification state
   const unreadCount = useUnreadNotifications();
-  const { setUnreadCount, incrementUnread } = useNotificationsStore();
-  const [shouldAnimate, setShouldAnimate] = useState(false);
-  const prevCountRef = useRef(unreadCount);
+  // const { setUnreadCount, incrementUnread } = useNotificationsStore();
+  const shouldAnimate = useNotificationAnimation(unreadCount);
 
-  // Trigger animation when unread count increases
-  useEffect(() => {
-    if (unreadCount > prevCountRef.current) {
-      setShouldAnimate(true);
-      const timer = setTimeout(() => setShouldAnimate(false), 2000);
-      return () => clearTimeout(timer);
-    }
-    prevCountRef.current = unreadCount;
-  }, [unreadCount]);
-
-  // Fetch initial unread count
-  useEffect(() => {
-    async function fetchUnreadCount() {
-      if (!user?.username) return;
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/${user.username}/unread`, {
-          headers: {
-            Authorization: `Bearer ${getAccessToken()}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadCount(data.length);
-        }
-      } catch (error) {
-        console.error("Failed to fetch unread notifications:", error);
-      }
-    }
-    fetchUnreadCount();
-  }, [user?.username, setUnreadCount]);
+  // Initial unread count is handled by global listener
 
   // WebSocket for real-time updates
-  useWebSocket({
-    onMessage: () => {
-      incrementUnread();
-    }
-  });
+  // WebSocket for real-time updates is handled by global listener
   const [acceptingShipmentId, setAcceptingShipmentId] = useState<number | null>(null);
   const [calculatedETA, setCalculatedETA] = useState<string>('--');
 
@@ -285,13 +252,13 @@ export default function DriverHome() {
 
   return (
     <div className="min-h-screen bg-white">
-        <Alert
-          isOpen={alert.isOpen}
-          onClose={closeAlert}
-          title={alert.title}
-          message={alert.message}
-          type={alert.type}
-        />
+      <Alert
+        isOpen={alert.isOpen}
+        onClose={closeAlert}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
       {/* Header */}
       <div className="bg-black text-white p-6">
         <div className="flex items-center gap-2 mb-6">
@@ -359,12 +326,12 @@ export default function DriverHome() {
             <p className="text-sm text-gray-600">Remaining</p>
           </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <Clock className="w-8 h-8 text-yellow-600 mb-2" />
-              <p className="text-3xl font-bold text-yellow-700">{calculatedETA}</p>
-              <p className="text-sm text-gray-600">Next Stop ETA</p>
-            </div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <Clock className="w-8 h-8 text-yellow-600 mb-2" />
+            <p className="text-3xl font-bold text-yellow-700">{calculatedETA}</p>
+            <p className="text-sm text-gray-600">Next Stop ETA</p>
           </div>
+        </div>
 
         {/* Quick Actions */}
         <div className="mt-8 space-y-3">
@@ -384,13 +351,13 @@ export default function DriverHome() {
             </button>
           </Link>
 
-            <button
-              onClick={handleStartNavigation}
-              className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-            >
-              <Truck className="w-5 h-5" />
-              Start Navigation
-            </button>
+          <button
+            onClick={handleStartNavigation}
+            className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Truck className="w-5 h-5" />
+            Start Navigation
+          </button>
 
         </div>
 

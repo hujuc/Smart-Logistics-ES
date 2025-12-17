@@ -7,6 +7,7 @@ import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { UserStateDebugger } from "@shared/components/UserStateDebugger";
 import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 import { AdminChatbot } from "@/components/admin-chatbot";
+import { NotificationListener } from "@/components/notification-listener";
 
 export const metadata: Metadata = {
   title: "SLMS - Smart Logistics Management System",
@@ -24,6 +25,7 @@ export default function RootLayout({
         <ObservabilityProvider serviceName="slms-admin-console">
           <UserStoreInitializer />
           <UserStateDebugger />
+          <NotificationListener />
           <Navbar />
           <Suspense fallback={null}>
             <DynamicFloatingNav />

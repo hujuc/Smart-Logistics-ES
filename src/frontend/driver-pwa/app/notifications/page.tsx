@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useWebSocket } from "@shared/hooks/use-websocket"
+import { useNotificationAnimation } from "@shared/hooks/use-notification-animation"
 import { useUserStore } from "@shared/lib/user-store"
 import { getAccessToken } from "@shared/lib/auth"
 import { acceptShipment } from "@/lib/api"
@@ -135,6 +136,7 @@ export default function NotificationsPage() {
 
   // Calculate stats
   const unreadCount = notifications.filter(n => n.status === "unread").length
+  const shouldAnimate = useNotificationAnimation(unreadCount)
   const warningCount = notifications.filter(n => n.type === "warning").length
   const errorCount = notifications.filter(n => n.type === "error").length
   const successCount = notifications.filter(n => n.type === "success").length
@@ -199,12 +201,21 @@ export default function NotificationsPage() {
   }
 
   const handleMarkAllAsRead = async () => {
-    // Optimistic update
-    setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+    if (!user?.username) return
 
-    // Ideally we'd have a bulk endpoint, but for now we'll just refresh or iterate
-    // For this implementation, we'll assume the user wants to clear the visual state
-    // In a real app, we should add a bulk mark-read endpoint
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/customer/${user.username}/read`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${getAccessToken()}`
+        }
+      })
+
+      // Optimistic update
+      setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+    } catch (error) {
+      console.error("Failed to mark all as read:", error)
+    }
   }
 
   const handleDelete = async (id: number) => {
@@ -222,10 +233,10 @@ export default function NotificationsPage() {
   }
 
   const handleDeleteAll = async () => {
-    if (!user?.userId || !confirm("Are you sure you want to delete all notifications?")) return
+    if (!user?.username || !confirm("Are you sure you want to delete all notifications?")) return
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/customer/${user.userId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/customer/${user.username}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${getAccessToken()}`
@@ -284,8 +295,17 @@ export default function NotificationsPage() {
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Truck className="h-6 w-6 text-white" />
+            <div className="flex items-center gap-2 mb-1 relative">
+              <div className="relative">
+                <Truck className="h-6 w-6 text-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white animate-in fade-in zoom-in duration-300">
+                    {shouldAnimate && (
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                    )}
+                  </span>
+                )}
+              </div>
               <h1 className="text-2xl md:text-3xl font-bold">Driver Notifications</h1>
             </div>
             <p className="text-gray-400 text-sm md:text-base">Route updates and delivery alerts</p>
@@ -499,8 +519,8 @@ export default function NotificationsPage() {
                 <div
                   key={notification.id}
                   className={`bg-white rounded-lg border ${notification.status === "unread"
-                      ? "border-gray-800 bg-gray-100"
-                      : "border-gray-200"
+                    ? "border-gray-800 bg-gray-100"
+                    : "border-gray-200"
                     } p-4`}
                 >
                   <div className="flex items-start gap-3">

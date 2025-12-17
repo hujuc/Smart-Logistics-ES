@@ -4,6 +4,7 @@
  */
 
 export interface UserData {
+  userId: string;  // Keycloak user UUID from 'sub' claim
   username: string;
   email: string;
   firstName?: string;

@@ -33,6 +33,7 @@ public class GeminiHealthIndicator implements HealthIndicator {
 
             if (embedding == null || embedding.length == 0) {
                 return Health.down()
+                        .withDetail("service", "Google Gemini AI")
                         .withDetail("error", "Empty embedding response")
                         .build();
             }

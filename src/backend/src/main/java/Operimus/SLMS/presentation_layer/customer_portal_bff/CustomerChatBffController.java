@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.*;
  * Customer Portal Chatbot BFF Controller
  *
  * Provides chatbot functionality for authenticated customers.
- * The chatbot provides customer-specific information about orders, tracking, and support.
+ * The chatbot provides customer-specific information about orders, tracking,
+ * and support.
  *
  * Endpoints are mapped to /api/customer/chat
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/customer")
+@RequestMapping("/api/customer/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class CustomerChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,11 +36,12 @@ public class CustomerChatBffController {
      *
      * POST /api/customer/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt JWT token with customer information (required)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     JWT token with customer information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
@@ -58,7 +59,7 @@ public class CustomerChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    userId  // Pass userId for tool authorization
+                    userId // Pass userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",
