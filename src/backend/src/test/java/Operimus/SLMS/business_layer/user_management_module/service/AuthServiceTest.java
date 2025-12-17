@@ -216,7 +216,7 @@ class AuthServiceTest {
             authService.refreshToken(refreshToken);
         });
 
-        assertEquals("Unable to refresh session. Please try again.", exception.getMessage());
+        assertEquals("Unable to refresh session due to a technical error. Please log in again.", exception.getMessage());
     }
 
     // ========================================
