@@ -33,6 +33,9 @@ export const API_ENDPOINTS = {
     userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
     statsWithPeriod: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/stats?period=${period}`,
 
+    // Helper functions for order-specific paths
+    order: (orderId: number) => `${LOGISTICS_BASE}/orders/${orderId}`,
+
     // Helper functions for warehouse-specific paths
     warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
     warehouseOrders: (warehouseId: number, status?: string) =>
