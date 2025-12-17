@@ -38,7 +38,7 @@ function NavigationOptimizedContent() {
     const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [exceptionType, setExceptionType] = useState<string>('CUSTOMER_NOT_AVAILABLE');
+    const [exceptionType, setExceptionType] = useState<string>('NOT_DELIVERED');
     const [exceptionDescription, setExceptionDescription] = useState<string>('');
     const [mapReady, setMapReady] = useState(false);
     const [routeDistance, setRouteDistance] = useState<string>('');
@@ -69,9 +69,6 @@ function NavigationOptimizedContent() {
                 setIsLoadingDeliveries(true);
                 const schedule = await getDailySchedule();
 
-                console.log('📦 Loaded schedule with', schedule.deliveries.length, 'deliveries');
-                console.log('📦 Raw deliveries:', schedule.deliveries);
-
                 const activeStatuses = [
                   'IN_TRANSIT',
                   'CREATED',
@@ -82,12 +79,9 @@ function NavigationOptimizedContent() {
                 const pendingDeliveries = schedule.deliveries.filter(d =>
                   activeStatuses.includes(d.status)
                 );
-                console.log('📦 Pending deliveries:', pendingDeliveries.length);
-                console.log('📦 Pending deliveries data:', pendingDeliveries);
 
                 // If no pending deliveries, stop here
                 if (pendingDeliveries.length === 0) {
-                    console.error('❌ No pending deliveries found!');
                     setDeliveries([]);
                     setIsLoadingDeliveries(false);
                     setIsLoadingLocation(false);
@@ -107,16 +101,13 @@ function NavigationOptimizedContent() {
                         firstDelivery.warehouseAddress.country
                     );
 
-                    console.log('🏭 Geocoding warehouse:', warehouseAddress);
                     const warehouseCoords = await geocodeAddress(warehouseAddress);
 
                     if (warehouseCoords) {
                         const warehouseLngLat: [number, number] = [warehouseCoords.longitude, warehouseCoords.latitude];
                         setWarehouseLocation(warehouseLngLat);
                         setCurrentLocation(warehouseLngLat); // Use warehouse as starting point
-                        console.log('✅ Warehouse geocoded:', warehouseCoords);
                     } else {
-                        console.warn('⚠️ Failed to geocode warehouse, using fallback location (Aveiro, Portugal)');
                         // Fallback to Aveiro, Portugal coordinates
                         const fallbackLocation: [number, number] = [-8.6537, 40.6443];
                         setWarehouseLocation(fallbackLocation);
@@ -138,7 +129,6 @@ function NavigationOptimizedContent() {
                         delivery.shippingCountry || ''
                     );
 
-                    console.log(`🗺️ Geocoding delivery ${delivery.orderId}: ${address}`);
                     const coords = await geocodeAddress(address);
 
                     if (coords) {
@@ -146,14 +136,10 @@ function NavigationOptimizedContent() {
                             ...delivery,
                             coordinates: [coords.longitude, coords.latitude]
                         });
-                        console.log(`✅ Geocoded delivery ${delivery.orderId}:`, coords);
-                    } else {
-                        console.warn(`⚠️ Failed to geocode delivery ${delivery.orderId}`);
                     }
                 }
 
                 setDeliveries(deliveriesWithCoords);
-                console.log(`✅ Successfully geocoded ${deliveriesWithCoords.length}/${pendingDeliveries.length} deliveries`);
 
                 // Set current delivery
                 if (deliveryId) {
@@ -162,7 +148,6 @@ function NavigationOptimizedContent() {
                     // Reset refs when changing delivery to allow re-optimization and re-zooming
                     hasOptimized.current = false;
                     hasInitialZoom.current = false;
-                    console.log('🔄 Reset optimization and zoom refs for new delivery:', deliveryId);
                 } else if (deliveriesWithCoords.length > 0) {
                     // Auto-select first delivery if no deliveryId specified
                     setCurrentDelivery(deliveriesWithCoords[0]);
@@ -173,7 +158,6 @@ function NavigationOptimizedContent() {
                 setIsLoadingLocation(false);
 
             } catch (error) {
-                console.error('❌ Error loading deliveries:', error);
                 setLocationError('Failed to load deliveries');
                 setIsLoadingLocation(false);
             } finally {
@@ -192,10 +176,6 @@ function NavigationOptimizedContent() {
             hasOptimized.current = true;
             setIsOptimizing(true);
 
-            console.log('🚀 Starting route optimization with Mapbox Optimization API v1...');
-            console.log('Warehouse location (lng, lat):', currentLocation);
-            console.log('Deliveries to optimize:', deliveries.length);
-
             try {
                 // Convert deliveries to the format expected by optimizeRouteWithMapbox
                 const deliveryPoints = deliveries.map(d => ({
@@ -209,18 +189,11 @@ function NavigationOptimizedContent() {
                 setOptimizedOrder(result.optimizedOrder);
                 setOptimizationFallbackUsed(result.fallbackUsed);
 
-                if (result.fallbackUsed) {
-                    console.log('⚠️ Using fallback algorithm (Mapbox API unavailable or quota exceeded)');
-                } else {
-                    console.log('✅ Route optimized using Mapbox Optimization API v1');
-                }
-
                 // Redirect to first optimized delivery
                 if (!deliveryId && result.optimizedOrder.length > 0) {
                     router.push(`/interfaces/navigation-optimized?deliveryId=${result.optimizedOrder[0]}`);
                 }
             } catch (error) {
-                console.error('❌ Error optimizing route:', error);
                 // Final fallback: use original order
                 setOptimizedOrder(deliveries.map(d => d.orderId));
                 setOptimizationFallbackUsed(true);
@@ -240,13 +213,8 @@ function NavigationOptimizedContent() {
     // Initialize map
     useEffect(() => {
         if (!mapContainer.current || map.current || !currentLocation) {
-            if (!mapContainer.current) console.warn('⚠️ Map container ref is null');
-            if (map.current) console.log('ℹ️ Map already exists, skipping initialization');
-            if (!currentLocation) console.warn('⚠️ Current location not set');
             return;
         }
-
-        console.log('🗺️ Initializing map with center:', currentLocation);
 
         const newMap = new mapboxgl.Map({
             container: mapContainer.current,
@@ -257,69 +225,69 @@ function NavigationOptimizedContent() {
 
         map.current = newMap;
 
+        // Set a timeout to detect if map never loads
+        const loadTimeout = setTimeout(() => {
+            // Check if map appears to be loaded even without firing load event
+            if (newMap && newMap.isStyleLoaded()) {
+                setMapReady(true);
+            } else {
+                showError('Map Loading Error', 'Map failed to load. Please refresh the page.');
+            }
+        }, 10000);
+
+        // Fallback: Check if style is already loaded after a short delay
+        const styleCheckInterval = setInterval(() => {
+            if (newMap.isStyleLoaded() && !mapReady) {
+                clearInterval(styleCheckInterval);
+                clearTimeout(loadTimeout);
+                setMapReady(true);
+            }
+        }, 500);
+
         newMap.on('load', () => {
-            console.log('✅ Map loaded and ready');
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
             setMapReady(true);
+        });
+
+        newMap.on('error', (e) => {
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
+            showError('Map Error', 'Failed to initialize map. Check your internet connection.');
         });
 
         newMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         return () => {
+            clearTimeout(loadTimeout);
+            clearInterval(styleCheckInterval);
             if (map.current) {
-                console.log('🧹 Cleaning up map');
                 map.current.remove();
                 map.current = null;
                 setMapReady(false);
             }
         };
-    }, [currentLocation]);
+    }, [currentLocation, isLoadingLocation, isLoadingDeliveries]);
 
     // Update route when location or delivery changes
     useEffect(() => {
-        console.log('🔄 Route update effect triggered:', {
-            hasMap: !!map.current,
-            mapReady,
-            currentDeliveryId: currentDelivery?.orderId,
-            currentLocation
-        });
-
         if (!map.current || !mapReady || !currentDelivery) {
-            console.warn('⚠️ Skipping route update - missing requirements:', {
-                hasMap: !!map.current,
-                mapReady,
-                hasDelivery: !!currentDelivery
-            });
             return;
         }
 
         const updateRoute = async () => {
-            console.log('🚀 Starting route update for delivery', currentDelivery?.orderId);
             if (!map.current || !currentDelivery) return;
 
             if (!map.current.isStyleLoaded()) {
-                console.log('⏳ Map style not loaded yet, waiting...');
                 map.current.once('styledata', async () => {
-                    console.log('✅ Map style loaded, drawing route');
                     await addRouteToMap();
                 });
             } else {
-                console.log('✅ Map style already loaded, drawing route');
                 await addRouteToMap();
             }
 
             async function addRouteToMap() {
-                console.log('📍 Adding route to map:', {
-                    deliveryId: currentDelivery?.orderId,
-                    from: currentLocation,
-                    to: currentDelivery?.coordinates
-                });
-
                 if (!map.current || !currentDelivery || !currentLocation) {
-                    console.warn('⚠️ Cannot add route - missing data:', {
-                        hasMap: !!map.current,
-                        hasDelivery: !!currentDelivery,
-                        hasLocation: !!currentLocation
-                    });
                     return;
                 }
 
@@ -329,7 +297,6 @@ function NavigationOptimizedContent() {
                     Math.abs(currentLocation[1] - currentDelivery.coordinates[1]) < 0.0001;
 
                 if (sameLocation) {
-                    console.log('⚠️ Warehouse and delivery are at the same location');
                     // Just show a single marker
                     if (destinationMarker.current) {
                         destinationMarker.current.setLngLat(currentDelivery.coordinates);
@@ -444,7 +411,6 @@ function NavigationOptimizedContent() {
 
                     // Start automatic simulation
                     if (route.length > 0) {
-                        console.log('🚗 Starting automatic trip simulation');
                         routeSimulator.current = new RouteSimulator(route);
                         routeSimulator.current.setSpeed(2); // 2x speed for nice animation
                         routeSimulator.current.setCallback((position, progress) => {
@@ -458,7 +424,6 @@ function NavigationOptimizedContent() {
                         }, 1000);
                     }
                 } catch (error) {
-                    console.error('Error fetching route:', error);
                 }
             }
         };
@@ -610,7 +575,6 @@ function NavigationOptimizedContent() {
                                     type: 'image/jpeg',
                                     lastModified: Date.now(),
                                 });
-                                console.log(`📸 Compressed image: ${(file.size / 1024).toFixed(1)}KB → ${(blob.size / 1024).toFixed(1)}KB`);
                                 resolve(compressedFile);
                             } else {
                                 reject(new Error('Could not compress image'));
@@ -643,7 +607,6 @@ function NavigationOptimizedContent() {
                 };
                 reader.readAsDataURL(compressedFile);
             } catch (error) {
-                console.error('Failed to compress image:', error);
                 showError('Image Error', 'Failed to process image. Please try again.');
             }
         }
@@ -687,7 +650,6 @@ function NavigationOptimizedContent() {
             }
 
             const result = await response.json();
-            console.log('✅ Delivery completed:', result);
 
             setShowDeliverModal(false);
             setSelectedPhoto(null);
@@ -699,7 +661,6 @@ function NavigationOptimizedContent() {
             );
 
         } catch (error) {
-            console.error('❌ Failed to complete delivery:', error);
             showError('Delivery Failed', 'Failed to complete delivery: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setIsUploading(false);
@@ -740,11 +701,10 @@ function NavigationOptimizedContent() {
             }
 
             const result = await response.json();
-            console.log('✅ Exception reported:', result);
 
             setShowExceptionModal(false);
             setExceptionDescription('');
-            setExceptionType('CUSTOMER_NOT_AVAILABLE');
+            setExceptionType('NOT_DELIVERED');
 
             handleRedirectToDailySchedule(
                 'Exception Reported',
@@ -752,7 +712,6 @@ function NavigationOptimizedContent() {
             );
 
         } catch (error) {
-            console.error('❌ Failed to report exception:', error);
             showError('Exception Failed', 'Failed to report exception: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setIsUploading(false);
@@ -760,7 +719,6 @@ function NavigationOptimizedContent() {
     };
 
     if (isLoadingLocation || isLoadingDeliveries) {
-        console.log('🔄 Loading state:', { isLoadingLocation, isLoadingDeliveries });
         return (
             <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center">
                 <div className="relative">
@@ -771,14 +729,6 @@ function NavigationOptimizedContent() {
             </div>
         );
     }
-
-    console.log('📍 Render state:', {
-        currentDelivery: currentDelivery?.orderId,
-        currentLocation,
-        warehouseLocation,
-        mapReady,
-        deliveries: deliveries.length
-    });
 
     if (!currentDelivery) {
         return (
@@ -1032,11 +982,12 @@ function NavigationOptimizedContent() {
                                     paddingRight: '3rem'
                                 }}
                             >
-                                <option value="CUSTOMER_NOT_AVAILABLE">Customer Not Available</option>
+                                <option value="NOT_DELIVERED">Not Delivered</option>
                                 <option value="WRONG_ADDRESS">Wrong Address</option>
-                                <option value="ACCESS_DENIED">Access Denied</option>
                                 <option value="DAMAGED">Package Damaged</option>
-                                <option value="WEATHER">Weather Conditions</option>
+                                <option value="LOST">Package Lost</option>
+                                <option value="DELAYED">Delivery Delayed</option>
+                                <option value="WRONG_ITEM">Wrong Item</option>
                                 <option value="OTHER">Other</option>
                             </select>
                         </div>

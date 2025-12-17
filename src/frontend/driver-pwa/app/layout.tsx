@@ -4,6 +4,7 @@ import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { ChatWidget } from "@shared/components/chatbot/ChatWidget";
 import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
 import { NotificationListener } from "@/components/notification-listener";
+import { Navbar } from "@/components/navbar";
 
 export const metadata: Metadata = {
   title: "SLMS - Driver Portal",
@@ -21,7 +22,10 @@ export default function RootLayout({
         <ObservabilityProvider serviceName="slms-driver-pwa">
           <UserStoreInitializer />
           <NotificationListener />
-          {children}
+          <Navbar />
+          <main>
+            {children}
+          </main>
           <ChatWidget apiEndpoint="/api/driver/chat" />
         </ObservabilityProvider>
       </body>

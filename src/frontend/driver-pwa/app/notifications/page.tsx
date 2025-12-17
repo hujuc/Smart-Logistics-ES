@@ -288,16 +288,16 @@ export default function NotificationsPage() {
         message={alert.message}
         type={alert.type}
       />
-      {/* Header - Black background like homepage */}
-      <div className="bg-black text-white p-6">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Link href="/" className="text-white hover:text-gray-300">
+          <Link href="/" className="text-black hover:text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1 relative">
               <div className="relative">
-                <Truck className="h-6 w-6 text-white" />
+                <Truck className="h-6 w-6 text-black" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white animate-in fade-in zoom-in duration-300">
                     {shouldAnimate && (
@@ -306,9 +306,9 @@ export default function NotificationsPage() {
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold">Driver Notifications</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-black">Driver Notifications</h1>
             </div>
-            <p className="text-gray-400 text-sm md:text-base">Route updates and delivery alerts</p>
+            <p className="text-gray-600 text-sm md:text-base">Route updates and delivery alerts</p>
           </div>
         </div>
 

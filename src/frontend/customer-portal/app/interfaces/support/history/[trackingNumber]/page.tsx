@@ -18,7 +18,6 @@ import { orderDocumentService } from "@/lib/services/order-document.service"
 import type { Order, OrderEvent } from "@/types/common"
 import { formatOrderShippingAddress } from "@/lib/address"
 import Image from "next/image"
-import { featureFlagManager, isProofOfDeliveryEnabled } from "@/lib/flagsmith"
 
 export default function OrderTrackingPage() {
   const params = useParams()
@@ -31,19 +30,6 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null)
   const [podImageUrl, setPodImageUrl] = useState<string | null>(null)
   const [isPodLoading, setIsPodLoading] = useState(false)
-  const [podFeatureEnabled, setPodFeatureEnabled] = useState(true)
-
-  // Initialize Flagsmith on mount
-  useEffect(() => {
-    const initFlags = async () => {
-      const customerId = 'customer-' + Math.random().toString(36).substring(7);
-      await featureFlagManager.initialize(customerId);
-      const enabled = isProofOfDeliveryEnabled();
-      setPodFeatureEnabled(enabled);
-      console.log('[OrderTracking] POD feature enabled:', enabled);
-    };
-    initFlags();
-  }, []);
 
   const loadOrderData = useCallback(async () => {
     setLoading(true)
@@ -77,10 +63,7 @@ export default function OrderTrackingPage() {
   }, [loadOrderData])
 
   useEffect(() => {
-    // POD feature check is now done in the initialization useEffect above
-    const enabled = podFeatureEnabled;
-
-    if (!order?.id || !enabled) {
+    if (!order?.id) {
       setPodImageUrl((prev) => {
         if (prev) {
           URL.revokeObjectURL(prev)
@@ -312,7 +295,7 @@ export default function OrderTrackingPage() {
             )}
           </div>
 
-          {(order.status === 'DELIVERED' && podImageUrl && podFeatureEnabled) && (
+          {(order.status === 'DELIVERED' && podImageUrl) && (
             <div className="bg-white border rounded-lg p-6 shadow-sm">
               <h2 className="text-xl font-semibold mb-4">Proof of Delivery</h2>
               {isPodLoading ? (

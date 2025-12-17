@@ -33,6 +33,9 @@ export const API_ENDPOINTS = {
     userSearch: (query: string) => `${LOGISTICS_BASE}/users/search?query=${encodeURIComponent(query)}`,
     statsWithPeriod: (period: 'daily' | 'weekly' | 'monthly') => `${LOGISTICS_BASE}/stats?period=${period}`,
 
+    // Helper functions for order-specific paths
+    order: (orderId: number) => `${LOGISTICS_BASE}/orders/${orderId}`,
+
     // Helper functions for warehouse-specific paths
     warehouse: (warehouseId: number) => `${LOGISTICS_BASE}/warehouses/${warehouseId}`,
     warehouseOrders: (warehouseId: number, status?: string) =>
@@ -79,7 +82,11 @@ export const API_ENDPOINTS = {
     exceptionClose: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/close`,
     exceptionContactCarrier: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-carrier`,
     exceptionContactCustomer: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-customer`,
-    exceptionsSummary: `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/summary`,
+
+    // Dashboard endpoints
+    dashboardSummary: `${CUSTOMER_SERVICE_BASE}/dashboard/exceptions/summary`,
+    dashboardAlerts: `${CUSTOMER_SERVICE_BASE}/dashboard/alerts`,
+    dashboardMyCases: (csrId: string) => `${CUSTOMER_SERVICE_BASE}/dashboard/my-cases?csrId=${csrId}`,
     exceptionsWithFilters: (filters: {
       status?: string;
       priority?: string;

@@ -22,7 +22,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import({ShipmentService.class, CarrierService.class})
+@Import({ShipmentService.class, CarrierService.class, Operimus.SLMS.business_layer.order_module.service.OrderEventService.class})
 class ShipmentServiceTest {
 
     @Autowired
