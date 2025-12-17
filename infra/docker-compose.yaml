@@ -110,11 +110,8 @@ services:
       context: ..
       dockerfile: infra/docker/orchestrator/Dockerfile
     container_name: slms-orchestrator-prod
-    depends_on:
-      backend:
-        condition: service_healthy
     environment:
-      - API_BASE_URL=http://backend:8080/api
+      - API_BASE_URL=http://slms-backend-prod:8080/api
     restart: unless-stopped
     networks:
       - slms-network

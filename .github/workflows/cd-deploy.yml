@@ -2,7 +2,7 @@ name: CD - Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/scripts]
   workflow_dispatch:
 
 permissions:
