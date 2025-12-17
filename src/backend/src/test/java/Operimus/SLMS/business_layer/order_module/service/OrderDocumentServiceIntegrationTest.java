@@ -377,7 +377,7 @@ class OrderDocumentServiceIntegrationTest {
                 orderDocumentService.uploadDocument(testOrder.getId(), emptyFile)
         )
                 .isInstanceOf(DocumentStorageException.class)
-                .hasMessageContaining("vazio");
+                .hasMessageContaining("empty");
     }
 
     @Test

@@ -11,6 +11,7 @@ import Operimus.SLMS.business_layer.shared.exception.ResourceConflictException;
 import Operimus.SLMS.business_layer.shared.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -33,6 +34,7 @@ public class ShipmentService {
     private final ObjectMapper objectMapper;
     private final Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
     private final Operimus.SLMS.business_layer.order_module.service.OrderEventService orderEventService;
+    private final Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService keycloakUserService;
 
     @Value("${kafka.topic.shipment-events}")
     private String shipmentEventsTopic;
@@ -302,8 +304,35 @@ public class ShipmentService {
         publishNotificationEvent(shipment, "CREATED", "Shipment created with code " + shipment.getShipmentCode());
     }
 
+    private String resolveDriverUsername(String driverId) {
+        if (driverId == null || driverId.isBlank()) {
+            return driverId;
+        }
+
+        // Check if it looks like a UUID
+        // Regex for UUID: 8-4-4-4-12 hex digits
+        if (driverId.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+            try {
+                log.info("[ShipmentService] Resolving driver UUID {} to username", driverId);
+                org.keycloak.representations.idm.UserRepresentation user = keycloakUserService.getUserById(driverId);
+                if (user != null && user.getUsername() != null) {
+                    log.info("[ShipmentService] Resolved driver UUID {} to username {}", driverId, user.getUsername());
+                    return user.getUsername();
+                }
+            } catch (Exception e) {
+                log.warn("[ShipmentService] Failed to resolve driver UUID {} to username: {}", driverId, e.getMessage());
+                // Fallback to original ID if resolution fails
+            }
+        }
+        
+        return driverId;
+    }
+
     private void publishDriverAssignmentEvent(Shipment shipment, String newDriverId, String oldDriverId) {
         String message = String.format("You have been assigned to shipment %s", shipment.getShipmentCode());
+
+        // Ensure we are sending to the username, not UUID
+        String driverUsername = resolveDriverUsername(newDriverId);
 
         try {
             Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent = Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent
@@ -313,13 +342,13 @@ public class ShipmentService {
                     .aggregateType("SHIPMENT")
                     .eventType("DRIVER_ASSIGNED")
                     .message(message)
-                    .customerId(newDriverId) // Send notification to the driver
+                    .customerId(driverUsername) // Send notification to the driver username
                     .occurredAt(java.time.OffsetDateTime.now())
                     .build();
 
             String payload = objectMapper.writeValueAsString(notificationEvent);
             kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
-            log.info("Published driver assignment event for shipment {} to driver {}", shipment.getId(), newDriverId);
+            log.info("Published driver assignment event for shipment {} to driver {}", shipment.getId(), driverUsername);
         } catch (Exception e) {
             log.error("Failed to publish driver assignment event to Kafka", e);
         }
