@@ -100,7 +100,7 @@ class AuthServiceTest {
             authService.login(loginRequest);
         });
 
-        assertEquals("Invalid username or password", exception.getMessage());
+        assertEquals("Invalid username or password. Please check your credentials and try again.", exception.getMessage());
     }
 
     @Test
@@ -116,7 +116,7 @@ class AuthServiceTest {
             authService.login(loginRequest);
         });
 
-        assertTrue(exception.getMessage().contains("Authentication failed"));
+        assertEquals("Authentication service is temporarily unavailable. Please try again later.", exception.getMessage());
     }
 
     @Test
@@ -133,7 +133,7 @@ class AuthServiceTest {
             authService.login(loginRequest);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to authenticate with Keycloak"));
+        assertEquals("Unable to complete login. Please try again later or contact support if the issue persists.", exception.getMessage());
     }
 
     @Test
@@ -150,7 +150,7 @@ class AuthServiceTest {
             authService.login(loginRequest);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to authenticate with Keycloak"));
+        assertEquals("Unable to complete login. Please try again later or contact support if the issue persists.", exception.getMessage());
     }
 
     // ========================================
@@ -199,7 +199,7 @@ class AuthServiceTest {
             authService.refreshToken(refreshToken);
         });
 
-        assertTrue(exception.getMessage().contains("Token refresh failed"));
+        assertEquals("Unable to refresh session due to a technical error. Please log in again.", exception.getMessage());
     }
 
     @Test
@@ -216,7 +216,7 @@ class AuthServiceTest {
             authService.refreshToken(refreshToken);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to refresh token"));
+        assertEquals("Unable to refresh session. Please try again.", exception.getMessage());
     }
 
     // ========================================
