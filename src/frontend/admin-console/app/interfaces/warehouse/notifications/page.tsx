@@ -30,6 +30,7 @@ import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { useUser } from "../../../../shared/hooks/use-user"
 import { useNotificationsStore } from "../../../../shared/hooks/use-notifications"
+import { useNotificationAnimation } from "../../../../shared/hooks/use-notification-animation"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -54,6 +55,10 @@ export default function WarehouseNotificationsPage() {
   const user = useUser()
   const stompClientRef = useRef<Client | null>(null)
   const { setUnreadCount, incrementUnread, decrementUnread } = useNotificationsStore()
+
+  // Calculate unread count for display and animation
+  const unreadCount = notifications.filter(n => n.status === "unread").length
+  const shouldAnimate = useNotificationAnimation(unreadCount)
 
   // Fetch initial notifications
   useEffect(() => {
@@ -86,7 +91,7 @@ export default function WarehouseNotificationsPage() {
           }))
           setNotifications(mappedNotifications)
           const unread = mappedNotifications.filter(n => n.status === "unread").length
-          setUnreadCount(unread)
+          // Unread count is handled by global listener
         })
         .catch(err => {
           console.error("Failed to fetch notifications:", err)
@@ -121,7 +126,7 @@ export default function WarehouseNotificationsPage() {
             actionUrl: getActionUrl(n.eventType, n.aggregateId)
           }
           setNotifications(prev => [newNotification, ...prev])
-          incrementUnread()
+          // Unread count is handled by global listener
         })
       },
       onStompError: (frame) => {
@@ -187,7 +192,8 @@ export default function WarehouseNotificationsPage() {
   })
 
   // Calculate stats
-  const unreadCount = notifications.filter(n => n.status === "unread").length
+  // Calculate stats
+  // const unreadCount = notifications.filter(n => n.status === "unread").length
   const warningCount = notifications.filter(n => n.type === "warning").length
   const errorCount = notifications.filter(n => n.type === "error").length
   const successCount = notifications.filter(n => n.type === "success").length
@@ -247,8 +253,14 @@ export default function WarehouseNotificationsPage() {
   }
 
   const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
-    setUnreadCount(0)
+    if (user?.username) {
+      fetch(`/api/notifications/customer/${user.username}/read`, { method: "PUT" })
+        .then(() => {
+          setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+          setUnreadCount(0)
+        })
+        .catch(err => console.error("Failed to mark all as read:", err))
+    }
   }
 
   const handleDelete = (id: string) => {
@@ -266,7 +278,7 @@ export default function WarehouseNotificationsPage() {
   const handleDeleteAll = () => {
     if (confirm("Are you sure you want to delete all notifications?")) {
       if (user?.username) {
-        fetch(`/api/notifications/${user.username}`, { method: "DELETE" })
+        fetch(`/api/notifications/customer/${user.username}`, { method: "DELETE" })
           .then(() => {
             setNotifications([])
             setUnreadCount(0)
@@ -276,13 +288,25 @@ export default function WarehouseNotificationsPage() {
     }
   }
 
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <Warehouse className="h-8 w-8 text-purple-600" />
+          <div className="flex items-center gap-2 relative">
+            <div className="relative">
+              <Warehouse className="h-8 w-8 text-purple-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-in fade-in zoom-in duration-300">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {shouldAnimate && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                  )}
+                </span>
+              )}
+            </div>
             <h1 className="text-3xl font-bold text-black">Warehouse Notifications</h1>
           </div>
           <p className="text-gray-600 mt-1">Alerts and updates for warehouse operations</p>

@@ -3,7 +3,7 @@ package Operimus.SLMS.business_layer.chatbot_module.integration.pinecone;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryRequest;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeQueryResponse;
 import Operimus.SLMS.business_layer.chatbot_module.integration.pinecone.dto.PineconeUpsertRequest;
-import java.nio.charset.StandardCharsets;
+
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
+
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -24,12 +24,22 @@ public class PineconeClient {
     private final PineconeProperties properties;
 
     public PineconeClient(PineconeProperties properties) {
-        Assert.hasText(properties.apiKey(), "chatbot.pinecone.api-key must be configured");
-        Assert.hasText(properties.host(), "chatbot.pinecone.host must be configured");
-        Assert.hasText(properties.index(), "chatbot.pinecone.index must be configured");
-        Assert.hasText(properties.namespace(), "chatbot.pinecone.namespace must be configured");
-
         this.properties = properties;
+
+        // Validate required properties
+        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.api-key must be configured");
+        }
+        if (properties.host() == null || properties.host().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.host must be configured");
+        }
+        if (properties.index() == null || properties.index().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.index must be configured");
+        }
+        if (properties.namespace() == null || properties.namespace().isBlank()) {
+            throw new IllegalArgumentException("chatbot.pinecone.namespace must be configured");
+        }
+
         this.webClient = WebClient.builder()
                 .baseUrl(properties.host())
                 .defaultHeader("Api-Key", properties.apiKey())
@@ -58,8 +68,7 @@ public class PineconeClient {
                 vector,
                 topK,
                 true,
-                metadataFilter
-        );
+                metadataFilter);
 
         PineconeQueryResponse response = webClient.post()
                 .uri("/query")

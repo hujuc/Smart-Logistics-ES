@@ -98,6 +98,11 @@ public class NotificationService {
         notificationRepository.deleteByCustomerId(customerId);
     }
 
+    @Transactional
+    public void markAllAsRead(String customerId) {
+        notificationRepository.markAllAsRead(customerId);
+    }
+
     private void sendRealTimeNotification(Notification notification) {
         if (notification.getCustomerId() == null) {
             return;

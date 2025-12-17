@@ -79,7 +79,11 @@ export const API_ENDPOINTS = {
     exceptionClose: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/close`,
     exceptionContactCarrier: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-carrier`,
     exceptionContactCustomer: (exceptionId: string) => `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/${exceptionId}/contact-customer`,
-    exceptionsSummary: `${CUSTOMER_SERVICE_BASE}/delivery-exceptions/summary`,
+
+    // Dashboard endpoints
+    dashboardSummary: `${CUSTOMER_SERVICE_BASE}/dashboard/exceptions/summary`,
+    dashboardAlerts: `${CUSTOMER_SERVICE_BASE}/dashboard/alerts`,
+    dashboardMyCases: (csrId: string) => `${CUSTOMER_SERVICE_BASE}/dashboard/my-cases?csrId=${csrId}`,
     exceptionsWithFilters: (filters: {
       status?: string;
       priority?: string;

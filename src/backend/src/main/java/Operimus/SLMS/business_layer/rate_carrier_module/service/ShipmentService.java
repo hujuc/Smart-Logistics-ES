@@ -32,6 +32,7 @@ public class ShipmentService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
+    private final Operimus.SLMS.business_layer.order_module.service.OrderEventService orderEventService;
 
     @Value("${kafka.topic.shipment-events}")
     private String shipmentEventsTopic;
@@ -94,8 +95,10 @@ public class ShipmentService {
 
         // Assign orders to shipment
         for (Order order : orders) {
+            OrderStatus oldStatus = order.getStatus();
             order.setShipmentId(saved.getId());
             order.setStatus(OrderStatus.ASSIGNED_TO_SHIPMENT);
+            orderEventService.recordStatusChange(order, oldStatus, OrderStatus.ASSIGNED_TO_SHIPMENT);
         }
         orderRepository.saveAll(orders);
 
@@ -103,10 +106,9 @@ public class ShipmentService {
 
         // Notify logistics managers about new shipment
         logisticsManagerNotificationService.notifyNewShipmentCreated(
-            saved.getId().toString(),
-            saved.getShipmentCode(),
-            orders.size()
-        );
+                saved.getId().toString(),
+                saved.getShipmentCode(),
+                orders.size());
 
         // Notify driver if assigned
         if (driverId != null && !driverId.isBlank()) {
@@ -128,10 +130,10 @@ public class ShipmentService {
 
         String oldDriverId = shipment.getDriverId();
         shipment.setDriverId(newDriverId);
-        
+
         // Publish driver assignment event
         publishDriverAssignmentEvent(shipment, newDriverId, oldDriverId);
-        
+
         return shipment;
     }
 
@@ -169,7 +171,8 @@ public class ShipmentService {
     }
 
     /**
-     * Driver accepts a shipment, transitioning it to ACCEPTED status and then to IN_TRANSIT.
+     * Driver accepts a shipment, transitioning it to ACCEPTED status and then to
+     * IN_TRANSIT.
      * All orders in the shipment are moved to IN_TRANSIT status.
      */
     @Transactional
@@ -200,7 +203,9 @@ public class ShipmentService {
         // Update all orders in shipment to IN_TRANSIT
         List<Order> orders = orderRepository.findByShipmentId(shipmentId);
         for (Order order : orders) {
+            OrderStatus oldStatus = order.getStatus();
             order.setStatus(OrderStatus.IN_TRANSIT);
+            orderEventService.recordStatusChange(order, oldStatus, OrderStatus.IN_TRANSIT);
         }
         orderRepository.saveAll(orders);
 
@@ -237,7 +242,9 @@ public class ShipmentService {
         // Update all orders to DELIVERED
         List<Order> orders = orderRepository.findByShipmentId(shipmentId);
         for (Order order : orders) {
+            OrderStatus oldStatus = order.getStatus();
             order.setStatus(OrderStatus.DELIVERED);
+            orderEventService.recordStatusChange(order, oldStatus, OrderStatus.DELIVERED);
         }
         orderRepository.saveAll(orders);
 
@@ -290,25 +297,25 @@ public class ShipmentService {
         if (generator != null) {
             generator.generateCarrierDocuments(shipment, orders);
         }
-        
+
         // Publish creation event
         publishNotificationEvent(shipment, "CREATED", "Shipment created with code " + shipment.getShipmentCode());
     }
 
     private void publishDriverAssignmentEvent(Shipment shipment, String newDriverId, String oldDriverId) {
         String message = String.format("You have been assigned to shipment %s", shipment.getShipmentCode());
-        
+
         try {
-            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
-                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
-                            .eventId(java.util.UUID.randomUUID().toString())
-                            .aggregateId(shipment.getId().toString())
-                            .aggregateType("SHIPMENT")
-                            .eventType("DRIVER_ASSIGNED")
-                            .message(message)
-                            .customerId(newDriverId) // Send notification to the driver
-                            .occurredAt(java.time.OffsetDateTime.now())
-                            .build();
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent = Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent
+                    .builder()
+                    .eventId(java.util.UUID.randomUUID().toString())
+                    .aggregateId(shipment.getId().toString())
+                    .aggregateType("SHIPMENT")
+                    .eventType("DRIVER_ASSIGNED")
+                    .message(message)
+                    .customerId(newDriverId) // Send notification to the driver
+                    .occurredAt(java.time.OffsetDateTime.now())
+                    .build();
 
             String payload = objectMapper.writeValueAsString(notificationEvent);
             kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);
@@ -320,16 +327,17 @@ public class ShipmentService {
 
     private void publishNotificationEvent(Shipment shipment, String eventType, String message) {
         try {
-            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent =
-                    Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent.builder()
-                            .eventId(java.util.UUID.randomUUID().toString())
-                            .aggregateId(shipment.getId().toString())
-                            .aggregateType("SHIPMENT")
-                            .eventType(eventType)
-                            .message(message)
-                            .customerId(null) // Shipments might not be directly linked to a single customer in this context, or we need to iterate orders
-                            .occurredAt(java.time.OffsetDateTime.now())
-                            .build();
+            Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent notificationEvent = Operimus.SLMS.business_layer.notifications_module.dto.NotificationEvent
+                    .builder()
+                    .eventId(java.util.UUID.randomUUID().toString())
+                    .aggregateId(shipment.getId().toString())
+                    .aggregateType("SHIPMENT")
+                    .eventType(eventType)
+                    .message(message)
+                    .customerId(null) // Shipments might not be directly linked to a single customer in this context,
+                                      // or we need to iterate orders
+                    .occurredAt(java.time.OffsetDateTime.now())
+                    .build();
 
             String payload = objectMapper.writeValueAsString(notificationEvent);
             kafkaTemplate.send(shipmentEventsTopic, shipment.getId().toString(), payload);

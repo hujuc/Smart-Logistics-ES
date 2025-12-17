@@ -267,7 +267,7 @@ export default function CarrierComparisonPage() {
         // Convert orders to shipment cards for display
         const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
           id: order.id.toString(),
-          weight: "N/A", // TODO: Add weight field to Order type
+          weight: order.weight && order.weightUnit ? `${order.weight} ${order.weightUnit}` : "N/A",
           destination: formatOrderShippingAddress(order),
           priority: order.priority || "Medium",
           date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"
@@ -567,7 +567,7 @@ export default function CarrierComparisonPage() {
 
       const shipmentCards: ShipmentCard[] = fetchedOrders.map(order => ({
         id: order.id.toString(),
-        weight: "N/A",
+        weight: order.weight && order.weightUnit ? `${order.weight} ${order.weightUnit}` : "N/A",
         destination: formatOrderShippingAddress(order),
         priority: order.priority || "Medium",
         date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "N/A"

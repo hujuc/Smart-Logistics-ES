@@ -26,8 +26,7 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
     }
 
     return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
+  } catch {
     return null;
   }
 }

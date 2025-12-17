@@ -160,124 +160,104 @@ WAREHOUSE_TEMPLATES = [
 
 DESTINATION_TEMPLATES = [
     {
-        "contact": "Lisa Thompson",
-        "line1": "525 Market St",
-        "line2": "Suite 200",
-        "city": "San Francisco",
+        "contact": "Google Reception",
+        "line1": "1600 Amphitheatre Parkway",
+        "line2": "Building 41, Reception Desk",
+        "city": "Mountain View",
         "state": "CA",
-        "postalCode": "94105",
-        "country": "United States",
-        "phone": "+14155550123",
+        "postalCode": "94043",
+        "country": "US",
+        "phone": "+16502530000",
     },
     {
-        "contact": "James Walker",
-        "line1": "350 5th Ave",
-        "line2": "Floor 45",
-        "city": "New York",
-        "state": "NY",
-        "postalCode": "10118",
-        "country": "United States",
-        "phone": "+12125551234",
+        "contact": "Acme Legal Dept",
+        "line1": "1255 Bordeaux Drive",
+        "line2": "Suite 200, Legal Department",
+        "city": "Sunnyvale",
+        "state": "CA",
+        "postalCode": "94089",
+        "country": "US",
+        "phone": "+14085550123",
     },
     {
-        "contact": "Caroline Diaz",
-        "line1": "233 S Wacker Dr",
-        "line2": "Unit 4201",
-        "city": "Chicago",
-        "state": "IL",
-        "postalCode": "60606",
-        "country": "United States",
-        "phone": "+13125559876",
+        "contact": "Stanford Health Care",
+        "line1": "875 Blake Wilbur Drive",
+        "line2": "Loading Dock 3",
+        "city": "Palo Alto",
+        "state": "CA",
+        "postalCode": "94304",
+        "country": "US",
+        "phone": "+16504989000",
     },
     {
-        "contact": "Michael Brown",
-        "line1": "6400 Sheridan Blvd",
+        "contact": "TechVenture Office",
+        "line1": "2000 Sierra Point Parkway",
+        "line2": "Unit 450, 4th Floor",
+        "city": "Mountain View",
+        "state": "CA",
+        "postalCode": "94043",
+        "country": "US",
+        "phone": "+16505557890",
+    },
+    {
+        "contact": "Restaurant Back Entrance",
+        "line1": "288 Main Street",
         "line2": None,
-        "city": "Arvada",
-        "state": "CO",
-        "postalCode": "80003",
-        "country": "United States",
-        "phone": "+13035554111",
-    },
-    {
-        "contact": "Olivia Patel",
-        "line1": "401 Biscayne Blvd",
-        "line2": "Apt 12C",
-        "city": "Miami",
-        "state": "FL",
-        "postalCode": "33132",
-        "country": "United States",
-        "phone": "+13055550102",
-    },
-    {
-        "contact": "Ethan Brooks",
-        "line1": "1701 John F Kennedy Blvd",
-        "line2": "Suite 300",
-        "city": "Philadelphia",
-        "state": "PA",
-        "postalCode": "19103",
-        "country": "United States",
-        "phone": "+12155557654",
-    },
-    {
-        "contact": "Sophia Nguyen",
-        "line1": "500 S Buena Vista St",
-        "line2": "Building 125",
-        "city": "Burbank",
+        "city": "Los Altos",
         "state": "CA",
-        "postalCode": "91521",
-        "country": "United States",
-        "phone": "+18185550222",
+        "postalCode": "94022",
+        "country": "US",
+        "phone": "+16505552468",
     },
     {
-        "contact": "Daniel Harris",
-        "line1": "2711 N Haskell Ave",
-        "line2": "Suite 2500",
-        "city": "Dallas",
-        "state": "TX",
-        "postalCode": "75204",
-        "country": "United States",
-        "phone": "+12145559887",
-    },
-    {
-        "contact": "Ava Johnson",
-        "line1": "125 Summer St",
-        "line2": "Floor 8",
-        "city": "Boston",
-        "state": "MA",
-        "postalCode": "02110",
-        "country": "United States",
-        "phone": "+16175554400",
-    },
-    {
-        "contact": "Mason Clark",
-        "line1": "600 Travis St",
-        "line2": "Suite 4200",
-        "city": "Houston",
-        "state": "TX",
-        "postalCode": "77002",
-        "country": "United States",
-        "phone": "+17135559000",
-    },
-    {
-        "contact": "Emma Scott",
-        "line1": "1 Apple Park Way",
-        "line2": None,
-        "city": "Cupertino",
+        "contact": "Mountain View Library",
+        "line1": "585 Franklin Street",
+        "line2": "Receiving",
+        "city": "Mountain View",
         "state": "CA",
-        "postalCode": "95014",
-        "country": "United States",
-        "phone": "+14085550199",
+        "postalCode": "94041",
+        "country": "US",
+        "phone": "+16509036337",
     },
     {
-        "contact": "Henry Collins",
-        "line1": "270 Park Ave",
-        "line2": "Floor 35",
-        "city": "New York",
-        "state": "NY",
-        "postalCode": "10017",
-        "country": "United States",
-        "phone": "+12125557600",
+        "contact": "Stanford Research Lab",
+        "line1": "318 Campus Drive",
+        "line2": "Clark Center, Room S371",
+        "city": "Stanford",
+        "state": "CA",
+        "postalCode": "94305",
+        "country": "US",
+        "phone": "+16507232300",
+    },
+    {
+        "contact": "Boutique Moderne",
+        "line1": "665 East El Camino Real",
+        "line2": "Service Entrance",
+        "city": "Sunnyvale",
+        "state": "CA",
+        "postalCode": "94087",
+        "country": "US",
+        "phone": "+14085553690",
+    },
+    {
+        "contact": "MV Sports Center",
+        "line1": "3700 Middlefield Road",
+        "line2": "Equipment Room",
+        "city": "Mountain View",
+        "state": "CA",
+        "postalCode": "94043",
+        "country": "US",
+        "phone": "+16505558901",
+    },
+    {
+        "contact": "Gallery Moderne",
+        "line1": "169 University Avenue",
+        "line2": "Rear Loading Bay",
+        "city": "Palo Alto",
+        "state": "CA",
+        "postalCode": "94301",
+        "country": "US",
+        "phone": "+16505554567",
     },
 ]
 
@@ -417,25 +397,49 @@ class Seeder:
         self.timestamp = int(time.time())
 
     def run(self) -> Dict[str, Any]:
-        carriers = self.ensure_carriers()
+        log(f"Starting seed process (seed={self.config.seed})")
+        
+        # Check if data already exists
+        existing_warehouses = self.http.request("GET", "/admin/warehouses")
+        if existing_warehouses and len(existing_warehouses) > 0:
+            log("Data already exists (warehouses found). Skipping seed process.")
+            return {
+                "users": [],
+                "warehouses": existing_warehouses,
+                "orders": [],
+                "shipments": [],
+                "carriers": [], # Added to match original return structure
+                "api_base_url": self.config.api_base_url, # Added to match original return structure
+            }
+
+        # 1. Create Users (Customers, Drivers, Managers)
         users_by_role = self.create_users(self.config.user_count)
+        
+        # Ensure we have at least one customer and one driver for the demo
         self.ensure_role_presence(users_by_role, "CUSTOMER")
         self.ensure_role_presence(users_by_role, "DRIVER")
+        
+        customers = users_by_role.get("CUSTOMER", [])
+        drivers = users_by_role.get("DRIVER", [])
+
+        # 2. Create Warehouses
         warehouses = self.create_warehouses(self.config.warehouse_count)
-        orders = self.create_orders(
-            self.config.order_count,
-            warehouses,
-            users_by_role.get("CUSTOMER", []),
-        )
-        shipments = self.create_shipments(
-            self.config.shipment_count,
-            carriers,
-            orders,
-            users_by_role.get("DRIVER", []),
-        )
+
+        # 3. Create Orders
+        orders = self.create_orders(self.config.order_count, warehouses, customers)
+
+        # 4. Create Shipments
+        # We need carriers first
+        carriers = self.ensure_carriers() # Use existing ensure_carriers method
+        if not carriers:
+            warn("No carriers found. Cannot create shipments.")
+            shipments = []
+        else:
+            shipments = self.create_shipments(self.config.shipment_count, carriers, orders, drivers)
+
         return {
             "carriers": carriers,
-            "users": users_by_role,
+            "users": users_by_role, # Changed to users_by_role to match existing method
             "warehouses": warehouses,
             "orders": orders,
             "shipments": shipments,
@@ -564,60 +568,62 @@ class Seeder:
             warn("No warehouses available. Cannot create orders.")
             return []
 
-        log(f"Creating {count} orders via /api/admin/orders")
+        total_orders = count * len(warehouses)
+        log(f"Creating {count} orders per warehouse (total {total_orders}) via /api/admin/orders")
         orders: List[Dict[str, Any]] = []
         today = date.today()
 
-        for index in range(count):
-            warehouse = self.random.choice(warehouses)
-            destination = DESTINATION_TEMPLATES[index % len(DESTINATION_TEMPLATES)]
-            customer = customers[index % len(customers)] if customers else None
-            reference = f"ORD-{self.timestamp % 100000:05d}-{index + 1:03d}"
-            tracking_number = f"TRK{self.timestamp % 100000:05d}{index:03d}"
-            estimated_delivery = today + timedelta(days=self.random.randint(2, 9))
-            weight = round(self.random.uniform(1.0, 12.0), 2)
-            length = round(self.random.uniform(20, 60), 1)
-            width = round(self.random.uniform(15, 40), 1)
-            height = round(self.random.uniform(8, 25), 1)
-
-            shipping_address = f"{destination['contact']}, {destination['line1']}"
-            if destination.get("line2"):
-                shipping_address += f", {destination['line2']}"
-            shipping_address += f", {destination['postalCode']} {destination['city']}, {destination['country']}"
-
-            payload = {
-                "reference": reference,
-                "description": f"Demo order #{index + 1} headed to {destination['city']}",
-                "status": "CREATED",
-                "shippingAddress": shipping_address,
-                "shippingAddressLine1": destination["line1"],
-                "shippingAddressLine2": destination.get("line2"),
-                "shippingCity": destination["city"],
-                "shippingStateOrProvince": destination["state"],
-                "shippingPostalCode": destination["postalCode"],
-                "shippingCountry": destination["country"],
-                "shippingPhone": destination["phone"],
-                "shippingEmail": customer["email"] if customer else f"customer{index}@demo.slms",
-                "estimatedDeliveryDate": estimated_delivery.isoformat(),
-                "warehouseId": warehouse["id"],
-                "customerId": customer["id"] if customer else None,
-                "trackingNumber": tracking_number,
-                "weight": weight,
-                "weightUnit": "kg",
-                "length": length,
-                "width": width,
-                "height": height,
-                "distanceUnit": "cm",
-            }
-            response = self.http.request("POST", "/admin/orders", payload=payload)
-            orders.append({
-                "id": response.get("id"),
-                "reference": response.get("reference"),
-                "weight": weight,
-                "weightUnit": "kg",
-                "warehouseId": warehouse["id"],
-            })
-            log(f"  + Order {response.get('reference')} (id={response.get('id')}) staged at warehouse {warehouse.get('code')}")
+        for warehouse in warehouses:
+            for i in range(count):
+                index = len(orders)
+                destination = DESTINATION_TEMPLATES[index % len(DESTINATION_TEMPLATES)]
+                customer = customers[index % len(customers)] if customers else None
+                reference = f"ORD-{self.timestamp % 100000:05d}-{index + 1:03d}"
+                tracking_number = f"TRK{self.timestamp % 100000:05d}{index:03d}"
+                estimated_delivery = today + timedelta(days=self.random.randint(2, 9))
+                weight = round(self.random.uniform(1.0, 12.0), 2)
+                length = round(self.random.uniform(20, 60), 1)
+                width = round(self.random.uniform(15, 40), 1)
+                height = round(self.random.uniform(8, 25), 1)
+    
+                shipping_address = f"{destination['contact']}, {destination['line1']}"
+                if destination.get("line2"):
+                    shipping_address += f", {destination['line2']}"
+                shipping_address += f", {destination['postalCode']} {destination['city']}, {destination['country']}"
+    
+                payload = {
+                    "reference": reference,
+                    "description": f"Demo order #{index + 1} headed to {destination['city']}",
+                    "status": "CREATED",
+                    "shippingAddress": shipping_address,
+                    "shippingAddressLine1": destination["line1"],
+                    "shippingAddressLine2": destination.get("line2"),
+                    "shippingCity": destination["city"],
+                    "shippingStateOrProvince": destination["state"],
+                    "shippingPostalCode": destination["postalCode"],
+                    "shippingCountry": destination["country"],
+                    "shippingPhone": destination["phone"],
+                    "shippingEmail": customer["email"] if customer else f"customer{index}@demo.slms",
+                    "estimatedDeliveryDate": estimated_delivery.isoformat(),
+                    "warehouseId": warehouse["id"],
+                    "customerId": customer["id"] if customer else None,
+                    "trackingNumber": tracking_number,
+                    "weight": weight,
+                    "weightUnit": "kg",
+                    "length": length,
+                    "width": width,
+                    "height": height,
+                    "distanceUnit": "cm",
+                }
+                response = self.http.request("POST", "/admin/orders", payload=payload)
+                orders.append({
+                    "id": response.get("id"),
+                    "reference": response.get("reference"),
+                    "weight": weight,
+                    "weightUnit": "kg",
+                    "warehouseId": warehouse["id"],
+                })
+                log(f"  + Order {response.get('reference')} (id={response.get('id')}) staged at warehouse {warehouse.get('code')}")
         return orders
 
     def create_shipments(
@@ -640,49 +646,82 @@ class Seeder:
             warn("No driver accounts available. Cannot create shipments.")
             return []
 
-        target_count = min(requested, len(orders))
-        if target_count < requested:
-            warn(f"Requested {requested} shipments but only {len(orders)} orders are available. Creating {target_count} shipments.")
+        # Group orders by warehouse
+        orders_by_warehouse: Dict[str, List[Dict[str, Any]]] = {}
+        for order in orders:
+            wh_id = order["warehouseId"]
+            orders_by_warehouse.setdefault(wh_id, []).append(order)
 
-        log(f"Creating {target_count} shipments via /api/admin/shipments")
+        total_shipments = 0
         shipments: List[Dict[str, Any]] = []
-        order_queue = orders.copy()
 
-        for index in range(target_count):
-            if not order_queue:
-                break
-            remaining_shipments = target_count - index
-            batch_size = max(1, math.ceil(len(order_queue) / remaining_shipments))
-            batch: List[Dict[str, Any]] = []
-            for _ in range(min(batch_size, len(order_queue))):
-                batch.append(order_queue.pop(0))
+        log(f"Creating {requested} shipments per warehouse via /api/admin/shipments")
 
-            carrier = carriers[index % len(carriers)]
-            driver = drivers[index % len(drivers)]
-            shipment_code = f"SHP-{self.timestamp % 100000:05d}-{index + 1:03d}"
-            total_weight = round(sum(item.get("weight", 0.0) for item in batch), 2)
-            estimated_delivery = (date.today() + timedelta(days=self.random.randint(3, 10))).isoformat()
+        for wh_id, wh_orders in orders_by_warehouse.items():
+            # We want 'requested' shipments for this warehouse
+            # We need to distribute the orders among these shipments
+            
+            # If we don't have enough orders to make meaningful shipments, we just do what we can
+            # But the requirement is "2 shipments per warehouse".
+            # We will try to create exactly 'requested' shipments if possible.
+            
+            count_for_wh = requested
+            if not wh_orders:
+                continue
 
-            payload = {
-                "shipmentCode": shipment_code,
-                "carrierId": carrier["id"],
-                "driverId": driver["id"],
-                "orderIds": [item["id"] for item in batch],
-                "shippoShipmentId": f"shippo_{shipment_code.lower()}",
-                "shippoTransactionId": f"txn_{self._random_token(8).lower()}",
-                "shipstationOrderId": f"ss_{shipment_code.lower()}",
-                "shipstationCarrierCode": carrier.get("code"),
-                "shipstationServiceCode": self.random.choice(SERVICE_LEVEL_CODES),
-                "totalOrders": len(batch),
-                "totalWeight": total_weight,
-                "weightUnit": "kg",
-                "estimatedDeliveryDate": estimated_delivery,
-                "shippingCost": round(self.random.uniform(12, 65), 2),
-                "transitTime": self.random.choice(TRANSIT_TIMES),
-            }
-            response = self.http.request("POST", "/admin/shipments", payload=payload)
-            shipments.append(response)
-            log(f"  + Shipment {response.get('shipmentCode')} carrier={carrier.get('code')} driver={driver['username']} orders={len(batch)}")
+            # If we have fewer orders than requested shipments, we can't make empty shipments (usually).
+            # So we cap at len(wh_orders).
+            if len(wh_orders) < count_for_wh:
+                warn(f"Warehouse {wh_id} has only {len(wh_orders)} orders, cannot create {count_for_wh} shipments. Creating {len(wh_orders)} instead.")
+                count_for_wh = len(wh_orders)
+            
+            # Distribute orders
+            # Simple round-robin or chunking
+            # Let's do chunking
+            
+            # We need to split wh_orders into count_for_wh chunks
+            # chunk_size = len(wh_orders) / count_for_wh
+            
+            order_queue = wh_orders.copy()
+            
+            for i in range(count_for_wh):
+                remaining_shipments = count_for_wh - i
+                batch_size = max(1, math.ceil(len(order_queue) / remaining_shipments))
+                batch = []
+                for _ in range(min(batch_size, len(order_queue))):
+                    batch.append(order_queue.pop(0))
+                
+                if not batch:
+                    break
+
+                index = len(shipments)
+                carrier = carriers[index % len(carriers)]
+                driver = drivers[index % len(drivers)]
+                shipment_code = f"SHP-{self.timestamp % 100000:05d}-{index + 1:03d}"
+                total_weight = round(sum(item.get("weight", 0.0) for item in batch), 2)
+                estimated_delivery = (date.today() + timedelta(days=self.random.randint(3, 10))).isoformat()
+    
+                payload = {
+                    "shipmentCode": shipment_code,
+                    "carrierId": carrier["id"],
+                    "driverId": driver["id"],
+                    "orderIds": [item["id"] for item in batch],
+                    "shippoShipmentId": f"shippo_{shipment_code.lower()}",
+                    "shippoTransactionId": f"txn_{self._random_token(8).lower()}",
+                    "shipstationOrderId": f"ss_{shipment_code.lower()}",
+                    "shipstationCarrierCode": carrier.get("code"),
+                    "shipstationServiceCode": self.random.choice(SERVICE_LEVEL_CODES),
+                    "totalOrders": len(batch),
+                    "totalWeight": total_weight,
+                    "weightUnit": "kg",
+                    "estimatedDeliveryDate": estimated_delivery,
+                    "shippingCost": round(self.random.uniform(12, 65), 2),
+                    "transitTime": self.random.choice(TRANSIT_TIMES),
+                }
+                response = self.http.request("POST", "/admin/shipments", payload=payload)
+                shipments.append(response)
+                log(f"  + Shipment {response.get('shipmentCode')} carrier={carrier.get('code')} driver={driver['username']} orders={len(batch)}")
+        
         return shipments
 
     def _generate_unique_code(self, prefix: str, existing: set[str]) -> str:
@@ -704,9 +743,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--env-file", default=str(default_env), help="Path to infra/.env (default: %(default)s)")
     parser.add_argument("--api-base-url", help="Override API base URL (e.g. http://localhost:8080/api)")
-    parser.add_argument("--warehouses", type=int, default=10, help="Number of warehouses to create (default: %(default)s)")
-    parser.add_argument("--orders", type=int, default=10, help="Number of orders to create (default: %(default)s)")
-    parser.add_argument("--shipments", type=int, default=10, help="Number of shipments to create (default: %(default)s)")
+    parser.add_argument("--warehouses", type=int, default=3, help="Number of warehouses to create (default: %(default)s)")
+    parser.add_argument("--orders", type=int, default=10, help="Number of orders to create per warehouse (default: %(default)s)")
+    parser.add_argument("--shipments", type=int, default=2, help="Number of shipments to create per warehouse (default: %(default)s)")
     parser.add_argument("--users", type=int, default=10, help="Total number of demo users to create (default: %(default)s)")
     parser.add_argument("--seed", type=int, help="Optional RNG seed for reproducible data")
     return parser.parse_args()

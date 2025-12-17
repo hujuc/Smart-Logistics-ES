@@ -11,7 +11,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -41,6 +40,12 @@ public class NotificationController {
     @DeleteMapping("/customer/{customerId}")
     public ResponseEntity<Void> deleteAllUserNotifications(@PathVariable String customerId) {
         notificationService.deleteAllUserNotifications(customerId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/customer/{customerId}/read")
+    public ResponseEntity<Void> markAllAsRead(@PathVariable String customerId) {
+        notificationService.markAllAsRead(customerId);
         return ResponseEntity.ok().build();
     }
 }

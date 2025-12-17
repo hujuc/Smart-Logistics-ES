@@ -36,8 +36,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Driver BFF Controller
  *
- * This controller is part of the Backend-For-Frontend (BFF) pattern for the driver interface.
- * It exposes driver-specific endpoints that delegate to business layer services.
+ * This controller is part of the Backend-For-Frontend (BFF) pattern for the
+ * driver interface.
+ * It exposes driver-specific endpoints that delegate to business layer
+ * services.
  *
  * Endpoints are mapped to /api/driver/* to match the driver role permissions.
  */
@@ -45,7 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RestController
 @RequestMapping("/api/driver")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class DriverBffController {
 
     private final OrderService orderService;
@@ -67,14 +68,13 @@ public class DriverBffController {
         return ResponseEntity.ok(java.util.Map.of(
                 "status", "UP",
                 "service", "Driver BFF",
-                "timestamp", java.time.Instant.now().toString()
-        ));
+                "timestamp", java.time.Instant.now().toString()));
     }
 
     /**
      * Confirm that an order belonging to the driver's shipment was scanned
      *
-     * @param orderId Order identifier encoded in the QR code
+     * @param orderId        Order identifier encoded in the QR code
      * @param authentication Authenticated driver token (provides driverId)
      * @return Confirmation status and shipment progress
      */
@@ -96,8 +96,8 @@ public class DriverBffController {
     /**
      * Complete delivery with proof of delivery photo
      *
-     * @param orderId Order identifier
-     * @param file Proof of delivery photo
+     * @param orderId   Order identifier
+     * @param file      Proof of delivery photo
      * @param principal Authenticated driver token
      * @return Order details with POD URL
      */
@@ -147,17 +147,16 @@ public class DriverBffController {
                 "orderId", order.getId(),
                 "status", order.getStatus().toString(),
                 "proofOfDeliveryUrl", uploadResponse.getUrl(),
-                "message", "Delivery completed successfully"
-        ));
+                "message", "Delivery completed successfully"));
     }
 
     /**
      * Report a delivery exception
      *
-     * @param orderId Order identifier
+     * @param orderId       Order identifier
      * @param exceptionType Type of exception
-     * @param description Description of the exception
-     * @param principal Authenticated driver token
+     * @param description   Description of the exception
+     * @param principal     Authenticated driver token
      * @return Exception details
      */
     @PostMapping("/orders/{orderId}/exception")
@@ -210,8 +209,7 @@ public class DriverBffController {
                 "orderId", orderId,
                 "type", exceptionType.toString(),
                 "status", exceptionResponse.getStatus().toString(),
-                "message", "Exception reported successfully"
-        ));
+                "message", "Exception reported successfully"));
     }
 
     /**
@@ -261,13 +259,19 @@ public class DriverBffController {
                 .filter(order -> {
                     var exceptions = deliveryExceptionService.getByOrderId(order.getId());
 
-                    // Include order only if it has no exceptions or all exceptions are resolved/closed
-                    return exceptions.stream().noneMatch(exception ->
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
-                    );
+                    // Include order only if it has no exceptions or all exceptions are
+                    // resolved/closed
+                    return exceptions.stream().noneMatch(exception -> exception
+                            .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED);
                 })
                 .toList());
 
@@ -276,41 +280,76 @@ public class DriverBffController {
 
         // Log order statuses for debugging
         java.util.Map<OrderStatus, Long> statusCounts = ordersWithoutActiveExceptions.stream()
-                .collect(java.util.stream.Collectors.groupingBy(Order::getStatus, java.util.stream.Collectors.counting()));
+                .collect(java.util.stream.Collectors.groupingBy(Order::getStatus,
+                        java.util.stream.Collectors.counting()));
         log.info("Order statuses after filtering: {}", statusCounts);
 
         // Sort orders by estimated delivery date and shipping city
         ordersWithoutActiveExceptions.sort(Comparator
-                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
+                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate()
+                        : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         AtomicInteger stopNumber = new AtomicInteger(1);
         List<DailyScheduleDeliveryResponse> deliveries = ordersWithoutActiveExceptions.stream()
-                .map(order -> DailyScheduleDeliveryResponse.builder()
-                        .orderId(order.getId())
-                        .orderReference(order.getReference())
-                        .stopNumber(stopNumber.getAndIncrement())
-                        .customerName(order.getCustomerId())
-                        .address(order.getShippingAddress())
-                        .phone(order.getShippingPhone())
-                        .status(order.getStatus())
-                        .weight(order.getWeight())
-                        .weightUnit(order.getWeightUnit())
-                        .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
-                        .shippingCity(order.getShippingCity())
-                        .shippingPostalCode(order.getShippingPostalCode())
-                        .shippingCountry(order.getShippingCountry())
-                        .shippingStateOrProvince(order.getShippingStateOrProvince())
-                        .warehouseAddress(DailyScheduleDeliveryResponse.WarehouseAddressDto.builder()
-                                .name(order.getWarehouse().getName())
-                                .addressLine1(order.getWarehouse().getAddressLine1())
-                                .addressLine2(order.getWarehouse().getAddressLine2())
-                                .city(order.getWarehouse().getCity())
-                                .stateOrProvince(order.getWarehouse().getStateOrProvince())
-                                .country(order.getWarehouse().getCountry())
-                                .postalCode(order.getWarehouse().getPostalCode())
-                                .build())
-                        .build())
+                .map(order -> {
+                    // Build full address from components if shippingAddress is not properly formatted
+                    String fullAddress = order.getShippingAddress();
+                    if (fullAddress == null || fullAddress.isEmpty() || !fullAddress.contains(",")) {
+                        // Shipping address is not properly formatted, build from components
+                        StringBuilder addressBuilder = new StringBuilder();
+                        if (order.getShippingAddressLine1() != null) {
+                            addressBuilder.append(order.getShippingAddressLine1());
+                        }
+                        if (order.getShippingAddressLine2() != null && !order.getShippingAddressLine2().isEmpty()) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingAddressLine2());
+                        }
+                        if (order.getShippingCity() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCity());
+                        }
+                        if (order.getShippingStateOrProvince() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingStateOrProvince());
+                        }
+                        if (order.getShippingPostalCode() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingPostalCode());
+                        }
+                        if (order.getShippingCountry() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCountry());
+                        }
+                        fullAddress = addressBuilder.toString();
+                    }
+
+                    return DailyScheduleDeliveryResponse.builder()
+                            .orderId(order.getId())
+                            .orderReference(order.getReference())
+                            .stopNumber(stopNumber.getAndIncrement())
+                            .customerName(order.getCustomerId())
+                            .address(fullAddress)
+                            .phone(order.getShippingPhone())
+                            .status(order.getStatus())
+                            .weight(order.getWeight())
+                            .weightUnit(order.getWeightUnit())
+                            .estimatedDeliveryDate(order.getEstimatedDeliveryDate())
+                            .shippingCity(order.getShippingCity())
+                            .shippingPostalCode(order.getShippingPostalCode())
+                            .shippingCountry(order.getShippingCountry())
+                            .shippingStateOrProvince(order.getShippingStateOrProvince())
+                            .warehouseAddress(DailyScheduleDeliveryResponse.WarehouseAddressDto.builder()
+                                    .name(order.getWarehouse().getName())
+                                    .addressLine1(order.getWarehouse().getAddressLine1())
+                                    .addressLine2(order.getWarehouse().getAddressLine2())
+                                    .city(order.getWarehouse().getCity())
+                                    .stateOrProvince(order.getWarehouse().getStateOrProvince())
+                                    .country(order.getWarehouse().getCountry())
+                                    .postalCode(order.getWarehouse().getPostalCode())
+                                    .build())
+                            .build();
+                })
                 .toList();
 
         // Use first shipment for summary info (or could aggregate)
@@ -359,7 +398,8 @@ public class DriverBffController {
                     map.put("status", s.getStatus().toString());
                     map.put("carrierName", s.getCarrier().getName());
                     map.put("totalOrders", s.getTotalOrders() != null ? s.getTotalOrders() : 0);
-                    map.put("estimatedDeliveryDate", s.getEstimatedDeliveryDate() != null ? s.getEstimatedDeliveryDate().toString() : "");
+                    map.put("estimatedDeliveryDate",
+                            s.getEstimatedDeliveryDate() != null ? s.getEstimatedDeliveryDate().toString() : "");
                     return map;
                 })
                 .toList();
@@ -417,13 +457,19 @@ public class DriverBffController {
                 .filter(order -> {
                     var exceptions = deliveryExceptionService.getByOrderId(order.getId());
 
-                    // Include order only if it has no exceptions or all exceptions are resolved/closed
-                    return exceptions.stream().noneMatch(exception ->
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS ||
-                            exception.getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED
-                    );
+                    // Include order only if it has no exceptions or all exceptions are
+                    // resolved/closed
+                    return exceptions.stream().noneMatch(exception -> exception
+                            .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.OPEN
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ASSIGNED
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.IN_PROGRESS
+                            ||
+                            exception
+                                    .getStatus() == Operimus.SLMS.business_layer.visibility_module.exceptions.entities.DeliveryException.ExceptionStatus.ESCALATED);
                 })
                 .toList());
 
@@ -432,7 +478,8 @@ public class DriverBffController {
 
         // Sort orders by estimated delivery date and shipping city
         ordersWithoutActiveExceptions.sort(Comparator
-                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate() : java.time.LocalDate.MAX)
+                .comparing((Order o) -> o.getEstimatedDeliveryDate() != null ? o.getEstimatedDeliveryDate()
+                        : java.time.LocalDate.MAX)
                 .thenComparing(o -> o.getShippingCity() != null ? o.getShippingCity() : ""));
 
         // Calculate statistics
@@ -449,13 +496,29 @@ public class DriverBffController {
         List<DriverDashboardResponse.NextDeliveryPreview> nextDeliveries = ordersWithoutActiveExceptions.stream()
                 .filter(o -> o.getStatus() != OrderStatus.DELIVERED)
                 .limit(3)
-                .map(order -> DriverDashboardResponse.NextDeliveryPreview.builder()
-                        .orderId(order.getId())
-                        .stopNumber(stopNumber.getAndIncrement())
-                        .customerName(order.getCustomerId() != null ? order.getCustomerId() : "Unknown Customer")
-                        .address(order.getShippingAddress())
-                        .priority("Medium") // Default priority for now
-                        .build())
+                .map(order -> {
+                    // Build full address from components if shippingAddress is not properly formatted
+                    String fullAddress = order.getShippingAddress();
+                    if (fullAddress == null || fullAddress.isEmpty() || !fullAddress.contains(",")) {
+                        StringBuilder addressBuilder = new StringBuilder();
+                        if (order.getShippingAddressLine1() != null) {
+                            addressBuilder.append(order.getShippingAddressLine1());
+                        }
+                        if (order.getShippingCity() != null) {
+                            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                            addressBuilder.append(order.getShippingCity());
+                        }
+                        fullAddress = addressBuilder.toString();
+                    }
+
+                    return DriverDashboardResponse.NextDeliveryPreview.builder()
+                            .orderId(order.getId())
+                            .stopNumber(stopNumber.getAndIncrement())
+                            .customerName(order.getCustomerId() != null ? order.getCustomerId() : "Unknown Customer")
+                            .address(fullAddress)
+                            .priority("Medium") // Default priority for now
+                            .build();
+                })
                 .toList();
 
         DriverDashboardResponse.TodayStats stats = DriverDashboardResponse.TodayStats.builder()
@@ -477,7 +540,7 @@ public class DriverBffController {
      * Driver accepts a shipment assigned to them
      *
      * @param shipmentId Shipment identifier
-     * @param principal Authenticated driver token
+     * @param principal  Authenticated driver token
      * @return Confirmation and updated shipment status
      */
     @PostMapping("/shipments/{shipmentId}/accept")
@@ -501,8 +564,7 @@ public class DriverBffController {
                 "shipmentCode", shipment.getShipmentCode(),
                 "status", shipment.getStatus().toString(),
                 "orderCount", orders.size(),
-                "message", "Shipment accepted successfully. All orders are now IN_TRANSIT."
-        ));
+                "message", "Shipment accepted successfully. All orders are now IN_TRANSIT."));
     }
 
     /**
@@ -510,8 +572,9 @@ public class DriverBffController {
      * Can either deliver successfully or report exceptions.
      *
      * @param shipmentId Shipment identifier
-     * @param request Delivery completion details (hasException, exceptionType, exceptionDescription)
-     * @param principal Authenticated driver token
+     * @param request    Delivery completion details (hasException, exceptionType,
+     *                   exceptionDescription)
+     * @param principal  Authenticated driver token
      * @return Confirmation of delivery completion or exception reporting
      */
     @PostMapping("/shipments/{shipmentId}/complete")
@@ -536,7 +599,8 @@ public class DriverBffController {
         if (Boolean.TRUE.equals(request.getHasException())) {
             // Driver reported an exception during delivery
             if (request.getExceptionType() == null || request.getExceptionDescription() == null) {
-                throw new IllegalArgumentException("Exception type and description are required when hasException is true");
+                throw new IllegalArgumentException(
+                        "Exception type and description are required when hasException is true");
             }
 
             // Mark shipment as EXCEPTION
@@ -551,8 +615,7 @@ public class DriverBffController {
                         order.getId(),
                         exceptionType,
                         request.getExceptionDescription(),
-                        driverUuid
-                );
+                        driverUuid);
             });
 
             log.info("Shipment {} marked as EXCEPTION with {} delivery exceptions created",
@@ -563,8 +626,7 @@ public class DriverBffController {
                     "status", shipment.getStatus().toString(),
                     "exceptionType", request.getExceptionType(),
                     "ordersAffected", orders.size(),
-                    "message", "Delivery exception reported. CSR team has been notified."
-            ));
+                    "message", "Delivery exception reported. CSR team has been notified."));
         } else {
             // Normal delivery completion
             Shipment shipment = shipmentService.completeDelivery(shipmentId, driverId);
@@ -576,8 +638,7 @@ public class DriverBffController {
                     "shipmentId", shipment.getId(),
                     "status", shipment.getStatus().toString(),
                     "ordersDelivered", orders.size(),
-                    "message", "All deliveries completed successfully!"
-            ));
+                    "message", "All deliveries completed successfully!"));
         }
     }
 

@@ -1,58 +1,33 @@
-# Multi-stage build for Next.js production
-FROM node:20-alpine AS base
+# Multi-stage production Dockerfile for Next.js frontends
+# Build context: repository root
+# Usage: docker build -f infra/docker/frontend/Dockerfile.prod --build-arg FRONTEND_PATH=src/frontend/landing-page .
+#
+# This unified Dockerfile supports all 4 frontend apps:
+# - landing-page
+# - admin-console
+# - customer-portal
+# - driver-pwa
 
-# Dependencies stage 
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+ARG NODE_VERSION=20
+ARG FRONTEND_PATH=src/frontend/landing-page
+
+# ===== Dependencies Stage =====
+FROM node:${NODE_VERSION}-alpine AS deps
 WORKDIR /app
-
-ARG FRONTEND_PATH
-COPY ${FRONTEND_PATH}/package.json ${FRONTEND_PATH}/package-lock.json* ./
-# Use BuildKit cache mount for faster builds
-RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
-# Copy package files
-COPY ${FRONTEND_PATH}/package.json ./package.json
-COPY ${FRONTEND_PATH}/package-lock.json ./package-lock.json
-
-# Install dependencies with error handling
-RUN npm ci --legacy-peer-deps || { \
-      echo "npm ci failed, trying npm install..."; \
-      npm install --legacy-peer-deps; \
-    } && \
-    echo "=== Dependencies installed successfully ===" && \
-    ls -la node_modules/.bin/ | head -20
-
-# Build stage
-FROM base AS builder
-WORKDIR /app
-
-ARG FRONTEND_PATH
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_FLAGSMITH_ENV_KEY
-ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-ARG KEYCLOAK_BASE_URL
-ARG NEXTAUTH_URL
-
-# Copy node_modules from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./package.json
-
-# Copy all source files
-COPY ${FRONTEND_PATH}/ ./
-
-# Debug: List copied files
-RUN echo "=== Listing copied files ===" && \
-    ls -la && \
-    echo "=== Checking if shared/ exists ===" && \
-    ls -la shared/ 2>/dev/null || echo "WARNING: shared/ directory not found!" && \
-    echo "=== Checking package.json ===" && \
-    cat package.json | grep -E '"name"|"version"|"next"' || true
-
-# Set production environment
-ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Accept build-time arguments for Next.js public env vars
+ARG FRONTEND_PATH
+COPY ${FRONTEND_PATH}/package.json ./package.json
+COPY ${FRONTEND_PATH}/package-lock.json* ./package-lock.json
+RUN npm ci
+
+# ===== Builder Stage =====
+FROM node:${NODE_VERSION}-alpine AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Accept all possible build arguments for Next.js public environment variables
+# These will be inlined at build time by Next.js
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_FLAGSMITH_ENV_KEY
 ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
@@ -64,50 +39,45 @@ ARG NEXT_PUBLIC_DEPLOYMENT_ENV
 ARG NEXT_PUBLIC_PROJECT_VERSION
 ARG NEXT_PUBLIC_TRACING_SAMPLING_RATE
 
-# Pass them as environment variables during build (Next.js will inline them)
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-ENV NEXT_PUBLIC_FLAGSMITH_ENV_KEY=${NEXT_PUBLIC_FLAGSMITH_ENV_KEY}
-ENV NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-ENV NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=${NEXT_PUBLIC_ELASTIC_APM_SERVER_URL}
-ENV NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=${NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN}
-ENV NEXT_PUBLIC_DEPLOYMENT_ENV=${NEXT_PUBLIC_DEPLOYMENT_ENV}
-ENV NEXT_PUBLIC_PROJECT_VERSION=${NEXT_PUBLIC_PROJECT_VERSION}
-ENV NEXT_PUBLIC_TRACING_SAMPLING_RATE=${NEXT_PUBLIC_TRACING_SAMPLING_RATE}
+# Set as environment variables so Next.js can embed them during build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_FLAGSMITH_ENV_KEY=$NEXT_PUBLIC_FLAGSMITH_ENV_KEY
+ENV NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=$NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+ENV KEYCLOAK_BASE_URL=$KEYCLOAK_BASE_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXT_PUBLIC_ELASTIC_APM_SERVER_URL=$NEXT_PUBLIC_ELASTIC_APM_SERVER_URL
+ENV NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN=$NEXT_PUBLIC_ELASTIC_APM_SECRET_TOKEN
+ENV NEXT_PUBLIC_DEPLOYMENT_ENV=$NEXT_PUBLIC_DEPLOYMENT_ENV
+ENV NEXT_PUBLIC_PROJECT_VERSION=$NEXT_PUBLIC_PROJECT_VERSION
+ENV NEXT_PUBLIC_TRACING_SAMPLING_RATE=$NEXT_PUBLIC_TRACING_SAMPLING_RATE
 
-# Verify installation and build
-RUN echo "=== Checking Node.js and npm ===" && \
-    node --version && \
-    npm --version && \
-    echo "=== Verifying Next.js installation ===" && \
-    ls -la node_modules/.bin/ && \
-    if [ ! -f "node_modules/.bin/next" ]; then \
-      echo "ERROR: Next.js not found in node_modules!" && \
-      exit 1; \
-    fi && \
-    echo "=== Next.js found, starting build ===" && \
-    npm run build
+ARG FRONTEND_PATH
+COPY --from=deps /app/node_modules ./node_modules
+COPY ${FRONTEND_PATH}/ ./
 
-# Production stage
-FROM base AS runner
+# Copy shared components (all frontends use shared components)
+COPY src/frontend/shared ./shared
+
+RUN npm run build
+
+# ===== Runtime Stage =====
+FROM node:${NODE_VERSION}-alpine AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Create non-root user
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
-
 EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
 CMD ["node", "server.js"]
