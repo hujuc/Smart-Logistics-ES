@@ -49,6 +49,12 @@ class ShipmentServiceTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private Operimus.SLMS.business_layer.notifications_module.service.LogisticsManagerNotificationService logisticsManagerNotificationService;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.beans.factory.ObjectProvider<Operimus.SLMS.business_layer.rate_carrier_module.service.ShipmentLabelGenerationService> shipmentLabelGenerationService;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private Operimus.SLMS.business_layer.user_management_module.service.KeycloakUserService keycloakUserService;
+
     private Carrier carrier;
     private Warehouse warehouse;
     private Order order1;
