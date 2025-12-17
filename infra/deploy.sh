@@ -70,6 +70,12 @@ terraform_smart_deploy() {
 terraform_taint_db() {
   log "Tainting PostgreSQL volume to force recreation..."
   (cd "${TERRAFORM_DIR}" && terraform taint docker_volume.postgres_data 2>/dev/null || true)
+  
+  # Explicitly remove the volume to guarantee it's clean (as requested by user)
+  if docker volume inspect slms-postgres-data-prod >/dev/null 2>&1; then
+    log "Explicitly removing Docker volume slms-postgres-data-prod..."
+    docker volume rm -f slms-postgres-data-prod || true
+  fi
 }
 
 compose_up() {

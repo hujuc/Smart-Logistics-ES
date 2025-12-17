@@ -198,6 +198,8 @@ public class SecurityConfig {
             @SuppressWarnings("unchecked")
             var roles = (java.util.List<String>) realmAccess.get("roles");
 
+            log.info("JWT Auth: Extracted roles for user: {}", roles); // DEBUG LOG
+
             return roles.stream()
                     .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role))
                     .collect(java.util.stream.Collectors.toList());
