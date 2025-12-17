@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   LogOut,
-  Package,
 } from "lucide-react"
 import { useUser, useUserActions } from "@/shared/hooks/use-user"
 import { clearAuth } from "@/shared/lib/auth"
@@ -168,19 +167,15 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-white pb-6">
       {/* Header */}
-      <div className="bg-black text-white p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Package className="h-5 w-5 text-white" />
-          <span className="text-base font-bold text-white">SLMS</span>
-        </div>
+      <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Settings</h1>
-            <p className="text-gray-300 text-sm mt-1">
+            <h1 className="text-2xl font-bold text-black">Settings</h1>
+            <p className="text-gray-600 text-sm mt-1">
               {user ? `${user.firstName} ${user.lastName}` : 'Driver'} • Driver
             </p>
           </div>
-          <Link href="/" className="flex items-center gap-1 text-white hover:text-gray-300">
+          <Link href="/" className="flex items-center gap-1 text-black hover:text-gray-600">
             <ArrowLeft className="w-5 h-5" />
             Back
           </Link>

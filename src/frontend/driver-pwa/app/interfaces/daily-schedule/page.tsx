@@ -345,17 +345,13 @@ export default function DriverDailySchedule() {
   return (
       <div className="min-h-screen bg-white pb-20">
         {/* Header */}
-        <div className="bg-black text-white p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Package className="h-5 w-5 text-white" />
-            <span className="text-base font-bold text-white">SLMS</span>
-          </div>
-          <h1 className="text-2xl font-bold">Daily Schedule</h1>
-          <p className="text-gray-300 text-sm mt-1">
+        <div className="bg-white border-b border-gray-200 p-4">
+          <h1 className="text-2xl font-bold text-black">Daily Schedule</h1>
+          <p className="text-gray-600 text-sm mt-1">
             {user ? `${user.firstName} ${user.lastName}` : 'Driver'} • Driver
           </p>
           <div className="absolute top-4 right-4">
-            <Link href="/" className="flex items-center gap-1 text-white hover:text-gray-300">
+            <Link href="/" className="flex items-center gap-1 text-black hover:text-gray-600">
               <ArrowLeft className="w-5 h-5" />
               Back
             </Link>
