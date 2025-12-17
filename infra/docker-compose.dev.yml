@@ -336,18 +336,6 @@ services:
       "
     restart: "no"
 
-  orchestrator:
-    build:
-      context: ..
-      dockerfile: infra/docker/orchestrator/Dockerfile
-    container_name: slms-orchestrator-dev
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - API_BASE_URL=http://backend:8080/api
-    restart: unless-stopped
-
 volumes:
   postgres-data:
   minio_data:

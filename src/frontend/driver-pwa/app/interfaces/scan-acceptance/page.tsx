@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import QrScanner from "@/components/qr-scanner";
 import { ArrowLeft, CheckCircle, AlertCircle, Package } from "lucide-react";
 import Link from "next/link";
-import { getAccessToken } from "../../../../shared/lib/auth";
+import { getAccessToken } from "@shared/lib/auth";
 
 interface Order {
     id: number;

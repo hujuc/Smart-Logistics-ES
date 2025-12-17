@@ -105,6 +105,7 @@ services:
       "
     restart: "no"
 
+  # Orchestrator - Seeds demo data and creates orders periodically
   orchestrator:
     build:
       context: ..
