@@ -125,7 +125,7 @@ class KeycloakUserServiceTest {
             keycloakUserService.createUser(userDTO);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to create user"));
+        assertEquals("A user with this username or email already exists. Please use a different one.", exception.getMessage());
     }
 
     @Test
@@ -162,7 +162,7 @@ class KeycloakUserServiceTest {
             keycloakUserService.getUserById(userId);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to fetch user"));
+        assertEquals("Unable to retrieve user information. The user may not exist or there was a technical error.", exception.getMessage());
     }
 
     @Test
@@ -204,7 +204,7 @@ class KeycloakUserServiceTest {
             keycloakUserService.searchUsers(searchQuery);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to search users"));
+        assertEquals("Unable to search users. Please try again later.", exception.getMessage());
     }
 
     @Test
@@ -234,7 +234,7 @@ class KeycloakUserServiceTest {
             keycloakUserService.deleteUser(userId);
         });
 
-        assertTrue(exception.getMessage().contains("Failed to delete user"));
+        assertEquals("Unable to delete user. The user may not exist or there was a technical error.", exception.getMessage());
     }
 
     @Test

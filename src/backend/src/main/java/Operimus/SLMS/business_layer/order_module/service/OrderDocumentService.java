@@ -61,7 +61,7 @@ public class OrderDocumentService {
 
     public DocumentUploadResponse uploadDocument(Long orderId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new DocumentStorageException("O ficheiro enviado está vazio.");
+            throw new DocumentStorageException("The uploaded file is empty.");
         }
 
         Order order = findOrderOrThrow(orderId);
@@ -83,9 +83,9 @@ public class OrderDocumentService {
 
             s3Client.putObject(request, RequestBody.fromInputStream(inputStream, file.getSize()));
         } catch (IOException e) {
-            throw new DocumentStorageException("Não foi possível ler o ficheiro enviado.", e);
+            throw new DocumentStorageException("Unable to read the uploaded file.", e);
         } catch (S3Exception e) {
-            throw new DocumentStorageException("Erro ao guardar o ficheiro no bucket '%s'.".formatted(bucketName), e);
+            throw new DocumentStorageException("Failed to save document to storage bucket '%s'.".formatted(bucketName), e);
         }
 
         return DocumentUploadResponse.builder()
@@ -111,7 +111,7 @@ public class OrderDocumentService {
             response = s3Client.listObjectsV2(request);
         } catch (S3Exception e) {
             throw new DocumentStorageException(
-                    "Erro ao listar documentos no bucket '%s'.".formatted(bucketName), e);
+                    "Failed to list documents in storage bucket '%s'.".formatted(bucketName), e);
         }
 
         List<DocumentUploadResponse> documents = new ArrayList<>();
@@ -179,13 +179,13 @@ public class OrderDocumentService {
             throw documentNotFound(orderId, documentId);
         } catch (S3Exception e) {
             throw new DocumentStorageException(
-                    "Erro ao descarregar documento '%s'.".formatted(documentId), e);
+                    "Failed to download document '%s'.".formatted(documentId), e);
         }
     }
 
     public DocumentUploadResponse updateDocument(Long orderId, String documentId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new DocumentStorageException("O ficheiro enviado está vazio.");
+            throw new DocumentStorageException("The uploaded file is empty.");
         }
 
         findOrderOrThrow(orderId);
@@ -212,10 +212,10 @@ public class OrderDocumentService {
         } catch (NoSuchKeyException e) {
             throw documentNotFound(orderId, documentId);
         } catch (IOException e) {
-            throw new DocumentStorageException("Não foi possível ler o ficheiro enviado.", e);
+            throw new DocumentStorageException("Unable to read the uploaded file.", e);
         } catch (S3Exception e) {
             throw new DocumentStorageException(
-                    "Erro ao atualizar o ficheiro no bucket '%s'.".formatted(bucketName), e);
+                    "Failed to update document in storage bucket '%s'.".formatted(bucketName), e);
         }
 
         return DocumentUploadResponse.builder()
@@ -240,7 +240,7 @@ public class OrderDocumentService {
             throw documentNotFound(orderId, documentId);
         } catch (S3Exception e) {
             throw new DocumentStorageException(
-                    "Erro ao eliminar o documento '%s' no bucket '%s'.".formatted(documentId, bucketName), e);
+                    "Failed to delete document '%s' from storage bucket '%s'.".formatted(documentId, bucketName), e);
         }
     }
 
@@ -260,7 +260,7 @@ public class OrderDocumentService {
                 createBucket();
             } catch (S3Exception e) {
                 throw new DocumentStorageException(
-                        "Erro ao verificar a existência do bucket '%s'.".formatted(bucketName), e);
+                        "Failed to verify existence of storage bucket '%s'.".formatted(bucketName), e);
             }
 
             bucketReady.set(true);
@@ -279,7 +279,7 @@ public class OrderDocumentService {
         } catch (S3Exception e) {
             if (e.statusCode() != 409) {
                 throw new DocumentStorageException(
-                        "Erro ao criar o bucket '%s'.".formatted(bucketName), e);
+                        "Failed to create storage bucket '%s'.".formatted(bucketName), e);
             }
         }
     }
@@ -317,10 +317,10 @@ public class OrderDocumentService {
 
     private void validateDocumentId(String documentId) {
         if (documentId == null || documentId.isBlank()) {
-            throw new DocumentStorageException("O identificador do documento é inválido.");
+            throw new DocumentStorageException("Document identifier is invalid.");
         }
         if (documentId.contains("..") || documentId.contains("/") || documentId.contains("\\")) {
-            throw new DocumentStorageException("O identificador do documento contém caracteres inválidos.");
+            throw new DocumentStorageException("Document identifier contains invalid characters.");
         }
     }
 
@@ -346,9 +346,9 @@ public class OrderDocumentService {
         try {
             return s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(objectKey).build());
         } catch (NoSuchKeyException e) {
-            throw new ResourceNotFoundException("Documento '%s' não encontrado.".formatted(objectKey));
+            throw new ResourceNotFoundException("Document '%s' not found.".formatted(objectKey));
         } catch (S3Exception e) {
-            throw new DocumentStorageException("Erro ao obter metadados do documento.", e);
+            throw new DocumentStorageException("Failed to retrieve document metadata.", e);
         }
     }
 
@@ -370,6 +370,6 @@ public class OrderDocumentService {
 
     private ResourceNotFoundException documentNotFound(Long orderId, String documentId) {
         return new ResourceNotFoundException(
-                "Documento '%s' não encontrado para a encomenda %d.".formatted(documentId, orderId));
+                "Document '%s' not found for order %d.".formatted(documentId, orderId));
     }
 }

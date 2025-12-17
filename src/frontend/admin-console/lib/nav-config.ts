@@ -1,4 +1,4 @@
-import { Package, Settings, Truck, MapPin, Users, FileText, BarChart, Search, Warehouse, Bell } from "lucide-react"
+import { Package, Settings, Truck, Users, FileText, BarChart, Search, Warehouse, Bell } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -37,11 +37,6 @@ export const logisticsNavItems: NavItem[] = [
     href: "/interfaces/logistics",
     icon: BarChart,
     label: "Overview",
-  },
-  {
-    href: "/interfaces/logistics/tracking",
-    icon: MapPin,
-    label: "Tracking",
   },
   {
     href: "/interfaces/logistics/warehouses",

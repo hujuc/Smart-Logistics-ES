@@ -53,7 +53,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error fetching all users: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch users"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -77,7 +77,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error fetching current user info: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch user information"));
+                    .body(Map.of("error", "Unable to retrieve your profile information. Please try logging in again."));
         }
     }
 
@@ -92,7 +92,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error fetching user by ID: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "User not found"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -107,7 +107,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error searching users: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to search users"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -152,7 +152,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Error deleting user: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to delete user"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }
