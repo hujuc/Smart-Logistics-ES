@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Package, Camera, Upload, ArrowLeft, CheckCircle, X } from 'lucide-react';
 import { getAccessToken, getDailySchedule, DailyScheduleDelivery } from '@/lib/api';
-import { featureFlagManager, isProofOfDeliveryEnabled } from '@/lib/flagsmith';
 
 export default function ScanPackage() {
   const router = useRouter();
@@ -17,42 +16,24 @@ export default function ScanPackage() {
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [featureEnabled, setFeatureEnabled] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    async function initializeAndFetchOrders() {
+    async function fetchOrders() {
       try {
-        // Initialize Flagsmith with driver ID
-        // In production, this would come from auth context
-        const driverId = 'driver-' + Math.random().toString(36).substring(7);
-        await featureFlagManager.initialize(driverId);
-
-        // Check if POD feature is enabled
-        const enabled = isProofOfDeliveryEnabled();
-        setFeatureEnabled(enabled);
-
-        console.log('[ScanPackage] Feature flags initialized:', {
-          podEnabled: enabled,
-          driverId,
-        });
-
-        // Load orders if feature is enabled
-        if (enabled) {
-          const schedule = await getDailySchedule();
-          const activeStatuses = [
-            'IN_TRANSIT',
-            'CREATED',
-            'READY_FOR_PICKUP',
-            'COLLECTED',
-            'ASSIGNED_TO_SHIPMENT',
-          ];
-          const pendingOrders = schedule.deliveries.filter(delivery =>
-            activeStatuses.includes(delivery.status)
-          );
-          setOrders(pendingOrders);
-        }
+        const schedule = await getDailySchedule();
+        const activeStatuses = [
+          'IN_TRANSIT',
+          'CREATED',
+          'READY_FOR_PICKUP',
+          'COLLECTED',
+          'ASSIGNED_TO_SHIPMENT',
+        ];
+        const pendingOrders = schedule.deliveries.filter(delivery =>
+          activeStatuses.includes(delivery.status)
+        );
+        setOrders(pendingOrders);
       } catch (err) {
         console.error('Failed to fetch orders:', err);
         setError('Failed to load orders. Please try again.');
@@ -61,7 +42,7 @@ export default function ScanPackage() {
       }
     }
 
-    initializeAndFetchOrders();
+    fetchOrders();
   }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,46 +120,6 @@ export default function ScanPackage() {
         <div className="text-center">
           <Package className="h-12 w-12 text-black mx-auto mb-4 animate-pulse" />
           <p className="text-gray-600">Loading orders...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!featureEnabled) {
-    return (
-      <div className="min-h-screen bg-white">
-        {/* Header */}
-        <div className="bg-black text-white p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <Link href="/">
-              <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-                <ArrowLeft className="h-6 w-6" />
-              </button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <Package className="h-6 w-6" />
-              <span className="text-lg font-bold">SLMS</span>
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold">Scan Package</h1>
-          <p className="text-gray-300 text-sm mt-1">Complete delivery with proof of delivery</p>
-        </div>
-
-        {/* Feature Disabled Message */}
-        <div className="p-6 flex items-center justify-center min-h-[60vh]">
-          <div className="text-center max-w-md">
-            <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-black mb-2">Feature Coming Soon</h2>
-            <p className="text-gray-600 mb-6">
-              The Proof of Delivery feature is currently being rolled out and is not yet available for your account.
-              Please check back later or contact your supervisor for more information.
-            </p>
-            <Link href="/">
-              <button className="bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
-                Return to Home
-              </button>
-            </Link>
-          </div>
         </div>
       </div>
     );

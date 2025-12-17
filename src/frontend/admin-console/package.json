@@ -26,7 +26,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "elastic-apm-node": "^4.15.0",
-    "flagsmith": "^9.3.3",
     "flagsmith-nodejs": "^2.4.1",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
@@ -34,8 +33,8 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-masonry-css": "^1.0.16",
-    "sockjs-client": "^1.6.1",
     "recharts": "^3.5.1",
+    "sockjs-client": "^1.6.1",
     "tailwind-merge": "^3.3.1",
     "web-vitals": "^5.1.0",
     "zustand": "^5.0.3"
