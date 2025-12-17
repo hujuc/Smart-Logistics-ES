@@ -98,7 +98,7 @@ export function WarehouseOrdersTable({ orders }: WarehouseOrdersTableProps) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/interfaces/warehouse/package/${order.id}`}
+                    href={`/interfaces/logistics/orders/${order.id}`}
                     className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
                     title="View order details"
                   >

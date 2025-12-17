@@ -76,6 +76,12 @@ export function FloatingNavbar({ navItems }) {
     // Exact match for main navigation items
     if (pathname === pathWithoutQuery) return true
 
+    // Special case: When viewing order details (/interfaces/logistics/orders/1),
+    // ONLY highlight the Warehouses nav item, not Overview
+    if (pathname?.startsWith('/interfaces/logistics/orders/')) {
+      return pathWithoutQuery === '/interfaces/logistics/warehouses'
+    }
+
     // For child routes not in the nav (like /interfaces/warehouse/package/123),
     // highlight the most specific parent
     const hasExactMatch = navItems.some(item => {

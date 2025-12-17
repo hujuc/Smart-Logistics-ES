@@ -230,7 +230,7 @@ class AuthControllerTest {
     void whenRefreshTokenWithoutCookie_thenUnauthorized() throws Exception {
         mockMvc.perform(post("/api/landing-page/auth/refresh"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error", is("Refresh token not found")));
+                .andExpect(jsonPath("$.error", is("Your session has expired. Please log in again.")));
 
         verify(authService, never()).refreshToken(any());
     }
@@ -240,7 +240,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/landing-page/auth/refresh")
                         .cookie(new Cookie("refresh_token", "")))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error", is("Refresh token not found")));
+                .andExpect(jsonPath("$.error", is("Your session has expired. Please log in again.")));
 
         verify(authService, never()).refreshToken(any());
     }
@@ -253,7 +253,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/landing-page/auth/refresh")
                         .cookie(new Cookie("refresh_token", "expired-token")))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error", is("Token refresh failed")));
+                .andExpect(jsonPath("$.error", is("Token expired")));
     }
 
     // ========================================
