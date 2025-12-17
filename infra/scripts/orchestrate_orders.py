@@ -208,21 +208,33 @@ class Orchestrator:
     def __init__(self, api_base_url: str) -> None:
         self.http = HttpClient(api_base_url)
         self.timestamp = int(time.time())
+        self.tick_count = 0
 
     def tick(self) -> None:
         self.timestamp = int(time.time())
+        self.tick_count += 1
+        
+        log(f"=== Tick #{self.tick_count} started ===")
         
         # 1. Create a new order on every tick (since interval is long)
         self.create_random_order()
 
-        # 2. Process existing orders (CREATED -> READY_FOR_PICKUP) - limit to 5 per tick
-        self.process_created_orders(max_count=5)
+        # 2. Process existing orders (CREATED -> READY_FOR_PICKUP) - limit to 2 per tick
+        self.process_created_orders(max_count=2)
 
-        # 3. Create shipments for ready orders (READY_FOR_PICKUP -> IN_TRANSIT) - limit to 1 batch per tick
+        # 3. Create shipments for ready orders - limit to 1 batch per tick
         self.process_ready_orders(max_count=1)
 
-        # 4. Process shipments status transitions - limit to 5 per tick
-        self.process_shipments(max_count=5)
+        # 4. Process shipments status transitions - ALTERNATE between accept and deliver
+        # This ensures shipments spend time in each state instead of rushing through
+        if self.tick_count % 2 == 0:
+            # Even ticks: Accept pending shipments (PENDING -> IN_TRANSIT)
+            self.accept_pending_shipments(max_count=2)
+        else:
+            # Odd ticks: Deliver in-transit shipments (IN_TRANSIT -> COMPLETED)
+            self.deliver_shipments(max_count=2)
+        
+        log(f"=== Tick #{self.tick_count} completed ===\n")
 
 
     def create_random_order(self) -> None:
@@ -273,7 +285,9 @@ class Orchestrator:
         
         response = self.http.request("POST", "/admin/orders", payload=payload)
         if response:
-            log(f"Created order {response.get('reference')} at {warehouse.get('code')}")
+            log(f"✓ Created NEW order {response.get('reference')} at {warehouse.get('code')}")
+        else:
+            log(f"✗ Failed to create order")
 
     def process_created_orders(self, max_count: int = 5) -> None:
         # Fetch orders. Ideally we'd filter by status=CREATED but the API might not support it.
@@ -391,35 +405,39 @@ class Orchestrator:
         if response:
             log(f"Created shipment {response.get('shipmentCode')} with {len(batch)} orders")
 
-    def process_shipments(self, max_count: int = 5) -> None:
-        # Move shipments: PENDING_ACCEPTANCE -> IN_TRANSIT -> COMPLETED
+    def accept_pending_shipments(self, max_count: int = 2) -> None:
+        """Accept pending shipments: PENDING_ACCEPTANCE -> IN_TRANSIT"""
         shipments = self.http.request("GET", "/admin/shipments")
         if not shipments:
             return
 
-        # 1. Accept pending shipments (up to max_count)
         pending = [s for s in shipments if s.get("status") == "PENDING_ACCEPTANCE"]
         process_count = min(len(pending), max_count)
+        
         for _ in range(process_count):
             if not pending:
                 break
             shipment = random.choice(pending)
-            pending.remove(shipment)  # Don't process same shipment twice
-            # Use our new admin endpoint
+            pending.remove(shipment)
             self.http.request("PUT", f"/admin/shipments/{shipment['id']}/status?status=IN_TRANSIT")
-            log(f"Accepted shipment {shipment.get('shipmentCode')} (IN_TRANSIT)")
+            log(f"✓ Accepted shipment {shipment.get('shipmentCode')} → IN_TRANSIT")
 
-        # 2. Deliver in-transit shipments (up to max_count)
+    def deliver_shipments(self, max_count: int = 2) -> None:
+        """Deliver in-transit shipments: IN_TRANSIT -> COMPLETED"""
+        shipments = self.http.request("GET", "/admin/shipments")
+        if not shipments:
+            return
+
         in_transit = [s for s in shipments if s.get("status") == "IN_TRANSIT"]
         process_count = min(len(in_transit), max_count)
+        
         for _ in range(process_count):
             if not in_transit:
                 break
             shipment = random.choice(in_transit)
-            in_transit.remove(shipment)  # Don't process same shipment twice
-            # Use our new admin endpoint
+            in_transit.remove(shipment)
             self.http.request("PUT", f"/admin/shipments/{shipment['id']}/status?status=COMPLETED")
-            log(f"Delivered shipment {shipment.get('shipmentCode')} (COMPLETED)")
+            log(f"✓ Delivered shipment {shipment.get('shipmentCode')} → COMPLETED")
 
 # --- Main ---
 
