@@ -90,6 +90,19 @@ public class DriverBffController {
         log.info("Driver {} confirming scan for order {}", driverId, orderId);
 
         var result = orderService.confirmOrderScan(orderId, driverId);
+
+        // Check if shipment needs to be accepted (if it was PENDING_ACCEPTANCE)
+        try {
+            Shipment shipment = shipmentRepository.findById(result.getShipmentId()).orElse(null);
+            if (shipment != null && shipment.getStatus() == ShipmentStatus.PENDING_ACCEPTANCE) {
+                log.info("Auto-accepting shipment {} as driver scanned an order", shipment.getId());
+                shipmentService.acceptShipment(shipment.getId(), driverId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to auto-accept shipment after scan", e);
+            // Don't fail the request, just log it
+        }
+
         return ResponseEntity.ok(DriverOrderScanResponse.from(result));
     }
 
@@ -228,13 +241,13 @@ public class DriverBffController {
 
         log.info("Driver {} requesting daily schedule", driverId);
 
-        // Get all shipments for this driver that are IN_TRANSIT (accepted and active)
+        // Get all shipments for this driver that are IN_TRANSIT or PENDING_ACCEPTANCE
         List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
         log.info("Found {} total shipments for driver {}", shipments.size(), driverId);
         List<Shipment> activeShipments = shipments.stream()
-                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT)
+                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT || s.getStatus() == ShipmentStatus.PENDING_ACCEPTANCE)
                 .toList();
-        log.info("Found {} IN_TRANSIT shipments for driver {}", activeShipments.size(), driverId);
+        log.info("Found {} active (IN_TRANSIT/PENDING) shipments for driver {}", activeShipments.size(), driverId);
 
         if (activeShipments.isEmpty()) {
             log.info("No active (IN_TRANSIT) shipments found for driver {}", driverId);
@@ -397,7 +410,11 @@ public class DriverBffController {
                     map.put("shipmentCode", s.getShipmentCode());
                     map.put("status", s.getStatus().toString());
                     map.put("carrierName", s.getCarrier().getName());
-                    map.put("totalOrders", s.getTotalOrders() != null ? s.getTotalOrders() : 0);
+                    
+                    // Fetch actual order count to ensure accuracy
+                    int orderCount = orderRepository.findByShipmentId(s.getId()).size();
+                    map.put("totalOrders", orderCount > 0 ? orderCount : (s.getTotalOrders() != null ? s.getTotalOrders() : 0));
+                    
                     map.put("estimatedDeliveryDate",
                             s.getEstimatedDeliveryDate() != null ? s.getEstimatedDeliveryDate().toString() : "");
                     return map;
@@ -426,9 +443,9 @@ public class DriverBffController {
         // Get all shipments for this driver
         List<Shipment> shipments = shipmentRepository.findByDriverId(driverId);
 
-        // Filter for IN_TRANSIT shipments only
+        // Filter for IN_TRANSIT and PENDING_ACCEPTANCE shipments
         List<Shipment> activeShipments = shipments.stream()
-                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT)
+                .filter(s -> s.getStatus() == ShipmentStatus.IN_TRANSIT || s.getStatus() == ShipmentStatus.PENDING_ACCEPTANCE)
                 .toList();
 
         if (activeShipments.isEmpty()) {

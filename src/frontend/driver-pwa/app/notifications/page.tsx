@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   Bell,
   CheckCircle,
@@ -16,13 +17,12 @@ import {
   Truck
 } from "lucide-react"
 import Link from "next/link"
-import { useWebSocket } from "@shared/hooks/use-websocket"
-import { useNotificationAnimation } from "@shared/hooks/use-notification-animation"
-import { useUserStore } from "@shared/lib/user-store"
-import { getAccessToken } from "@shared/lib/auth"
-import { acceptShipment } from "@/lib/api"
-import Alert from "@shared/components/Alert"
-import { useAlert } from "@shared/hooks/useAlert"
+import { useWebSocket } from "@/shared/hooks/use-websocket"
+import { useNotificationAnimation } from "@/shared/hooks/use-notification-animation"
+import { useUser } from "@/shared/hooks/use-user"
+import { getAccessToken } from "@/shared/lib/auth"
+import Alert from "@/shared/components/Alert"
+import { useAlert } from "@/shared/hooks/useAlert"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -44,6 +44,7 @@ interface Notification {
   timestamp: Date
   relatedEntity?: string
   actionUrl?: string
+  shipmentStatus?: string // To track if shipment is already accepted
 }
 
 export default function NotificationsPage() {
@@ -52,9 +53,9 @@ export default function NotificationsPage() {
   const [filterType, setFilterType] = useState<string>("All")
   const [filterStatus, setFilterStatus] = useState<string>("All")
   const [isLoading, setIsLoading] = useState(true)
-  const [acceptingShipmentId, setAcceptingShipmentId] = useState<number | null>(null)
-  const user = useUserStore((state) => state.user)
+  const user = useUser()
   const { alert, showSuccess, showError, closeAlert } = useAlert()
+  const router = useRouter()
 
   // Map backend notification to UI format
   const mapNotification = useCallback((n: any): Notification => {
@@ -65,7 +66,7 @@ export default function NotificationsPage() {
     if (n.eventType.includes("ASSIGNED")) {
       type = "info"
       title = "New Assignment"
-      actionUrl = "/interfaces/daily-schedule"
+      actionUrl = "/interfaces/scan-acceptance"
     } else if (n.eventType.includes("CREATED")) {
       type = "success"
       title = "New Item"
@@ -88,26 +89,63 @@ export default function NotificationsPage() {
     }
   }, [])
 
+  // Fetch shipment status to check if already accepted
+  const fetchShipmentStatus = async (shipmentId: string): Promise<string | undefined> => {
+    try {
+      const token = getAccessToken()
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/driver/pending-shipments`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const shipments = await response.json()
+        const shipment = shipments.find((s: any) => s.id.toString() === shipmentId)
+        return shipment?.status
+      }
+    } catch (error) {
+      console.error("Failed to fetch shipment status:", error)
+    }
+    return undefined
+  }
+
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
-    if (!user?.userId) return
+    if (!user?.username) {
+      setIsLoading(false)
+      return
+    }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/${user.userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/notifications/${user.username}`, {
         headers: {
           Authorization: `Bearer ${getAccessToken()}`
         }
       })
       if (response.ok) {
         const data = await response.json()
-        setNotifications(data.map(mapNotification))
+        const mappedNotifications = data.map(mapNotification)
+        
+        // Enrich DRIVER_ASSIGNED notifications with shipment status
+        const enrichedNotifications = await Promise.all(
+          mappedNotifications.map(async (notification: Notification) => {
+            if (notification.eventType === "DRIVER_ASSIGNED" && notification.aggregateType === "SHIPMENT") {
+              const shipmentStatus = await fetchShipmentStatus(notification.aggregateId)
+              return { ...notification, shipmentStatus }
+            }
+            return notification
+          })
+        )
+        
+        setNotifications(enrichedNotifications)
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error)
     } finally {
       setIsLoading(false)
     }
-  }, [user?.userId, mapNotification])
+  }, [user?.username, mapNotification])
 
   useEffect(() => {
     fetchNotifications()
@@ -245,29 +283,6 @@ export default function NotificationsPage() {
       setNotifications([])
     } catch (error) {
       console.error("Failed to delete all:", error)
-    }
-  }
-
-  const handleAcceptShipment = async (shipmentId: number, notificationId: number) => {
-    setAcceptingShipmentId(shipmentId)
-    try {
-      await acceptShipment(shipmentId)
-
-      // Mark notification as read
-      await handleMarkAsRead(notificationId)
-
-      // Show success
-      showSuccess('Shipment Accepted', 'Shipment accepted successfully! Check your daily schedule.')
-
-      // Reload to refresh data
-      setTimeout(() => {
-        window.location.href = '/driver'
-      }, 1500)
-    } catch (error) {
-      console.error("Failed to accept shipment:", error)
-      showError('Accept Failed', 'Failed to accept shipment: ' + (error instanceof Error ? error.message : 'Unknown error'))
-    } finally {
-      setAcceptingShipmentId(null)
     }
   }
 
@@ -466,16 +481,22 @@ export default function NotificationsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            {notification.eventType === "DRIVER_ASSIGNED" ? (
+                            {notification.eventType === "DRIVER_ASSIGNED" && notification.shipmentStatus === "PENDING_ACCEPTANCE" ? (
                               <button
-                                onClick={() => handleAcceptShipment(parseInt(notification.aggregateId), notification.id)}
-                                disabled={acceptingShipmentId === parseInt(notification.aggregateId)}
-                                className="px-3 py-1.5 bg-black text-white text-xs font-semibold rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                title="Accept shipment"
+                                onClick={() => {
+                                  handleMarkAsRead(notification.id);
+                                  router.push('/interfaces/scan-acceptance');
+                                }}
+                                className="px-3 py-1.5 bg-black text-white text-xs font-semibold rounded hover:bg-gray-800 transition-colors"
+                                title="Scan to Accept"
                               >
-                                {acceptingShipmentId === parseInt(notification.aggregateId) ? 'Accepting...' : 'Accept'}
+                                Scan to Accept
                               </button>
-                            ) : notification.status === "unread" && (
+                            ) : notification.eventType === "DRIVER_ASSIGNED" && notification.shipmentStatus ? (
+                              <span className="px-3 py-1.5 text-xs text-gray-500 italic">
+                                Already {notification.shipmentStatus.toLowerCase().replace(/_/g, ' ')}
+                              </span>
+                            ) : notification.status === "unread" ? (
                               <button
                                 onClick={() => handleMarkAsRead(notification.id)}
                                 className="p-1 hover:bg-gray-100 rounded"
@@ -483,7 +504,7 @@ export default function NotificationsPage() {
                               >
                                 <Check className="h-4 w-4" />
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -560,14 +581,20 @@ export default function NotificationsPage() {
                       )}
 
                       <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
-                        {notification.eventType === "DRIVER_ASSIGNED" ? (
+                        {notification.eventType === "DRIVER_ASSIGNED" && notification.shipmentStatus === "PENDING_ACCEPTANCE" ? (
                           <button
-                            onClick={() => handleAcceptShipment(parseInt(notification.aggregateId), notification.id)}
-                            disabled={acceptingShipmentId === parseInt(notification.aggregateId)}
-                            className="flex-1 py-2 bg-black text-white text-sm font-semibold rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            onClick={() => {
+                              handleMarkAsRead(notification.id);
+                              router.push('/interfaces/scan-acceptance');
+                            }}
+                            className="flex-1 py-2 bg-black text-white text-sm font-semibold rounded hover:bg-gray-800 transition-colors"
                           >
-                            {acceptingShipmentId === parseInt(notification.aggregateId) ? 'Accepting...' : 'Accept Shipment'}
+                            Scan to Accept
                           </button>
+                        ) : notification.eventType === "DRIVER_ASSIGNED" && notification.shipmentStatus ? (
+                          <span className="flex-1 text-center text-xs text-gray-500 italic py-2">
+                            Already {notification.shipmentStatus.toLowerCase().replace(/_/g, ' ')}
+                          </span>
                         ) : (
                           <>
                             {notification.status === "unread" && (
