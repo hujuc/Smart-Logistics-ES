@@ -266,6 +266,25 @@ public class LogisticsBffController {
         }
     }
 
+    /**
+     * Get order by ID
+     *
+     * @param id Order ID
+     * @return Order details
+     */
+    @GetMapping("/orders/{id}")
+    public ResponseEntity<?> getOrderById(@PathVariable Long id) {
+        try {
+            log.info("Fetching order {} via Logistics BFF", id);
+            OrderResponse order = orderService.getById(id);
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            log.error("Error fetching order {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Order not found"));
+        }
+    }
+
     // ===========================
     // User Management Endpoints
     // ===========================

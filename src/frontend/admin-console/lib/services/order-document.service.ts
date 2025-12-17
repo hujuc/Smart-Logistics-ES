@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS, createAuthHeaders } from "@/lib/api";
+import { getUserRole } from "@/lib/shared-auth";
 import type { OrderDocument } from "@/types";
 
 async function handleJsonResponse<T>(response: Response): Promise<T> {

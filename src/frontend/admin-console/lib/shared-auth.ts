@@ -68,6 +68,18 @@ export function getUserData(): UserData | null {
 }
 
 /**
+ * Get user's primary role
+ * Returns the first role from the user's roles array
+ */
+export function getUserRole(): string | null {
+  const user = getUserData();
+  if (!user || !user.roles || user.roles.length === 0) {
+    return null;
+  }
+  return user.roles[0];
+}
+
+/**
  * Check if user is authenticated
  */
 export function isAuthenticated(): boolean {
