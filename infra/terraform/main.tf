@@ -111,8 +111,11 @@ resource "docker_container" "postgres" {
     "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256"
   ]
 
-  # No port exposure needed - PostgreSQL only needs to be accessible within the Docker network
-  # Other containers can connect using the container name 'slms-postgres'
+  # Expose PostgreSQL port for external access (e.g., DBeaver, pgAdmin)
+  ports {
+    internal = 5432
+    external = local.config_postgres_host_port
+  }
 
   volumes {
     volume_name    = docker_volume.postgres_data.name
