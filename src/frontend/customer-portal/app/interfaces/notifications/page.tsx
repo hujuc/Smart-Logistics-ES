@@ -27,6 +27,7 @@ import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { useUser } from "../../../shared/hooks/use-user"
 import { useNotificationsStore } from "../../../shared/hooks/use-notifications"
+import { useNotificationAnimation } from "../../../shared/hooks/use-notification-animation"
 
 // Notification types
 type NotificationType = "info" | "success" | "warning" | "error"
@@ -50,6 +51,10 @@ export default function NotificationsPage() {
   const user = useUser()
   const stompClientRef = useRef<Client | null>(null)
   const { setUnreadCount, incrementUnread, decrementUnread } = useNotificationsStore()
+
+  // Calculate unread count for display and animation
+  const unreadCount = notifications.filter(n => n.status === "unread").length
+  const shouldAnimate = useNotificationAnimation(unreadCount)
 
   // Fetch initial notifications
   useEffect(() => {
@@ -82,7 +87,7 @@ export default function NotificationsPage() {
           setNotifications(mappedNotifications)
           // Update unread count in store
           const unread = mappedNotifications.filter(n => n.status === "unread").length
-          setUnreadCount(unread)
+          // Unread count is handled by global listener
         })
         .catch(err => {
           console.error("Failed to fetch notifications:", err)
@@ -114,7 +119,7 @@ export default function NotificationsPage() {
             relatedEntity: n.aggregateId
           }
           setNotifications(prev => [newNotification, ...prev])
-          incrementUnread() // Increment unread count
+          // Unread count is handled by global listener
         })
       },
       onStompError: (frame) => {
@@ -163,7 +168,8 @@ export default function NotificationsPage() {
   })
 
   // Calculate stats
-  const unreadCount = notifications.filter(n => n.status === "unread").length
+  // Calculate stats
+  // const unreadCount = notifications.filter(n => n.status === "unread").length
   const successCount = notifications.filter(n => n.type === "success").length
   const warningCount = notifications.filter(n => n.type === "warning").length
   const errorCount = notifications.filter(n => n.type === "error").length
@@ -223,9 +229,14 @@ export default function NotificationsPage() {
   }
 
   const handleMarkAllAsRead = () => {
-    const unreadIds = notifications.filter(n => n.status === "unread")
-    setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
-    setUnreadCount(0) // Reset unread count
+    if (user?.username) {
+      fetch(`/api/notifications/customer/${user.username}/read`, { method: "PUT" })
+        .then(() => {
+          setNotifications(notifications.map(n => ({ ...n, status: "read" as NotificationStatus })))
+          setUnreadCount(0) // Reset unread count
+        })
+        .catch(err => console.error("Failed to mark all as read:", err))
+    }
   }
 
   const handleDelete = (id: string) => {
@@ -258,8 +269,18 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <Bell className="h-8 w-8 text-blue-600" />
+          <div className="flex items-center gap-2 relative">
+            <div className="relative">
+              <Bell className="h-8 w-8 text-blue-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-in fade-in zoom-in duration-300">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {shouldAnimate && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                  )}
+                </span>
+              )}
+            </div>
             <h1 className="text-3xl font-bold text-black">Customer Notifications</h1>
           </div>
           <p className="text-gray-600 mt-1">Stay updated with your deliveries and support tickets</p>

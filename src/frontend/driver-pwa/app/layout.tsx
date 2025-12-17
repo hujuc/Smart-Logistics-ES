@@ -3,6 +3,7 @@ import "./globals.css";
 import { UserStoreInitializer } from "@shared/components/UserStoreInitializer";
 import { ChatWidget } from "@shared/components/chatbot/ChatWidget";
 import { ObservabilityProvider } from "@shared/components/observability/ObservabilityProvider";
+import { NotificationListener } from "@/components/notification-listener";
 
 export const metadata: Metadata = {
   title: "SLMS - Driver Portal",
@@ -19,8 +20,9 @@ export default function RootLayout({
       <body className="antialiased">
         <ObservabilityProvider serviceName="slms-driver-pwa">
           <UserStoreInitializer />
+          <NotificationListener />
           {children}
-        <ChatWidget apiEndpoint="/api/driver/chat" />
+          <ChatWidget apiEndpoint="/api/driver/chat" />
         </ObservabilityProvider>
       </body>
     </html>

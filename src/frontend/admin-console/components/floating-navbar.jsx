@@ -3,8 +3,9 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import { ChevronRight, ChevronLeft } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
+import { useNotificationAnimation } from "../shared/hooks/use-notification-animation"
 import { useUnreadNotifications } from "../shared/hooks/use-notifications"
 
 export function FloatingNavbar({ navItems }) {
@@ -14,18 +15,7 @@ export function FloatingNavbar({ navItems }) {
 
   // Notification state
   const unreadCount = useUnreadNotifications()
-  const [shouldAnimate, setShouldAnimate] = useState(false)
-  const prevCountRef = useRef(unreadCount)
-
-  // Trigger animation when unread count increases
-  useEffect(() => {
-    if (unreadCount > prevCountRef.current) {
-      setShouldAnimate(true)
-      const timer = setTimeout(() => setShouldAnimate(false), 2000)
-      return () => clearTimeout(timer)
-    }
-    prevCountRef.current = unreadCount
-  }, [unreadCount])
+  const shouldAnimate = useNotificationAnimation(unreadCount)
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -151,8 +141,8 @@ export function FloatingNavbar({ navItems }) {
                   variant="ghost"
                   size="icon"
                   className={`h-12 w-12 md:h-14 md:w-14 rounded-2xl transition-all duration-200 ${active
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
                     }`}
                   aria-label={item.label}
                   title={item.label}
