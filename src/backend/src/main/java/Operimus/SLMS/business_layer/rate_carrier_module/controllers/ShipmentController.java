@@ -61,6 +61,26 @@ public class ShipmentController {
         return ResponseEntity.ok(mapToResponse(shipment));
     }
 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<ShipmentResponse> updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        log.info("Updating status for shipment {} to {}", id, status);
+
+        Shipment shipment = shipmentService.getById(id);
+        String driverId = shipment.getDriverId();
+
+        if ("IN_TRANSIT".equalsIgnoreCase(status)) {
+            shipment = shipmentService.acceptShipment(id, driverId);
+        } else if ("COMPLETED".equalsIgnoreCase(status) || "DELIVERED".equalsIgnoreCase(status)) {
+            shipment = shipmentService.completeDelivery(id, driverId);
+        } else {
+            throw new IllegalArgumentException("Unsupported status transition: " + status);
+        }
+
+        return ResponseEntity.ok(mapToResponse(shipment));
+    }
+
     @GetMapping("/carrier/{carrierId}")
     public ResponseEntity<List<ShipmentResponse>> getByCarrier(@PathVariable Long carrierId) {
         log.info("Fetching shipments for carrier: {}", carrierId);

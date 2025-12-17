@@ -278,7 +278,7 @@ class KeycloakUserServiceIntegrationTest {
         // Then - Verify user no longer exists
         assertThatThrownBy(() -> keycloakUserService.getUserById(existingUser.getId()))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Failed to fetch user");
+                .hasMessageContaining("Unable to retrieve user information");
     }
 
     @Test
@@ -359,7 +359,7 @@ class KeycloakUserServiceIntegrationTest {
         // Then - Should throw exception
         assertThatThrownBy(() -> keycloakUserService.createUser(userDTO2))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Failed to create user");
+                .hasMessageContaining("already exists");
     }
 
     @Test
@@ -371,7 +371,7 @@ class KeycloakUserServiceIntegrationTest {
         // When/Then
         assertThatThrownBy(() -> keycloakUserService.getUserById(nonExistentUserId))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Failed to fetch user");
+                .hasMessageContaining("Unable to retrieve user information");
     }
 
     @Test
