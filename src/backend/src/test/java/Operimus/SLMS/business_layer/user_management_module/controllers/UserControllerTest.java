@@ -210,7 +210,7 @@ class UserControllerTest {
                         .param("query", query)
                         .with(jwt()))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error", is("Failed to search users")));
+                .andExpect(jsonPath("$.error", is("Search failed")));
     }
 
     @Test
@@ -237,7 +237,7 @@ class UserControllerTest {
         mockMvc.perform(delete("/api/users/{userId}", userId)
                         .with(jwt()))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error", is("Failed to delete user")));
+                .andExpect(jsonPath("$.error", is("Delete failed")));
     }
 
     @Test

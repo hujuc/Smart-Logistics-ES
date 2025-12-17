@@ -273,7 +273,7 @@ class LogisticsBffControllerTest {
 
         mockMvc.perform(delete("/api/logistics/users/{userId}", userId))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error", is("Failed to delete user")));
+                .andExpect(jsonPath("$.error", is("Delete failed")));
     }
 
     @Test
@@ -304,7 +304,7 @@ class LogisticsBffControllerTest {
         mockMvc.perform(get("/api/logistics/users/search")
                         .param("query", query))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error", is("Failed to search users")));
+                .andExpect(jsonPath("$.error", is("Search failed")));
     }
 
     private UserRepresentation createUserRepresentation(String username, String email) {

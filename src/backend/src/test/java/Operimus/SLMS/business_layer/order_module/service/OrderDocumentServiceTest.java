@@ -127,7 +127,7 @@ class OrderDocumentServiceTest {
 
         assertThatThrownBy(() -> service.uploadDocument(1L, emptyFile))
                 .isInstanceOf(DocumentStorageException.class)
-                .hasMessage("O ficheiro enviado está vazio.");
+                .hasMessage("The uploaded file is empty.");
         verify(shipmentOrderRepository, never()).findById(anyLong());
     }
 

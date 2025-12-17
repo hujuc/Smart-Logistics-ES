@@ -142,20 +142,16 @@ export default function ScanPackage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-black text-white p-6">
+      <div className="bg-white border-b border-gray-200 p-6">
         <div className="flex items-center gap-4 mb-6">
           <Link href="/">
-            <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-              <ArrowLeft className="h-6 w-6" />
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="h-6 w-6 text-black" />
             </button>
           </Link>
-          <div className="flex items-center gap-2">
-            <Package className="h-6 w-6" />
-            <span className="text-lg font-bold">SLMS</span>
-          </div>
         </div>
-        <h1 className="text-3xl font-bold">Scan Package</h1>
-        <p className="text-gray-300 text-sm mt-1">Complete delivery with proof of delivery</p>
+        <h1 className="text-3xl font-bold text-black">Scan Package</h1>
+        <p className="text-gray-600 text-sm mt-1">Complete delivery with proof of delivery</p>
       </div>
 
       {/* Content */}

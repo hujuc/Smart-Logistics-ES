@@ -78,7 +78,19 @@ public class KeycloakUserService {
             if (response.getStatus() != 201) {
                 String errorMessage = response.readEntity(String.class);
                 log.error("Failed to create user: {} - {}", response.getStatus(), errorMessage);
-                throw new RuntimeException("Failed to create user: " + errorMessage);
+
+                // Parse common Keycloak error responses to provide better user feedback
+                if (response.getStatus() == 409 || errorMessage.contains("exists") || errorMessage.contains("already")) {
+                    throw new RuntimeException("A user with this username or email already exists. Please use a different one.");
+                } else if (response.getStatus() == 400) {
+                    if (errorMessage.contains("email")) {
+                        throw new RuntimeException("Invalid email address. Please provide a valid email.");
+                    } else if (errorMessage.contains("password")) {
+                        throw new RuntimeException("Password does not meet requirements. Please use a stronger password.");
+                    }
+                    throw new RuntimeException("Invalid user information provided. Please check all fields and try again.");
+                }
+                throw new RuntimeException("Unable to create user account. Please try again or contact support if the issue persists.");
             }
 
             String userId = CreatedResponseUtil.getCreatedId(response);
@@ -100,9 +112,12 @@ public class KeycloakUserService {
             }
             return createdUser;
 
+        } catch (RuntimeException e) {
+            // Re-throw our custom error messages
+            throw e;
         } catch (Exception e) {
             log.error("Error creating user: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to create user: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to create user account due to a technical error. Please try again later.", e);
         }
     }
 
@@ -172,7 +187,7 @@ public class KeycloakUserService {
             return user;
         } catch (Exception e) {
             log.error("Error fetching user by ID: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch user: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to retrieve user information. The user may not exist or there was a technical error.", e);
         }
     }
 
@@ -193,7 +208,7 @@ public class KeycloakUserService {
             return users;
         } catch (Exception e) {
             log.error("Error fetching all users: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch all users: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to retrieve users list. Please try again later.", e);
         }
     }
 
@@ -236,7 +251,7 @@ public class KeycloakUserService {
             return usersWithRole;
         } catch (Exception e) {
             log.error("Error fetching users by role {}: {}", roleName, e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch users by role: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to retrieve users with the specified role. Please try again later.", e);
         }
     }
 
@@ -257,7 +272,7 @@ public class KeycloakUserService {
             return users;
         } catch (Exception e) {
             log.error("Error searching users: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to search users: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to search users. Please try again later.", e);
         }
     }
 
@@ -265,7 +280,7 @@ public class KeycloakUserService {
         try {
             List<UserRepresentation> users = keycloak.realm(realm).users().searchByUsername(username, true);
             if (users.isEmpty()) {
-                throw new RuntimeException("User not found: " + username);
+                throw new RuntimeException("User '" + username + "' not found.");
             }
             UserRepresentation user = users.get(0);
             // Fetch and set groups for the user
@@ -274,9 +289,12 @@ public class KeycloakUserService {
                 user.setGroups(groups.stream().map(g -> g.getName()).collect(java.util.stream.Collectors.toList()));
             }
             return user;
+        } catch (RuntimeException e) {
+            // Re-throw our custom error messages
+            throw e;
         } catch (Exception e) {
             log.error("Error fetching user by username: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch user: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to retrieve user information. Please try again later.", e);
         }
     }
 
@@ -331,7 +349,7 @@ public class KeycloakUserService {
 
         } catch (Exception e) {
             log.error("Error updating user: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to update user: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to update user information. Please check the data and try again.", e);
         }
     }
 
@@ -346,7 +364,7 @@ public class KeycloakUserService {
             log.info("Password updated successfully for user: {}", userId);
         } catch (Exception e) {
             log.error("Error updating password: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to update password: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to update password. Please ensure the new password meets all requirements.", e);
         }
     }
 
@@ -356,7 +374,7 @@ public class KeycloakUserService {
             log.info("User deleted: {}", userId);
         } catch (Exception e) {
             log.error("Error deleting user: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to delete user: " + e.getMessage(), e);
+            throw new RuntimeException("Unable to delete user. The user may not exist or there was a technical error.", e);
         }
     }
 }
