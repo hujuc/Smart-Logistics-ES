@@ -32,7 +32,7 @@ locals {
   config_keycloak_hostname_url   = var.keycloak_hostname_url != null ? var.keycloak_hostname_url : "http://localhost:8180"
   config_keycloak_admin          = var.keycloak_admin != null ? var.keycloak_admin : "admin"
   config_keycloak_admin_password = var.keycloak_admin_password != null ? var.keycloak_admin_password : "admin"
-  config_jwt_issuer_uri = var.jwt_issuer_uri != null ? var.jwt_issuer_uri : "http://ec2-35-181-9-117.eu-west-3.compute.amazonaws.com:8080/realms/slms"
+  config_jwt_issuer_uri = var.jwt_issuer_uri != null ? var.jwt_issuer_uri : "http://ec2-51-44-208-160.eu-west-3.compute.amazonaws.com:8180/realms/slms"
 
   config_minio_endpoint    = var.minio_endpoint != null ? var.minio_endpoint : "http://slms-minio-prod:9000"
   config_minio_access_key  = var.minio_access_key != null ? var.minio_access_key : "minioadmin"
@@ -142,11 +142,12 @@ resource "docker_image" "backend" {
   name         = "slms-backend:latest"
   keep_locally = true # Keep image locally for faster rebuilds
   build {
-    context    = local.backend_dir
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/backend/Dockerfile.prod"
     tag        = ["slms-backend:latest"]
     build_args = {
       BUILDKIT_INLINE_CACHE = "1"
+      BACKEND_PATH          = "src/backend"
     }
   }
 }
@@ -239,8 +240,8 @@ resource "docker_image" "admin_console" {
   name         = "slms-admin-console:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/admin-console"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-admin-console:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/admin-console"
@@ -292,8 +293,8 @@ resource "docker_image" "customer_portal" {
   name         = "slms-customer-portal:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/customer-portal"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-customer-portal:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/customer-portal"
@@ -348,8 +349,8 @@ resource "docker_image" "driver_pwa" {
   name         = "slms-driver-pwa:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/driver-pwa"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-driver-pwa:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/driver-pwa"
@@ -402,8 +403,8 @@ resource "docker_image" "landing_page" {
   name         = "slms-landing-page:latest"
   keep_locally = true
   build {
-    context    = "${local.repo_root}/src/frontend/landing-page"
-    dockerfile = "Dockerfile"
+    context    = local.repo_root
+    dockerfile = "infra/docker/frontend/Dockerfile.prod"
     tag        = ["slms-landing-page:latest"]
     build_args = {
       FRONTEND_PATH                            = "src/frontend/landing-page"

@@ -16,7 +16,6 @@ import type { Order, ShipmentDocument, ShipmentOrderStatus, OrderEvent } from "@
 import { STATUS_LABELS } from "@/types"
 import { orderDocumentService } from "@/lib/services/order-document.service"
 import { shipmentDocumentService } from "@/lib/services/shipment-document.service"
-import { featureFlagManager, isProofOfDeliveryEnabled } from "@/lib/flagsmith"
 
 interface PackageDetailsPageProps {
   params: Promise<{ id: string }>
@@ -35,7 +34,6 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [isPodLoading, setIsPodLoading] = useState(false)
   const [podError, setPodError] = useState<string | null>(null)
   const [podImageUrl, setPodImageUrl] = useState<string | null>(null)
-  const [podFeatureEnabled, setPodFeatureEnabled] = useState(false)
   const [isStatusChanging, setIsStatusChanging] = useState(false)
   const [shipmentDocuments, setShipmentDocuments] = useState<ShipmentDocument[]>([])
   const [isShipmentDocsLoading, setIsShipmentDocsLoading] = useState(false)
@@ -43,18 +41,6 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([])
   const [isEventsLoading, setIsEventsLoading] = useState(false)
   const [eventsError, setEventsError] = useState<string | null>(null)
-
-  // Initialize Flagsmith on mount
-  useEffect(() => {
-    const initFlags = async () => {
-      const warehouseId = 'warehouse-' + Math.random().toString(36).substring(7);
-      await featureFlagManager.initialize(warehouseId);
-      const enabled = isProofOfDeliveryEnabled();
-      setPodFeatureEnabled(enabled);
-      console.log('[PackageDetails] POD feature enabled:', enabled);
-    };
-    initFlags();
-  }, []);
 
   // Unwrap params Promise
   useEffect(() => {
@@ -176,7 +162,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
   }, [orderId])
 
   useEffect(() => {
-    if (!orderId || !podFeatureEnabled) {
+    if (!orderId) {
       setPodImageUrl((prev) => {
         if (prev) {
           URL.revokeObjectURL(prev)
@@ -262,7 +248,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         URL.revokeObjectURL(currentUrl)
       }
     }
-  }, [orderId, podFeatureEnabled])
+  }, [orderId])
 
   useEffect(() => {
     if (!orderId) {
@@ -823,7 +809,7 @@ export default function PackageDetailsPage({ params }: PackageDetailsPageProps) 
         </div>
       </div>
 
-      {podFeatureEnabled && (order.status === 'DELIVERED' || podImageUrl) && (
+      {(order.status === 'DELIVERED' || podImageUrl) && (
         <div className="bg-white border rounded-lg p-6 shadow-sm">
           <h3 className="font-semibold text-black mb-4">Proof of Delivery</h3>
           {isPodLoading ? (

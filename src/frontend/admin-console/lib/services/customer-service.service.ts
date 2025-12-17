@@ -210,7 +210,7 @@ export const customerServiceExceptionsApi = {
    * Get exception statistics summary
    */
   async getSummary(): Promise<ExceptionSummaryResponse> {
-    return apiFetch<ExceptionSummaryResponse>(API_ENDPOINTS.customerService.exceptionsSummary);
+    return apiFetch<ExceptionSummaryResponse>(API_ENDPOINTS.customerService.dashboardSummary);
   },
 };
 

@@ -61,8 +61,13 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Login failed');
+    try {
+      const error = await response.json();
+      throw new Error(error.error || 'Login failed');
+    } catch (parseError) {
+      // If response has no JSON body, throw generic error with status
+      throw new Error(`Login failed with status ${response.status}`);
+    }
   }
 
   return response.json();
@@ -82,8 +87,13 @@ export async function register(userData: SignUpRequest): Promise<LoginResponse> 
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Registration failed');
+    try {
+      const error = await response.json();
+      throw new Error(error.error || 'Registration failed');
+    } catch (parseError) {
+      // If response has no JSON body, throw generic error with status
+      throw new Error(`Registration failed with status ${response.status}`);
+    }
   }
 
   return response.json();

@@ -23,16 +23,18 @@ import java.util.UUID;
 /**
  * Customer Service BFF Controller
  *
- * This controller is part of the Backend-For-Frontend (BFF) pattern for the customer service interface.
- * It exposes customer-service-specific endpoints that delegate to business layer services.
+ * This controller is part of the Backend-For-Frontend (BFF) pattern for the
+ * customer service interface.
+ * It exposes customer-service-specific endpoints that delegate to business
+ * layer services.
  *
- * Endpoints are mapped to /api/customer-service/* to match the customer service rep role permissions.
+ * Endpoints are mapped to /api/customer-service/* to match the customer service
+ * rep role permissions.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/customer-service")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class CustomerServiceBffController {
 
     private final DeliveryExceptionService exceptionService;
@@ -50,8 +52,7 @@ public class CustomerServiceBffController {
         return ResponseEntity.ok(Map.of(
                 "status", "UP",
                 "service", "Customer Service BFF",
-                "timestamp", java.time.Instant.now().toString()
-        ));
+                "timestamp", java.time.Instant.now().toString()));
     }
 
     // ========================================
@@ -60,7 +61,8 @@ public class CustomerServiceBffController {
 
     /**
      * Get all delivery exceptions with optional filters
-     * GET /api/customer-service/delivery-exceptions?status=OPEN&priority=HIGH&assignedTo={uuid}&severity=CRITICAL
+     * GET
+     * /api/customer-service/delivery-exceptions?status=OPEN&priority=HIGH&assignedTo={uuid}&severity=CRITICAL
      */
     @GetMapping("/delivery-exceptions")
     public ResponseEntity<List<DeliveryExceptionResponse>> getExceptions(
@@ -161,18 +163,17 @@ public class CustomerServiceBffController {
             @RequestBody Map<String, String> body) {
         try {
             log.info("Customer Service BFF: Logging carrier contact for exception {}", id);
-            
+
             // Verify exception exists
             exceptionService.getById(id);
-            
+
             // TODO: Implement notification logging when notification service is available
             String message = body.get("message");
             log.info("Carrier contact logged for exception {}: {}", id, message);
-            
+
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "message", "Carrier contact logged successfully"
-            ));
+                    "message", "Carrier contact logged successfully"));
         } catch (Exception e) {
             log.error("Failed to log carrier contact for exception {}: {}", id, e.getMessage());
             throw e;
@@ -189,19 +190,18 @@ public class CustomerServiceBffController {
             @RequestBody Map<String, String> body) {
         try {
             log.info("Customer Service BFF: Sending customer notification for exception {}", id);
-            
+
             // Verify exception exists
             DeliveryExceptionResponse exception = exceptionService.getById(id);
-            
+
             // TODO: Implement notification service integration
             String message = body.get("message");
-            log.info("Customer notification sent for exception {} to customer {}: {}", 
+            log.info("Customer notification sent for exception {} to customer {}: {}",
                     id, exception.getCustomerId(), message);
-            
+
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "message", "Customer notification sent successfully"
-            ));
+                    "message", "Customer notification sent successfully"));
         } catch (Exception e) {
             log.error("Failed to send customer notification for exception {}: {}", id, e.getMessage());
             throw e;
@@ -218,20 +218,19 @@ public class CustomerServiceBffController {
             @RequestBody Map<String, String> body) {
         try {
             log.info("Customer Service BFF: Rescheduling delivery for exception {}", id);
-            
+
             // Verify exception exists
             DeliveryExceptionResponse exception = exceptionService.getById(id);
-            
+
             // TODO: Implement delivery manifest rescheduling when available
             String newDate = body.get("newDate");
-            log.info("Delivery rescheduled for exception {} (order {}): new date {}", 
+            log.info("Delivery rescheduled for exception {} (order {}): new date {}",
                     id, exception.getOrderId(), newDate);
-            
+
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "message", "Delivery rescheduled successfully",
-                    "newDate", newDate
-            ));
+                    "newDate", newDate));
         } catch (Exception e) {
             log.error("Failed to reschedule delivery for exception {}: {}", id, e.getMessage());
             throw e;
@@ -248,19 +247,18 @@ public class CustomerServiceBffController {
             @RequestBody Map<String, String> body) {
         try {
             log.info("Customer Service BFF: Initiating return for exception {}", id);
-            
+
             // Verify exception exists
             DeliveryExceptionResponse exception = exceptionService.getById(id);
-            
+
             // TODO: Implement return workflow when available
             String reason = body.get("reason");
-            log.info("Return initiated for exception {} (order {}): {}", 
+            log.info("Return initiated for exception {} (order {}): {}",
                     id, exception.getOrderId(), reason);
-            
+
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "message", "Return request initiated successfully"
-            ));
+                    "message", "Return request initiated successfully"));
         } catch (Exception e) {
             log.error("Failed to request return for exception {}: {}", id, e.getMessage());
             throw e;
@@ -333,19 +331,17 @@ public class CustomerServiceBffController {
             @RequestParam String query) {
         try {
             log.info("Customer Service BFF: Searching orders with query: {}", query);
-            
+
             // TODO: Implement proper search in OrderService
             // For now, get all orders and filter client-side
             List<OrderResponse> allOrders = orderService.getAll();
-            
+
             List<OrderResponse> filtered = allOrders.stream()
-                    .filter(order -> 
-                        order.getReference().toLowerCase().contains(query.toLowerCase()) ||
-                        order.getTrackingNumber() != null && 
-                        order.getTrackingNumber().toLowerCase().contains(query.toLowerCase())
-                    )
+                    .filter(order -> order.getReference().toLowerCase().contains(query.toLowerCase()) ||
+                            order.getTrackingNumber() != null &&
+                                    order.getTrackingNumber().toLowerCase().contains(query.toLowerCase()))
                     .toList();
-            
+
             return ResponseEntity.ok(filtered);
         } catch (Exception e) {
             log.error("Failed to search orders: {}", e.getMessage());
@@ -394,16 +390,16 @@ public class CustomerServiceBffController {
     public ResponseEntity<Map<String, Object>> getOrderTracking(@PathVariable Long id) {
         try {
             log.info("Customer Service BFF: Fetching tracking for order {}", id);
-            
+
             OrderResponse order = orderService.getById(id);
-            
+
             // TODO: Implement proper tracking events when tracking service is available
             return ResponseEntity.ok(Map.of(
                     "orderId", order.getId(),
                     "trackingNumber", order.getTrackingNumber() != null ? order.getTrackingNumber() : "",
                     "status", order.getStatus().toString(),
-                    "estimatedDelivery", order.getEstimatedDeliveryDate() != null ? 
-                            order.getEstimatedDeliveryDate().toString() : "",
+                    "estimatedDelivery",
+                    order.getEstimatedDeliveryDate() != null ? order.getEstimatedDeliveryDate().toString() : "",
                     "events", List.of() // TODO: Add tracking events
             ));
         } catch (Exception e) {
@@ -416,7 +412,8 @@ public class CustomerServiceBffController {
      * Get order with events in a single optimized call (Version B - Feature Flag)
      * GET /api/customer-service/orders/{id}/with-events
      * 
-     * This endpoint returns order details along with all events in a single response,
+     * This endpoint returns order details along with all events in a single
+     * response,
      * reducing the number of API calls needed and improving performance.
      * Used by Version B of the order lookup interface for A/B testing.
      */
@@ -424,24 +421,23 @@ public class CustomerServiceBffController {
     public ResponseEntity<Map<String, Object>> getOrderWithEvents(@PathVariable Long id) {
         try {
             log.info("Customer Service BFF (Version B): Fetching order {} with events", id);
-            
+
             // Fetch order
             OrderResponse order = orderService.getById(id);
-            
+
             // Fetch events
             List<OrderEventResponse> events = shipmentOrderEventService.getEventsForOrder(id);
-            
+
             // Return combined response
             Map<String, Object> response = Map.of(
                     "order", order,
                     "events", events,
                     "version", "B",
-                    "optimized", true
-            );
-            
-            log.info("Customer Service BFF (Version B): Successfully fetched order {} with {} events", 
+                    "optimized", true);
+
+            log.info("Customer Service BFF (Version B): Successfully fetched order {} with {} events",
                     id, events.size());
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Failed to fetch order {} with events: {}", id, e.getMessage());
@@ -461,16 +457,16 @@ public class CustomerServiceBffController {
     public ResponseEntity<List<UserRepresentation>> getCustomerServiceReps() {
         try {
             log.info("Customer Service BFF: Fetching all customer service representatives");
-            
+
             // Try both possible role names
             List<UserRepresentation> csrUsers = userService.getUsersByRole("CUSTOMER_SERVICE_REP");
-            
+
             // If nothing found with CUSTOMER_SERVICE_REP, try alternative name
             if (csrUsers.isEmpty()) {
                 log.info("No users found with role CUSTOMER_SERVICE_REP, trying customer_service_representative");
                 csrUsers = userService.getUsersByRole("customer_service_representative");
             }
-            
+
             log.info("Found {} customer service representatives", csrUsers.size());
             return ResponseEntity.ok(csrUsers);
         } catch (Exception e) {

@@ -1,4 +1,4 @@
-import { Package, QrCode, Settings, Truck, MapPin, Users, FileText, BarChart, Search, Warehouse, Bell } from "lucide-react"
+import { Package, Settings, Truck, MapPin, Users, FileText, BarChart, Search, Warehouse, Bell } from "lucide-react"
 import { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -13,11 +13,6 @@ export const warehouseNavItems: NavItem[] = [
     href: "/interfaces/warehouse",
     icon: Package,
     label: "Warehouse",
-  },
-  {
-    href: "/interfaces/warehouse/qr-scanner",
-    icon: QrCode,
-    label: "QR Scanner",
   },
   {
     href: "/interfaces/warehouse/carrier-comparison",

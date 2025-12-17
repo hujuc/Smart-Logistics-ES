@@ -2,7 +2,7 @@ name: CD - Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/deploy]
   workflow_dispatch:
 
 permissions:
@@ -233,7 +233,7 @@ jobs:
           docker rmi slms-customer-portal:latest -f || true
           docker rmi slms-driver-pwa:latest -f || true
 
-          echo "✅ Cleanup complete"
+          echo "Cleanup complete"
 
       - name: Deploy with Terraform and Docker Compose
         working-directory: infra
@@ -241,32 +241,80 @@ jobs:
         run: |
           chmod +x deploy.sh
           ./deploy.sh deploy
-          echo "✅ Deployment complete"
+          echo " Deployment complete"
 
       - name: Restart Nginx for DNS refresh
         shell: bash
         run: |
           docker restart slms-nginx-prod || true
-          echo "✅ Nginx restarted"
+          echo " Nginx restarted"
 
       - name: Verify deployment health
         shell: bash
         run: |
           echo "Checking service health..."
-          sleep 10
+          echo "Waiting for containers to start (90s for backend, 60s for frontends)..."
+          sleep 180
 
-          if docker ps | grep -q slms-backend-prod; then
-            echo "✅ Backend is running"
-          else
-            echo "❌ Backend is not running"
+          echo ""
+          echo "=== Checking Backend Health ==="
+          backend_healthy=false
+          for i in {1..10}; do
+            if docker ps --format '{{.Names}}\t{{.Status}}' | grep slms-backend-prod | grep -q "healthy"; then
+              echo " Backend containers are healthy"
+              backend_healthy=true
+              break
+            else
+              echo "Attempt $i/10: Backend not healthy yet, waiting 10s..."
+              docker ps --format 'table {{.Names}}\t{{.Status}}' | grep slms-backend-prod || echo "No backend containers found"
+              sleep 10
+            fi
+          done
+
+          if [ "$backend_healthy" = false ]; then
+            echo "Backend containers failed health checks"
+            echo "Backend logs:"
+            docker logs --tail=50 slms-backend-prod-1 || true
             exit 1
           fi
 
-          if docker ps | grep -q slms-nginx-prod; then
-            echo "✅ Nginx is running"
-          else
-            echo "❌ Nginx is not running"
+          echo ""
+          echo "=== Checking Frontend Health ==="
+          frontend_healthy=false
+          for i in {1..10}; do
+            unhealthy_count=$(docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'slms-(admin-console|customer-portal|driver-pwa|landing-page)-prod' | grep -c "unhealthy" || true)
+            healthy_count=$(docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'slms-(admin-console|customer-portal|driver-pwa|landing-page)-prod' | grep -c "healthy" || true)
+
+            if [ "$healthy_count" -ge 8 ]; then
+              echo " All frontend containers are healthy ($healthy_count/8)"
+              frontend_healthy=true
+              break
+            else
+              echo "Attempt $i/10: Only $healthy_count/8 frontend containers healthy, waiting 10s..."
+              docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E 'slms-(admin-console|customer-portal|driver-pwa|landing-page)-prod'
+              sleep 10
+            fi
+          done
+
+          if [ "$frontend_healthy" = false ]; then
+            echo "Frontend containers failed health checks"
+            echo "Sample frontend logs (landing-page):"
+            docker logs --tail=50 slms-landing-page-prod-1 || true
             exit 1
           fi
 
-          echo "✅ Deployment health check passed"
+          echo ""
+          echo "=== Checking Nginx ==="
+          if docker ps --format '{{.Names}}\t{{.Status}}' | grep -q slms-nginx-prod; then
+            echo " Nginx is running"
+          else
+            echo "Nginx is not running"
+            docker logs --tail=50 slms-nginx-prod || true
+            exit 1
+          fi
+
+          echo ""
+          echo " All deployment health checks passed!"
+          echo ""
+          echo "=== Service Status Summary ==="
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep slms-

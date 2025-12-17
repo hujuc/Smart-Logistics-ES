@@ -1,52 +1,112 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
-  BarChart,
-  Download,
   TrendingUp,
-  TrendingDown,
   MessageSquare,
   Clock,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react"
 import Link from "next/link"
+import { API_ENDPOINTS, createAuthHeaders } from "@/lib/api"
+
+interface ExceptionSummary {
+  totalExceptions: number
+  openExceptions: number
+  inProgressExceptions: number
+  resolvedToday: number
+  highPriorityExceptions: number
+  slaBreachedExceptions: number
+  averageResolutionTimeHours: number
+  customerSatisfactionRate: number
+}
 
 export default function ReportsPage() {
-  const stats = {
-    totalInquiries: 1247,
-    resolvedInquiries: 1089,
-    avgResponseTime: "2.3 hours",
-    satisfactionRate: 94.5,
-    trendsUp: true,
+  const [summary, setSummary] = useState<ExceptionSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch(API_ENDPOINTS.customerService.dashboardSummary, {
+          headers: createAuthHeaders(),
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch dashboard summary: ${response.status} ${response.statusText}`)
+        }
+
+        const data = await response.json()
+        setSummary(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSummary()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading reports...</p>
+        </div>
+      </div>
+    )
   }
 
-  const monthlyData = [
-    { month: "Jun", inquiries: 180, resolved: 165 },
-    { month: "Jul", inquiries: 210, resolved: 195 },
-    { month: "Aug", inquiries: 195, resolved: 180 },
-    { month: "Sep", inquiries: 230, resolved: 215 },
-    { month: "Oct", inquiries: 185, resolved: 172 },
-  ]
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-600 mx-auto" />
+          <p className="mt-4 text-red-600">Error: {error}</p>
+          <Link href="/interfaces/customer-service">
+            <Button variant="outline" className="mt-4">Back to Inquiries</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
-  const categoryBreakdown = [
-    { category: "Delivery Issues", count: 342, percentage: 27.4 },
-    { category: "Tracking Inquiries", count: 298, percentage: 23.9 },
-    { category: "Refund Requests", count: 245, percentage: 19.6 },
-    { category: "General Inquiries", count: 187, percentage: 15.0 },
-    { category: "Other", count: 175, percentage: 14.1 },
-  ]
+  if (!summary) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-gray-600">No data available</p>
+          <Link href="/interfaces/customer-service">
+            <Button variant="outline" className="mt-4">Back to Inquiries</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Calculate resolution rate
+  const resolvedCount = summary.totalExceptions - summary.openExceptions - summary.inProgressExceptions
+  const resolutionRate = summary.totalExceptions > 0
+    ? ((resolvedCount / summary.totalExceptions) * 100).toFixed(1)
+    : 0
+
+  // Format average resolution time
+  const avgResolutionTime = summary.averageResolutionTimeHours
+    ? `${summary.averageResolutionTimeHours.toFixed(1)} hours`
+    : 'N/A'
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-black">Customer Service Reports</h1>
         <div className="flex gap-3">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
           <Link href="/interfaces/customer-service">
             <Button variant="outline">Back to Inquiries</Button>
           </Link>
@@ -59,33 +119,24 @@ export default function ReportsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Inquiries</p>
-              <p className="text-3xl font-bold text-black">{stats.totalInquiries}</p>
+              <p className="text-3xl font-bold text-black">{summary.totalExceptions}</p>
             </div>
             <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <MessageSquare className="h-6 w-6 text-blue-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm">
-            {stats.trendsUp ? (
-              <>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <span className="text-green-600 font-medium">+12%</span>
-              </>
-            ) : (
-              <>
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                <span className="text-red-600 font-medium">-5%</span>
-              </>
-            )}
-            <span className="text-gray-500">vs last month</span>
+            <span className="text-gray-500">
+              {summary.openExceptions} open, {summary.inProgressExceptions} in progress
+            </span>
           </div>
         </div>
 
         <div className="bg-white border rounded-lg p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Resolved</p>
-              <p className="text-3xl font-bold text-black">{stats.resolvedInquiries}</p>
+              <p className="text-sm text-gray-600 mb-1">Resolved Today</p>
+              <p className="text-3xl font-bold text-black">{summary.resolvedToday}</p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
@@ -94,10 +145,10 @@ export default function ReportsPage() {
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm mb-1">
               <span className="text-gray-500">Resolution Rate</span>
-              <span className="font-medium text-black">87.3%</span>
+              <span className="font-medium text-black">{resolutionRate}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: "87.3%" }}></div>
+              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${resolutionRate}%` }}></div>
             </div>
           </div>
         </div>
@@ -106,16 +157,14 @@ export default function ReportsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Avg Response Time</p>
-              <p className="text-3xl font-bold text-black">{stats.avgResponseTime}</p>
+              <p className="text-3xl font-bold text-black">{avgResolutionTime}</p>
             </div>
             <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <Clock className="h-6 w-6 text-yellow-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm">
-            <TrendingDown className="h-4 w-4 text-green-600" />
-            <span className="text-green-600 font-medium">-18 min</span>
-            <span className="text-gray-500">faster</span>
+            <span className="text-gray-500">{summary.slaBreachedExceptions} SLA breached</span>
           </div>
         </div>
 
@@ -123,114 +172,119 @@ export default function ReportsPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Satisfaction Rate</p>
-              <p className="text-3xl font-bold text-black">{stats.satisfactionRate}%</p>
+              <p className="text-3xl font-bold text-black">
+                {summary.customerSatisfactionRate
+                  ? `${summary.customerSatisfactionRate.toFixed(1)}%`
+                  : 'N/A'}
+              </p>
             </div>
             <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <TrendingUp className="h-6 w-6 text-purple-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm">
-            <TrendingUp className="h-4 w-4 text-green-600" />
-            <span className="text-green-600 font-medium">+2.1%</span>
-            <span className="text-gray-500">improvement</span>
+            <span className="text-gray-500">Based on customer feedback</span>
           </div>
         </div>
       </div>
 
-      {/* Monthly Trends Chart */}
+      {/* Priority Breakdown */}
       <div className="bg-white border rounded-lg p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <BarChart className="h-6 w-6 text-blue-600" />
+          <div className="h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
-          <h2 className="text-xl font-semibold text-black">Monthly Trends</h2>
-        </div>
-        
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 bg-blue-500 rounded"></div>
-              <span className="text-gray-600">Total Inquiries</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 bg-green-500 rounded"></div>
-              <span className="text-gray-600">Resolved</span>
-            </div>
-          </div>
+          <h2 className="text-xl font-semibold text-black">Priority Breakdown</h2>
         </div>
 
-        <div className="h-64 flex items-end justify-between gap-4">
-          {monthlyData.map((data) => {
-            const maxValue = Math.max(...monthlyData.map((d) => d.inquiries))
-            const inquiriesHeight = (data.inquiries / maxValue) * 100
-            const resolvedHeight = (data.resolved / maxValue) * 100
-
-            return (
-              <div key={data.month} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex items-end justify-center gap-2 h-48">
-                  <div className="relative flex-1 bg-blue-500 rounded-t hover:bg-blue-600 transition-colors group">
-                    <div
-                      className="w-full bg-blue-500 rounded-t"
-                      style={{ height: `${inquiriesHeight}%` }}
-                    ></div>
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {data.inquiries}
-                    </div>
-                  </div>
-                  <div className="relative flex-1 bg-green-500 rounded-t hover:bg-green-600 transition-colors group">
-                    <div
-                      className="w-full bg-green-500 rounded-t"
-                      style={{ height: `${resolvedHeight}%` }}
-                    ></div>
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {data.resolved}
-                    </div>
-                  </div>
-                </div>
-                <span className="text-sm font-medium text-gray-600">{data.month}</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Category Breakdown */}
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <AlertCircle className="h-6 w-6 text-purple-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-black">Inquiries by Category</h2>
-        </div>
-        
         <div className="space-y-4">
-          {categoryBreakdown.map((item, index) => (
-            <div key={item.category}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-black">{item.category}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{item.count} inquiries</span>
-                  <span className="text-sm font-semibold text-black">{item.percentage}%</span>
-                </div>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    index === 0
-                      ? "bg-red-500"
-                      : index === 1
-                      ? "bg-yellow-500"
-                      : index === 2
-                      ? "bg-blue-500"
-                      : index === 3
-                      ? "bg-green-500"
-                      : "bg-purple-500"
-                  }`}
-                  style={{ width: `${item.percentage}%` }}
-                ></div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-black">High Priority</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">{summary.highPriorityExceptions} cases</span>
+                <span className="text-sm font-semibold text-black">
+                  {summary.totalExceptions > 0
+                    ? ((summary.highPriorityExceptions / summary.totalExceptions) * 100).toFixed(1)
+                    : 0}%
+                </span>
               </div>
             </div>
-          ))}
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full bg-red-500"
+                style={{
+                  width: `${summary.totalExceptions > 0
+                    ? (summary.highPriorityExceptions / summary.totalExceptions) * 100
+                    : 0}%`
+                }}
+              ></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-black">In Progress</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">{summary.inProgressExceptions} cases</span>
+                <span className="text-sm font-semibold text-black">
+                  {summary.totalExceptions > 0
+                    ? ((summary.inProgressExceptions / summary.totalExceptions) * 100).toFixed(1)
+                    : 0}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full bg-yellow-500"
+                style={{
+                  width: `${summary.totalExceptions > 0
+                    ? (summary.inProgressExceptions / summary.totalExceptions) * 100
+                    : 0}%`
+                }}
+              ></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-black">Open</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">{summary.openExceptions} cases</span>
+                <span className="text-sm font-semibold text-black">
+                  {summary.totalExceptions > 0
+                    ? ((summary.openExceptions / summary.totalExceptions) * 100).toFixed(1)
+                    : 0}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full bg-blue-500"
+                style={{
+                  width: `${summary.totalExceptions > 0
+                    ? (summary.openExceptions / summary.totalExceptions) * 100
+                    : 0}%`
+                }}
+              ></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-black">Resolved</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">{resolvedCount} cases</span>
+                <span className="text-sm font-semibold text-black">{resolutionRate}%</span>
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full bg-green-500"
+                style={{ width: `${resolutionRate}%` }}
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

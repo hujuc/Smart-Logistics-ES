@@ -15,16 +15,17 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Customer Service Representative Chatbot BFF Controller (Admin Console)
  *
- * Provides chatbot functionality for customer service reps in the admin console.
- * The chatbot provides information about customer support, exception handling, and service procedures.
+ * Provides chatbot functionality for customer service reps in the admin
+ * console.
+ * The chatbot provides information about customer support, exception handling,
+ * and service procedures.
  *
  * Endpoints are mapped to /api/customer-service/chat
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/customer-service")
+@RequestMapping("/api/customer-service/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost", "http://localhost:3000"}, allowCredentials = "true")
 public class CustomerServiceChatBffController {
 
     private final ChatbotService chatbotService;
@@ -36,11 +37,12 @@ public class CustomerServiceChatBffController {
      *
      * POST /api/customer-service/chat
      *
-     * @param request The chat request containing user message and conversation history
-     * @param jwt JWT token with customer service rep information (required)
+     * @param request The chat request containing user message and conversation
+     *                history
+     * @param jwt     JWT token with customer service rep information (required)
      * @return ChatResponse with the assistant's reply and source documents
      */
-    @PostMapping("/chat")
+    @PostMapping
     public ResponseEntity<ChatResponse> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
@@ -58,7 +60,7 @@ public class CustomerServiceChatBffController {
                     request,
                     FRONTEND,
                     role,
-                    userId  // Pass userId for tool authorization
+                    userId // Pass userId for tool authorization
             );
 
             log.debug("Chat response generated with {} source documents",

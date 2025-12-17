@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table"
 import { Search, MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Loader2 } from "lucide-react"
 import { exceptionService } from "@/lib/services/exception.service"
-import { featureFlagManager, isSupportTicketsEnabled, getTicketListView } from "@/lib/flagsmith"
 import type { DeliveryExceptionResponse } from "@/types/exception"
 import {
   ExceptionStatus,
@@ -34,48 +33,10 @@ export default function CustomerTicketsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("All")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  // Feature flags
-  const [featureEnabled, setFeatureEnabled] = useState(true)
-  const [listView, setListView] = useState<'table' | 'cards'>('table')
 
-  // Initialize feature flags and load tickets
+  // Load tickets on mount
   useEffect(() => {
-    const initializeAndLoad = async () => {
-      try {
-        // Initialize Flagsmith with mock customer ID
-        // In production, this would come from auth context
-        const userId = 'customer-' + Math.random().toString(36).substring(7)
-        await featureFlagManager.initialize(userId)
-        
-        // Check if feature is enabled
-        const enabled = isSupportTicketsEnabled()
-        setFeatureEnabled(enabled)
-        
-        // Get list view preference
-        const view = getTicketListView()
-        setListView(view)
-        
-        console.log('[TicketsPage] Feature flags initialized:', {
-          enabled,
-          view,
-          userId,
-        })
-        
-        // Load tickets if feature is enabled
-        if (enabled) {
-          await loadTickets()
-        } else {
-          setIsLoading(false)
-        }
-      } catch (err) {
-        console.error('[TicketsPage] Initialization failed:', err)
-        setError('Failed to initialize. Please refresh the page.')
-        setIsLoading(false)
-      }
-    }
-    
-    initializeAndLoad()
+    loadTickets()
   }, [])
 
   const loadTickets = async () => {
@@ -145,26 +106,6 @@ export default function CustomerTicketsPage() {
       default:
         return null
     }
-  }
-
-  // Feature disabled view
-  if (!featureEnabled) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8 max-w-md">
-            <MessageSquare className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Support Tickets Coming Soon!</h2>
-            <p className="text-gray-600 mb-4">
-              We&apos;re working on bringing you an improved support ticket system. Check back soon!
-            </p>
-            <p className="text-sm text-gray-500">
-              In the meantime, you can contact our support team directly.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   // Loading state
@@ -266,10 +207,9 @@ export default function CustomerTicketsPage() {
         </div>
       </div>
 
-      {/* Tickets Table or Cards */}
-      {listView === 'table' ? (
-        <div className="bg-white rounded-lg border border-gray-200">
-          <Table>
+      {/* Tickets Table */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket</TableHead>
@@ -337,64 +277,6 @@ export default function CustomerTicketsPage() {
             </TableBody>
           </Table>
         </div>
-      ) : (
-        /* Cards View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTickets.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-500">
-              {tickets.length === 0 ? 'No tickets yet. Create your first support ticket!' : 'No tickets found matching your search'}
-            </div>
-          ) : (
-            filteredTickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleViewDetails(ticket.id)}
-              >
-                {/* Card Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(ticket.status)}
-                    <span className="font-mono text-sm font-medium text-gray-900">
-                      {exceptionService.formatTicketNumber(ticket)}
-                    </span>
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${getPriorityBadge(ticket.priority)}`}>
-                    {ticket.priority}
-                  </span>
-                </div>
-
-                {/* Type & Category */}
-                <div className="mb-3">
-                  <h3 className="font-semibold text-black mb-1">
-                    {EXCEPTION_TYPE_LABELS[ticket.type]}
-                  </h3>
-                  <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                    {ticket.category}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                  {ticket.description}
-                </p>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(ticket.status)}`}>
-                      {STATUS_LABELS[ticket.status]}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(ticket.reportedAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   )
 }
