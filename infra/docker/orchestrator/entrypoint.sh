@@ -21,6 +21,6 @@ echo "Keycloak is ready!"
 echo "Running seed script..."
 python3 -u seed_demo_data.py --api-base "$API_BASE_URL"
 
-# Run orchestrator
+# Run orchestrator (default: 600s = 10 minutes)
 echo "Starting orchestrator..."
-python3 -u orchestrate_orders.py --api-base "$API_BASE_URL" --interval 3600
+python3 -u orchestrate_orders.py --api-base "$API_BASE_URL" --interval "${ORCHESTRATOR_INTERVAL:-600}"
