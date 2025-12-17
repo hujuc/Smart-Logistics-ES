@@ -42,4 +42,10 @@ public class NotificationController {
         notificationService.deleteAllUserNotifications(customerId);
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/customer/{customerId}/read")
+    public ResponseEntity<Void> markAllAsRead(@PathVariable String customerId) {
+        notificationService.markAllAsRead(customerId);
+        return ResponseEntity.ok().build();
+    }
 }

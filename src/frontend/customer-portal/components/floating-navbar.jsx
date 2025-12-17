@@ -3,24 +3,13 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState, useRef } from "react"
+import { useNotificationAnimation } from "../shared/hooks/use-notification-animation"
 import { useUnreadNotifications } from "../shared/hooks/use-notifications"
 
 export function FloatingNavbar({ navItems }) {
   const pathname = usePathname()
   const unreadCount = useUnreadNotifications()
-  const [shouldAnimate, setShouldAnimate] = useState(false)
-  const prevCountRef = useRef(unreadCount)
-
-  // Trigger animation when unread count increases
-  useEffect(() => {
-    if (unreadCount > prevCountRef.current) {
-      setShouldAnimate(true)
-      const timer = setTimeout(() => setShouldAnimate(false), 2000) // Stop after 2 seconds
-      return () => clearTimeout(timer)
-    }
-    prevCountRef.current = unreadCount
-  }, [unreadCount])
+  const shouldAnimate = useNotificationAnimation(unreadCount)
 
   // Safety check
   if (!navItems || !Array.isArray(navItems)) {
@@ -30,10 +19,10 @@ export function FloatingNavbar({ navItems }) {
   const isActive = (path) => {
     // Strip query parameters from the path for comparison
     const pathWithoutQuery = path.split('?')[0]
-    
+
     // Exact match for main navigation items
     if (pathname === pathWithoutQuery) return true
-    
+
     // For child routes not in the nav (like /interfaces/warehouse/package/123),
     // highlight the parent if no exact match exists
     const hasExactMatch = navItems.some(item => {
@@ -43,7 +32,7 @@ export function FloatingNavbar({ navItems }) {
     if (!hasExactMatch && pathname?.startsWith(pathWithoutQuery + '/')) {
       return true
     }
-    
+
     return false
   }
 
@@ -53,18 +42,17 @@ export function FloatingNavbar({ navItems }) {
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
-          
+
           return (
             <Link key={item.href} href={item.href}>
               <div className="relative">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-14 w-14 rounded-2xl transition-all duration-200 ${
-                    active 
-                      ? "bg-primary text-primary-foreground shadow-md" 
-                      : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
-                  }`} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-14 w-14 rounded-2xl transition-all duration-200 ${active
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-muted-foreground hover:bg-primary/50 hover:text-foreground"
+                    }`}
                   aria-label={item.label}
                   title={item.label}
                 >
