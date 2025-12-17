@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { NotificationListener } from "@/components/notification-listener";
 import { Navbar } from "@/components/navbar";
 import { DynamicFloatingNav } from "@/components/dynamic-floating-nav";
 import { Suspense } from "react";
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className="antialiased">
         <ObservabilityProvider serviceName="slms-customer-portal">
           <UserStoreInitializer />
+          <NotificationListener />
           <Navbar />
           <Suspense fallback={null}>
             <DynamicFloatingNav />
