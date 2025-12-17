@@ -216,7 +216,8 @@ class Orchestrator:
         
         log(f"=== Tick #{self.tick_count} started ===")
         
-        # 1. Create a new order on every tick (since interval is long)
+        # 1. Create 2 new orders on every tick
+        self.create_random_order()
         self.create_random_order()
 
         # 2. Process existing orders (CREATED -> READY_FOR_PICKUP) - limit to 2 per tick
@@ -229,10 +230,10 @@ class Orchestrator:
         # This ensures shipments spend time in each state instead of rushing through
         if self.tick_count % 2 == 0:
             # Even ticks: Accept pending shipments (PENDING -> IN_TRANSIT)
-            self.accept_pending_shipments(max_count=2)
+            self.accept_pending_shipments(max_count=3)
         else:
             # Odd ticks: Deliver in-transit shipments (IN_TRANSIT -> COMPLETED)
-            self.deliver_shipments(max_count=2)
+            self.deliver_shipments(max_count=3)
         
         log(f"=== Tick #{self.tick_count} completed ===\n")
 
@@ -405,7 +406,7 @@ class Orchestrator:
         if response:
             log(f"Created shipment {response.get('shipmentCode')} with {len(batch)} orders")
 
-    def accept_pending_shipments(self, max_count: int = 2) -> None:
+    def accept_pending_shipments(self, max_count: int = 3) -> None:
         """Accept pending shipments: PENDING_ACCEPTANCE -> IN_TRANSIT"""
         shipments = self.http.request("GET", "/admin/shipments")
         if not shipments:
@@ -422,7 +423,7 @@ class Orchestrator:
             self.http.request("PUT", f"/admin/shipments/{shipment['id']}/status?status=IN_TRANSIT")
             log(f"✓ Accepted shipment {shipment.get('shipmentCode')} → IN_TRANSIT")
 
-    def deliver_shipments(self, max_count: int = 2) -> None:
+    def deliver_shipments(self, max_count: int = 3) -> None:
         """Deliver in-transit shipments: IN_TRANSIT -> COMPLETED"""
         shipments = self.http.request("GET", "/admin/shipments")
         if not shipments:
