@@ -260,31 +260,32 @@ export default function DriverHome() {
         type={alert.type}
       />
       {/* Header */}
-      <div className="bg-black text-white p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Package className="h-6 w-6 text-white" />
-          <span className="text-lg font-bold text-white">SLMS</span>
-        </div>
+      <div className="bg-white border-b border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold">Welcome Back</h1>
-            <p className="text-gray-300 text-sm mt-1">
+            <h1 className="text-3xl font-bold text-black">Welcome Back</h1>
+            <p className="text-gray-600 text-sm mt-1">
               {user ? `${user.firstName} ${user.lastName}` : 'Driver'} • Driver
             </p>
           </div>
-          <Link href="/notifications" className="relative">
-            <Bell className="w-6 h-6" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white animate-in fade-in zoom-in duration-300">
-                {unreadCount > 9 ? '9+' : unreadCount}
-                {shouldAnimate && (
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
-                )}
-              </span>
-            )}
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/notifications" className="relative">
+              <Bell className="w-6 h-6 text-black" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white animate-in fade-in zoom-in duration-300">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {shouldAnimate && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                  )}
+                </span>
+              )}
+            </Link>
+            <Link href="/settings">
+              <Settings className="w-6 h-6 text-black" />
+            </Link>
+          </div>
         </div>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-500 text-sm">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
@@ -341,13 +342,6 @@ export default function DriverHome() {
             <button className="w-full bg-black text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
               <MapPin className="w-5 h-5" />
               View Daily Schedule
-            </button>
-          </Link>
-
-          <Link href="/interfaces/scan-package">
-            <button className="w-full bg-white border-2 border-gray-300 text-black py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-              <Package className="w-5 h-5" />
-              Scan Package
             </button>
           </Link>
 

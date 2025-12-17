@@ -67,6 +67,17 @@ terraform_smart_deploy() {
   rm -f "${TERRAFORM_DIR}/tfplan"
 }
 
+terraform_taint_db() {
+  log "Tainting PostgreSQL volume to force recreation..."
+  (cd "${TERRAFORM_DIR}" && terraform taint docker_volume.postgres_data 2>/dev/null || true)
+  
+  # Explicitly remove the volume to guarantee it's clean (as requested by user)
+  if docker volume inspect slms-postgres-data-prod >/dev/null 2>&1; then
+    log "Explicitly removing Docker volume slms-postgres-data-prod..."
+    docker volume rm -f slms-postgres-data-prod || true
+  fi
+}
+
 compose_up() {
   # Validate .env file exists (required for Keycloak and MinIO)
   if [ ! -f "${SCRIPT_DIR}/.env" ]; then
@@ -82,6 +93,7 @@ compose_up() {
 
    log "Starting auxiliary services (Zookeeper, Kafka, Keycloak, MinIO, Nginx)"
   docker compose up -d --force-recreate zookeeper kafka keycloak minio minio-create-bucket nginx
+  docker compose up -d --force-recreate --build orchestrator
 }
 
 compose_down() {
@@ -138,6 +150,7 @@ case "${1:-}" in
     remove_conflicting_containers  # Remove ALL existing containers to avoid conflicts
     cleanup_containers
     terraform_init
+    terraform_taint_db  # Force DB recreation as requested
     terraform_smart_deploy  # Use smart deploy instead of always destroying
     compose_up
     ;;

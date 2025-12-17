@@ -87,7 +87,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").permitAll() // Catch-all for other domain controllers
                         // Protected BFF endpoints (role-based)
                         .requestMatchers("/api/logistics/**").hasRole("LOGISTICS_MANAGER")
-                        .requestMatchers("/api/warehouse/**").hasRole("WAREHOUSE_STAFF")
+                        // Logistics managers can access warehouse endpoints to view orders and documents
+                        .requestMatchers("/api/warehouse/**").hasAnyRole("WAREHOUSE_STAFF", "LOGISTICS_MANAGER")
                         .requestMatchers("/api/driver/**").hasRole("DRIVER")
                         .requestMatchers("/api/customer-service/**").hasRole("CUSTOMER_SERVICE_REP")
                         .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
@@ -197,6 +198,8 @@ public class SecurityConfig {
 
             @SuppressWarnings("unchecked")
             var roles = (java.util.List<String>) realmAccess.get("roles");
+
+            log.info("JWT Auth: Extracted roles for user: {}", roles); // DEBUG LOG
 
             return roles.stream()
                     .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role))

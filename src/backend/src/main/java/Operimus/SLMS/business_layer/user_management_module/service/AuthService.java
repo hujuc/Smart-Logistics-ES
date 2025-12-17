@@ -92,12 +92,16 @@ public class AuthService {
         } catch (HttpClientErrorException e) {
             log.error("Authentication failed: {}", e.getMessage());
             if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-                throw new RuntimeException("Invalid username or password");
+                throw new RuntimeException("Invalid username or password. Please check your credentials and try again.");
+            } else if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new RuntimeException("Invalid login request. Please ensure all required fields are provided.");
+            } else if (e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                throw new RuntimeException("Your account has been disabled. Please contact support for assistance.");
             }
-            throw new RuntimeException("Authentication failed: " + e.getMessage());
+            throw new RuntimeException("Authentication service is temporarily unavailable. Please try again later.");
         } catch (Exception e) {
             log.error("Error during authentication: {}", e.getMessage(), e);
-            throw new RuntimeException("Authentication failed: " + e.getMessage());
+            throw new RuntimeException("Unable to complete login. Please try again later or contact support if the issue persists.");
         }
     }
 
@@ -319,11 +323,17 @@ public class AuthService {
                         .build();
             }
 
-            throw new RuntimeException("Failed to refresh token");
+            throw new RuntimeException("Unable to refresh session. Please try again.");
 
+        } catch (HttpClientErrorException e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new RuntimeException("Your session has expired. Please log in again.");
+            }
+            throw new RuntimeException("Unable to refresh session. Please log in again.");
         } catch (Exception e) {
             log.error("Error refreshing token: {}", e.getMessage(), e);
-            throw new RuntimeException("Token refresh failed: " + e.getMessage());
+            throw new RuntimeException("Unable to refresh session due to a technical error. Please log in again.");
         }
     }
 

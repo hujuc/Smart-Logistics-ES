@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS, apiFetch } from '../api';
+import { getUserRole } from '../shared-auth';
 import type { Order, ShipmentOrderStatus, OrderEvent } from '@/types';
 
 export interface CreateOrderRequest {
@@ -44,8 +45,17 @@ export const warehouseService = {
 
   /**
    * Get order by ID
+   * Routes to appropriate BFF based on user's role
    */
   async getOrderById(id: number): Promise<Order> {
+    const userRole = getUserRole();
+
+    // Logistics managers should use the logistics BFF endpoint
+    if (userRole === 'LOGISTICS_MANAGER') {
+      return apiFetch<Order>(API_ENDPOINTS.logistics.order(id));
+    }
+
+    // Warehouse staff and other roles use the warehouse BFF endpoint
     return apiFetch<Order>(API_ENDPOINTS.warehouse.order(id));
   },
 
