@@ -326,10 +326,6 @@ export default function OrderTrackingPage() {
           <div className="bg-white border rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <Button className="w-full" variant="outline">
-                <FileText className="mr-2 h-4 w-4" />
-                Download Receipt
-              </Button>
               <Button className="w-full" variant="outline" onClick={() => router.push('/interfaces/support')}>
                 Contact Support
               </Button>
