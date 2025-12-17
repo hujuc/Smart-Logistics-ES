@@ -88,7 +88,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching logistics statistics: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch statistics: " + e.getMessage()));
+                    .body(Map.of("error", "Unable to load statistics at this time. Please try again later."));
         }
     }
 
@@ -152,7 +152,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching all warehouses: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch warehouses"));
+                    .body(Map.of("error", "Unable to load warehouses at this time. Please try again later."));
         }
     }
 
@@ -171,7 +171,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching warehouse by ID: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Warehouse not found"));
+                    .body(Map.of("error", "Warehouse with ID " + id + " was not found."));
         }
     }
 
@@ -227,7 +227,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error deleting warehouse: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to delete warehouse"));
+                    .body(Map.of("error", "Unable to delete warehouse. It may be in use or you may not have permission to delete it."));
         }
     }
 
@@ -252,7 +252,7 @@ public class LogisticsBffController {
                     orders = orderService.getByWarehouseAndStatus(id, orderStatus);
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest()
-                            .body(Map.of("error", "Invalid status value: " + status));
+                            .body(Map.of("error", "Invalid status value '" + status + "'. Please use a valid order status."));
                 }
             } else {
                 orders = orderService.getByWarehouse(id);
@@ -262,7 +262,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching warehouse orders: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch warehouse orders"));
+                    .body(Map.of("error", "Unable to load orders for this warehouse. Please try again later."));
         }
     }
 
@@ -281,7 +281,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching order {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Order not found"));
+                    .body(Map.of("error", "Order with ID " + id + " was not found."));
         }
     }
 
@@ -301,7 +301,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching all users: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch users"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -317,7 +317,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error fetching user by ID: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "User not found"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -379,7 +379,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error deleting user: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to delete user"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -395,7 +395,7 @@ public class LogisticsBffController {
         } catch (Exception e) {
             log.error("Error searching users: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to search users"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }

@@ -132,7 +132,7 @@ public class AuthController {
         try {
             if (refreshToken == null || refreshToken.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Refresh token not found"));
+                        .body(Map.of("error", "Your session has expired. Please log in again."));
             }
 
             log.info("Token refresh request via landing page");
@@ -158,7 +158,7 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Token refresh failed via landing page: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Token refresh failed"));
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 

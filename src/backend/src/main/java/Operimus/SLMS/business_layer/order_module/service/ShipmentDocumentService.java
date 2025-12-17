@@ -96,7 +96,7 @@ public class ShipmentDocumentService {
                             .build(),
                     RequestBody.fromBytes(content));
         } catch (S3Exception ex) {
-            throw new DocumentStorageException("Erro ao guardar o documento de envio no bucket '%s'.".formatted(bucketName), ex);
+            throw new DocumentStorageException("Failed to save shipment document to storage bucket '%s'.".formatted(bucketName), ex);
         }
 
         return ShipmentDocumentResponse.builder()
@@ -135,7 +135,7 @@ public class ShipmentDocumentService {
         Order order = findOrderOrThrow(orderId);
         if (order.getShipmentId() == null) {
             throw new ResourceNotFoundException(
-                    "A encomenda %d não tem documentos de envio associados.".formatted(orderId));
+                    "Order %d has no associated shipment documents.".formatted(orderId));
         }
         return download(order.getShipmentId(), orderId, documentId);
     }
@@ -154,7 +154,7 @@ public class ShipmentDocumentService {
         } catch (NoSuchKeyException ex) {
             throw documentNotFound(shipmentId, orderId, documentId);
         } catch (S3Exception ex) {
-            throw new DocumentStorageException("Erro ao eliminar o documento '%s'.".formatted(documentId), ex);
+            throw new DocumentStorageException("Failed to delete document '%s'.".formatted(documentId), ex);
         }
     }
 
@@ -180,7 +180,7 @@ public class ShipmentDocumentService {
         } catch (NoSuchKeyException ex) {
             throw documentNotFound(shipmentId, orderId, documentId);
         } catch (S3Exception ex) {
-            throw new DocumentStorageException("Erro ao descarregar documento de envio '%s'.".formatted(documentId), ex);
+            throw new DocumentStorageException("Failed to download shipment document '%s'.".formatted(documentId), ex);
         }
     }
 
@@ -199,7 +199,7 @@ public class ShipmentDocumentService {
                 documents.add(buildResponseFromObject(shipmentId, orderIdFilter, objectKey, head, objectSummary.size()));
             }
         } catch (S3Exception ex) {
-            throw new DocumentStorageException("Erro ao listar documentos de envio para o shipment '%s'.".formatted(prefix), ex);
+            throw new DocumentStorageException("Failed to list shipment documents for shipment '%s'.".formatted(prefix), ex);
         }
         return documents;
     }
@@ -240,7 +240,7 @@ public class ShipmentDocumentService {
                 createBucket();
             } catch (S3Exception ex) {
                 throw new DocumentStorageException(
-                        "Erro ao verificar a existência do bucket '%s'.".formatted(bucketName), ex);
+                        "Failed to verify existence of storage bucket '%s'.".formatted(bucketName), ex);
             }
             bucketReady.set(true);
         }
@@ -252,7 +252,7 @@ public class ShipmentDocumentService {
         } catch (S3Exception ex) {
             if (ex.statusCode() != 409) {
                 throw new DocumentStorageException(
-                        "Erro ao criar o bucket '%s'.".formatted(bucketName), ex);
+                        "Failed to create storage bucket '%s'.".formatted(bucketName), ex);
             }
         }
     }
@@ -261,23 +261,23 @@ public class ShipmentDocumentService {
         return shipmentRepository
                 .findById(shipmentId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Shipment %d não encontrado.".formatted(shipmentId)));
+                        new ResourceNotFoundException("Shipment %d not found.".formatted(shipmentId)));
     }
 
     private Order findOrderOrThrow(Long orderId) {
         return orderRepository
                 .findById(orderId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Encomenda %d não encontrada.".formatted(orderId)));
+                        new ResourceNotFoundException("Order %d not found.".formatted(orderId)));
     }
 
     private HeadObjectResponse fetchHeadObject(String objectKey) {
         try {
             return s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(objectKey).build());
         } catch (NoSuchKeyException ex) {
-            throw new ResourceNotFoundException("Documento '%s' não encontrado.".formatted(objectKey));
+            throw new ResourceNotFoundException("Document '%s' not found.".formatted(objectKey));
         } catch (S3Exception ex) {
-            throw new DocumentStorageException("Erro ao obter metadados do documento.", ex);
+            throw new DocumentStorageException("Failed to retrieve document metadata.", ex);
         }
     }
 
@@ -318,10 +318,10 @@ public class ShipmentDocumentService {
 
     private void validateDocumentId(String documentId) {
         if (!StringUtils.hasText(documentId)) {
-            throw new DocumentStorageException("O identificador do documento é inválido.");
+            throw new DocumentStorageException("Document identifier is invalid.");
         }
         if (documentId.contains("..") || documentId.contains("/") || documentId.contains("\\")) {
-            throw new DocumentStorageException("O identificador do documento contém caracteres inválidos.");
+            throw new DocumentStorageException("Document identifier contains invalid characters.");
         }
     }
 
@@ -364,10 +364,10 @@ public class ShipmentDocumentService {
     private ResourceNotFoundException documentNotFound(Long shipmentId, Long orderId, String documentId) {
         if (orderId != null) {
             return new ResourceNotFoundException(
-                    "Documento '%s' não encontrado para a encomenda %d do shipment %d."
+                    "Document '%s' not found for order %d in shipment %d."
                             .formatted(documentId, orderId, shipmentId));
         }
         return new ResourceNotFoundException(
-                "Documento '%s' não encontrado para o shipment %d.".formatted(documentId, shipmentId));
+                "Document '%s' not found for shipment %d.".formatted(documentId, shipmentId));
     }
 }
