@@ -19,8 +19,8 @@ echo "Keycloak is ready!"
 
 # Run seed script (it will skip if data exists)
 echo "Running seed script..."
-python3 seed_demo_data.py --api-base "$API_BASE_URL"
+python3 -u seed_demo_data.py --api-base "$API_BASE_URL"
 
 # Run orchestrator
 echo "Starting orchestrator..."
-python3 orchestrate_orders.py --api-base "$API_BASE_URL" --interval 3600
+python3 -u orchestrate_orders.py --api-base "$API_BASE_URL" --interval 3600

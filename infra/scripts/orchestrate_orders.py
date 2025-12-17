@@ -143,7 +143,7 @@ TRANSIT_TIMES = [
 # --- Helpers ---
 
 def log(message: str) -> None:
-    print(f"[orchestrator] {message}")
+    print(f"[orchestrator] {message}", flush=True)
 
 def warn(message: str) -> None:
     print(f"[orchestrator][warn] {message}")
@@ -220,6 +220,9 @@ class Orchestrator:
 
         # 3. Create shipments for ready orders (READY_FOR_PICKUP -> IN_TRANSIT)
         self.process_ready_orders()
+
+        # 4. Deliver shipments (IN_TRANSIT -> DELIVERED)
+        self.process_shipments()
 
         # 4. Deliver shipments (IN_TRANSIT -> DELIVERED)
         # Note: This might require updating the shipment status directly or via some event
@@ -326,26 +329,90 @@ class Orchestrator:
         if not ready_orders:
             return
             
-        # Pick a few to ship
-        # We need to a carrier and a driver
+        # We need carriers and drivers
         carriers = self.http.request("GET", "/admin/carriers")
-        # Drivers... we need to fetch users with role DRIVER.
-        # The API might not expose a direct "get drivers" endpoint easily without filtering users.
-        # Let's assume we can get users and filter.
-        # Or we just hardcode a driver ID if we knew it, but we don't.
-        # The seed script creates users.
+        if not carriers:
+            log("No carriers found, cannot create shipments")
+            return
+
+        # Try to fetch drivers. /api/users might be protected, but let's try.
+        # If it fails, we can't proceed with shipment creation easily without a known driver ID.
+        # However, we can try to reuse a driver ID from an existing shipment if any exist.
+        drivers = []
+        users = self.http.request("GET", "/users") # Try public/admin endpoint if available
+        if users and isinstance(users, list):
+            # Filter for drivers. The user object structure depends on Keycloak/UserRepresentation
+            # Usually has "realmRoles" or we check username convention
+            # The seed script creates users with username starting with "driver-"
+            drivers = [u for u in users if u.get("username", "").startswith("driver-")]
         
-        # Let's try to find a driver.
-        # If we can't find one, we can't ship.
-        # But maybe we can just use a placeholder if the backend allows.
-        # Actually, let's skip shipment creation if we can't easily get a driver.
-        # Or we can try to fetch all users and filter.
+        if not drivers:
+            # Fallback: check existing shipments to find a valid driver ID
+            existing_shipments = self.http.request("GET", "/admin/shipments")
+            if existing_shipments:
+                known_driver_ids = {s.get("driverId") for s in existing_shipments if s.get("driverId")}
+                if known_driver_ids:
+                    # Create dummy driver objects
+                    drivers = [{"id": did, "username": "unknown"} for did in known_driver_ids]
+
+        if not drivers:
+            log("No drivers found, cannot create shipments")
+            return
+
+        # Create 1 shipment with up to 5 orders
+        batch_size = 5
+        batch = ready_orders[:batch_size]
         
-        # For now, let's just skip this part if it's too complex without more API knowledge.
-        # But the user asked to "change state of orders".
-        # Creating a shipment changes order state to IN_TRANSIT usually.
+        carrier = random.choice(carriers)
+        driver = random.choice(drivers)
+        shipment_code = f"SHP-{self.timestamp % 100000:05d}-{random.randint(1, 999):03d}"
         
-        pass
+        # Calculate totals
+        total_weight = sum(o.get("weight", 0.0) for o in batch)
+        
+        payload = {
+            "shipmentCode": shipment_code,
+            "carrierId": carrier["id"],
+            "driverId": driver["id"],
+            "orderIds": [o["id"] for o in batch],
+            "shippoShipmentId": f"shippo_{shipment_code.lower()}",
+            "shippoTransactionId": f"txn_{random_token(8).lower()}",
+            "shipstationOrderId": f"ss_{shipment_code.lower()}",
+            "shipstationCarrierCode": carrier.get("code"),
+            "shipstationServiceCode": "shippo_priority",
+            "totalOrders": len(batch),
+            "totalWeight": round(total_weight, 2),
+            "weightUnit": "kg",
+            "estimatedDeliveryDate": (date.today() + timedelta(days=3)).isoformat(),
+            "shippingCost": round(random.uniform(10, 50), 2),
+            "transitTime": "2-3 business days",
+        }
+        
+        response = self.http.request("POST", "/admin/shipments", payload=payload)
+        if response:
+            log(f"Created shipment {response.get('shipmentCode')} with {len(batch)} orders")
+
+    def process_shipments(self) -> None:
+        # Move shipments: PENDING_ACCEPTANCE -> IN_TRANSIT -> COMPLETED
+        shipments = self.http.request("GET", "/admin/shipments")
+        if not shipments:
+            return
+
+        # 1. Accept pending shipments
+        pending = [s for s in shipments if s.get("status") == "PENDING_ACCEPTANCE"]
+        if pending:
+            shipment = random.choice(pending)
+            # Use our new admin endpoint
+            self.http.request("PUT", f"/admin/shipments/{shipment['id']}/status?status=IN_TRANSIT")
+            log(f"Accepted shipment {shipment.get('shipmentCode')} (IN_TRANSIT)")
+
+        # 2. Deliver in-transit shipments
+        in_transit = [s for s in shipments if s.get("status") == "IN_TRANSIT"]
+        if in_transit:
+            shipment = random.choice(in_transit)
+            # Use our new admin endpoint
+            self.http.request("PUT", f"/admin/shipments/{shipment['id']}/status?status=COMPLETED")
+            log(f"Delivered shipment {shipment.get('shipmentCode')} (COMPLETED)")
 
 # --- Main ---
 
