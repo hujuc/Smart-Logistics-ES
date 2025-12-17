@@ -399,18 +399,18 @@ class Seeder:
     def run(self) -> Dict[str, Any]:
         log(f"Starting seed process (seed={self.config.seed})")
         
-        # Check if data already exists
-        existing_warehouses = self.http.request("GET", "/admin/warehouses")
-        if existing_warehouses and len(existing_warehouses) > 0:
-            log("Data already exists (warehouses found). Skipping seed process.")
-            return {
-                "users": [],
-                "warehouses": existing_warehouses,
-                "orders": [],
-                "shipments": [],
-                "carriers": [], # Added to match original return structure
-                "api_base_url": self.config.api_base_url, # Added to match original return structure
-            }
+        # Check if data already exists - REMOVED to force seed
+        # existing_warehouses = self.http.request("GET", "/admin/warehouses")
+        # if existing_warehouses and len(existing_warehouses) > 0:
+        #     log("Data already exists (warehouses found). Skipping seed process.")
+        #     return {
+        #         "users": {},
+        #         "warehouses": existing_warehouses,
+        #         "orders": [],
+        #         "shipments": [],
+        #         "carriers": [], 
+        #         "api_base_url": self.config.api_base_url, 
+        #     }
 
         # 1. Create Users (Customers, Drivers, Managers)
         users_by_role = self.create_users(self.config.user_count)
